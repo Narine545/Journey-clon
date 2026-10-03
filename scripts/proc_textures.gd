@@ -39,20 +39,6 @@ static func soft_material(tint: Color) -> StandardMaterial3D:
 	return m
 
 
-## Блёстка: маленькая аддитивная искра, ловит солнце.
-static func glint_material(tint: Color) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	m.albedo_texture = radial(24, 2.2)
-	m.albedo_color = tint
-	m.vertex_color_use_as_albedo = true
-	m.disable_receive_shadows = true
-	return m
-
-
 ## Штрих ветрового песка: вытянутый меш без билборда — ориентацию
 ## задаёт particle_flag_align_y по скорости. Слабо аддитивный,
 ## тёплый: песчинки «ловят солнце», а не светят белым.

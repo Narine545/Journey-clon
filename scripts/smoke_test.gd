@@ -10,6 +10,7 @@ var phase_frames := 0
 var results: Array[String] = []
 var _fail := false
 var _peak_speed := 0.0
+var _grounded_frames := 0
 
 
 func setup(main_ref: Node3D) -> void:
@@ -43,16 +44,20 @@ func _physics_process(_delta: float) -> void:
 				_check(st > 20, "run: следов отштамповано %d (ожидалось >20)" % st)
 				_next()
 
-		2: # телепорт на крутой склон, без ввода — песок должен потянуть вниз
+		2: # телепорт на сёрф-склон (28–33°), без ввода — песок должен потянуть вниз
 			if phase_frames == 1:
-				var steep := _find_steep_spot(t)
+				var steep := _find_surf_spot(t)
 				p.global_position = Vector3(steep.x, t.sample_height(steep.x, steep.y), steep.y)
 				p.vel = Vector3.ZERO
 				p.grounded = true
 				_peak_speed = 0.0
+				_grounded_frames = 0
+			if p.grounded:
+				_grounded_frames += 1
 			_peak_speed = maxf(_peak_speed, p.vel.length())
 			if phase_frames > 120:
-				_check(_peak_speed > 7.0, "slide: пик разгона по склону %.1f м/с (ожидалось >7)" % _peak_speed)
+				_check(_peak_speed > 11.0, "slide: пик разгона по склону %.1f м/с (ожидалось >11)" % _peak_speed)
+				_check(_grounded_frames > 96, "slide: на склоне %d из 120 кадров на земле (липнем к дюне)" % _grounded_frames)
 				_next()
 
 		3: # прыжок, затем удержание — парение
@@ -106,19 +111,20 @@ func _finish() -> void:
 	get_tree().quit(1 if _fail else 0)
 
 
-## Ищет самый крутой участок дюн в игровой зоне.
-func _find_steep_spot(t: Terrain) -> Vector2:
+## Ищет типичный сёрф-склон 28–33° в игровой зоне (не стены и не мелочь).
+func _find_surf_spot(t: Terrain) -> Vector2:
 	var best := Vector2(0.0, -80.0)
-	var best_ny := 1.0
+	var best_d := 9.0
 	var x := -90.0
 	while x <= 90.0:
 		var z := -160.0
 		while z <= -40.0:
 			var ny: float = t.ground_normal(x, z).y
-			if ny < best_ny:
-				best_ny = ny
+			var d: float = absf(ny - 0.865) # ~30°
+			if d < best_d:
+				best_d = d
 				best = Vector2(x, z)
 			z += 10.0
 		x += 10.0
-	print("[SMOKE] крутой склон: ", best, " ny=", best_ny)
+	print("[SMOKE] сёрф-склон: ", best, " ny=", t.ground_normal(best.x, best.y).y)
 	return best

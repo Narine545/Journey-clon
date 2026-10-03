@@ -3,10 +3,11 @@ extends MeshInstance3D
 ## Процедурные дюны «как в Journey»: гигантские гладкие валы барханов,
 ## вытянутые вдоль пути, с плавными спусками для сёрфа. Никакого
 ## мелкооктавного «горного» шума — деталь даёт только рябь в шейдере.
-## Хранит сетку высот; физика едет ровно по видимым треугольникам.
+## Хранит сетку высот; физика едет по гладкой бикубической поверхности
+## этой сетки (Катмулл-Ром) — плотный меш делает её неотличимой от видимой.
 
 const SIZE := 1040.0 # сторона мира (метры)
-const SEGMENTS := 260 # разбиение (261x261 вершин, ячейка 4 м)
+const SEGMENTS := 512 # разбиение (513x513 вершин, ячейка 2 м)
 const CENTER := Vector2(0.0, -190.0) # центр плоскости
 
 const SPAWN := Vector2(0.0, 40.0) # старт игрока
@@ -121,26 +122,41 @@ func height_at(x: float, z: float) -> float:
 	return h + trend
 
 
-## Точная высота треугольника меша под точкой (совпадает с видимыми гранями).
+## Высота под точкой: бикубический Катмулл-Ром по сетке высот.
+## Проходит через узлы сетки и C1-гладкая — путник не «дёргается»
+## на стыках ячеек, а меш 2 м настолько плотный, что расхождение
+## с видимыми треугольниками — миллиметры.
 func sample_height(x: float, z: float) -> float:
 	var fx := (x - _x0) / _cell
 	var fz := (z - _z0) / _cell
-	var ix := clampi(int(floor(fx)), 0, SEGMENTS - 1)
-	var iz := clampi(int(floor(fz)), 0, SEGMENTS - 1)
+	var ix := clampi(int(floor(fx)), 1, SEGMENTS - 2)
+	var iz := clampi(int(floor(fz)), 1, SEGMENTS - 2)
 	var tx := clampf(fx - float(ix), 0.0, 1.0)
 	var tz := clampf(fz - float(iz), 0.0, 1.0)
 
-	var i00 := iz * _row + ix
-	var h00 := _grid[i00]
-	var h10 := _grid[i00 + 1]
-	var h01 := _grid[i00 + _row]
-	var h11 := _grid[i00 + _row + 1]
+	var c0 := _cr_x(iz - 1, ix, tx)
+	var c1 := _cr_x(iz, ix, tx)
+	var c2 := _cr_x(iz + 1, ix, tx)
+	var c3 := _cr_x(iz + 2, ix, tx)
+	return _cr(c0, c1, c2, c3, tz)
 
-	if tx + tz <= 1.0:
-		# нижний треугольник ячейки: 00, 10, 01
-		return h00 + (h10 - h00) * tx + (h01 - h00) * tz
-	# верхний треугольник ячейки: 10, 11, 01
-	return h11 + (h10 - h11) * (1.0 - tz) + (h01 - h11) * (1.0 - tx)
+
+## Строка Катмулла-Рома по x в строке сетки iz.
+func _cr_x(iz: int, ix: int, tx: float) -> float:
+	var base := iz * _row + ix
+	return _cr(_grid[base - 1], _grid[base], _grid[base + 1], _grid[base + 2], tx)
+
+
+## Кубическая интерполяция Катмулла-Рома по четырём узлам.
+func _cr(p0: float, p1: float, p2: float, p3: float, t: float) -> float:
+	var t2 := t * t
+	var t3 := t2 * t
+	return 0.5 * (
+		2.0 * p1
+		+ (p2 - p0) * t
+		+ (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
+		+ (3.0 * p1 - p0 - 3.0 * p2 + p3) * t3
+	)
 
 
 ## Нормаль поверхности (сглаженная по сетке — стабильна на границах ячеек).
@@ -194,7 +210,7 @@ func _build_mesh() -> void:
 
 	# Индексы: два треугольника на ячейку. Winding как у PlaneMesh (FACE_Y):
 	# во Godot фронталь «сверху» даёт cross(e1,e2) = -Y — иначе грань вывернута
-	# и песок просвечивает насквозь. Диагональ (b-c) совпадает с sample_height.
+	# и песок просвечивает насквозь.
 	var idx := PackedInt32Array()
 	idx.resize(SEGMENTS * SEGMENTS * 6)
 	var w := 0

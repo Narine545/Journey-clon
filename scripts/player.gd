@@ -32,6 +32,7 @@ var _bob := 0.0
 var _squash := 0.0
 var _step_accum := 0.0
 var _foot_side := 1.0
+var _air_time := 0.0 # секунд с последнего касания земли
 var _surf_sparks: CPUParticles3D
 var _land_dust: CPUParticles3D
 
@@ -54,26 +55,27 @@ func attach_trail(trail_ref: Trail) -> void:
 
 
 func _build_fx() -> void:
-	# брызги песка из-под ног на настоящем сёрфе: крошечные золотые
-	# блёстки, короткая жизнь. local_coords по умолчанию false —
-	# частицы остаются в мире позади летящего путника.
+	# брызги песка из-под ног на настоящем сёрфе: вытянутые золотые
+	# чёрточки (не круглые облачка!), короткая жизнь. local_coords
+	# по умолчанию false — частицы остаются в мире позади путника.
 	_surf_sparks = CPUParticles3D.new()
-	_surf_sparks.amount = 90
-	_surf_sparks.lifetime = 0.32
+	_surf_sparks.amount = 70
+	_surf_sparks.lifetime = 0.28
 	_surf_sparks.lifetime_randomness = 0.3
 	_surf_sparks.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	_surf_sparks.emission_sphere_radius = 0.12
-	_surf_sparks.spread = 16.0
-	_surf_sparks.initial_velocity_min = 2.5
-	_surf_sparks.initial_velocity_max = 5.5
-	_surf_sparks.gravity = Vector3(0.0, -14.0, 0.0)
-	_surf_sparks.scale_amount_min = 0.02
-	_surf_sparks.scale_amount_max = 0.06
+	_surf_sparks.emission_sphere_radius = 0.15
+	_surf_sparks.spread = 14.0
+	_surf_sparks.initial_velocity_min = 3.0
+	_surf_sparks.initial_velocity_max = 6.0
+	_surf_sparks.gravity = Vector3(0.0, -12.0, 0.0)
+	_surf_sparks.particle_flag_align_y = true
+	_surf_sparks.scale_amount_min = 0.7
+	_surf_sparks.scale_amount_max = 1.3
 	_surf_sparks.color_ramp = ProcTextures.fade_ramp()
-	var spark_quad := QuadMesh.new()
-	spark_quad.size = Vector2(1.0, 1.0)
-	spark_quad.material = ProcTextures.glint_material(Color(1.0, 0.66, 0.28, 0.85))
-	_surf_sparks.mesh = spark_quad
+	var spray_mesh := BoxMesh.new()
+	spray_mesh.size = Vector3(0.018, 0.30, 0.018)
+	spray_mesh.material = ProcTextures.streak_material(Color(0.80, 0.52, 0.22, 0.60))
+	_surf_sparks.mesh = spray_mesh
 	_surf_sparks.visibility_aabb = AABB(Vector3(-8.0, -8.0, -8.0), Vector3(16.0, 16.0, 16.0))
 	_surf_sparks.position = Vector3(0.0, 0.10, 0.0)
 	_surf_sparks.emitting = false
@@ -195,6 +197,7 @@ func _wish_dir() -> Vector3:
 
 
 func _step_grounded(delta: float, wish: Vector3) -> void:
+	_air_time = 0.0
 	var pos := global_position
 	var n := terrain.ground_normal(pos.x, pos.z)
 
@@ -221,7 +224,7 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	vel *= exp(-fric * delta)
 
 	# потолок скорости: на спуске выше (сёрф)
-	var downhill := -slope_acc.normalized()
+	var downhill := slope_acc.normalized() # направление стока (вниз по склону)
 	var dvel := 0.0
 	if spd > 0.01:
 		dvel = vel.dot(downhill) / spd # -1..1: движение совпадает со спуском
@@ -241,14 +244,20 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	# движение по склону
 	global_position += vel * delta
 	var gh := terrain.sample_height(global_position.x, global_position.z)
-	if global_position.y - gh > 0.38:
-		# гребень ушёл из-под ног — короткий полёт
+	var gap := global_position.y - gh
+	# На разгоняющемся спуске рельеф «убегает» из-под ног быстрее гравитации.
+	# Держим путника на склоне в пределах скоростного зазора — сёрф льнёт
+	# к дюне (как в Journey), в полёт бросает только настоящий обрыв.
+	var launch := 0.45 + Vector2(vel.x, vel.z).length() * 0.10
+	if gap > launch:
 		grounded = false
+		_air_time = 0.0
 	else:
 		global_position.y = gh
 
 
 func _step_air(delta: float, wish: Vector3) -> void:
+	_air_time += delta
 	gliding = Input.is_action_pressed("jump") and vel.y < 1.5
 	var grav := GLIDE_G if gliding else GRAVITY
 	vel.y -= grav * delta
@@ -262,6 +271,20 @@ func _step_air(delta: float, wish: Vector3) -> void:
 
 	global_position += vel * delta
 	var gh := terrain.sample_height(global_position.x, global_position.z)
+	var gap := global_position.y - gh
+	# «прилипание»: соскочили с выпуклого гребня и уже почти вернулись к песку —
+	# мягко возвращаемся на склон, сохраняя скорость вдоль него.
+	# Прыжок с зажатой клавишей парения — намеренный полёт, его не ломаем.
+	var snap := 0.45 + Vector2(vel.x, vel.z).length() * 0.10
+	if _air_time < 0.35 and vel.y <= 0.5 and gap <= snap and not Input.is_action_pressed("jump"):
+		global_position.y = gh
+		grounded = true
+		gliding = false
+		var n := terrain.ground_normal(global_position.x, global_position.z)
+		if vel.dot(n) < 0.0:
+			vel = vel - n * vel.dot(n)
+		surf01 = 0.0
+		return
 	if global_position.y <= gh:
 		global_position.y = gh
 		grounded = true
@@ -272,10 +295,10 @@ func _step_air(delta: float, wish: Vector3) -> void:
 		_squash = clampf(impact / 15.0, 0.0, 1.0)
 		vel = vel - n * vel.dot(n)
 		surf01 = 0.0
-		# примятый отпечаток посадки + пыль
+		# примятый отпечаток посадки + пыль (только настоящий прыжок)
 		if trail != null and impact > 2.0:
 			trail.stamp(global_position.x, global_position.z, 0.9, clampf(impact / 16.0, 0.0, 0.6))
-		if impact > 4.0:
+		if impact > 6.0:
 			_land_dust.restart()
 
 
@@ -327,9 +350,9 @@ func _update_fx() -> void:
 	var spark := grounded and hspd > 11.5
 	_surf_sparks.emitting = spark
 	if spark:
-		# летят назад и чуть вверх от ног
-		var back := -hv / hspd
-		_surf_sparks.direction = (back + Vector3.UP * 0.18).normalized()
+			# летят назад и чуть вверх от ног, ложась дугой на песок
+			var back := -hv / hspd
+			_surf_sparks.direction = (back + Vector3.UP * 0.30).normalized()
 
 
 func _update_visual(delta: float) -> void:

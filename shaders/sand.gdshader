@@ -79,7 +79,7 @@ void fragment() {
 	// Вне карты считаем нетронутым (края буфера всегда чистые).
 	vec2 tuv = (wp - trail_rect.xy) / trail_rect.zw;
 	float in_map = step(0.0, tuv.x) * step(tuv.x, 1.0) * step(0.0, tuv.y) * step(tuv.y, 1.0);
-	float press = clamp(texture(trail_map, tuv).r * 1.6, 0.0, 1.0) * in_map;
+	float press = clamp(texture(trail_map, tuv).r * 1.9, 0.0, 1.0) * in_map;
 
 	// ---------- 1. Рябь от ветра ----------
 	// Гребни вытянуты вдоль ветра, рисунок медленно бежит по ветру.
@@ -112,8 +112,8 @@ void fragment() {
 	base += vec3(1.0, 0.62, 0.34) * pow(clamp(ndl, 0.0, 1.0), 2.2) * 0.16;
 	// ложбины — холоднее и глубже
 	base = mix(base, sand_shade, hollow * 0.25);
-	// примятый след: чуть темнее и плотнее, песчинки не блестят
-	base = mix(base, base * vec3(0.88, 0.87, 0.96), press * 0.55);
+	// примятый след: заметная тёмная борозда с холодным отливом
+	base = mix(base, base * vec3(0.64, 0.60, 0.74), press * 0.80);
 	// крупный тональный шум: дюны не одинаковые
 	base *= mix(0.92, 1.07, vnoise(wp * 0.013 + vec2(3.1, 7.7)));
 
@@ -125,7 +125,7 @@ void fragment() {
 	float cellr = hash12(floor(wp * 9.0));
 	float glint = step(1.0 - glitter_amount, cellr);
 	glint *= 0.55 + 0.45 * sin(TIME * 9.0 + cellr * 37.0);
-	glint *= 1.0 - 0.6 * press; // примятый песок не сверкает
+	glint *= 1.0 - 0.75 * press; // примятый песок не сверкает
 	base += vec3(1.0, 0.88, 0.62) * spec * glint * 2.6 * detail;
 
 	// ---------- 4. Ветровые струи ----------

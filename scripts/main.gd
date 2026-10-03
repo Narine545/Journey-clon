@@ -35,7 +35,7 @@ func _ready() -> void:
 	# ветер: лёгкая взвесь вокруг путника, усиливается на сёрфе
 	wind = WindField.new()
 	add_child(wind)
-	wind.setup(game, player)
+	wind.setup(game, player, terrain)
 
 	var scarf := Scarf.new()
 	add_child(scarf)
