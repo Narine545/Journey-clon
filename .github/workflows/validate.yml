@@ -63,9 +63,13 @@ jobs:
 
       - name: Smoke run (автотест геймплея)
         run: |
-          JOURNEY_SMOKE=1 godot_bin/godot --headless --path . --quit-after 900 > smoke.log 2>&1
+          JOURNEY_SMOKE=1 godot_bin/godot --headless --path . --quit-after 4000 > smoke.log 2>&1
           code=$?
           cat smoke.log
+          if ! grep -q "SMOKE] итог" smoke.log; then
+            echo "::error::Smoke-тест не дошёл до конца (нет итоговой строки)"
+            exit 1
+          fi
           if grep -qE "SCRIPT ERROR|Invalid (get|call|set)|Unable to" smoke.log; then
             echo "::error::Ошибки скриптов в рантайме (см. .ci-logs в коммите CI)"
             grep -E "SCRIPT ERROR|Invalid (get|call|set)|Unable to" smoke.log | head -10 | while read -r line; do

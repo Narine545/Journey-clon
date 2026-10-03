@@ -17,6 +17,9 @@ var _grounded_frames := 0
 
 func setup(main_ref: Node3D) -> void:
 	main = main_ref
+	# головной прогон без графики: главный цикл не должен обгонять физику,
+	# иначе --quit-after убьёт игру раньше конца теста
+	Engine.max_fps = 60
 
 
 func _physics_process(_delta: float) -> void:
