@@ -28,7 +28,7 @@ uniform float wind_power = 1.0;
 uniform float ripple_freq = 2.2;      // плотность гребней поперёк ветра
 uniform float ripple_speed = 1.5;     // скорость бега ряби по ветру
 uniform float ripple_strength = 0.50; // глубина ряби (влияние на нормаль)
-uniform float glitter_amount = 0.14; // доля блестящих песчинок
+uniform float glitter_amount = 0.20; // доля блестящих песчинок
 uniform float streak_amount = 0.32;   // сила ветровых струй
 
 // ---- Настоящий песок: карта смещений ----
@@ -192,15 +192,17 @@ void fragment() {
 	vec3 G = normalize(vec3(cellid - 0.5, 0.30 + 0.70 * cellb, cellc - 0.5));
 	// солнечный блик (half-vector, шевелится от зерна к зерну)
 	vec3 Hg = normalize(H + vec3(cellid - 0.5, cellb - 0.5, cellc - 0.5) * 0.55);
-	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(26.0, 100.0, cellb));
+	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(22.0, 80.0, cellb));
 	// небесный блик: зерно поймало взгляд — работает в ЛЮБОМ направлении
-	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(24.0, 90.0, cellc));
+	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(20.0, 70.0, cellc));
 	float glint = step(1.0 - glitter_amount, cellid);
 	float rate = mix(2.0, 8.0, cellb);
 	glint *= 0.40 + 0.60 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0));
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
 	float glit_fade = exp(-dist * 0.008); // искры живут далеко, до горизонта
-	base += vec3(1.0, 0.90, 0.65) * (sun_lobe * 0.95 + sky_lobe * 0.95)
+	// ярче порога glow (0.72): поймавшие взгляд зёрна вспыхивают
+	// точками и мягко расцветают свечением — видно издалека
+	base += vec3(1.0, 0.92, 0.70) * (sun_lobe * 1.15 + sky_lobe * 1.30)
 		* glint * glit_fade * mix(0.75, 1.0, ao);
 	// шёлковый отблеск с ФРЕНЕЛЕМ (PBR-отклик): у кромки дюн, под скользящим
 	// взглядом, песок «мокро» блестит сильнее — независимо от солнца
