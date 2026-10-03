@@ -48,7 +48,7 @@ func _make_buses() -> void:
 
 	# ветер глохнет через фильтр — частота среза дышит от погоды и скорости
 	_wind_filter = AudioEffectLowPassFilter.new()
-	_wind_filter.cutoff = 1800.0
+	_wind_filter.cutoff_hz = 1800.0
 	AudioServer.add_bus_effect(AudioServer.get_bus_index("Wind"), _wind_filter, 0)
 
 	# музыке — немного пространства
@@ -145,7 +145,7 @@ func _process(delta: float) -> void:
 		wind_target += 0.10
 	_wind_gain = _damp(_wind_gain, wind_target, 3.0, delta)
 	_wind.volume_db = linear_to_db(maxf(_wind_gain, 0.0001))
-	_wind_filter.cutoff = lerpf(650.0, 2500.0, clampf(gust + spd01 * 0.5, 0.0, 1.0))
+	_wind_filter.cutoff_hz = lerpf(650.0, 2500.0, clampf(gust + spd01 * 0.5, 0.0, 1.0))
 
 	# --- музыка ---
 	_pad_fade = minf(_pad_fade + delta / 7.0, 1.0) # мир входит тихо
