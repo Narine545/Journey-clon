@@ -65,6 +65,11 @@ void fragment() {
 	vec3 L = normalize(sun_dir);
 	vec3 N = normalize(w_normal);
 
+	// Дистанция до фрагмента: мелкая деталь гаснет с расстоянием,
+	// чтобы дюны оставались шелковистыми, а не рябило муаром.
+	float dist = length(CAMERA_POSITION_WORLD - w_pos);
+	float detail = exp(-dist * 0.030);
+
 	// ---------- 1. Рябь от ветра ----------
 	// Гребни вытянуты вдоль ветра, рисунок медленно бежит по ветру.
 	float n1 = vnoise(wp * 0.33);
@@ -78,7 +83,7 @@ void fragment() {
 	// аналитический градиент волны по осям (v, u) -> возмущение нормали
 	float dv = (c1 * ripple_freq + c2 * ripple_freq * 2.63) * ripple_strength * wind_power;
 	float du = (c1 * 0.22 + c2 * 0.55) * ripple_strength * wind_power * 2.0;
-	vec2 grad = wperp * dv + wdir * du;
+	vec2 grad = (wperp * dv + wdir * du) * detail;
 	N = normalize(N - vec3(grad.x, 0.0, grad.y) * 0.5);
 
 	// ---------- 2. Двухтоновый песок: N*L ----------
@@ -105,7 +110,7 @@ void fragment() {
 	float cellr = hash12(floor(wp * 9.0));
 	float glint = step(1.0 - glitter_amount, cellr);
 	glint *= 0.55 + 0.45 * sin(TIME * 9.0 + cellr * 37.0);
-	base += vec3(1.0, 0.88, 0.62) * spec * glint * 2.6;
+	base += vec3(1.0, 0.88, 0.62) * spec * glint * 2.6 * detail;
 
 	// ---------- 4. Ветровые струи ----------
 	// Медленные светящиеся полосы: вытянуты по ветру и тянутся вдоль него.
@@ -115,7 +120,6 @@ void fragment() {
 	base += vec3(1.0, 0.80, 0.55) * streak * streak_amount * wind_power * (0.35 + 0.65 * lit);
 
 	// ---------- 5. Дымка к горизонту ----------
-	float dist = length(CAMERA_POSITION_WORLD - w_pos);
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
 	float above = smoothstep(-2.0, 16.0, w_pos.y - CAMERA_POSITION_WORLD.y);
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);

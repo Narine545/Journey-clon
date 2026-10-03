@@ -76,7 +76,8 @@ func height_at(x: float, z: float) -> float:
 	h *= dune_mask
 
 	# 5) стартовая площадка: ровный уклон, приглашающий скользнуть вниз
-	var plateau := trend + 2.0 - (SPAWN.y - z) * 0.30
+	# (trend добавится один раз в конце — здесь без него)
+	var plateau := 2.0 - (SPAWN.y - z) * 0.30
 	h = lerpf(plateau, h, dune_mask)
 
 	# 6) стены-дюны по краям мира — путь читается естественно, без невидимых барьеров
@@ -167,7 +168,9 @@ func _build_mesh() -> void:
 			var xu := _grid[mini(iz + 1, n - 1) * n + ix]
 			normals[i] = Vector3(xl - xr, 2.0 * _cell, xd - xu).normalized()
 
-	# Индексы: два треугольника на ячейку, диагональ совпадает с sample_height.
+	# Индексы: два треугольника на ячейку. Winding как у PlaneMesh (FACE_Y):
+	# во Godot фронталь «сверху» даёт cross(e1,e2) = -Y — иначе грань вывернута
+	# и песок просвечивает насквозь. Диагональ (b-c) совпадает с sample_height.
 	var idx := PackedInt32Array()
 	idx.resize(SEGMENTS * SEGMENTS * 6)
 	var w := 0
@@ -177,12 +180,12 @@ func _build_mesh() -> void:
 			var b := a + 1
 			var c := a + n
 			var d := c + 1
-			idx[w] = a
+			idx[w] = d
 			idx[w + 1] = c
 			idx[w + 2] = b
-			idx[w + 3] = b
-			idx[w + 4] = c
-			idx[w + 5] = d
+			idx[w + 3] = c
+			idx[w + 4] = a
+			idx[w + 5] = b
 			w += 6
 
 	var arrays := []
@@ -193,8 +196,8 @@ func _build_mesh() -> void:
 	arrays[Mesh.ARRAY_TEX_UV2] = uvs2
 	arrays[Mesh.ARRAY_INDEX] = idx
 
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var terrain_mesh := ArrayMesh.new()
+	terrain_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/sand.gdshader")
@@ -207,7 +210,7 @@ func _build_mesh() -> void:
 	mat.set_shader_parameter("fog_distance", Game.FOG_DISTANCE)
 	mat.set_shader_parameter("wind_dir", Game.wind_dir())
 
-	self.mesh = mesh
+	self.mesh = terrain_mesh
 	material_override = mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 

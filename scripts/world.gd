@@ -21,8 +21,8 @@ func _build_environment() -> void:
 	sky_mat.sky_horizon_color = Color(0.97, 0.63, 0.46)
 	sky_mat.ground_bottom_color = Color(0.20, 0.15, 0.28)
 	sky_mat.ground_horizon_color = Color(0.94, 0.60, 0.48)
-	sky_mat.sun_angle_max = 11.0
-	sky_mat.sun_curve = 0.08
+	sky_mat.sun_angle_max = 6.0
+	sky_mat.sun_curve = 0.10
 	sky_mat.sky_energy_multiplier = 1.0
 
 	var sky := Sky.new()

@@ -36,6 +36,10 @@ func setup(player_ref: Player, terrain_ref: Terrain) -> void:
 	_pos = p + Vector3(0.0, 2.3, 6.5) # за спиной, взгляд к маяку
 	_look = p + Vector3.UP * 1.4
 
+	# сразу корректный кадр — без вспышки «камеры в начале координат»
+	cam.global_position = _pos
+	cam.look_at(_look, Vector3.UP)
+
 
 func _physics_process(delta: float) -> void:
 	var p: Vector3 = player.global_position

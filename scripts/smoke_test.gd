@@ -23,6 +23,8 @@ func _physics_process(_delta: float) -> void:
 
 	match phase:
 		0: # покой: мир стабилен, персонаж прижат к песку
+			if phase_frames == 1:
+				_check_winding(t)
 			if phase_frames > 30:
 				var gh: float = t.sample_height(p.global_position.x, p.global_position.z)
 				_check(p.grounded and absf(p.global_position.y - gh) < 0.3, "idle: на земле")
@@ -70,6 +72,23 @@ func _physics_process(_delta: float) -> void:
 func _next() -> void:
 	phase += 1
 	phase_frames = 0
+
+
+## Регрессия winding: грань «вверх» у Godot даёт cross(e1,e2).y < 0
+## (проверено по PlaneMesh). Иначе песок вывернут и просвечивает насквозь.
+func _check_winding(t: Terrain) -> void:
+	var arr: Array = t.mesh.surface_get_arrays(0)
+	var tv: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var ti: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+	var bad := 0
+	for k in range(200): # выборочная проверка первых 200 треугольников
+		var a: Vector3 = tv[ti[k * 3]]
+		var b: Vector3 = tv[ti[k * 3 + 1]]
+		var c: Vector3 = tv[ti[k * 3 + 2]]
+		var nyz: float = (b - a).cross(c - a).y
+		if nyz > 0.0:
+			bad += 1
+	_check(bad == 0, "winding: вывернутых граней %d из 200 (должно быть 0)" % bad)
 
 
 func _check(ok: bool, what: String) -> void:
