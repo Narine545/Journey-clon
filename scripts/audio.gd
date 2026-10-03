@@ -48,8 +48,8 @@ func _make_buses() -> void:
 
 	# ветер глохнет через фильтр — частота среза дышит от погоды и скорости
 	_wind_filter = AudioEffectLowPassFilter.new()
-	_wind_filter.cutoff_hz = 1800.0
-	AudioServer.bus_add_effect(AudioServer.get_bus_index("Wind"), _wind_filter, 0)
+	_wind_filter.cutoff = 1800.0
+	AudioServer.add_bus_effect(AudioServer.get_bus_index("Wind"), _wind_filter, 0)
 
 	# музыке — немного пространства
 	var reverb := AudioEffectReverb.new()
@@ -57,13 +57,13 @@ func _make_buses() -> void:
 	reverb.damping = 0.45
 	reverb.wet = 0.14
 	reverb.dry = 0.9
-	AudioServer.bus_add_effect(AudioServer.get_bus_index("Music"), reverb, 0)
+	AudioServer.add_bus_effect(AudioServer.get_bus_index("Music"), reverb, 0)
 
 
 func _ensure_bus(bus_name: String) -> void:
 	if AudioServer.get_bus_index(bus_name) < 0:
 		AudioServer.add_bus()
-		var idx := AudioServer.bus_count() - 1
+		var idx := AudioServer.get_bus_count() - 1
 		AudioServer.set_bus_name(idx, bus_name)
 		AudioServer.set_bus_send(idx, "Master")
 
@@ -145,7 +145,7 @@ func _process(delta: float) -> void:
 		wind_target += 0.10
 	_wind_gain = _damp(_wind_gain, wind_target, 3.0, delta)
 	_wind.volume_db = linear_to_db(maxf(_wind_gain, 0.0001))
-	_wind_filter.cutoff_hz = lerpf(650.0, 2500.0, clampf(gust + spd01 * 0.5, 0.0, 1.0))
+	_wind_filter.cutoff = lerpf(650.0, 2500.0, clampf(gust + spd01 * 0.5, 0.0, 1.0))
 
 	# --- музыка ---
 	_pad_fade = minf(_pad_fade + delta / 7.0, 1.0) # мир входит тихо

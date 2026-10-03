@@ -81,6 +81,27 @@ jobs:
             exit 1
           fi
 
+      # Headless (dummy-рендерер) НЕ компилирует шейдеры. Прогоняем несколько
+      # кадров под xvfb + Mesa llvmpipe с настоящим GL — поймаем ошибки шейдеров.
+      - name: Render check (компиляция шейдеров, xvfb + llvmpipe)
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            echo "::warning::xvfb-run недоступен — рендер-проверка пропущена"
+            exit 0
+          fi
+          xvfb-run -a -s "-screen 0 1280x720x24" \
+            godot_bin/godot --path . --quit-after 150 > render.log 2>&1 || true
+          cat render.log
+          if grep -iE "SHADER ERROR|failed to compile|error compiling" render.log; then
+            echo "::error::Ошибки компиляции шейдеров"
+            exit 1
+          fi
+          if grep -q "OpenGL" render.log; then
+            echo "Рендер поднялся, шейдеры скомпилированы"
+          else
+            echo "::warning::GL-контекст не поднялся — проверка шейдеров могла не состояться"
+          fi
+
       - name: Publish logs on failure
         if: failure()
         run: |
@@ -89,6 +110,7 @@ jobs:
           mkdir -p .ci-logs
           cp -f import.log .ci-logs/ 2>/dev/null || true
           cp -f smoke.log .ci-logs/ 2>/dev/null || true
+          cp -f render.log .ci-logs/ 2>/dev/null || true
           git add .ci-logs
           git commit -m "ci: логи упавшего прогона ${GITHUB_SHA::7}" || true
           git push origin HEAD:${GITHUB_REF#refs/heads/} || true

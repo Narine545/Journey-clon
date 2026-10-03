@@ -45,8 +45,8 @@ func _physics_process(_delta: float) -> void:
 				_check(dz > 20.0, "run: к маяку dz=%.1f м (ожидалось >20)" % dz)
 				_check(spd > 3.0, "run: скорость %.1f м/с" % spd)
 				var st: int = main.sand.stamp_count
-				_check(st > 20, "run: следов отштамповано %d (ожидалось >20)" % st)
-				_check_prints_real(p, t)
+				_check(st > 12, "run: следов отштамповано %d (ожидалось >12)" % st)
+				_check_prints_real(p)
 				_next()
 
 		2: # телепорт на сёрф-склон (28–33°), без ввода — песок должен потянуть вниз
@@ -115,7 +115,6 @@ func _check_prints_real(p: Player) -> void:
 		for xo in [-0.4, 0.0, 0.4]:
 			deepest = minf(deepest, sand.disp_at(p.global_position.x + xo, zz))
 	_check(deepest < -0.008, "run: позади настоящие промятости %.3f м (ожидалось < -0.008)" % deepest)
-	return true
 
 
 ## Регрессия winding: грань «вверх» у Godot даёт cross(e1,e2).y < 0

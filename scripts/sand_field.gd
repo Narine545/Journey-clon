@@ -222,8 +222,8 @@ func _settle(cell: Vector2i) -> void:
 	_grid[c] = v
 	# 2) осыпание: перепад круче угла откоса — песок течёт вниз
 	for k in range(4):
-		var ni := gi + _DIRS[k].x
-		var nj := gj + _DIRS[k].y
+		var ni: int = gi + _DIRS[k].x
+		var nj: int = gj + _DIRS[k].y
 		var nidx := _idx(ni, nj)
 		var d := v - _grid[nidx]
 		if d > TALUS_STEP:
