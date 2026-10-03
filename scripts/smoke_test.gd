@@ -13,6 +13,7 @@ var results: Array[String] = []
 var _fail := false
 var _peak_speed := 0.0
 var _grounded_frames := 0
+var _path: Array[Vector2] = [] # запись пути для проверки следов
 
 
 func setup(main_ref: Node3D) -> void:
@@ -41,6 +42,8 @@ func _physics_process(_delta: float) -> void:
 		1: # 240 кадров вперёд — путник уходит к маяку
 			if phase_frames == 1:
 				Input.action_press("move_forward")
+			if phase_frames % 12 == 0:
+				_path.append(Vector2(p.global_position.x, p.global_position.z))
 			if phase_frames > 240:
 				Input.action_release("move_forward")
 				var dz: float = Terrain.SPAWN.y - p.global_position.z
@@ -110,14 +113,30 @@ func _check_stamp(p: Player, t: Terrain) -> void:
 
 
 ## После пробежки позади путника должны остаться настоящие промятости.
+## Проверяем вдоль ЗАПИСАННОГО пути (рельеф увывает бег в стороны),
+## плюс широкая диагностика по всей зоне позади.
 func _check_prints_real(p: Player) -> void:
 	var sand: SandField = main.sand
 	var deepest := 0.0
-	for k in range(2, 16):
-		var zz := p.global_position.z + float(k) * 1.5
-		for xo in [-0.4, 0.0, 0.4]:
-			deepest = minf(deepest, sand.disp_at(p.global_position.x + xo, zz))
-	_check(deepest < -0.008, "run: позади настоящие промятости %.3f м (ожидалось < -0.008)" % deepest)
+	var n_path := _path.size()
+	for k in range(2, maxi(3, n_path - 8)): # свежий хвост пропускаем
+		var pt: Vector2 = _path[k]
+		for off in [Vector2(0, 0), Vector2(0.3, 0), Vector2(-0.3, 0), Vector2(0, 0.3), Vector2(0, -0.3)]:
+			deepest = minf(deepest, sand.disp_at(pt.x + off.x, pt.y + off.y))
+	_check(deepest < -0.008, "run: промятости вдоль пути %.3f м (ожидалось < -0.008)" % deepest)
+
+	# диагностика: самое глубокое место в квадрате 36×36 м вокруг путника
+	var cx := p.global_position.x
+	var cz := p.global_position.z
+	var dmin := 0.0
+	var gx := cx - 18.0
+	while gx <= cx + 18.0:
+		var gz := cz - 18.0
+		while gz <= cz + 18.0:
+			dmin = minf(dmin, sand.disp_at(gx, gz))
+			gz += 0.5
+		gx += 0.5
+	print("[SMOKE] диагностика: глубочайшая промятость в зоне ±18 м: ", "%.3f" % dmin)
 
 
 ## Регрессия winding: грань «вверх» у Godot даёт cross(e1,e2).y < 0
