@@ -18,6 +18,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_a_run.png -> 0
+[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_d_back.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_b_run2.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_c_trail.png -> 0
 WARNING: 8 ObjectDB instances were leaked at exit (run with `--verbose` for details).
