@@ -94,12 +94,14 @@ func _physics_process(_delta: float) -> void:
 				)
 				p.vel = Vector3.ZERO
 				p.grounded = true
+			if phase_frames == 3:
+				# кадр ждём: окно песка переезжает к путнику только в _process
 				var pos := Vector2(p.global_position.x + 1.2, p.global_position.z + 1.2)
 				main.sand.stamp_foot(pos, Vector2(0.0, -1.0), 0.5, 0.26, 0.05, 0.02)
 				for k in range(6):
 					_depth0 = minf(_depth0, main.sand.disp_at(pos.x + float(k) * 0.06 - 0.15, pos.y))
 				print("[SMOKE] занос: свежий след %.3f м" % _depth0)
-			if phase_frames == 780: # ~13 с
+			if phase_frames == 783: # ~13 с
 				var pos2 := Vector2(p.global_position.x + 1.2, p.global_position.z + 1.2)
 				var d1 := 0.0
 				for k in range(6):
@@ -107,7 +109,7 @@ func _physics_process(_delta: float) -> void:
 				var pct := 100.0 * d1 / _depth0 if _depth0 < 0.0 else 999.0
 				print("[SMOKE] занос: через 13 с %.3f м (%.0f%% глубины)" % [d1, pct])
 				_check(d1 > _depth0 * 0.75, "занос: след затягивается (осталось %.0f%% глубины)" % pct)
-			if phase_frames > 800:
+			if phase_frames > 805:
 				_next()
 
 		5:
