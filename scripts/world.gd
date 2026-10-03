@@ -37,7 +37,7 @@ func _build_environment() -> void:
 
 	# Киношный тонмаппинг: мягкие света, тёплая плёночная картинка
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.14
+	env.tonemap_exposure = 1.08
 	env.tonemap_white = 4.0
 
 	# Свечение: солнце, маяк и гребни дюн дышат (в Compatibility glow есть)
@@ -46,7 +46,7 @@ func _build_environment() -> void:
 	env.glow_strength = 1.0
 	env.glow_bloom = 0.08
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
-	env.glow_hdr_threshold = 0.72
+	env.glow_hdr_threshold = 0.95 # светятся только искры и солнце, не сам песок
 
 	# Дымка в цвет горизонта — для любых материалов со стандартным туманом.
 	env.fog_enabled = true
