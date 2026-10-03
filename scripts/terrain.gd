@@ -5,6 +5,10 @@ extends MeshInstance3D
 ## мелкооктавного «горного» шума — деталь даёт только рябь в шейдере.
 ## Хранит сетку высот; физика едет по гладкой бикубической поверхности
 ## этой сетки (Катмулл-Ром) — плотный меш делает её неотличимой от видимой.
+##
+## ПОВЕРХНОСТЬ = дюны + НАСТОЯЩИЙ ПЕСОК: SandField добавляет к высоте
+## смещения из карты следов, и физика, и камера, и ветер ходят по этой
+## сумме — путник ступает в собственные следы.
 
 const SIZE := 1040.0 # сторона мира (метры)
 const SEGMENTS := 512 # разбиение (513x513 вершин, ячейка 2 м)
@@ -26,6 +30,7 @@ const FINE_F := 1.0 / 23.0 # микро-рельеф — едва заметны
 const FINE_AMP := 0.4
 
 var game # автозагрузка Game
+var sand: SandField # поле настоящего песка (может не быть)
 
 var _warp := FastNoiseLite.new()
 var _swell := FastNoiseLite.new()
@@ -146,7 +151,7 @@ func height_at(x: float, z: float) -> float:
 	return h + trend
 
 
-## Высота под точкой: бикубический Катмулл-Ром по сетке высот.
+## Высота дюн под точкой: бикубический Катмулл-Ром по сетке высот.
 ## Проходит через узлы сетки и C1-гладкая — путник не «дёргается»
 ## на стыках ячеек, а меш 2 м настолько плотный, что расхождение
 ## с видимыми треугольниками — миллиметры.
@@ -165,6 +170,25 @@ func sample_height(x: float, z: float) -> float:
 	return _cr(c0, c1, c2, c3, tz)
 
 
+## НАСТОЯЩАЯ высота поверхности: дюны + смещение песка (следы!).
+## По ней ходит физика путника, камера и ветер.
+func ground_height(x: float, z: float) -> float:
+	var h := sample_height(x, z)
+	if sand != null:
+		h += sand.disp_at(x, z)
+	return h
+
+
+## Нормаль поверхности (дюны + наклон потревоженного песка).
+func ground_normal(x: float, z: float) -> Vector3:
+	var e := _cell * 0.35
+	var hl := ground_height(x - e, z)
+	var hr := ground_height(x + e, z)
+	var hd := ground_height(x, z - e)
+	var hu := ground_height(x, z + e)
+	return Vector3(hl - hr, 2.0 * e, hd - hu).normalized()
+
+
 ## Строка Катмулла-Рома по x в строке сетки iz.
 func _cr_x(iz: int, ix: int, tx: float) -> float:
 	var base := iz * _row + ix
@@ -181,16 +205,6 @@ func _cr(p0: float, p1: float, p2: float, p3: float, t: float) -> float:
 		+ (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
 		+ (3.0 * p1 - p0 - 3.0 * p2 + p3) * t3
 	)
-
-
-## Нормаль поверхности (сглаженная по сетке — стабильна на границах ячеек).
-func ground_normal(x: float, z: float) -> Vector3:
-	var e := _cell * 0.35
-	var hl := sample_height(x - e, z)
-	var hr := sample_height(x + e, z)
-	var hd := sample_height(x, z - e)
-	var hu := sample_height(x, z + e)
-	return Vector3(hl - hr, 2.0 * e, hd - hu).normalized()
 
 
 func _build_grid() -> void:
@@ -273,7 +287,8 @@ func _build_mesh() -> void:
 	mat.set_shader_parameter("sky_col", Game.SKY_COL)
 	mat.set_shader_parameter("fog_distance", Game.FOG_DISTANCE)
 	mat.set_shader_parameter("wind_dir", Game.wind_dir())
-	mat.set_shader_parameter("trail_map", ProcTextures.black_pixel()) # до появления карты — чистый песок
+	mat.set_shader_parameter("sand_map", ProcTextures.black_pixel()) # до появления карты — нетронутый песок
+	mat.set_shader_parameter("sand_texel", SandField.TEXEL)
 
 	self.mesh = terrain_mesh
 	material_override = mat
@@ -281,18 +296,21 @@ func _build_mesh() -> void:
 
 
 func _process(_delta: float) -> void:
-	# Ветер один для всех: рябь и струи бегут туда, куда дует game.wind_dir().
 	if material_override != null:
 		var m: ShaderMaterial = material_override
+		# Ветер один для всех: рябь и струи бегут туда, куда дует game.wind_dir().
 		m.set_shader_parameter("wind_dir", game.wind_dir())
 		m.set_shader_parameter("wind_power", game.wind_strength)
+		# окно карты настоящего песка скользит за путником
+		if sand != null:
+			m.set_shader_parameter("sand_origin", Vector2(sand.win_x0, sand.win_z0))
 
 
-## Подключает карту следов (создаётся после террейна).
-func attach_trail(trail: Trail) -> void:
+## Подключает поле настоящего песка (создаётся после террейна).
+func attach_sand(sand_ref: SandField) -> void:
+	sand = sand_ref
 	var m: ShaderMaterial = material_override
-	m.set_shader_parameter("trail_map", trail.get_texture())
-	m.set_shader_parameter("trail_rect", Vector4(Trail.X0, Trail.Z0, Trail.WORLD_W, Trail.WORLD_H))
+	m.set_shader_parameter("sand_map", sand_ref.get_texture())
 
 
 func smoothf(v: float, a: float, b: float) -> float:

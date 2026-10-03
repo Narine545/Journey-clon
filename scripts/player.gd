@@ -3,14 +3,21 @@ extends Node3D
 ## Путник. Аналитическая кинематика по полю высот террейна:
 ## вниз по склону разгоняемся, в гору — теряем ход, на крутом спуске — «сёрф».
 ## Никакой смерти, таймеров и провалов — только движение.
+##
+## Походка и песок связаны накрепко: шаг (фаза покачивания тела) рождает
+## отпечаток стопы в SandField, лёгкую пыль и звук; сёрф режет непрерывную
+## борозду; посадка вдавливает песок. Путник ходит ПО поверхности дюн
+## вместе со всеми своими следами (terrain.ground_height).
 
 const GRAVITY := 26.0
 const WALK_ACCEL := 34.0
-const WALK_MAX := 7.0
+const WALK_MAX := 6.2 # неспешная рысь — следы успевают читаться
 const SURF_MAX := 17.5
-const JUMP_V := 9.0
+const JUMP_V := 8.6
 const GLIDE_G := 5.5 # гравитация при парении
 const AIR_ACCEL := 6.0
+
+const SURF_TRACK_SPEED := 10.8 # выше этой скорости — не шаги, а борозда
 
 const BOUND_X := 150.0
 const BOUND_Z_MIN := -445.0
@@ -24,22 +31,26 @@ var gliding := false
 
 var game
 var terrain: Terrain
+var sand: SandField
+var audio # SoundScape (подключается после создания)
 var visual: Node3D
-var scarf: Scarf
-var trail: Trail
 
-var _bob := 0.0
-var _squash := 0.0
-var _step_accum := 0.0
+var _gait_phase := 0.0 # фаза шага: π = постановка стопы
+var _last_step_idx := 0
 var _foot_side := 1.0
+var _squash := 0.0
 var _air_time := 0.0 # секунд с последнего касания земли
+var _track_on := false
+var _track_last := Vector2.ZERO
 var _surf_sparks: CPUParticles3D
 var _land_dust: CPUParticles3D
+var _step_dust: CPUParticles3D
 
 
-func setup(game_ref, terrain_ref: Terrain) -> void:
+func setup(game_ref, terrain_ref: Terrain, sand_ref: SandField) -> void:
 	game = game_ref
 	terrain = terrain_ref
+	sand = sand_ref
 	global_position = Vector3(
 		Terrain.SPAWN.x,
 		terrain.sample_height(Terrain.SPAWN.x, Terrain.SPAWN.y),
@@ -47,11 +58,6 @@ func setup(game_ref, terrain_ref: Terrain) -> void:
 	)
 	_build_body()
 	_build_fx()
-
-
-## Подключает карту следов (создаётся после игрока).
-func attach_trail(trail_ref: Trail) -> void:
-	trail = trail_ref
 
 
 func _build_fx() -> void:
@@ -111,6 +117,35 @@ func _build_fx() -> void:
 	_land_dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_land_dust)
 
+	# пылинка от каждого шага на бегу — песок «пыхтит» под ногами
+	_step_dust = CPUParticles3D.new()
+	_step_dust.amount = 9
+	_step_dust.one_shot = true
+	_step_dust.explosiveness = 1.0
+	_step_dust.lifetime = 0.45
+	_step_dust.lifetime_randomness = 0.4
+	_step_dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	_step_dust.emission_sphere_radius = 0.07
+	_step_dust.spread = 180.0
+	_step_dust.initial_velocity_min = 0.4
+	_step_dust.initial_velocity_max = 1.0
+	_step_dust.gravity = Vector3(0.0, -2.0, 0.0)
+	_step_dust.damping_min = 4.0
+	_step_dust.damping_max = 6.0
+	_step_dust.scale_amount_min = 0.5
+	_step_dust.scale_amount_max = 0.85
+	_step_dust.scale_amount_curve = ProcTextures.grow_curve(0.3, 1.0)
+	_step_dust.color_ramp = ProcTextures.fade_ramp()
+	var step_quad := QuadMesh.new()
+	step_quad.size = Vector2(0.32, 0.32)
+	step_quad.material = ProcTextures.soft_material(Color(0.96, 0.74, 0.52, 0.30))
+	_step_dust.mesh = step_quad
+	_step_dust.visibility_aabb = AABB(Vector3(-3.0, -2.0, -3.0), Vector3(6.0, 4.0, 6.0))
+	_step_dust.position = Vector3(0.0, 0.06, 0.0)
+	_step_dust.emitting = false
+	_step_dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_step_dust)
+
 
 func _build_body() -> void:
 	visual = Node3D.new()
@@ -168,7 +203,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_step_air(delta, wish)
 	_bounds(delta)
-	_update_footsteps(delta)
+	_update_gait(delta)
 	_update_fx()
 	_update_visual(delta)
 	_update_game_state()
@@ -235,15 +270,21 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 		vel = vel.normalized() * (spd - over * clampf(delta * 8.0, 0.0, 1.0))
 	surf01 = clampf(surf_bias * (spd / SURF_MAX) * 1.4, 0.0, 1.0)
 
-	# прыжок — вверх по инерции склона
+	# прыжок — вверх по инерции склона, с лёгким задиранием песка
 	if Input.is_action_just_pressed("jump"):
+		if sand != null:
+			sand.stamp_foot(
+				Vector2(pos.x, pos.z),
+				Vector2(sin(heading), cos(heading)),
+				0.30, 0.22, 0.030, 0.012
+			)
 		vel += n * JUMP_V * 0.35 + Vector3.UP * JUMP_V * 0.75
 		grounded = false
 		return
 
-	# движение по склону
+	# движение по склону (по дюнам + собственным следам)
 	global_position += vel * delta
-	var gh := terrain.sample_height(global_position.x, global_position.z)
+	var gh := terrain.ground_height(global_position.x, global_position.z)
 	var gap := global_position.y - gh
 	# На разгоняющемся спуске рельеф «убегает» из-под ног быстрее гравитации.
 	# Держим путника на склоне в пределах скоростного зазора — сёрф льнёт
@@ -270,7 +311,7 @@ func _step_air(delta: float, wish: Vector3) -> void:
 		vel.y = maxf(vel.y, -4.5)
 
 	global_position += vel * delta
-	var gh := terrain.sample_height(global_position.x, global_position.z)
+	var gh := terrain.ground_height(global_position.x, global_position.z)
 	var gap := global_position.y - gh
 	# «прилипание»: соскочили с выпуклого гребня и уже почти вернулись к песку —
 	# мягко возвращаемся на склон, сохраняя скорость вдоль него.
@@ -292,12 +333,19 @@ func _step_air(delta: float, wish: Vector3) -> void:
 		# приземление: скорость укладывается в склон — песок «принимает»
 		var n := terrain.ground_normal(global_position.x, global_position.z)
 		var impact := maxf(0.0, -vel.y)
-		_squash = clampf(impact / 15.0, 0.0, 1.0)
+		var impact01 := clampf(impact / 15.0, 0.0, 1.0)
+		_squash = impact01
 		vel = vel - n * vel.dot(n)
 		surf01 = 0.0
-		# примятый отпечаток посадки + пыль (только настоящий прыжок)
-		if trail != null and impact > 2.0:
-			trail.stamp(global_position.x, global_position.z, 0.9, clampf(impact / 16.0, 0.0, 0.6))
+		# настоящий отпечаток посадки: песок вдавлен обеими стопами
+		if sand != null and impact > 2.0:
+			sand.stamp_land(
+				Vector2(global_position.x, global_position.z),
+				Vector2(sin(heading), cos(heading)),
+				0.05 + 0.05 * impact01
+			)
+		if audio != null and impact > 2.5:
+			audio.on_land(impact01)
 		if impact > 6.0:
 			_land_dust.restart()
 
@@ -319,28 +367,65 @@ func _bounds(delta: float) -> void:
 		vel += push * delta * 2.0
 
 
-func _update_footsteps(delta: float) -> void:
-	if trail == null or not grounded:
+# ---------------------------------------------------------------------------
+## Походка и следы. Фаза _gait_phase крутится с частотой шагов; на каждом π
+## стопа касается песка: отпечаток + пыль + звук. Покачивание тела — это
+## тот же sin(_gait_phase), так что видимый шаг и след совпадают кадр в кадр.
+## На сёрфе шаги сменяются непрерывной бороздой (штампуется чуть позади,
+## чтобы песок не «проваливался» под ногами рывком).
+# ---------------------------------------------------------------------------
+func _update_gait(delta: float) -> void:
+	if sand == null or not grounded:
+		_track_on = false
 		return
 	var hv := Vector3(vel.x, 0.0, vel.z)
 	var hspd := hv.length()
-	if hspd < 0.5:
+	var fwd := Vector2(sin(heading), cos(heading))
+	var pos := Vector2(global_position.x, global_position.z)
+
+	# сёрф: непрерывная churned борозда с валиками по краям
+	if hspd > SURF_TRACK_SPEED:
+		var behind := pos - fwd * 0.45
+		if not _track_on:
+			_track_on = true
+			_track_last = behind
+		elif behind.distance_to(_track_last) >= 0.34:
+			var spd01 := clampf(hspd / SURF_MAX, 0.0, 1.0)
+			sand.stamp_track(_track_last, behind, 0.52, 0.05 + 0.05 * spd01, 0.03)
+			_track_last = behind
 		return
-	# шаг — короткий, сёрф — длинный глиссирующий штрих
-	var stride := 0.6 if hspd < 9.0 else 0.9
-	_step_accum += hspd * delta
-	while _step_accum >= stride:
-		_step_accum -= stride
-		# чередование левой/правой ноги: штамп чуть в стороне от курса
-		var fwd := Vector3(sin(heading), 0.0, cos(heading))
-		var side := Vector3(fwd.z, 0.0, -fwd.x) * (0.15 * _foot_side)
-		_foot_side = -_foot_side
-		var px := global_position.x + side.x - fwd.x * 0.25
-		var pz := global_position.z + side.z - fwd.z * 0.25
-		if hspd < 9.0:
-			trail.stamp(px, pz, 0.35, 0.40)
-		else:
-			trail.stamp(px, pz, 0.55, 0.60)
+
+	_track_on = false
+	if hspd < 0.7:
+		return
+
+	# частота шагов растёт со скоростью — мелкая рысь путника
+	var cadence: float = clampf(0.9 + hspd * 0.68, 1.0, 5.0)
+	_gait_phase += cadence * PI * delta
+	var step_idx := int(_gait_phase / PI)
+	if step_idx > _last_step_idx:
+		_last_step_idx = step_idx
+		_plant_foot(pos, fwd, hspd)
+
+
+## Постановка стопы: чередование левой/правой чуть в стороне от курса.
+func _plant_foot(pos: Vector2, fwd: Vector2, hspd: float) -> void:
+	var spd01 := clampf(hspd / SURF_MAX, 0.0, 1.0)
+	var perp := Vector2(-fwd.y, fwd.x)
+	var p := pos - fwd * 0.30 + perp * (0.10 * _foot_side)
+	_foot_side = -_foot_side
+	var rnd := randf_range(0.88, 1.12) # каждый шаг чуть другой
+	sand.stamp_foot(
+		p, fwd,
+		0.46 + 0.22 * spd01,               # длина стопы
+		0.24,                                # ширина
+		(0.034 + 0.028 * spd01) * rnd,      # глубина
+		0.015 + 0.013 * spd01               # вал выброшенного песка
+	)
+	if audio != null:
+		audio.on_step(clampf(hspd / 10.0, 0.0, 1.0))
+	if spd01 > 0.30:
+		_step_dust.restart()
 
 
 func _update_fx() -> void:
@@ -350,9 +435,9 @@ func _update_fx() -> void:
 	var spark := grounded and hspd > 11.5
 	_surf_sparks.emitting = spark
 	if spark:
-			# летят назад и чуть вверх от ног, ложась дугой на песок
-			var back := -hv / hspd
-			_surf_sparks.direction = (back + Vector3.UP * 0.30).normalized()
+		# летят назад и чуть вверх от ног, ложась дугой на песок
+		var back := -hv / hspd
+		_surf_sparks.direction = (back + Vector3.UP * 0.30).normalized()
 
 
 func _update_visual(delta: float) -> void:
@@ -372,11 +457,9 @@ func _update_visual(delta: float) -> void:
 	var lean := clampf(spd / SURF_MAX, 0.0, 1.0) * 0.32 + (0.12 if gliding else 0.0)
 	visual.basis = Basis(x_axis, y_axis, fwd) * Basis(Vector3.RIGHT, lean)
 
-	# шаг: лёгкое покачивание при ходьбе, приземление — присед
-	if grounded and spd > 0.5:
-		_bob += delta * (5.0 + spd * 1.4)
+	# шаг: тело качается той же фазой, что и стопы бьют по песку
 	_squash = lerpf(_squash, 0.0, 1.0 - exp(-9.0 * delta))
-	var bob_y := sin(_bob) * 0.05 * clampf(spd / 7.0, 0.0, 1.0) * (1.0 - surf01)
+	var bob_y := sin(_gait_phase) * 0.05 * clampf(spd / 6.0, 0.0, 1.0) * (1.0 - surf01)
 	visual.position = Vector3(0.0, bob_y - _squash * 0.30, 0.0)
 
 

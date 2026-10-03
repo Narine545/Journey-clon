@@ -2,7 +2,9 @@ class_name SmokeTest
 extends Node
 ## Автотест геймплея для headless-прогона (без графики).
 ## Включается переменной окружения JOURNEY_SMOKE=1; в обычной игре неактивен.
-## Прогоняет фазы: покой → бег к маяку → скатывание с крутой дюны → прыжок/парение.
+## Прогоняет фазы: покой → печать следа → бег к маяку → скатывание
+## с крутой дюны → прыжок/парение. Проверяет, что следы — настоящие:
+## песок реально проминается и физика это видит.
 
 var main: Node3D
 var phase := 0
@@ -27,8 +29,9 @@ func _physics_process(_delta: float) -> void:
 			if phase_frames == 1:
 				_check_winding(t)
 				_check_descent(t)
+				_check_stamp(p, t)
 			if phase_frames > 30:
-				var gh: float = t.sample_height(p.global_position.x, p.global_position.z)
+				var gh: float = t.ground_height(p.global_position.x, p.global_position.z)
 				_check(p.grounded and absf(p.global_position.y - gh) < 0.3, "idle: на земле")
 				_next()
 
@@ -39,16 +42,17 @@ func _physics_process(_delta: float) -> void:
 				Input.action_release("move_forward")
 				var dz: float = Terrain.SPAWN.y - p.global_position.z
 				var spd := Vector3(p.vel.x, 0.0, p.vel.z).length()
-				_check(dz > 25.0, "run: к маяку dz=%.1f м (ожидалось >25)" % dz)
+				_check(dz > 20.0, "run: к маяку dz=%.1f м (ожидалось >20)" % dz)
 				_check(spd > 3.0, "run: скорость %.1f м/с" % spd)
-				var st: int = main.trail.stamp_count
+				var st: int = main.sand.stamp_count
 				_check(st > 20, "run: следов отштамповано %d (ожидалось >20)" % st)
+				_check_prints_real(p, t)
 				_next()
 
 		2: # телепорт на сёрф-склон (28–33°), без ввода — песок должен потянуть вниз
 			if phase_frames == 1:
 				var steep := _find_surf_spot(t)
-				p.global_position = Vector3(steep.x, t.sample_height(steep.x, steep.y), steep.y)
+				p.global_position = Vector3(steep.x, t.ground_height(steep.x, steep.y), steep.y)
 				p.vel = Vector3.ZERO
 				p.grounded = true
 				_peak_speed = 0.0
@@ -80,6 +84,38 @@ func _physics_process(_delta: float) -> void:
 func _next() -> void:
 	phase += 1
 	phase_frames = 0
+
+
+## Ручная печать следа рядом с путником: песок реально продавлен,
+## вокруг — вал, и физика (ground_height) это видит.
+func _check_stamp(p: Player, t: Terrain) -> void:
+	var sand: SandField = main.sand
+	var pos := Vector2(p.global_position.x + 1.5, p.global_position.z)
+	sand.stamp_foot(pos, Vector2(0.0, -1.0), 0.5, 0.26, 0.05, 0.02)
+	var dmin := 0.0
+	for k in range(5):
+		dmin = minf(dmin, sand.disp_at(pos.x + float(k) * 0.05 - 0.1, pos.y))
+	_check(dmin < -0.02, "stamp: дно отпечатка %.3f м (ожидалось < -0.02)" % dmin)
+	var dmax := 0.0
+	for k in range(8):
+		var a := TAU * float(k) / 8.0
+		dmax = maxf(dmax, sand.disp_at(pos.x + cos(a) * 0.22, pos.y + sin(a) * 0.22))
+	_check(dmax > 0.0, "stamp: вал вокруг отпечатка %.4f м (ожидалось > 0)" % dmax)
+	var gh := t.ground_height(pos.x, pos.y)
+	var bh := t.sample_height(pos.x, pos.y)
+	_check(gh < bh - 0.01, "stamp: физика видит след (ground_height на %.3f ниже дюн)" % (bh - gh))
+
+
+## После пробежки позади путника должны остаться настоящие промятости.
+func _check_prints_real(p: Player) -> void:
+	var sand: SandField = main.sand
+	var deepest := 0.0
+	for k in range(2, 16):
+		var zz := p.global_position.z + float(k) * 1.5
+		for xo in [-0.4, 0.0, 0.4]:
+			deepest = minf(deepest, sand.disp_at(p.global_position.x + xo, zz))
+	_check(deepest < -0.008, "run: позади настоящие промятости %.3f м (ожидалось < -0.008)" % deepest)
+	return true
 
 
 ## Регрессия winding: грань «вверх» у Godot даёт cross(e1,e2).y < 0

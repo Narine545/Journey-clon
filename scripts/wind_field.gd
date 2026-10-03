@@ -94,11 +94,11 @@ func _step_set(wisps: Array[Wisp], gusty: bool, delta: float) -> void:
 		w.x += (wdir.x * w.speed + perp.x * wiggle) * delta
 		w.z += (wdir.y * w.speed + perp.y * wiggle) * delta
 
-		# запись следа у самой поверхности дюны
+		# запись следа у самой поверхности дюны (вместе с промятостями песка)
 		w.hist_t += delta
 		if w.hist_t >= HIST_DT:
 			w.hist_t -= HIST_DT
-			w.hist.push_back(Vector3(w.x, terrain.sample_height(w.x, w.z) + w.hover, w.z))
+			w.hist.push_back(Vector3(w.x, terrain.ground_height(w.x, w.z) + w.hover, w.z))
 			if w.hist.size() > HIST:
 				w.hist.pop_front()
 

@@ -4,7 +4,12 @@ render_mode unshaded, fog_disabled;
 // =====================================================================
 // Шейдер песка — сердце игры.
 // По мотивам доклада GDC «Sand Rendering in Journey» и разбора Alan Zucconi.
-// Всё считается во фрагменте по мировым координатам — никаких текстур.
+// Всё считается во фрагменте по мировым координатам — текстур почти нет.
+//
+// Настоящий песок: карта смещений (R32F, тор) от SandField реально
+// изгибает геометрию (vertex) и даёт настоящие нормали (fragment):
+// стенки следов ловят солнце, валы выброшенного песка светятся,
+// дно следа темнеет и холоднеет. Никаких «нарисованных» следов.
 // =====================================================================
 
 // ---- Палитра (глава 1: тёплые дюны на закате) ----
@@ -26,13 +31,17 @@ uniform float ripple_strength = 0.30; // глубина ряби (влияние
 uniform float glitter_amount = 0.045; // доля блестящих песчинок
 uniform float streak_amount = 0.32;   // сила ветровых струй
 
-// ---- След путника: карта следов (SubViewport) ----
-uniform sampler2D trail_map;
-uniform vec4 trail_rect = vec4(-208.0, -468.0, 416.0, 520.0); // x0, z0, w, h (метры)
+// ---- Настоящий песок: карта смещений ----
+uniform sampler2D sand_map : filter_linear, repeat_enable;
+uniform vec2 sand_origin = vec2(0.0, 0.0); // мировой угол окна карты (x, z)
+uniform float sand_texel = 0.12;           // метров на тексель
+uniform float sand_edge = 40.0;            // текселей мягкого заноса у края окна
 
 varying vec3 w_pos;
 varying vec3 w_normal;
 varying vec2 v_dune; // x — 0..1 высота дюны (приходит из геометрии через UV2)
+
+const float SAND_N = 800.0; // сторона карты в текселях
 
 // ---- детерминированный хеш и value-noise ----
 float hash12(vec2 p) {
@@ -53,8 +62,24 @@ float vnoise(vec2 p) {
 	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
+// Смещение песка в мировой точке. Карта — тор: глобальные тексельные
+// координаты заворачиваются mod(N), REPEAT склеивает шов. У края окна
+// след плавно «заносится ветром» (за окном песок нетронут).
+float sand_h(vec2 wp) {
+	vec2 g = wp / sand_texel;               // глобальные непрерывные тексели
+	vec2 l = g - sand_origin / sand_texel;  // локальные в окне [0..N]
+	vec2 uv = (mod(floor(g), SAND_N) + fract(g)) / SAND_N;
+	float m = min(min(l.x, l.y), SAND_N - max(l.x, l.y)); // текселей до края
+	float edge = smoothstep(0.0, sand_edge, m);
+	return texture(sand_map, uv).r * edge;
+}
+
 void vertex() {
 	w_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	// песок реально проминается: смещаем вершину по карте
+	float h = sand_h(w_pos.xz);
+	VERTEX.y += h;
+	w_pos.y += h;
 	w_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	v_dune = UV2;
 }
@@ -74,15 +99,21 @@ void fragment() {
 	float dist = length(CAMERA_POSITION_WORLD - w_pos);
 	float detail = exp(-dist * 0.030);
 
-	// ---------- 0. След путника ----------
-	// Карта следов: 0 — нетронутый песок, 1 — глубоко примято.
-	// Вне карты считаем нетронутым (края буфера всегда чистые).
-	vec2 tuv = (wp - trail_rect.xy) / trail_rect.zw;
-	float in_map = step(0.0, tuv.x) * step(tuv.x, 1.0) * step(0.0, tuv.y) * step(tuv.y, 1.0);
-	float press = clamp(texture(trail_map, tuv).r * 1.9, 0.0, 1.0) * in_map;
+	// ---------- 0. Настоящий песок: карта смещений ----------
+	// Градиент карты — это настоящий рельеф: стенки следов и валы.
+	float t = sand_texel;
+	float h = sand_h(wp);
+	float hx1 = sand_h(wp + vec2(t, 0.0));
+	float hx0 = sand_h(wp - vec2(t, 0.0));
+	float hz1 = sand_h(wp + vec2(0.0, t));
+	float hz0 = sand_h(wp - vec2(0.0, t));
+	vec2 sgrad = vec2(hx1 - hx0, hz1 - hz0) / (2.0 * t);
+	float churn = clamp(abs(h) * 10.0, 0.0, 1.0); // потревоженный песок
+	N = normalize(N - vec3(sgrad.x, 0.0, sgrad.y));
 
 	// ---------- 1. Рябь от ветра ----------
 	// Гребни вытянуты вдоль ветра, рисунок медленно бежит по ветру.
+	// На потревоженном песке рябь стирается (песок перепахан).
 	float n1 = vnoise(wp * 0.33);
 	float n2 = vnoise(wp * 0.9 + vec2(17.0, 9.0));
 	float ph1 = v * ripple_freq + u * 0.22 + n1 * 4.2 + TIME * ripple_speed;
@@ -95,8 +126,7 @@ void fragment() {
 	float dv = (c1 * ripple_freq + c2 * ripple_freq * 2.63) * ripple_strength * wind_power;
 	float du = (c1 * 0.22 + c2 * 0.55) * ripple_strength * wind_power * 2.0;
 	vec2 grad = (wperp * dv + wdir * du) * detail;
-	// примятый след не рябит: песок уплотнён
-	grad *= 1.0 - 0.8 * press;
+	grad *= 1.0 - 0.75 * churn; // вытоптанный песок не рябит
 	N = normalize(N - vec3(grad.x, 0.0, grad.y) * 0.5);
 
 	// ---------- 2. Двухтоновый песок: N*L ----------
@@ -112,10 +142,16 @@ void fragment() {
 	base += vec3(1.0, 0.62, 0.34) * pow(clamp(ndl, 0.0, 1.0), 2.2) * 0.16;
 	// ложбины — холоднее и глубже
 	base = mix(base, sand_shade, hollow * 0.25);
-	// примятый след: заметная тёмная борозда с холодным отливом
-	base = mix(base, base * vec3(0.64, 0.60, 0.74), press * 0.80);
 	// крупный тональный шум: дюны не одинаковые
 	base *= mix(0.92, 1.07, vnoise(wp * 0.013 + vec2(3.1, 7.7)));
+
+	// ---------- 2b. След: настоящий рельеф красится как настоящий ----------
+	float press = clamp(-h * 12.0, 0.0, 1.0); // дно следа
+	float rise = clamp(h * 18.0, 0.0, 1.0);   // вал выброшенного песка
+	// дно: темнее и холоднее (песок уплотнён и в тени собственной стенки)
+	base = mix(base, base * vec3(0.60, 0.56, 0.72), press * 0.75);
+	// вал: свежий сухой песок — светлее и теплее
+	base = mix(base, base * vec3(1.18, 1.07, 0.88), rise * 0.5);
 
 	// ---------- 3. Глиттер ----------
 	// Редкие песчинки дают резкий блик: сверкание живёт при движении камеры.
@@ -125,8 +161,11 @@ void fragment() {
 	float cellr = hash12(floor(wp * 9.0));
 	float glint = step(1.0 - glitter_amount, cellr);
 	glint *= 0.55 + 0.45 * sin(TIME * 9.0 + cellr * 37.0);
-	glint *= 1.0 - 0.75 * press; // примятый песок не сверкает
+	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
 	base += vec3(1.0, 0.88, 0.62) * spec * glint * 2.6 * detail;
+	// широкий шёлковый отблеск — дуги «переливаются» при движении
+	float sheen = pow(clamp(dot(N, H), 0.0, 1.0), 16.0);
+	base += vec3(1.0, 0.72, 0.45) * sheen * 0.07 * lit * (1.0 - churn * 0.5);
 
 	// ---------- 4. Ветровые струи ----------
 	// Медленные светящиеся полосы: вытянуты по ветру и тянутся вдоль него.

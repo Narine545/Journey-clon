@@ -64,7 +64,8 @@ func _physics_process(delta: float) -> void:
 	_look = _look.lerp(look_target, 1.0 - exp(-LOOK_DAMP * delta))
 
 	# песок не должен оказаться в кадре между камерой и небом
-	var gh := terrain.sample_height(_pos.x, _pos.z) + 0.75
+	# (учитываем и промятости — камера не режет борозды сёрфа)
+	var gh := terrain.ground_height(_pos.x, _pos.z) + 0.75
 	if _pos.y < gh:
 		_pos.y = gh
 

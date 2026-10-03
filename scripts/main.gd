@@ -1,12 +1,13 @@
 extends Node3D
-## Точка входа. Этап 2: след на песке, частицы, ветер.
+## Точка входа. Этап 2+: настоящий песок (следы-геометрия), звук.
 ## Вся сцена собирается программно, чтобы ошибки всплывали при запуске.
 
 var game
 var terrain: Terrain
 var player: Player
 var cam_rig: CameraRig
-var trail: Trail
+var sand: SandField
+var audio
 var wind: WindField
 
 
@@ -21,16 +22,22 @@ func _ready() -> void:
 	add_child(terrain)
 	terrain.setup(game)
 
-	# карта следов: рисуется поверх движения, гаснет за ~минуту
-	trail = Trail.new()
-	add_child(trail)
-	trail.setup()
-	terrain.attach_trail(trail)
+	# настоящий песок: поле смещений, скользящее окно за путником
+	sand = SandField.new()
+	add_child(sand)
+	sand.setup()
+	terrain.attach_sand(sand)
 
 	player = Player.new()
 	add_child(player)
-	player.setup(game, terrain)
-	player.attach_trail(trail)
+	player.setup(game, terrain, sand)
+	sand.player = player
+
+	# звук: шаги, скольжение, ветер, амбиент-пад — весь синтезируется кодом
+	audio = SoundScape.new()
+	add_child(audio)
+	audio.setup(game, player)
+	player.audio = audio
 
 	# ветер: лёгкая взвесь вокруг путника, усиливается на сёрфе
 	wind = WindField.new()
