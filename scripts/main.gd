@@ -1,32 +1,38 @@
 extends Node3D
-## Точка входа. Этап 0 (каркас): небо, солнце, маяк на горизонте, камера.
+## Точка входа. Этап 1: дюны, шейдер песка, путник со скольжением и шарфом.
 ## Вся сцена собирается программно, чтобы ошибки всплывали при запуске.
 
-var _cam: Camera3D
-var _t := 0.0
+var game
+var terrain: Terrain
+var player: Player
+var cam_rig: CameraRig
 
 
 func _ready() -> void:
-	var game := get_node("/root/Game")
+	game = get_node("/root/Game")
 
 	var world := GameWorld.new()
 	add_child(world)
 	world.setup(game)
 
-	_cam = Camera3D.new()
-	add_child(_cam)
-	_cam.fov = 75.0
-	# Взгляд с высоты дюны на столб света — задел композиции первого кадра.
-	_cam.global_position = Vector3(2.0, 18.0, 46.0)
-	_cam.look_at(Vector3(0.0, 30.0, -640.0), Vector3.UP)
+	terrain = Terrain.new()
+	add_child(terrain)
+	terrain.setup(game)
 
+	player = Player.new()
+	add_child(player)
+	player.setup(game, terrain)
 
-func _process(delta: float) -> void:
-	# Медленный дрейф камеры: картинка живёт даже без геймплея.
-	_t += delta
-	_cam.global_position = Vector3(
-		2.0 + sin(_t * 0.11) * 3.0,
-		18.0 + sin(_t * 0.07) * 1.5,
-		46.0 + cos(_t * 0.09) * 3.0
-	)
-	_cam.look_at(Vector3(0.0, 30.0, -640.0), Vector3.UP)
+	var scarf := Scarf.new()
+	add_child(scarf)
+	scarf.setup(game, player)
+
+	cam_rig = CameraRig.new()
+	add_child(cam_rig)
+	cam_rig.setup(player, terrain)
+
+	# headless-автотест геймплея: включается только переменной окружения
+	if OS.get_environment("JOURNEY_SMOKE") == "1":
+		var smoke := SmokeTest.new()
+		add_child(smoke)
+		smoke.setup(self)
