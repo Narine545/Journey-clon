@@ -26,9 +26,14 @@ var game
 var terrain: Terrain
 var visual: Node3D
 var scarf: Scarf
+var trail: Trail
 
 var _bob := 0.0
 var _squash := 0.0
+var _step_accum := 0.0
+var _foot_side := 1.0
+var _surf_sparks: CPUParticles3D
+var _land_dust: CPUParticles3D
 
 
 func setup(game_ref, terrain_ref: Terrain) -> void:
@@ -40,6 +45,71 @@ func setup(game_ref, terrain_ref: Terrain) -> void:
 		Terrain.SPAWN.y
 	)
 	_build_body()
+	_build_fx()
+
+
+## Подключает карту следов (создаётся после игрока).
+func attach_trail(trail_ref: Trail) -> void:
+	trail = trail_ref
+
+
+func _build_fx() -> void:
+	var tex := ProcTextures.radial(32, 1.8)
+
+	# искры из-под ног при быстром скольжении.
+	# local_coords по умолчанию false: частицы живут в мировых
+	# координатах и остаются позади летящего путника.
+	_surf_sparks = CPUParticles3D.new()
+	_surf_sparks.amount = 140
+	_surf_sparks.lifetime = 0.7
+	_surf_sparks.lifetime_randomness = 0.4
+	_surf_sparks.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	_surf_sparks.emission_sphere_radius = 0.22
+	_surf_sparks.spread = 24.0
+	_surf_sparks.initial_velocity_min = 3.5
+	_surf_sparks.initial_velocity_max = 8.0
+	_surf_sparks.gravity = Vector3(0.0, -10.0, 0.0)
+	_surf_sparks.damping_min = 1.0
+	_surf_sparks.damping_max = 2.5
+	_surf_sparks.scale_amount_min = 0.05
+	_surf_sparks.scale_amount_max = 0.12
+	_surf_sparks.mesh = _particle_quad(tex, Color(1.0, 0.78, 0.45, 0.85))
+	_surf_sparks.visibility_aabb = AABB(Vector3(-15.0, -12.0, -15.0), Vector3(30.0, 24.0, 30.0))
+	_surf_sparks.position = Vector3(0.0, 0.18, 0.0)
+	_surf_sparks.emitting = false
+	_surf_sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_surf_sparks)
+
+	# пыль при посадке — разовый выброс
+	_land_dust = CPUParticles3D.new()
+	_land_dust.amount = 60
+	_land_dust.lifetime = 0.9
+	_land_dust.lifetime_randomness = 0.3
+	_land_dust.one_shot = true
+	_land_dust.explosiveness = 1.0
+	_land_dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	_land_dust.emission_sphere_radius = 0.3
+	_land_dust.spread = 180.0
+	_land_dust.initial_velocity_min = 1.5
+	_land_dust.initial_velocity_max = 3.5
+	_land_dust.gravity = Vector3(0.0, -4.0, 0.0)
+	_land_dust.damping_min = 2.0
+	_land_dust.damping_max = 4.0
+	_land_dust.scale_amount_min = 0.08
+	_land_dust.scale_amount_max = 0.2
+	_land_dust.mesh = _particle_quad(tex, Color(1.0, 0.85, 0.65, 0.55))
+	_land_dust.visibility_aabb = AABB(Vector3(-10.0, -6.0, -10.0), Vector3(20.0, 12.0, 20.0))
+	_land_dust.position = Vector3(0.0, 0.15, 0.0)
+	_land_dust.emitting = false
+	_land_dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_land_dust)
+
+
+func _particle_quad(tex: ImageTexture, tint: Color) -> QuadMesh:
+	var quad := QuadMesh.new()
+	quad.size = Vector2(1.0, 1.0)
+	quad.material = ProcTextures.particle_material(tex, tint)
+	return quad
 
 
 func _build_body() -> void:
@@ -98,6 +168,8 @@ func _physics_process(delta: float) -> void:
 	else:
 		_step_air(delta, wish)
 	_bounds(delta)
+	_update_footsteps(delta)
+	_update_fx()
 	_update_visual(delta)
 	_update_game_state()
 
@@ -202,6 +274,11 @@ func _step_air(delta: float, wish: Vector3) -> void:
 		_squash = clampf(impact / 15.0, 0.0, 1.0)
 		vel = vel - n * vel.dot(n)
 		surf01 = 0.0
+		# примятый отпечаток посадки + пыль
+		if trail != null and impact > 2.0:
+			trail.stamp(global_position.x, global_position.z, 0.9, clampf(impact / 16.0, 0.0, 0.6))
+		if impact > 4.0:
+			_land_dust.restart()
 
 
 func _bounds(delta: float) -> void:
@@ -219,6 +296,42 @@ func _bounds(delta: float) -> void:
 	if push != Vector3.ZERO:
 		global_position += push * clampf(delta * 1.5, 0.0, 1.0)
 		vel += push * delta * 2.0
+
+
+func _update_footsteps(delta: float) -> void:
+	if trail == null or not grounded:
+		return
+	var hv := Vector3(vel.x, 0.0, vel.z)
+	var hspd := hv.length()
+	if hspd < 0.5:
+		return
+	# шаг — короткий, сёрф — длинный глиссирующий штрих
+	var stride := 0.6 if hspd < 9.0 else 0.9
+	_step_accum += hspd * delta
+	while _step_accum >= stride:
+		_step_accum -= stride
+		# чередование левой/правой ноги: штамп чуть в стороне от курса
+		var fwd := Vector3(sin(heading), 0.0, cos(heading))
+		var side := Vector3(fwd.z, 0.0, -fwd.x) * (0.15 * _foot_side)
+		_foot_side = -_foot_side
+		var px := global_position.x + side.x - fwd.x * 0.25
+		var pz := global_position.z + side.z - fwd.z * 0.25
+		if hspd < 9.0:
+			trail.stamp(px, pz, 0.35, 0.35)
+		else:
+			trail.stamp(px, pz, 0.55, 0.60)
+
+
+func _update_fx() -> void:
+	# искры из-под ног при быстрой езде по песку
+	var hv := Vector3(vel.x, 0.0, vel.z)
+	var hspd := hv.length()
+	var spark := grounded and hspd > 9.0
+	_surf_sparks.emitting = spark
+	if spark:
+		# летят назад-вверх против движения
+		var back := -hv / hspd
+		_surf_sparks.direction = (back + Vector3.UP * 0.45).normalized()
 
 
 func _update_visual(delta: float) -> void:

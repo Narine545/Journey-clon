@@ -39,6 +39,8 @@ func _physics_process(_delta: float) -> void:
 				var spd := Vector3(p.vel.x, 0.0, p.vel.z).length()
 				_check(dz > 25.0, "run: к маяку dz=%.1f м (ожидалось >25)" % dz)
 				_check(spd > 3.0, "run: скорость %.1f м/с" % spd)
+				var st: int = main.trail.stamp_count
+				_check(st > 20, "run: следов отштамповано %d (ожидалось >20)" % st)
 				_next()
 
 		2: # телепорт на крутой склон, без ввода — песок должен потянуть вниз

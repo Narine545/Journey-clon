@@ -1,11 +1,13 @@
 extends Node3D
-## Точка входа. Этап 1: дюны, шейдер песка, путник со скольжением и шарфом.
+## Точка входа. Этап 2: след на песке, частицы, ветер.
 ## Вся сцена собирается программно, чтобы ошибки всплывали при запуске.
 
 var game
 var terrain: Terrain
 var player: Player
 var cam_rig: CameraRig
+var trail: Trail
+var wind: WindField
 
 
 func _ready() -> void:
@@ -19,9 +21,21 @@ func _ready() -> void:
 	add_child(terrain)
 	terrain.setup(game)
 
+	# карта следов: рисуется поверх движения, гаснет за ~минуту
+	trail = Trail.new()
+	add_child(trail)
+	trail.setup()
+	terrain.attach_trail(trail)
+
 	player = Player.new()
 	add_child(player)
 	player.setup(game, terrain)
+	player.attach_trail(trail)
+
+	# ветер: лёгкая взвесь вокруг путника, усиливается на сёрфе
+	wind = WindField.new()
+	add_child(wind)
+	wind.setup(game, player)
 
 	var scarf := Scarf.new()
 	add_child(scarf)

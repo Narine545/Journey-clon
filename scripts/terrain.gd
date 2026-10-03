@@ -233,6 +233,7 @@ func _build_mesh() -> void:
 	mat.set_shader_parameter("sky_col", Game.SKY_COL)
 	mat.set_shader_parameter("fog_distance", Game.FOG_DISTANCE)
 	mat.set_shader_parameter("wind_dir", Game.wind_dir())
+	mat.set_shader_parameter("trail_map", ProcTextures.black_pixel()) # до появления карты — чистый песок
 
 	self.mesh = terrain_mesh
 	material_override = mat
@@ -245,6 +246,13 @@ func _process(_delta: float) -> void:
 		var m: ShaderMaterial = material_override
 		m.set_shader_parameter("wind_dir", game.wind_dir())
 		m.set_shader_parameter("wind_power", game.wind_strength)
+
+
+## Подключает карту следов (создаётся после террейна).
+func attach_trail(trail: Trail) -> void:
+	var m: ShaderMaterial = material_override
+	m.set_shader_parameter("trail_map", trail.get_texture())
+	m.set_shader_parameter("trail_rect", Vector4(Trail.X0, Trail.Z0, Trail.WORLD_W, Trail.WORLD_H))
 
 
 func smoothf(v: float, a: float, b: float) -> float:

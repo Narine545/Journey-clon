@@ -26,6 +26,10 @@ uniform float ripple_strength = 0.30; // глубина ряби (влияние
 uniform float glitter_amount = 0.045; // доля блестящих песчинок
 uniform float streak_amount = 0.32;   // сила ветровых струй
 
+// ---- След путника: карта следов (SubViewport) ----
+uniform sampler2D trail_map;
+uniform vec4 trail_rect = vec4(-208.0, -468.0, 416.0, 520.0); // x0, z0, w, h (метры)
+
 varying vec3 w_pos;
 varying vec3 w_normal;
 varying vec2 v_dune; // x — 0..1 высота дюны (приходит из геометрии через UV2)
@@ -70,6 +74,13 @@ void fragment() {
 	float dist = length(CAMERA_POSITION_WORLD - w_pos);
 	float detail = exp(-dist * 0.030);
 
+	// ---------- 0. След путника ----------
+	// Карта следов: 0 — нетронутый песок, 1 — глубоко примято.
+	// Вне карты считаем нетронутым (края буфера всегда чистые).
+	vec2 tuv = (wp - trail_rect.xy) / trail_rect.zw;
+	float in_map = step(0.0, tuv.x) * step(tuv.x, 1.0) * step(0.0, tuv.y) * step(tuv.y, 1.0);
+	float press = clamp(texture(trail_map, tuv).r * 1.6, 0.0, 1.0) * in_map;
+
 	// ---------- 1. Рябь от ветра ----------
 	// Гребни вытянуты вдоль ветра, рисунок медленно бежит по ветру.
 	float n1 = vnoise(wp * 0.33);
@@ -84,6 +95,8 @@ void fragment() {
 	float dv = (c1 * ripple_freq + c2 * ripple_freq * 2.63) * ripple_strength * wind_power;
 	float du = (c1 * 0.22 + c2 * 0.55) * ripple_strength * wind_power * 2.0;
 	vec2 grad = (wperp * dv + wdir * du) * detail;
+	// примятый след не рябит: песок уплотнён
+	grad *= 1.0 - 0.8 * press;
 	N = normalize(N - vec3(grad.x, 0.0, grad.y) * 0.5);
 
 	// ---------- 2. Двухтоновый песок: N*L ----------
@@ -99,6 +112,8 @@ void fragment() {
 	base += vec3(1.0, 0.62, 0.34) * pow(clamp(ndl, 0.0, 1.0), 2.2) * 0.16;
 	// ложбины — холоднее и глубже
 	base = mix(base, sand_shade, hollow * 0.25);
+	// примятый след: чуть темнее и плотнее, песчинки не блестят
+	base = mix(base, base * vec3(0.88, 0.87, 0.96), press * 0.55);
 	// крупный тональный шум: дюны не одинаковые
 	base *= mix(0.92, 1.07, vnoise(wp * 0.013 + vec2(3.1, 7.7)));
 
@@ -110,6 +125,7 @@ void fragment() {
 	float cellr = hash12(floor(wp * 9.0));
 	float glint = step(1.0 - glitter_amount, cellr);
 	glint *= 0.55 + 0.45 * sin(TIME * 9.0 + cellr * 37.0);
+	glint *= 1.0 - 0.6 * press; // примятый песок не сверкает
 	base += vec3(1.0, 0.88, 0.62) * spec * glint * 2.6 * detail;
 
 	// ---------- 4. Ветровые струи ----------
