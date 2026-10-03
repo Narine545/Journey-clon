@@ -115,7 +115,10 @@ func disp_gradient(x: float, z: float) -> Vector2:
 
 ## Отпечаток стопы: капсула от пятки к носку, пятка глубже, носок мягче,
 ## по краям — вал выброшенного песка (впереди — больше, песок толкается).
-func stamp_foot(pos: Vector2, fwd: Vector2, p_len: float, p_wid: float, p_depth: float, p_rim: float) -> void:
+func stamp_foot(
+	pos: Vector2, fwd: Vector2,
+	p_len: float, p_wid: float, p_depth: float, p_rim: float
+) -> void:
 	var half_len := p_len * 0.5
 	var a := pos - fwd * half_len
 	var b := pos + fwd * half_len
@@ -154,13 +157,14 @@ func _process(delta: float) -> void:
 func _follow(px: float, pz: float) -> void:
 	var cgi := roundi(px / TEXEL)
 	var cgj := roundi(pz / TEXEL)
-	var n_min_gi := cgi - N / 2
-	var n_min_gj := cgj - N / 2
+	var half := N >> 1 # половина окна (целочисленно, без деления)
+	var n_min_gi := cgi - half
+	var n_min_gj := cgj - half
 	var dgi := n_min_gi - _min_gi
 	var dgj := n_min_gj - _min_gj
 	if dgi == 0 and dgj == 0:
 		return
-	if absi(dgi) >= N / 2 or absi(dgj) >= N / 2:
+	if absi(dgi) >= half or absi(dgj) >= half:
 		# телепорт (респаун, смена главы) — песок вокруг новый
 		_grid.fill(0.0)
 		_spots.clear()

@@ -24,6 +24,19 @@ static func black_pixel() -> ImageTexture:
 	return ImageTexture.create_from_image(img)
 
 
+## Виньетка: мягкое затемнение углов кадра (пост-эффект без поста).
+## Alpha растёт от 0.62 радиуса до края, максимум strength.
+static func vignette(size: int = 512, strength := 0.34) -> ImageTexture:
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var c := float(size - 1) * 0.5
+	for y in range(size):
+		for x in range(size):
+			var d := Vector2(float(x) - c, float(y) - c).length() / c
+			var a := pow(clampf((d - 0.62) / 0.55, 0.0, 1.0), 1.6) * strength
+			img.set_pixel(x, y, Color(0.0, 0.0, 0.0, a))
+	return ImageTexture.create_from_image(img)
+
+
 ## Мягкая пыль/дымка: обычная альфа, билборд, цвет — оттенок песка.
 ## Не аддитивная — не раздувается glow и не «выжигает» кадр в белое.
 static func soft_material(tint: Color) -> StandardMaterial3D:

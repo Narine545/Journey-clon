@@ -131,17 +131,25 @@ void fragment() {
 	grad *= 1.0 - 0.75 * churn; // вытоптанный песок не рябит
 	N = normalize(N - vec3(grad.x, 0.0, grad.y) * 0.5);
 
-	// ---------- 2. Двухтоновый песок: N*L ----------
-	// Склон к солнцу — тёплый, теневой — сиренево-синий. Главный мотив.
+	// ---------- 2. Свет: солнце + небо + отблеск (три источника) ----------
+	// Главный мотив тот же (тёплый склон к солнцу / сиреневая тень),
+	// но тень теперь живая: сверху её заливает сиреневое небо,
+	// снизу греет тёплый отблеск, отскочивший от соседних дюн.
 	float ndl = dot(N, L);
-	float lit = smoothstep(-0.30, 0.62, ndl);
 	float crest = smoothstep(0.60, 0.95, v_dune.x);        // гребни дюн
 	float hollow = 1.0 - smoothstep(0.10, 0.38, v_dune.x); // ложбины
 
-	vec3 base = mix(sand_shade, sand_sunny, lit);
-	base = mix(base, sand_hot, lit * lit * (0.30 + 0.45 * crest));
+	// ключевой свет: солнце с мягким переносом через кромку (wrap)
+	float wrap = clamp((ndl + 0.30) / 1.30, 0.0, 1.0);
+	vec3 base = mix(sand_shade, sand_sunny, smoothstep(0.0, 0.82, wrap));
+	base = mix(base, sand_hot, pow(wrap, 2.0) * (0.30 + 0.45 * crest));
 	// солнечная кромка: склоны, отвесные к солнцу, светятся изнутри
 	base += vec3(1.0, 0.62, 0.34) * pow(clamp(ndl, 0.0, 1.0), 2.2) * 0.16;
+	// заливка неба: сиреневая прохлада ложится на теневые склоны
+	base += sand_shade * clamp(N.y, 0.0, 1.0) * 0.42 * (1.0 - wrap);
+	// отблеск песка: тёплый свет, отскочивший от дюн, подсвечивает тень
+	vec3 B = normalize(vec3(-L.x, 0.55, -L.z));
+	base += vec3(0.95, 0.50, 0.30) * clamp(dot(N, B), 0.0, 1.0) * 0.20 * (1.0 - wrap * 0.7);
 	// ложбины — холоднее и глубже
 	base = mix(base, sand_shade, hollow * 0.25);
 	// крупный тональный шум: дюны не одинаковые
@@ -159,31 +167,35 @@ void fragment() {
 	base = mix(base, base * vec3(1.18, 1.07, 0.88), rise * 0.5);
 
 	// ---------- 3. Глиттер (микрофасеты, по мотивам Zucconi) ----------
-	// У каждой песчинки-ячейки своё «направление зеркала» (стабильно
-	// во времени), своя резкость блеска и своя частота мерцания —
-	// сверкание живёт при движении камеры, но не прыгает случайно.
+	// «Песчинки» размером с пиксель: плотность клеток падает с дистанцией
+	// пропорционально пиксельному следу — вблизи зерно ~5 мм, вдали не
+	// мельче пикселя. Ни гигантских бликов, ни стробинга, а сверкание
+	// видно по всему склону, а не только под заветным углом.
 	vec3 V = normalize(CAMERA_POSITION_WORLD - w_pos);
 	vec3 H = normalize(V + L);
-	float cellid = hash12(floor(wp * 9.0));
-	float cellb = hash12(floor(wp * 9.0) + vec2(7.31, 1.77));
-	// слегка шевелим half-vector от ячейки — «поворот песчинки»
-	vec3 Hg = normalize(H + vec3(cellid - 0.5, cellb - 0.5, fract(cellid * 7.0) - 0.5) * 0.35);
-	float spec = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(70.0, 220.0, cellb));
+	float density = clamp(1000.0 / max(dist, 0.001), 22.0, 200.0);
+	vec2 celluv = floor(wp * density);
+	float cellid = hash12(celluv);
+	float cellb = hash12(celluv + vec2(7.31, 1.77));
+	// у каждой песчинки своё «зеркало» (стабильно во времени) и свой блеск
+	vec3 Hg = normalize(H + vec3(cellid - 0.5, cellb - 0.5, fract(cellid * 7.0) - 0.5) * 0.55);
+	float spec = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(28.0, 110.0, cellb));
 	float glint = step(1.0 - glitter_amount, cellid);
-	float rate = mix(3.0, 11.0, cellb);
-	glint *= 0.45 + 0.55 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0));
+	float rate = mix(2.0, 8.0, cellb);
+	glint *= 0.40 + 0.60 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0));
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
-	base += vec3(1.0, 0.88, 0.62) * spec * glint * 2.2 * detail;
-	// широкий шёлковый отблеск — дуги «переливаются» при движении
+	float glit_fade = exp(-dist * 0.008); // искры живут далеко, до горизонта
+	base += vec3(1.0, 0.88, 0.62) * spec * glint * 1.8 * glit_fade;
+	// широкий шёлковый отблеск («океанский» спекуляр — песок как жидкость)
 	float sheen = pow(clamp(dot(N, H), 0.0, 1.0), 16.0);
-	base += vec3(1.0, 0.72, 0.45) * sheen * 0.07 * lit * (1.0 - churn * 0.5);
+	base += vec3(1.0, 0.72, 0.45) * sheen * 0.11 * smoothstep(0.0, 0.5, wrap) * (1.0 - churn * 0.5);
 
 	// ---------- 4. Ветровые струи ----------
 	// Медленные светящиеся полосы: вытянуты по ветру и тянутся вдоль него.
 	float sn1 = vnoise(vec2(u * 0.045 - TIME * 0.85, v * 0.5));
 	float sn2 = vnoise(vec2(u * 0.11 - TIME * 1.35 + 40.0, v * 1.05));
 	float streak = smoothstep(0.55, 0.92, sn1 * 0.65 + sn2 * 0.35);
-	base += vec3(1.0, 0.80, 0.55) * streak * streak_amount * wind_power * (0.35 + 0.65 * lit);
+	base += vec3(1.0, 0.80, 0.55) * streak * streak_amount * wind_power * (0.35 + 0.65 * smoothstep(0.0, 0.5, wrap));
 
 	// ---------- 5. Дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));

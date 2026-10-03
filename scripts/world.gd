@@ -13,6 +13,7 @@ func setup(game_ref) -> void:
 	_build_environment()
 	_build_sun()
 	_build_beacon()
+	_build_vignette()
 
 
 func _build_environment() -> void:
@@ -21,8 +22,8 @@ func _build_environment() -> void:
 	sky_mat.sky_horizon_color = Color(0.97, 0.63, 0.46)
 	sky_mat.ground_bottom_color = Color(0.20, 0.15, 0.28)
 	sky_mat.ground_horizon_color = Color(0.94, 0.60, 0.48)
-	sky_mat.sun_angle_max = 6.0
-	sky_mat.sun_curve = 0.10
+	sky_mat.sun_angle_max = 9.0 # мягкий широкий ореол вокруг солнца
+	sky_mat.sun_curve = 0.07
 	sky_mat.sky_energy_multiplier = 1.0
 
 	var sky := Sky.new()
@@ -34,13 +35,18 @@ func _build_environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.ambient_light_energy = 1.0
 
-	# Мягкое свечение солнца и маяка (в Compatibility glow доступен).
+	# Киношный тонмаппинг: мягкие света, тёплая плёночная картинка
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 1.06
+	env.tonemap_white = 4.0
+
+	# Свечение: солнце, маяк и гребни дюн дышат (в Compatibility glow есть)
 	env.glow_enabled = true
-	env.glow_intensity = 0.45
+	env.glow_intensity = 0.55
 	env.glow_strength = 1.0
-	env.glow_bloom = 0.06
+	env.glow_bloom = 0.08
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
-	env.glow_hdr_threshold = 0.85
+	env.glow_hdr_threshold = 0.72
 
 	# Дымка в цвет горизонта — для любых материалов со стандартным туманом.
 	env.fog_enabled = true
@@ -51,6 +57,20 @@ func _build_environment() -> void:
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
+
+
+## Виньетка: лёгкое затемнение углов — собирает кадр, работает в любом
+## рендерере (обычный Control поверх 3D, текстура генерируется кодом).
+func _build_vignette() -> void:
+	var rect := TextureRect.new()
+	rect.texture = ProcTextures.vignette(512, 0.34)
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var layer := CanvasLayer.new()
+	layer.layer = 10
+	layer.add_child(rect)
+	add_child(layer)
 
 
 func _build_sun() -> void:

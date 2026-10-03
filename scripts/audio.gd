@@ -186,9 +186,9 @@ func on_land(impact01: float) -> void:
 ## Шаг по песку: глухой мягкий «пшш» — песок шуршит, а не трещит.
 ## Спектр глушится двумя полюсами, «зернистость» — лёгкое переваливание
 ## на низкой частоте, атака не мгновенная.
-func _gen_footstep(seed: int) -> AudioStreamWAV:
+func _gen_footstep(p_seed: int) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = seed
+	rng.seed = p_seed
 	var n := int(0.16 * RATE_SFX)
 	var s := PackedFloat32Array()
 	s.resize(n)
