@@ -90,8 +90,8 @@ void fragment() {
 	// Склон к солнцу — тёплый, теневой — сиренево-синий. Главный мотив.
 	float ndl = dot(N, L);
 	float lit = smoothstep(-0.30, 0.62, ndl);
-	float crest = smoothstep(0.42, 0.92, v_dune.x);        // гребни дюн
-	float hollow = 1.0 - smoothstep(0.12, 0.45, v_dune.x); // ложбины
+	float crest = smoothstep(0.60, 0.95, v_dune.x);        // гребни дюн
+	float hollow = 1.0 - smoothstep(0.10, 0.38, v_dune.x); // ложбины
 
 	vec3 base = mix(sand_shade, sand_sunny, lit);
 	base = mix(base, sand_hot, lit * lit * (0.30 + 0.45 * crest));

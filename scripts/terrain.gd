@@ -1,8 +1,9 @@
 class_name Terrain
 extends MeshInstance3D
-## Процедурные дюны: рельеф из ridged-шума FastNoiseLite, меш строится в setup().
-## Хранит сетку высот и даёт точную выборку высоты/нормали — физика «езжает»
-## ровно по тем треугольникам, которые видит игрок.
+## Процедурные дюны «как в Journey»: гигантские гладкие валы барханов,
+## вытянутые вдоль пути, с плавными спусками для сёрфа. Никакого
+## мелкооктавного «горного» шума — деталь даёт только рябь в шейдере.
+## Хранит сетку высот; физика едет ровно по видимым треугольникам.
 
 const SIZE := 1040.0 # сторона мира (метры)
 const SEGMENTS := 260 # разбиение (261x261 вершин, ячейка 4 м)
@@ -11,13 +12,24 @@ const CENTER := Vector2(0.0, -190.0) # центр плоскости
 const SPAWN := Vector2(0.0, 40.0) # старт игрока
 const PATH_END_Z := -430.0 # конец пути у стены перед маяком
 
-const PLATEAU_R := 12.0 # радиус ровной стартовой площадки
-const PLATEAU_FADE := 42.0 # дальше — полноценные дюны
+const PLATEAU_R := 14.0 # радиус ровной стартовой площадки
+const PLATEAU_FADE := 60.0 # дальше — полноценные дюны
+
+# --- дюнные формы (частоты — в циклах на метр) ---
+const WARP_F := 1.0 / 130.0 # изгиб линий дюн
+const WARP_AMP := 40.0 # амплитуда изгиба (метры)
+const SWELL_X := 1.0 / 100.0 # частота валов поперёк пути
+const SWELL_Z := 1.0 / 240.0 # вдоль пути — в 2.4 раза реже (длинные дюны)
+const MACRO_F := 1.0 / 330.0 # где дюны выше, где ниже
+const FINE_F := 1.0 / 23.0 # микро-рельеф — едва заметный
+const FINE_AMP := 0.4
 
 var game # автозагрузка Game
 
-var _dunes := FastNoiseLite.new()
-var _detail := FastNoiseLite.new()
+var _warp := FastNoiseLite.new()
+var _swell := FastNoiseLite.new()
+var _macro := FastNoiseLite.new()
+var _fine := FastNoiseLite.new()
 var _grid := PackedFloat32Array() # (SEGMENTS+1)^2 высот
 var _dgrid := PackedFloat32Array() # те же узлы: дюнность 0..1 (для шейдера)
 
@@ -34,26 +46,39 @@ func setup(game_ref) -> void:
 	_cell = SIZE / float(SEGMENTS)
 	_row = SEGMENTS + 1
 
-	_dunes.seed = 1373
-	_dunes.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_dunes.fractal_type = FastNoiseLite.FRACTAL_RIDGED
-	_dunes.frequency = 1.0 / 44.0
-	_dunes.fractal_octaves = 4
-	_dunes.fractal_gain = 0.52
-	_dunes.fractal_lacunarity = 2.05
-	_dunes.domain_warp_enabled = true
-	_dunes.domain_warp_type = FastNoiseLite.DOMAIN_WARP_SIMPLEX
-	_dunes.domain_warp_amplitude = 16.0
-	_dunes.domain_warp_frequency = 1.0 / 125.0
+	_warp.seed = 517
+	_warp.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_warp.frequency = WARP_F
+	_warp.fractal_octaves = 1
 
-	_detail.seed = 991
-	_detail.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_detail.frequency = 1.0 / 8.5
-	_detail.fractal_octaves = 2
-	_detail.fractal_gain = 0.45
+	_swell.seed = 1373
+	_swell.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_swell.frequency = 1.0
+	_swell.fractal_octaves = 1 # одна октава — никаких «гор» из шума
+
+	_macro.seed = 991
+	_macro.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_macro.frequency = MACRO_F
+	_macro.fractal_octaves = 2
+
+	_fine.seed = 771
+	_fine.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_fine.frequency = FINE_F
+	_fine.fractal_octaves = 1
 
 	_build_grid()
 	_build_mesh()
+
+
+## Дюнность 0..1: варп координат изгибает линии, одна низкочастотная
+## октава задаёт валы, вытянутые вдоль пути.
+func dune_at(x: float, z: float) -> float:
+	var wx: float = _warp.get_noise_2d(x * WARP_F + 3.1, z * WARP_F + 5.3)
+	var wz: float = _warp.get_noise_2d(x * WARP_F + 7.7, z * WARP_F - 2.8)
+	var px: float = x + wx * WARP_AMP
+	var pz: float = z + wz * WARP_AMP
+	var s: float = _swell.get_noise_2d(px * SWELL_X, pz * SWELL_Z)
+	return clampf(s * 0.5 + 0.5, 0.0, 1.0)
 
 
 ## Непрерывная функция высоты (гладкая — по ней строится рельеф).
@@ -63,38 +88,37 @@ func height_at(x: float, z: float) -> float:
 	t = t * t * (3.0 - 2.0 * t) # smoothstep
 	var trend := lerpf(16.0, -22.0, t)
 
-	# 2) дюны: ridged fbm, вытянутые вдоль пути (координата z сжата)
-	var d := dune_at(x, z)
-	var h := d * 15.5
+	# 2) вал дюны: широкое плавное подножие и мягкий гребень
+	var s := dune_at(x, z)
+	var dune := smoothf(s, 0.28, 0.78)
+	var crest := smoothf(s, 0.74, 0.94)
+	var h := dune * 17.0 + crest * 5.0
 
-	# 3) мелкая вариация
-	h += _detail.get_noise_2d(x, z) * 1.15
+	# 3) макро-вариация: одни дюны выше, другие ниже
+	var m := clampf(_macro.get_noise_2d(x, z) * 0.5 + 0.5, 0.0, 1.0)
+	h *= 0.62 + 0.38 * m
 
-	# 4) у старта дюны гаснут — вход в игру с ровного балкона
+	# 4) микро-рельеф — почти плоский (деталь у шейдерной ряби)
+	h += _fine.get_noise_2d(x, z) * FINE_AMP
+
+	# 5) у старта дюны гаснут — вход в игру с ровного балкона
 	var ds := Vector2(x, z).distance_to(SPAWN)
 	var dune_mask := smoothf(ds, PLATEAU_R, PLATEAU_FADE)
 	h *= dune_mask
 
-	# 5) стартовая площадка: ровный уклон, приглашающий скользнуть вниз
+	# 6) стартовая площадка: ровный уклон, приглашающий скользнуть вниз
 	# (trend добавится один раз в конце — здесь без него)
 	var plateau := 2.0 - (SPAWN.y - z) * 0.30
 	h = lerpf(plateau, h, dune_mask)
 
-	# 6) стены-дюны по краям мира — путь читается естественно, без невидимых барьеров
+	# 7) стены-дюны по краям мира — путь читается естественно
 	var edge := 0.0
 	edge += smoothf(absf(x), 170.0, 260.0) # по бокам
 	edge += smoothf(z, 70.0, 160.0) # за спиной старта
 	edge += smoothf(-z, 460.0, 570.0) # за маяком
-	h += edge * (26.0 + d * 22.0)
+	h += edge * (26.0 + dune * 22.0)
 
 	return h + trend
-
-
-## Дюнность 0..1 (до масок) — общий знаменатель для рельефа и покраски.
-func dune_at(x: float, z: float) -> float:
-	var d: float = _dunes.get_noise_2d(x * 1.15, z * 0.60)
-	d = clampf(d * 0.5 + 0.5, 0.0, 1.0)
-	return pow(d, 1.45) # острые гребни, мягкие ложбины
 
 
 ## Точная высота треугольника меша под точкой (совпадает с видимыми гранями).

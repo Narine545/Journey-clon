@@ -111,10 +111,10 @@ func _wish_dir() -> Vector3:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return Vector3.ZERO
-	var basis := cam.global_transform.basis
-	var f := -basis.z
+	var cam_basis := cam.global_transform.basis
+	var f := -cam_basis.z
 	f.y = 0.0
-	var r := basis.x
+	var r := cam_basis.x
 	r.y = 0.0
 	if f.length_squared() < 0.001 and r.length_squared() < 0.001:
 		return Vector3.ZERO

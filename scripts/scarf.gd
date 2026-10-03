@@ -70,11 +70,11 @@ func _simulate(delta: float) -> void:
 			var a: Vector3 = _points[i - 1]
 			var b: Vector3 = _points[i]
 			var d := b - a
-			var len := d.length()
-			if len < 0.0001:
+			var segdist := d.length()
+			if segdist < 0.0001:
 				continue
-			var dir := d / len
-			var diff := (len - SEG_LEN) * 0.5
+			var dir := d / segdist
+			var diff := (segdist - SEG_LEN) * 0.5
 			if i == 1:
 				_points[i] -= dir * diff * 2.0 # якорь не двигаем
 			else:
