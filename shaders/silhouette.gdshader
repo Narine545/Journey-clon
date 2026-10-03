@@ -18,7 +18,7 @@ void vertex() {
 void fragment() {
 	vec3 col = peak_color;
 	// тёплая кромка на склонах, обращённых к солнцу
-	float sun_side = smoothstep(0.1, 0.8, dot(normalize(w_normal), normalize(vec3(0.1, 0.26, -0.96))));
+	float sun_side = smoothstep(0.1, 0.8, dot(normalize(w_normal), normalize(vec3(0.16, 0.44, -0.88))));
 	col = mix(col, haze_color * 1.05, sun_side * 0.35);
 	// дымка: пик почти растворён, но читается силуэтом
 	col = mix(col, haze_color, haze_amount);

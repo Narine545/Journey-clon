@@ -27,15 +27,19 @@ func _physics_process(_delta: float) -> void:
 			_look_back_camera() # взгляд НАЗАД, от солнца — теневая сторона дюн
 		230:
 			_capture("shot_d_back.png") # блёстки должны жить и здесь
-		240:
+		245:
+			_side_camera() # взгляд Сбоку, поперёк пути
+		275:
+			_capture("shot_e_side.png") # и здесь тоже
+		285:
 			_game_camera() # вернуть игровую камеру
-		330:
+		375:
 			_capture("shot_b_run2.png") # ещё игровой вид позднее
-		340:
+		385:
 			_top_camera() # камера над тропой, взгляд на следы
-		370:
+		415:
 			_capture("shot_c_trail.png") # следы сверху
-		380:
+		425:
 			Input.action_release("move_forward")
 			get_tree().quit(0)
 
@@ -59,6 +63,20 @@ func _look_back_camera() -> void:
 	main.add_child(cam)
 	cam.global_position = p.global_position - fwd * 9.0 + Vector3.UP * 3.2
 	cam.look_at(p.global_position + fwd * 8.0 + Vector3.UP * 1.2, Vector3.UP)
+	cam.fov = 74.0
+	cam.far = 1400.0
+	cam.make_current()
+
+
+## Камера сбоку от путника, взгляд поперёк пути.
+func _side_camera() -> void:
+	var p: Player = main.player
+	var fwd := Vector3(sin(p.heading), 0.0, cos(p.heading))
+	var right := Vector3(fwd.z, 0.0, -fwd.x)
+	var cam := Camera3D.new()
+	main.add_child(cam)
+	cam.global_position = p.global_position + right * 9.0 + Vector3.UP * 3.0
+	cam.look_at(p.global_position - right * 6.0 + Vector3.UP * 1.0, Vector3.UP)
 	cam.fov = 74.0
 	cam.far = 1400.0
 	cam.make_current()

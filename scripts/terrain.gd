@@ -29,6 +29,11 @@ const MACRO_F := 1.0 / 330.0 # где дюны выше, где ниже
 const FINE_F := 1.0 / 23.0 # микро-рельеф — едва заметный
 const FINE_AMP := 0.4
 
+# --- ambient occlusion (горизонтный, запекается по карте высот) ---
+const AO_STEP := 4 # сетка AO: каждая 4-я вершина (129×129)
+const AO_DIRS := 8 # азимутов взгляда
+const AO_RAYS := [2.5, 6.0, 12.0] # дистанции лучей горизонта, м
+
 var game # автозагрузка Game
 var sand: SandField # поле настоящего песка (может не быть)
 
@@ -39,6 +44,7 @@ var _fine := FastNoiseLite.new()
 var _wave := FastNoiseLite.new()
 var _grid := PackedFloat32Array() # (SEGMENTS+1)^2 высот
 var _dgrid := PackedFloat32Array() # те же узлы: дюнность 0..1 (для шейдера)
+var _ao_grid := PackedFloat32Array() # грубая сетка AO (для шейдера, UV2.y)
 
 var _x0 := 0.0
 var _z0 := 0.0
@@ -79,6 +85,7 @@ func setup(game_ref) -> void:
 	_wave.fractal_octaves = 1
 
 	_build_grid()
+	_build_ao()
 	_build_mesh()
 
 
@@ -214,6 +221,68 @@ func _cr(p0: float, p1: float, p2: float, p3: float, t: float) -> float:
 	)
 
 
+## Линейная выборка высоты прямо по сетке (для запечки AO — хватит).
+func _sample_grid(x: float, z: float) -> float:
+	var fx := clampf((x - _x0) / _cell, 0.0, float(SEGMENTS))
+	var fz := clampf((z - _z0) / _cell, 0.0, float(SEGMENTS))
+	var ix := int(fx)
+	var iz := int(fz)
+	var tx := fx - float(ix)
+	var tz := fz - float(iz)
+	var ix1 := mini(ix + 1, SEGMENTS)
+	var iz1 := mini(iz + 1, SEGMENTS)
+	var a := _grid[iz * _row + ix]
+	var b := _grid[iz * _row + ix1]
+	var c := _grid[iz1 * _row + ix]
+	var d := _grid[iz1 * _row + ix1]
+	return lerpf(lerpf(a, b, tx), lerpf(c, d, tx), tz)
+
+
+## Ambient occlusion по горизонту: насколько соседние дюны закрывают небо
+## над точкой. 8 азимутов × 3 дистанции, sin(horizon) усредняется.
+## Запекаем раз в 4-й вершины, в шейдер уходит через UV2.y.
+func _build_ao() -> void:
+	var m := SEGMENTS / AO_STEP # 128
+	var mm := m + 1
+	_ao_grid.resize(mm * mm)
+	for j in range(mm):
+		var iz := j * AO_STEP
+		var z := _z0 + float(iz) * _cell
+		for i in range(mm):
+			var ix := i * AO_STEP
+			var x := _x0 + float(ix) * _cell
+			var h0 := _grid[iz * _row + ix]
+			var occ := 0.0
+			for k in range(AO_DIRS):
+				var a := TAU * float(k) / float(AO_DIRS)
+				var dx := cos(a)
+				var dz := sin(a)
+				var horizon := 0.0
+				for r in AO_RAYS:
+					var dh := _sample_grid(x + dx * r, z + dz * r) - h0
+					if dh > 0.0:
+						horizon = maxf(horizon, dh / sqrt(dh * dh + r * r))
+				occ += horizon
+			_ao_grid[j * mm + i] = clampf(1.0 - occ * 0.17, 0.30, 1.0)
+
+
+## AO в узел полной сетки (билинейно из грубой).
+func _ao_at(ix: int, iz: int) -> float:
+	var m := SEGMENTS / AO_STEP
+	var fx := float(ix) / float(AO_STEP)
+	var fz := float(iz) / float(AO_STEP)
+	var i0 := mini(int(fx), m - 1)
+	var j0 := mini(int(fz), m - 1)
+	var tx := fx - float(i0)
+	var tz := fz - float(j0)
+	var mm := m + 1
+	var a := _ao_grid[j0 * mm + i0]
+	var b := _ao_grid[j0 * mm + i0 + 1]
+	var c := _ao_grid[(j0 + 1) * mm + i0]
+	var d := _ao_grid[(j0 + 1) * mm + i0 + 1]
+	return lerpf(lerpf(a, b, tx), lerpf(c, d, tx), tz)
+
+
 func _build_grid() -> void:
 	_grid.resize(_row * _row)
 	_dgrid.resize(_row * _row)
@@ -246,7 +315,7 @@ func _build_mesh() -> void:
 			var z := _z0 + float(iz) * _cell
 			verts[i] = Vector3(x, _grid[i], z)
 			uvs[i] = Vector2(x, z) * 0.01
-			uvs2[i] = Vector2(_dgrid[i], 0.0)
+			uvs2[i] = Vector2(_dgrid[i], _ao_at(ix, iz)) # y — запечённый AO
 			var xl := _grid[iz * n + maxi(ix - 1, 0)]
 			var xr := _grid[iz * n + mini(ix + 1, n - 1)]
 			var xd := _grid[maxi(iz - 1, 0) * n + ix]

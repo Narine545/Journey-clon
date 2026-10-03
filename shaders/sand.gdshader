@@ -27,8 +27,8 @@ uniform float wind_power = 1.0;
 
 uniform float ripple_freq = 2.2;      // плотность гребней поперёк ветра
 uniform float ripple_speed = 1.5;     // скорость бега ряби по ветру
-uniform float ripple_strength = 0.30; // глубина ряби (влияние на нормаль)
-uniform float glitter_amount = 0.045; // доля блестящих песчинок
+uniform float ripple_strength = 0.50; // глубина ряби (влияние на нормаль)
+uniform float glitter_amount = 0.14; // доля блестящих песчинок
 uniform float streak_amount = 0.32;   // сила ветровых струй
 
 // ---- Настоящий песок: карта смещений ----
@@ -138,22 +138,28 @@ void fragment() {
 	float ndl = dot(N, L);
 	float crest = smoothstep(0.60, 0.95, v_dune.x);        // гребни дюн
 	float hollow = 1.0 - smoothstep(0.10, 0.38, v_dune.x); // ложбины
+	// запечённое ambient occlusion дюн (горизонтный AO по карте высот):
+	// ложбины и подножия темнее, гребни открыты небу — форма объёма
+	// читается с ЛЮБОГО ракурса, без SSAO
+	float ao = mix(0.55, 1.0, clamp(v_dune.y, 0.0, 1.0));
 
 	// ключевой свет: солнце с мягким переносом через кромку (wrap).
 	// Порог освещённости щедрый: золотая сторона дюны занимает кадр,
 	// сирень остаётся только глубокой тенью.
-	float wrap = clamp((ndl + 0.42) / 1.10, 0.0, 1.0);
+	float wrap = clamp((ndl + 0.45) / 1.05, 0.0, 1.0);
 	vec3 base = mix(sand_shade, sand_sunny, smoothstep(0.0, 0.68, wrap));
 	base = mix(base, sand_hot, pow(wrap, 2.0) * (0.35 + 0.50 * crest));
 	// солнечная кромка: склоны, отвесные к солнцу, светятся изнутри
 	base += vec3(1.0, 0.62, 0.34) * pow(clamp(ndl, 0.0, 1.0), 2.2) * 0.16;
-	// заливка неба: лёгкая сиреневая прохлада на теневых склонах
-	base += sand_shade * clamp(N.y, 0.0, 1.0) * 0.20 * (1.0 - wrap);
+	// прямое солнце AO почти не слушается, полусфера — целиком
+	base *= mix(1.0, ao, 0.32);
+	// заливка неба: сиреневая прохлада на теневых склонах
+	base += sand_shade * clamp(N.y, 0.0, 1.0) * 0.22 * ao * (1.0 - wrap);
 	// отблеск песка: тёплый свет, отскочивший от дюн, греет тень
 	vec3 B = normalize(vec3(-L.x, 0.55, -L.z));
-	base += vec3(1.00, 0.58, 0.32) * clamp(dot(N, B), 0.0, 1.0) * 0.26 * (1.0 - wrap * 0.6);
-	// ложбины — холоднее и глубже
-	base = mix(base, sand_shade, hollow * 0.25);
+	base += vec3(1.00, 0.58, 0.32) * clamp(dot(N, B), 0.0, 1.0) * 0.28 * ao * (1.0 - wrap * 0.6);
+	// ложбины — прохладнее тоном (глубину уже дал AO)
+	base = mix(base, sand_shade, hollow * 0.18);
 	// крупный тональный шум: дюны не одинаковые
 	base *= mix(0.92, 1.07, vnoise(wp * 0.013 + vec2(3.1, 7.7)));
 	// рябь самозатеняется, песчинки дают видимое зерно
@@ -175,31 +181,36 @@ void fragment() {
 	//     летишь боком, и когда солнце за спиной (как в Journey).
 	vec3 V = normalize(CAMERA_POSITION_WORLD - w_pos);
 	vec3 H = normalize(V + L);
-	float density = clamp(1000.0 / max(dist, 0.001), 22.0, 200.0);
+	float density = clamp(900.0 / max(dist, 0.001), 16.0, 130.0); // ~8 мм вблизи
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));
 	float cellc = fract(cellid * 13.7);
-	// «зеркало» песчинки — случайное направление, стабильное во времени
-	vec3 G = normalize(vec3(cellid - 0.5, cellb - 0.5, cellc - 0.5) * 1.35 + vec3(0.0, 0.18, 0.55));
+	// «зеркало» песчинки: ВЕРХНЯЯ полусфера, азимут равномерный —
+	// никакого предпочтения по сторонам света (ошибка была именно тут:
+	// мировое смещение делало блёстки видимыми только в одну сторону).
+	vec3 G = normalize(vec3(cellid - 0.5, 0.30 + 0.70 * cellb, cellc - 0.5));
 	// солнечный блик (half-vector, шевелится от зерна к зерну)
 	vec3 Hg = normalize(H + vec3(cellid - 0.5, cellb - 0.5, cellc - 0.5) * 0.55);
-	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(28.0, 110.0, cellb));
-	// небесный блик: зерно поймало взгляд — работает в любом направлении
-	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(60.0, 190.0, cellc));
+	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(26.0, 100.0, cellb));
+	// небесный блик: зерно поймало взгляд — работает в ЛЮБОМ направлении
+	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(24.0, 90.0, cellc));
 	float glint = step(1.0 - glitter_amount, cellid);
 	float rate = mix(2.0, 8.0, cellb);
 	glint *= 0.40 + 0.60 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0));
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
 	float glit_fade = exp(-dist * 0.008); // искры живут далеко, до горизонта
-	base += vec3(1.0, 0.90, 0.65) * (sun_lobe * 0.95 + sky_lobe * 0.85) * glint * glit_fade;
-	// широкий шёлковый отблеск («океанский» спекуляр — песок как жидкость)
-	float sheen = pow(clamp(dot(N, H), 0.0, 1.0), 16.0);
-	base += vec3(1.0, 0.72, 0.45) * sheen * 0.13 * smoothstep(0.0, 0.5, wrap) * (1.0 - churn * 0.5);
-	// скользящий ракурс: дальний песок у кромки дюны слегка рдеет —
-	// тень не выглядит плоской даже спиной к солнцу
-	float grazing = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
-	base += vec3(0.90, 0.55, 0.35) * grazing * 0.08;
+	base += vec3(1.0, 0.90, 0.65) * (sun_lobe * 0.95 + sky_lobe * 0.95)
+		* glint * glit_fade * mix(0.75, 1.0, ao);
+	// шёлковый отблеск с ФРЕНЕЛЕМ (PBR-отклик): у кромки дюн, под скользящим
+	// взглядом, песок «мокро» блестит сильнее — независимо от солнца
+	float fres = 0.35 + 0.65 * pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
+	float sheen = pow(clamp(dot(N, H), 0.0, 1.0), 16.0) * 0.7
+		+ pow(clamp(dot(N, H), 0.0, 1.0), 48.0) * 0.3;
+	base += vec3(1.0, 0.72, 0.45) * sheen * fres * 0.16
+		* smoothstep(0.0, 0.5, wrap) * (1.0 - churn * 0.5);
+	// скользящий ракурс: дальний песок у кромки дюны слегка рдеет
+	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.22 * ao;
 
 	// ---------- 4. Ветровые струи ----------
 	// Медленные светящиеся полосы: вытянуты по ветру и тянутся вдоль него.
