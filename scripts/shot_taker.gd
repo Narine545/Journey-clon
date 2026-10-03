@@ -22,14 +22,20 @@ func _physics_process(_delta: float) -> void:
 	_frames += 1
 	match _frames:
 		150:
-			_capture("shot_a_run.png") # игровой вид: бег к маяку
-		260:
+			_capture("shot_a_run.png") # игровой вид: бег к маяку (солнце в кадре)
+		200:
+			_look_back_camera() # взгляд НАЗАД, от солнца — теневая сторона дюн
+		230:
+			_capture("shot_d_back.png") # блёстки должны жить и здесь
+		240:
+			_game_camera() # вернуть игровую камеру
+		330:
 			_capture("shot_b_run2.png") # ещё игровой вид позднее
-		270:
+		340:
 			_top_camera() # камера над тропой, взгляд на следы
-		300:
+		370:
 			_capture("shot_c_trail.png") # следы сверху
-		310:
+		380:
 			Input.action_release("move_forward")
 			get_tree().quit(0)
 
@@ -42,6 +48,26 @@ func _capture(fname: String) -> void:
 	var path := _shot_dir.path_join(fname)
 	var err := img.save_png(path)
 	print("[SHOT] ", path, " -> ", err)
+
+
+## Камера впереди путника, взгляд назад (от солнца): так проверяем,
+## что блёстки не зависят от направления на солнце.
+func _look_back_camera() -> void:
+	var p: Player = main.player
+	var fwd := Vector3(sin(p.heading), 0.0, cos(p.heading))
+	var cam := Camera3D.new()
+	main.add_child(cam)
+	cam.global_position = p.global_position - fwd * 9.0 + Vector3.UP * 3.2
+	cam.look_at(p.global_position + fwd * 8.0 + Vector3.UP * 1.2, Vector3.UP)
+	cam.fov = 74.0
+	cam.far = 1400.0
+	cam.make_current()
+
+
+## Вернуть игровую камеру рига.
+func _game_camera() -> void:
+	if main.cam_rig != null and main.cam_rig.cam != null:
+		main.cam_rig.cam.make_current()
 
 
 ## Камера позади и выше путника, смотрит на тропу следов за спиной.
