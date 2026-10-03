@@ -54,62 +54,60 @@ func attach_trail(trail_ref: Trail) -> void:
 
 
 func _build_fx() -> void:
-	var tex := ProcTextures.radial(32, 1.8)
-
-	# искры из-под ног при быстром скольжении.
-	# local_coords по умолчанию false: частицы живут в мировых
-	# координатах и остаются позади летящего путника.
+	# брызги песка из-под ног на настоящем сёрфе: крошечные золотые
+	# блёстки, короткая жизнь. local_coords по умолчанию false —
+	# частицы остаются в мире позади летящего путника.
 	_surf_sparks = CPUParticles3D.new()
-	_surf_sparks.amount = 140
-	_surf_sparks.lifetime = 0.7
-	_surf_sparks.lifetime_randomness = 0.4
+	_surf_sparks.amount = 90
+	_surf_sparks.lifetime = 0.32
+	_surf_sparks.lifetime_randomness = 0.3
 	_surf_sparks.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	_surf_sparks.emission_sphere_radius = 0.22
-	_surf_sparks.spread = 24.0
-	_surf_sparks.initial_velocity_min = 3.5
-	_surf_sparks.initial_velocity_max = 8.0
-	_surf_sparks.gravity = Vector3(0.0, -10.0, 0.0)
-	_surf_sparks.damping_min = 1.0
-	_surf_sparks.damping_max = 2.5
-	_surf_sparks.scale_amount_min = 0.05
-	_surf_sparks.scale_amount_max = 0.12
-	_surf_sparks.mesh = _particle_quad(tex, Color(1.0, 0.78, 0.45, 0.85))
-	_surf_sparks.visibility_aabb = AABB(Vector3(-15.0, -12.0, -15.0), Vector3(30.0, 24.0, 30.0))
-	_surf_sparks.position = Vector3(0.0, 0.18, 0.0)
+	_surf_sparks.emission_sphere_radius = 0.12
+	_surf_sparks.spread = 16.0
+	_surf_sparks.initial_velocity_min = 2.5
+	_surf_sparks.initial_velocity_max = 5.5
+	_surf_sparks.gravity = Vector3(0.0, -14.0, 0.0)
+	_surf_sparks.scale_amount_min = 0.02
+	_surf_sparks.scale_amount_max = 0.06
+	_surf_sparks.color_ramp = ProcTextures.fade_ramp()
+	var spark_quad := QuadMesh.new()
+	spark_quad.size = Vector2(1.0, 1.0)
+	spark_quad.material = ProcTextures.glint_material(Color(1.0, 0.66, 0.28, 0.85))
+	_surf_sparks.mesh = spark_quad
+	_surf_sparks.visibility_aabb = AABB(Vector3(-8.0, -8.0, -8.0), Vector3(16.0, 16.0, 16.0))
+	_surf_sparks.position = Vector3(0.0, 0.10, 0.0)
 	_surf_sparks.emitting = false
 	_surf_sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_surf_sparks)
 
-	# пыль при посадке — разовый выброс
+	# пыль при посадке — мягкое облачко цвета песка (не аддитивное)
 	_land_dust = CPUParticles3D.new()
-	_land_dust.amount = 60
-	_land_dust.lifetime = 0.9
+	_land_dust.amount = 40
+	_land_dust.lifetime = 0.8
 	_land_dust.lifetime_randomness = 0.3
 	_land_dust.one_shot = true
 	_land_dust.explosiveness = 1.0
 	_land_dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	_land_dust.emission_sphere_radius = 0.3
+	_land_dust.emission_sphere_radius = 0.25
 	_land_dust.spread = 180.0
-	_land_dust.initial_velocity_min = 1.5
-	_land_dust.initial_velocity_max = 3.5
-	_land_dust.gravity = Vector3(0.0, -4.0, 0.0)
-	_land_dust.damping_min = 2.0
-	_land_dust.damping_max = 4.0
-	_land_dust.scale_amount_min = 0.08
-	_land_dust.scale_amount_max = 0.2
-	_land_dust.mesh = _particle_quad(tex, Color(1.0, 0.85, 0.65, 0.55))
-	_land_dust.visibility_aabb = AABB(Vector3(-10.0, -6.0, -10.0), Vector3(20.0, 12.0, 20.0))
+	_land_dust.initial_velocity_min = 1.2
+	_land_dust.initial_velocity_max = 2.6
+	_land_dust.gravity = Vector3(0.0, -1.2, 0.0)
+	_land_dust.damping_min = 3.0
+	_land_dust.damping_max = 5.0
+	_land_dust.scale_amount_min = 0.9
+	_land_dust.scale_amount_max = 1.3
+	_land_dust.scale_amount_curve = ProcTextures.grow_curve(0.35, 1.15)
+	_land_dust.color_ramp = ProcTextures.fade_ramp()
+	var dust_quad := QuadMesh.new()
+	dust_quad.size = Vector2(0.6, 0.6)
+	dust_quad.material = ProcTextures.soft_material(Color(0.97, 0.78, 0.55, 0.40))
+	_land_dust.mesh = dust_quad
+	_land_dust.visibility_aabb = AABB(Vector3(-8.0, -5.0, -8.0), Vector3(16.0, 10.0, 16.0))
 	_land_dust.position = Vector3(0.0, 0.15, 0.0)
 	_land_dust.emitting = false
 	_land_dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_land_dust)
-
-
-func _particle_quad(tex: ImageTexture, tint: Color) -> QuadMesh:
-	var quad := QuadMesh.new()
-	quad.size = Vector2(1.0, 1.0)
-	quad.material = ProcTextures.particle_material(tex, tint)
-	return quad
 
 
 func _build_body() -> void:
@@ -317,21 +315,21 @@ func _update_footsteps(delta: float) -> void:
 		var px := global_position.x + side.x - fwd.x * 0.25
 		var pz := global_position.z + side.z - fwd.z * 0.25
 		if hspd < 9.0:
-			trail.stamp(px, pz, 0.35, 0.35)
+			trail.stamp(px, pz, 0.35, 0.40)
 		else:
 			trail.stamp(px, pz, 0.55, 0.60)
 
 
 func _update_fx() -> void:
-	# искры из-под ног при быстрой езде по песку
+	# золотые брызги — только настоящий сёрф (обычный бег с горы не считается)
 	var hv := Vector3(vel.x, 0.0, vel.z)
 	var hspd := hv.length()
-	var spark := grounded and hspd > 9.0
+	var spark := grounded and hspd > 11.5
 	_surf_sparks.emitting = spark
 	if spark:
-		# летят назад-вверх против движения
+		# летят назад и чуть вверх от ног
 		var back := -hv / hspd
-		_surf_sparks.direction = (back + Vector3.UP * 0.45).normalized()
+		_surf_sparks.direction = (back + Vector3.UP * 0.18).normalized()
 
 
 func _update_visual(delta: float) -> void:
