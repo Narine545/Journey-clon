@@ -1,0 +1,61 @@
+name: validate
+
+# Headless-проверка проекта: импорт + автотест геймплея (JOURNEY_SMOKE).
+# Раннер скачивает портативный Godot 4.7.2 stable (Linux) и прогоняет проект.
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  headless:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot binary
+        id: godot_cache
+        uses: actions/cache@v4
+        with:
+          path: godot_bin
+          key: godot-4.7.2-stable-linux-x86_64
+
+      - name: Download Godot 4.7.2
+        if: steps.godot_cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sL -o godot.zip \
+            https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mkdir -p godot_bin
+          mv Godot_v4.7.2-stable_linux.x86_64 godot_bin/godot
+          chmod +x godot_bin/godot
+          godot_bin/godot --version
+
+      - name: Import project
+        run: |
+          godot_bin/godot --headless --path . --import > import.log 2>&1
+          cat import.log
+          if grep -qE "SCRIPT ERROR|Parse Error|Can't load" import.log; then
+            echo "::error::Ошибки при импорте"
+            exit 1
+          fi
+
+      - name: Smoke run (автотест геймплея)
+        run: |
+          JOURNEY_SMOKE=1 godot_bin/godot --headless --path . --quit-after 900 > smoke.log 2>&1
+          code=$?
+          cat smoke.log
+          if [ $code -ne 0 ]; then
+            echo "::error::Smoke-тест завершился с кодом $code"
+            exit 1
+          fi
+          if grep -qE "SCRIPT ERROR|Invalid (get|call|set)|Unable to" smoke.log; then
+            echo "::error::Ошибки скриптов в рантайме"
+            exit 1
+          fi
