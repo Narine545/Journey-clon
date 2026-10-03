@@ -18,10 +18,10 @@ func setup(game_ref) -> void:
 
 func _build_environment() -> void:
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.24, 0.20, 0.39)
-	sky_mat.sky_horizon_color = Color(0.97, 0.63, 0.46)
-	sky_mat.ground_bottom_color = Color(0.20, 0.15, 0.28)
-	sky_mat.ground_horizon_color = Color(0.94, 0.60, 0.48)
+	sky_mat.sky_top_color = Color(0.23, 0.21, 0.41)
+	sky_mat.sky_horizon_color = Color(1.00, 0.68, 0.46)
+	sky_mat.ground_bottom_color = Color(0.22, 0.16, 0.28)
+	sky_mat.ground_horizon_color = Color(0.98, 0.64, 0.47)
 	sky_mat.sun_angle_max = 9.0 # мягкий широкий ореол вокруг солнца
 	sky_mat.sun_curve = 0.07
 	sky_mat.sky_energy_multiplier = 1.0
@@ -37,7 +37,7 @@ func _build_environment() -> void:
 
 	# Киношный тонмаппинг: мягкие света, тёплая плёночная картинка
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.06
+	env.tonemap_exposure = 1.14
 	env.tonemap_white = 4.0
 
 	# Свечение: солнце, маяк и гребни дюн дышат (в Compatibility glow есть)

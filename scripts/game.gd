@@ -6,11 +6,11 @@ extends Node
 # --- Солнце и палитра (глава 1: тёплые дюны, вечер) ---
 const SUN_DIR := Vector3(0.10, 0.26, -0.96) # к солнцу (туда же уходит путь)
 
-const SAND_SUNNY := Color(0.93, 0.52, 0.30)
-const SAND_HOT := Color(1.00, 0.68, 0.36)
-const SAND_SHADE := Color(0.40, 0.32, 0.52)
-const HORIZON_COL := Color(0.96, 0.66, 0.55)
-const SKY_COL := Color(0.28, 0.24, 0.43)
+const SAND_SUNNY := Color(0.98, 0.62, 0.30) # ярко-золотой песок
+const SAND_HOT := Color(1.00, 0.78, 0.42) # раскалённые гребни
+const SAND_SHADE := Color(0.47, 0.40, 0.56) # мягкая пыльная сирень (не мрак)
+const HORIZON_COL := Color(1.00, 0.70, 0.48)
+const SKY_COL := Color(0.27, 0.24, 0.44)
 
 const FOG_DISTANCE := 340.0
 
