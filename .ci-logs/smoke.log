@@ -1,10 +1,10 @@
 Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 
 [SMOKE] коридор спуска: средний уклон 19.1°, длиннейший прогон 220 м
-[SMOKE] диагностика: глубочайшая промятость в зоне ±18 м: -0.034
+[SMOKE] диагностика: глубочайшая промятость в зоне ±18 м: -0.038
 [SMOKE] сёрф-склон: (90.0, -150.0) ny=0.86549019813538
 [SMOKE] занос: свежий след -0.055 м
-[SMOKE] занос: через 13 с 0.000 м (-0% глубины)
+[SMOKE] занос: через 13 с -0.032 м (59% глубины)
 [SMOKE] PASS winding: вывернутых граней 0 из 200 (должно быть 0)
 [SMOKE] PASS descent: средний уклон коридора 19.1° (ожидалось >8)
 [SMOKE] PASS descent: длиннейший спуск 220 м без остановки (ожидалось ≥60)
@@ -19,7 +19,7 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [SMOKE] PASS slide: пик разгона по склону 18.5 м/с (ожидалось >11)
 [SMOKE] PASS slide: на склоне 121 из 120 кадров на земле (липнем к дюне)
 [SMOKE] PASS jump/glide: полёт был
-[SMOKE] PASS занос: след затягивается (осталось -0% глубины)
+[SMOKE] PASS занос: след затягивается, но не мгновенно (осталось 59%)
 [SMOKE] итог: ВСЁ ПРОШЛО
 WARNING: 8 ObjectDB instances were leaked at exit (run with `--verbose` for details).
    at: cleanup (core/object/object.cpp:2536)
