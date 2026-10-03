@@ -26,6 +26,7 @@ func _physics_process(_delta: float) -> void:
 		0: # покой: мир стабилен, персонаж прижат к песку
 			if phase_frames == 1:
 				_check_winding(t)
+				_check_descent(t)
 			if phase_frames > 30:
 				var gh: float = t.sample_height(p.global_position.x, p.global_position.z)
 				_check(p.grounded and absf(p.global_position.y - gh) < 0.3, "idle: на земле")
@@ -96,6 +97,33 @@ func _check_winding(t: Terrain) -> void:
 		if nyz > 0.0:
 			bad += 1
 	_check(bad == 0, "winding: вывернутых граней %d из 200 (должно быть 0)" % bad)
+
+
+## Форма «горнолыжного» спуска: по коридору трейсы средний уклон
+## должен быть заметным и держаться длинными участками, а не рябить.
+func _check_descent(t: Terrain) -> void:
+	var slope_sum := 0.0
+	var samples := 0
+	var longest := 0
+	var run := 0
+	for x in [-40.0, 0.0, 40.0]:
+		run = 0
+		var z := -110.0
+		while z >= -400.0:
+			var ny: float = t.ground_normal(x, z).y
+			var slope := rad_to_deg(acos(clampf(ny, -1.0, 1.0)))
+			slope_sum += slope
+			samples += 1
+			if slope >= 10.0 and t.sample_height(x, z - 4.0) < t.sample_height(x, z):
+				run += 4
+				longest = maxi(longest, run)
+			else:
+				run = 0
+			z -= 4.0
+	var mean := slope_sum / float(samples)
+	_check(mean > 8.0, "descent: средний уклон коридора %.1f° (ожидалось >8)" % mean)
+	_check(longest >= 60, "descent: длиннейший спуск %d м без остановки (ожидалось ≥60)" % longest)
+	print("[SMOKE] коридор спуска: средний уклон ", "%.1f" % mean, "°, длиннейший прогон ", longest, " м")
 
 
 func _check(ok: bool, what: String) -> void:

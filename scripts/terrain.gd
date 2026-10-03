@@ -31,6 +31,7 @@ var _warp := FastNoiseLite.new()
 var _swell := FastNoiseLite.new()
 var _macro := FastNoiseLite.new()
 var _fine := FastNoiseLite.new()
+var _wave := FastNoiseLite.new()
 var _grid := PackedFloat32Array() # (SEGMENTS+1)^2 высот
 var _dgrid := PackedFloat32Array() # те же узлы: дюнность 0..1 (для шейдера)
 
@@ -67,6 +68,11 @@ func setup(game_ref) -> void:
 	_fine.frequency = FINE_F
 	_fine.fractal_octaves = 1
 
+	_wave.seed = 3117
+	_wave.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_wave.frequency = 1.0
+	_wave.fractal_octaves = 1
+
 	_build_grid()
 	_build_mesh()
 
@@ -84,10 +90,13 @@ func dune_at(x: float, z: float) -> float:
 
 ## Непрерывная функция высоты (гладкая — по ней строится рельеф).
 func height_at(x: float, z: float) -> float:
-	# 1) общий спуск к маяку: старт высоко, у стены — низко
-	var t := clampf((-z - SPAWN.y) / 380.0, 0.0, 1.0)
-	t = t * t * (3.0 - 2.0 * t) # smoothstep
-	var trend := lerpf(16.0, -22.0, t)
+	# 1) рельеф пути: плоскогорье → длинный песочный спуск → выкат у маяка.
+	# Спуск ~70 м перепада на 320 м (12–13° в среднем) — «горнолыжная»
+	# секция, на склонах дюн поверх — до 25–35°.
+	var d0 := smoothf(-z, -40.0, 80.0) # 0 у старта → 1 к началу спуска
+	var d1 := smoothf(-z, 80.0, 400.0) # зона длинного спуска
+	var d2 := smoothf(-z, 400.0, 445.0) # выкат
+	var trend := 8.0 + (1.0 - d0) * 8.0 - d1 * 70.0 - d2 * 6.0
 
 	# 2) вал дюны: широкое плавное подножие и мягкий гребень
 	var s := dune_at(x, z)
@@ -118,6 +127,21 @@ func height_at(x: float, z: float) -> float:
 	edge += smoothf(z, 70.0, 160.0) # за спиной старта
 	edge += smoothf(-z, 460.0, 570.0) # за маяком
 	h += edge * (26.0 + dune * 22.0)
+
+	# 8) длинный спуск: перекаты поперёк пути (пологий наветренный склон,
+	# крутой подветренный — сёрф-лицо вниз по пути) и берега-валы по бокам,
+	# чтобы коридор читался как горнолыжная трейса.
+	var dz_mask := smoothf(-z, 60.0, 110.0) * (1.0 - smoothf(-z, 380.0, 430.0))
+	if dz_mask > 0.001:
+		var wx: float = _warp.get_noise_2d(x * WARP_F + 3.1, z * WARP_F + 5.3)
+		var px2: float = x + wx * WARP_AMP
+		var wn: float = _wave.get_noise_2d(px2 * 0.011, z * 0.006)
+		var q := fmod(-z * 0.0105 + wn * 0.45, 1.0)
+		if q < 0.0:
+			q += 1.0
+		# пологий подъём ~48 м, крутой сброс ~19 м: волны каждые ~95 м пути
+		h += dz_mask * minf(smoothf(q, 0.05, 0.55), 1.0 - smoothf(q, 0.55, 0.75)) * 9.0
+		h += smoothf(absf(x), 95.0, 150.0) * dz_mask * 16.0
 
 	return h + trend
 

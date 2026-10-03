@@ -39,14 +39,15 @@ static func soft_material(tint: Color) -> StandardMaterial3D:
 	return m
 
 
-## Штрих ветрового песка: вытянутый меш без билборда — ориентацию
-## задаёт particle_flag_align_y по скорости. Слабо аддитивный,
-## тёплый: песчинки «ловят солнце», а не светят белым.
+## Штрих/лента песка: без билборда, двусторонняя (плоская лента видна
+## с обеих сторон). Слабо аддитивная, тёплая: песчинки «ловят солнце»,
+## а не светят белым.
 static func streak_material(tint: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.albedo_color = tint
 	m.vertex_color_use_as_albedo = true
 	m.disable_receive_shadows = true
