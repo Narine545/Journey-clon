@@ -11,7 +11,7 @@ extends Node3D
 
 const GRAVITY := 26.0
 const WALK_ACCEL := 34.0
-const WALK_MAX := 6.2 # неспешная рысь — следы успевают читаться
+const WALK_MAX := 7.0 # бодрая рысь — следы всё ещё читаются
 const SURF_MAX := 17.5
 const JUMP_V := 8.6
 const GLIDE_G := 5.5 # гравитация при парении
@@ -19,7 +19,7 @@ const AIR_ACCEL := 6.0
 
 const SURF_TRACK_SPEED := 10.8 # выше этой скорости — не шаги, а борозда
 
-const BOUND_X := 150.0
+const BOUND_X := 185.0
 const BOUND_Z_MIN := -445.0
 const BOUND_Z_MAX := 50.0
 
@@ -253,7 +253,7 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	# трение песка: на скорости и круче — скользкий (песок «течёт»)
 	var spd := vel.length()
 	var n_speed := clampf(spd / 10.0, 0.0, 1.0)
-	var fric := lerpf(1.9, 0.22, n_speed)
+	var fric := lerpf(1.7, 0.22, n_speed)
 	var slope_factor := clampf((1.0 - n.y) * 2.6, 0.0, 1.0)
 	fric *= 1.0 - slope_factor * 0.85
 	vel *= exp(-fric * delta)

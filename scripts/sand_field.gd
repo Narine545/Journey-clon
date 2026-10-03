@@ -25,19 +25,24 @@ const EXTENT := float(N) * TEXEL # окно 96×96 м вокруг путник�
 const MAX_DEPTH := 0.16 # предельное продавливание, м
 const MAX_RISE := 0.11 # предельная высота вала, м
 
-const SETTLE_BLEND := 0.22 # доля оседания за визит точки релаксации
+const SETTLE_BLEND := 0.26 # доля оседания за визит точки релаксации
 const TALUS_STEP := 0.075 # перепад на тексель (~32°), после которого песок «течёт»
-const TALUS_MOVE := 0.22 # доля переноса за визит
+const TALUS_MOVE := 0.26 # доля переноса за визит
 
-const AGE_ROW_FACTOR := 0.82 # множитель за проход старения (полураспад ~50 с)
+# Занос ветром: 4 строки карты в кадр (полный проход 3.3 с), множитель за
+# проход 0.86 → полураспад ~15 с: след visibly затягивается меньше чем за
+# минуту. В порывы ветра (wind_strength до ~1.3) занос заметно быстрее.
+const AGE_ROWS_PER_FRAME := 4
+const AGE_ROW_FACTOR := 0.86 # ^wind_strength в рантайме
 const AGE_SYNC_ROWS := 200 # строк старения, после которых карту всё же грузим
 
-const SPOT_VISITS := 96 # точек релаксации за кадр
-const SPOT_TTL := 0.8 # жизнь точки релаксации, с
+const SPOT_VISITS := 128 # точек релаксации за кадр
+const SPOT_TTL := 1.0 # жизнь точки релаксации, с
 const SPOT_CAP := 420 # максимум точек (потом новые игнорируем)
 
 var stamp_count := 0 # диагностика / smoke-тест
 
+var game # автозагрузка Game (сила ветра для заноса)
 var player: Player # за кем скользит окно
 
 var _grid := PackedFloat32Array() # тор: [sj * N + si], мировые смещения (м)
@@ -60,7 +65,8 @@ var _churn := FastNoiseLite.new()
 const _DIRS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
 
-func setup() -> void:
+func setup(game_ref = null) -> void:
+	game = game_ref
 	_grid.resize(N * N)
 	_grid.fill(0.0)
 	_churn.seed = 4242
@@ -233,16 +239,21 @@ func _settle(cell: Vector2i) -> void:
 			_grid[nidx] = clampf(_grid[nidx] + mov, -MAX_DEPTH, MAX_RISE)
 
 
-## Старение: одна строка карты в кадр плавно «заносится ветром».
-## Полный проход — ~13 с, множитель подобран под полураспад ~50 с.
+## Старение: несколько строк карты в кадр плавно «заносится ветром».
+## Полный проход — 3.3 с; в порывы ветра множитель steep'ится — занос
+## ускоряется вместе с погодой.
 func _age() -> void:
-	var base := _age_row * N
-	var top := base + N
-	for i in range(base, top):
-		if _grid[i] != 0.0:
-			_grid[i] *= AGE_ROW_FACTOR
-	_age_row = (_age_row + 1) % N
-	_age_since_upload += 1
+	var wind := 1.0
+	if game != null:
+		wind = clampf(game.wind_strength, 0.5, 1.6)
+	var f := pow(AGE_ROW_FACTOR, wind)
+	for _r in range(AGE_ROWS_PER_FRAME):
+		var base := _age_row * N
+		for i in range(base, base + N):
+			if _grid[i] != 0.0:
+				_grid[i] *= f
+		_age_row = (_age_row + 1) % N
+	_age_since_upload += AGE_ROWS_PER_FRAME
 
 
 func _upload() -> void:

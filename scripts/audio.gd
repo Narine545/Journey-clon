@@ -13,8 +13,8 @@ const RATE_MUSIC := 5512 # Гц — пады низкочастотные, си�
 
 const PAD_BASE := [146.83, 220.0, 293.66, 329.63] # D3 A3 D4 E4 — открытая кварта
 const PAD_BASE_AMP := [1.0, 0.75, 0.5, 0.42]
-const PAD_SHIMMER := [440.0, 587.33, 659.25] # A4 D5 E5 — светлое сияние
-const PAD_SHIMMER_AMP := [0.9, 0.65, 0.55]
+const PAD_SHIMMER := [220.0, 293.66, 329.63] # A3 D4 E4 — тёплое сияние (без «звона»)
+const PAD_SHIMMER_AMP := [0.85, 0.6, 0.5]
 
 var game
 var player: Player
@@ -51,13 +51,16 @@ func _make_buses() -> void:
 	_wind_filter.cutoff_hz = 1800.0
 	AudioServer.add_bus_effect(AudioServer.get_bus_index("Wind"), _wind_filter, 0)
 
-	# музыке — немного пространства
+	# музыке — мягкость (срезаем «звон» сверху) и немного пространства
+	var music_lp := AudioEffectLowPassFilter.new()
+	music_lp.cutoff_hz = 2600.0
+	AudioServer.add_bus_effect(AudioServer.get_bus_index("Music"), music_lp, 0)
 	var reverb := AudioEffectReverb.new()
 	reverb.room_size = 0.62
 	reverb.damping = 0.45
 	reverb.wet = 0.14
 	reverb.dry = 0.9
-	AudioServer.add_bus_effect(AudioServer.get_bus_index("Music"), reverb, 0)
+	AudioServer.add_bus_effect(AudioServer.get_bus_index("Music"), reverb, 1)
 
 
 func _ensure_bus(bus_name: String) -> void:
@@ -75,7 +78,7 @@ func _make_sounds() -> void:
 	for k in range(4):
 		var p := AudioStreamPlayer3D.new()
 		p.bus = "Sand"
-		p.unit_size = 7.0
+		p.unit_size = 5.0
 		p.position = Vector3(0.0, 0.1, 0.0)
 		player.add_child(p)
 		_step_players.append(p)
@@ -84,7 +87,7 @@ func _make_sounds() -> void:
 	_slide = AudioStreamPlayer3D.new()
 	_slide.bus = "Sand"
 	_slide.stream = _gen_slide()
-	_slide.unit_size = 9.0
+	_slide.unit_size = 7.0
 	_slide.position = Vector3(0.0, 0.12, 0.0)
 	player.add_child(_slide)
 	_slide.volume_db = linear_to_db(0.0001)
@@ -130,10 +133,10 @@ func _process(delta: float) -> void:
 	# --- скольжение по песку ---
 	var slide_target := 0.0
 	if player.grounded and spd > 3.2:
-		slide_target = clampf((spd - 3.2) / 8.0, 0.0, 1.0) * (0.4 + 0.6 * game.surf01)
+		slide_target = clampf((spd - 3.2) / 8.0, 0.0, 1.0) * (0.28 + 0.42 * game.surf01)
 	_slide_gain = _damp(_slide_gain, slide_target, 6.0, delta)
 	_slide.volume_db = linear_to_db(maxf(_slide_gain, 0.0001))
-	_slide.pitch_scale = 0.82 + spd01 * 0.55
+	_slide.pitch_scale = 0.75 + spd01 * 0.45
 
 	# --- ветер: сильнее на высоте, в полёте и в порывах ---
 	var alt01 := clampf((player.global_position.y - 6.0) / 26.0, 0.0, 1.0)
@@ -147,11 +150,11 @@ func _process(delta: float) -> void:
 	_wind.volume_db = linear_to_db(maxf(_wind_gain, 0.0001))
 	_wind_filter.cutoff_hz = lerpf(650.0, 2500.0, clampf(gust + spd01 * 0.5, 0.0, 1.0))
 
-	# --- музыка ---
+	# --- музыка: фон тихий, сияние на сёрфе — деликатное дыхание, не звон ---
 	_pad_fade = minf(_pad_fade + delta / 7.0, 1.0) # мир входит тихо
-	_pad.volume_db = linear_to_db(0.42 * _pad_fade + 0.0001)
+	_pad.volume_db = linear_to_db(0.26 * _pad_fade + 0.0001)
 	var shine := pow(clampf(game.surf01, 0.0, 1.0), 1.2)
-	_shimmer_gain = _damp(_shimmer_gain, shine * 0.8, 3.0, delta)
+	_shimmer_gain = _damp(_shimmer_gain, shine * 0.22, 1.6, delta)
 	_shimmer.volume_db = linear_to_db(maxf(_shimmer_gain, 0.0001))
 
 
@@ -165,14 +168,14 @@ func on_step(spd01: float) -> void:
 	var p := _step_players[_step_rr]
 	_step_rr = (_step_rr + 1) % _step_players.size()
 	p.stream = _step_streams[randi() % _step_streams.size()]
-	p.pitch_scale = 0.86 + randf() * 0.30
-	p.volume_db = linear_to_db(0.30 + 0.55 * spd01)
+	p.pitch_scale = 0.80 + randf() * 0.35
+	p.volume_db = linear_to_db(0.10 + 0.26 * spd01)
 	p.play()
 
 
 func on_land(impact01: float) -> void:
 	_land.pitch_scale = 0.72 + randf() * 0.16
-	_land.volume_db = linear_to_db(0.35 + 0.6 * impact01)
+	_land.volume_db = linear_to_db(0.18 + 0.34 * impact01)
 	_land.play()
 
 
@@ -180,26 +183,28 @@ func on_land(impact01: float) -> void:
 # Синтез
 # ---------------------------------------------------------------------------
 
-## Шаг по песку: шумовой всплеск с закрывающимся фильтром и «зернистостью».
+## Шаг по песку: глухой мягкий «пшш» — песок шуршит, а не трещит.
+## Спектр глушится двумя полюсами, «зернистость» — лёгкое переваливание
+## на низкой частоте, атака не мгновенная.
 func _gen_footstep(seed: int) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
-	var n := int(0.17 * RATE_SFX)
+	var n := int(0.16 * RATE_SFX)
 	var s := PackedFloat32Array()
 	s.resize(n)
 	var lp1 := 0.0
 	var lp2 := 0.0
-	var crunch := lerpf(70.0, 130.0, rng.randf())
+	var sway := lerpf(34.0, 58.0, rng.randf())
 	var cph := rng.randf() * TAU
 	for i in n:
 		var t := float(i) / RATE_SFX
 		var w := rng.randf_range(-1.0, 1.0)
-		var cut := lerpf(0.50, 0.12, t / 0.17)
+		var cut := lerpf(0.32, 0.09, t / 0.16)
 		lp1 += (w - lp1) * cut
 		lp2 += (lp1 - lp2) * cut
-		var env := minf(t / 0.004, 1.0) * exp(-t * 24.0)
-		var grit := 1.0 + 0.35 * sin(TAU * crunch * t + cph)
-		s[i] = lp2 * env * grit * 0.85
+		var env := minf(t / 0.009, 1.0) * exp(-t * 19.0)
+		var soft := 1.0 + 0.10 * sin(TAU * sway * t + cph)
+		s[i] = lp2 * env * soft * 0.55
 	return _stream(s, RATE_SFX, false)
 
 
@@ -303,7 +308,7 @@ func _gen_pad(freqs: Array, amps: Array, length_s: float) -> AudioStreamWAV:
 			var a: float = p[1]
 			var lfo_k: int = p[2]
 			var off: float = p[3]
-			var breath := 0.72 + 0.28 * sin(TAU * float(lfo_k) * ph + off)
+			var breath := 0.80 + 0.20 * sin(TAU * float(lfo_k) * ph + off)
 			v += (sin(TAU * f * t) + 0.22 * sin(TAU * f * 2.0 * t)) * a * breath
 		s[i] = v
 	var peak := 0.0001

@@ -122,6 +122,8 @@ void fragment() {
 	float amp2 = 0.38;
 	float c1 = cos(ph1) * amp1;
 	float c2 = cos(ph2) * amp2;
+	// лёгкое самозатенение: ложбинки ряби чуть темнее гребней
+	float rshade = clamp(0.5 + 0.45 * (c1 + c2), 0.0, 1.0);
 	// аналитический градиент волны по осям (v, u) -> возмущение нормали
 	float dv = (c1 * ripple_freq + c2 * ripple_freq * 2.63) * ripple_strength * wind_power;
 	float du = (c1 * 0.22 + c2 * 0.55) * ripple_strength * wind_power * 2.0;
@@ -144,6 +146,9 @@ void fragment() {
 	base = mix(base, sand_shade, hollow * 0.25);
 	// крупный тональный шум: дюны не одинаковые
 	base *= mix(0.92, 1.07, vnoise(wp * 0.013 + vec2(3.1, 7.7)));
+	// рябь самозатеняется, песчинки дают видимое зерно
+	base *= 1.0 - 0.06 * (1.0 - rshade) * detail * (1.0 - 0.5 * churn);
+	base *= 1.0 + (vnoise(wp * 2.7) - 0.5) * 0.08 * detail;
 
 	// ---------- 2b. След: настоящий рельеф красится как настоящий ----------
 	float press = clamp(-h * 12.0, 0.0, 1.0); // дно следа
@@ -153,16 +158,22 @@ void fragment() {
 	// вал: свежий сухой песок — светлее и теплее
 	base = mix(base, base * vec3(1.18, 1.07, 0.88), rise * 0.5);
 
-	// ---------- 3. Глиттер ----------
-	// Редкие песчинки дают резкий блик: сверкание живёт при движении камеры.
+	// ---------- 3. Глиттер (микрофасеты, по мотивам Zucconi) ----------
+	// У каждой песчинки-ячейки своё «направление зеркала» (стабильно
+	// во времени), своя резкость блеска и своя частота мерцания —
+	// сверкание живёт при движении камеры, но не прыгает случайно.
 	vec3 V = normalize(CAMERA_POSITION_WORLD - w_pos);
 	vec3 H = normalize(V + L);
-	float spec = pow(clamp(dot(N, H), 0.0, 1.0), 110.0);
-	float cellr = hash12(floor(wp * 9.0));
-	float glint = step(1.0 - glitter_amount, cellr);
-	glint *= 0.55 + 0.45 * sin(TIME * 9.0 + cellr * 37.0);
+	float cellid = hash12(floor(wp * 9.0));
+	float cellb = hash12(floor(wp * 9.0) + vec2(7.31, 1.77));
+	// слегка шевелим half-vector от ячейки — «поворот песчинки»
+	vec3 Hg = normalize(H + vec3(cellid - 0.5, cellb - 0.5, fract(cellid * 7.0) - 0.5) * 0.35);
+	float spec = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(70.0, 220.0, cellb));
+	float glint = step(1.0 - glitter_amount, cellid);
+	float rate = mix(3.0, 11.0, cellb);
+	glint *= 0.45 + 0.55 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0));
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
-	base += vec3(1.0, 0.88, 0.62) * spec * glint * 2.6 * detail;
+	base += vec3(1.0, 0.88, 0.62) * spec * glint * 2.2 * detail;
 	// широкий шёлковый отблеск — дуги «переливаются» при движении
 	float sheen = pow(clamp(dot(N, H), 0.0, 1.0), 16.0);
 	base += vec3(1.0, 0.72, 0.45) * sheen * 0.07 * lit * (1.0 - churn * 0.5);

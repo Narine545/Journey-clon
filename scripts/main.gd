@@ -25,7 +25,7 @@ func _ready() -> void:
 	# настоящий песок: поле смещений, скользящее окно за путником
 	sand = SandField.new()
 	add_child(sand)
-	sand.setup()
+	sand.setup(game)
 	terrain.attach_sand(sand)
 
 	player = Player.new()
