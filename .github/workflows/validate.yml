@@ -2,6 +2,7 @@ name: validate
 
 # Headless-проверка проекта: импорт + автотест геймплея (JOURNEY_SMOKE).
 # Раннер скачивает портативный Godot 4.7.2 stable (Linux) и прогоняет проект.
+# При падении полные логи коммитятся в .ci-logs/ — их можно забрать git-ом.
 
 on:
   push:
@@ -11,6 +12,9 @@ on:
 concurrency:
   group: validate-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   headless:
@@ -40,9 +44,20 @@ jobs:
       - name: Import project
         run: |
           godot_bin/godot --headless --path . --import > import.log 2>&1
+          code=$?
           cat import.log
-          if grep -qE "SCRIPT ERROR|Parse Error|Can't load" import.log; then
-            echo "::error::Ошибки при импорте"
+          if grep -qE "SCRIPT ERROR|Parse Error|Parse error|SHADER ERROR|Can't load|Failed to compile|Shader" import.log; then
+            echo "::error::Ошибки при импорте (см. .ci-logs в коммите CI)"
+            grep -E "SCRIPT ERROR|Parse Error|Parse error|SHADER ERROR|Can't load|Failed to compile|Shader" import.log | head -10 | while read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
+          if [ $code -ne 0 ]; then
+            echo "::error::Импорт завершился с кодом $code"
+            tail -10 import.log | while read -r line; do
+              echo "::error::$line"
+            done
             exit 1
           fi
 
@@ -51,11 +66,29 @@ jobs:
           JOURNEY_SMOKE=1 godot_bin/godot --headless --path . --quit-after 900 > smoke.log 2>&1
           code=$?
           cat smoke.log
+          if grep -qE "SCRIPT ERROR|Invalid (get|call|set)|Unable to" smoke.log; then
+            echo "::error::Ошибки скриптов в рантайме (см. .ci-logs в коммите CI)"
+            grep -E "SCRIPT ERROR|Invalid (get|call|set)|Unable to" smoke.log | head -10 | while read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
           if [ $code -ne 0 ]; then
             echo "::error::Smoke-тест завершился с кодом $code"
+            grep "SMOKE" smoke.log | tail -30 | while read -r line; do
+              echo "::error::$line"
+            done
             exit 1
           fi
-          if grep -qE "SCRIPT ERROR|Invalid (get|call|set)|Unable to" smoke.log; then
-            echo "::error::Ошибки скриптов в рантайме"
-            exit 1
-          fi
+
+      - name: Publish logs on failure
+        if: failure()
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          mkdir -p .ci-logs
+          cp -f import.log .ci-logs/ 2>/dev/null || true
+          cp -f smoke.log .ci-logs/ 2>/dev/null || true
+          git add .ci-logs
+          git commit -m "ci: логи упавшего прогона ${GITHUB_SHA::7}" || true
+          git push origin HEAD:${GITHUB_REF#refs/heads/} || true
