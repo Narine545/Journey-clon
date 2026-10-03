@@ -15,6 +15,7 @@ var _peak_speed := 0.0
 var _grounded_frames := 0
 var _path: Array[Vector2] = [] # запись пути для проверки следов
 var _depth0 := 0.0 # глубина свежего следа для проверки заноса
+var _fill_pos := Vector2.ZERO # где штампнули след для проверки заноса
 
 
 func setup(main_ref: Node3D) -> void:
@@ -85,6 +86,8 @@ func _physics_process(_delta: float) -> void:
 				_next()
 
 		4: # занос: свежий след должен затягиваться песком за ~15 секунд
+			# путник закреплён на месте (тест!), точка штампа — фиксированная
+			p.vel = Vector3.ZERO
 			if phase_frames == 1:
 				# возвращаемся на стартовое плато и замираем
 				p.global_position = Vector3(
@@ -92,23 +95,21 @@ func _physics_process(_delta: float) -> void:
 					t.ground_height(Terrain.SPAWN.x, Terrain.SPAWN.y - 4.0),
 					Terrain.SPAWN.y - 4.0
 				)
-				p.vel = Vector3.ZERO
 				p.grounded = true
 			if phase_frames == 3:
 				# кадр ждём: окно песка переезжает к путнику только в _process
-				var pos := Vector2(p.global_position.x + 1.2, p.global_position.z + 1.2)
-				main.sand.stamp_foot(pos, Vector2(0.0, -1.0), 0.5, 0.26, 0.05, 0.02)
+				_fill_pos = Vector2(p.global_position.x + 1.2, p.global_position.z + 1.2)
+				main.sand.stamp_foot(_fill_pos, Vector2(0.0, -1.0), 0.5, 0.26, 0.05, 0.02)
 				for k in range(6):
-					_depth0 = minf(_depth0, main.sand.disp_at(pos.x + float(k) * 0.06 - 0.15, pos.y))
+					_depth0 = minf(_depth0, main.sand.disp_at(_fill_pos.x + float(k) * 0.06 - 0.15, _fill_pos.y))
 				print("[SMOKE] занос: свежий след %.3f м" % _depth0)
 			if phase_frames == 783: # ~13 с
-				var pos2 := Vector2(p.global_position.x + 1.2, p.global_position.z + 1.2)
 				var d1 := 0.0
 				for k in range(6):
-					d1 = minf(d1, main.sand.disp_at(pos2.x + float(k) * 0.06 - 0.15, pos2.y))
-				var pct := 100.0 * d1 / _depth0 if _depth0 < 0.0 else 999.0
+					d1 = minf(d1, main.sand.disp_at(_fill_pos.x + float(k) * 0.06 - 0.15, _fill_pos.y))
+				var pct := 100.0 * d1 / _depth0 if _depth0 < -0.001 else 999.0
 				print("[SMOKE] занос: через 13 с %.3f м (%.0f%% глубины)" % [d1, pct])
-				_check(d1 > _depth0 * 0.75, "занос: след затягивается (осталось %.0f%% глубины)" % pct)
+				_check(d1 > _depth0 * 0.75 and d1 < -0.002, "занос: след затягивается, но не мгновенно (осталось %.0f%%)" % pct)
 			if phase_frames > 805:
 				_next()
 
