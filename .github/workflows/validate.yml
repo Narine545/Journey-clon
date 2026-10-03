@@ -83,15 +83,19 @@ jobs:
 
       # Headless (dummy-рендерер) НЕ компилирует шейдеры. Прогоняем несколько
       # кадров под xvfb + Mesa llvmpipe с настоящим GL — поймаем ошибки шейдеров.
-      - name: Render check (компиляция шейдеров, xvfb + llvmpipe)
+      - name: Render check (шейдеры + скриншоты, xvfb + llvmpipe)
         run: |
           if ! command -v xvfb-run >/dev/null 2>&1; then
             echo "::warning::xvfb-run недоступен — рендер-проверка пропущена"
             exit 0
           fi
-          xvfb-run -a -s "-screen 0 1280x720x24" \
-            godot_bin/godot --path . --quit-after 150 > render.log 2>&1 || true
+          mkdir -p .ci-logs/shots
+          SHOT_DIR="$PWD/.ci-logs/shots" JOURNEY_SHOT=1 \
+            xvfb-run -a -s "-screen 0 1600x900x24" \
+            godot_bin/godot --path . --resolution 1600x900 --quit-after 900 \
+            > render.log 2>&1 || true
           cat render.log
+          ls -la .ci-logs/shots || true
           if grep -iE "SHADER ERROR|failed to compile|error compiling" render.log; then
             echo "::error::Ошибки компиляции шейдеров"
             exit 1
@@ -101,9 +105,13 @@ jobs:
           else
             echo "::warning::GL-контекст не поднялся — проверка шейдеров могла не состояться"
           fi
+          if [ ! -f .ci-logs/shots/shot_c_trail.png ]; then
+            echo "::error::Скриншоты не сохранились — что-то не так с рендером"
+            exit 1
+          fi
 
-      - name: Publish logs on failure
-        if: failure()
+      - name: Publish artifacts (скриншоты всегда, логи при падении)
+        if: always()
         run: |
           git config user.name "ci-bot"
           git config user.email "ci-bot@users.noreply.github.com"
@@ -112,5 +120,5 @@ jobs:
           cp -f smoke.log .ci-logs/ 2>/dev/null || true
           cp -f render.log .ci-logs/ 2>/dev/null || true
           git add .ci-logs
-          git commit -m "ci: логи упавшего прогона ${GITHUB_SHA::7}" || true
+          git commit -m "ci: артефакты прогона ${GITHUB_SHA::7}" || true
           git push origin HEAD:${GITHUB_REF#refs/heads/} || true

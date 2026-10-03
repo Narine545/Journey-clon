@@ -57,3 +57,9 @@ func _ready() -> void:
 		var smoke := SmokeTest.new()
 		add_child(smoke)
 		smoke.setup(self)
+
+	# CI-скриншоты (запускается под xvfb с настоящим GL)
+	if OS.get_environment("JOURNEY_SHOT") == "1":
+		var shot := ShotTaker.new()
+		add_child(shot)
+		shot.setup(self)
