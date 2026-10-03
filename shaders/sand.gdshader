@@ -181,7 +181,10 @@ void fragment() {
 	//     летишь боком, и когда солнце за спиной (как в Journey).
 	vec3 V = normalize(CAMERA_POSITION_WORLD - w_pos);
 	vec3 H = normalize(V + L);
-	float density = clamp(900.0 / max(dist, 0.001), 16.0, 130.0); // ~8 мм вблизи
+	// клетки растут с дистанцией, оставаясь ~пиксель: вблизи 8 мм,
+	// на 100 м — 11 см, на 300 м — 33 см. Субпиксельные клетки дали бы
+	// мерцающую белую вуаль вместо искр (проверено измерениями CI-кадров)
+	float density = clamp(900.0 / max(dist, 0.001), 3.0, 130.0);
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));
