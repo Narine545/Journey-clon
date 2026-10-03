@@ -189,7 +189,7 @@ void fragment() {
 	// «зеркало» песчинки: ВЕРХНЯЯ полусфера, азимут равномерный —
 	// никакого предпочтения по сторонам света (ошибка была именно тут:
 	// мировое смещение делало блёстки видимыми только в одну сторону).
-	vec3 G = normalize(vec3(cellid - 0.5, 0.30 + 0.70 * cellb, cellc - 0.5));
+	vec3 G = normalize(vec3(cellid - 0.5, 0.05 + 0.95 * cellb, cellc - 0.5));
 	// солнечный блик (half-vector, шевелится от зерна к зерну)
 	vec3 Hg = normalize(H + vec3(cellid - 0.5, cellb - 0.5, cellc - 0.5) * 0.55);
 	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(22.0, 80.0, cellb));
