@@ -10,6 +10,7 @@ var cam_rig: CameraRig
 var sand: SandField
 var audio
 var wind: WindField
+var color_grade: ColorGrader
 var debug_panel: DebugPanel
 
 
@@ -19,6 +20,11 @@ func _ready() -> void:
 	world = GameWorld.new()
 	add_child(world)
 	world.setup(game)
+
+	# колор-грейдинг поверх кадра (пресеты и крутилки — DEV-панель F3)
+	color_grade = ColorGrader.new()
+	add_child(color_grade)
+	color_grade.setup()
 
 	terrain = Terrain.new()
 	add_child(terrain)

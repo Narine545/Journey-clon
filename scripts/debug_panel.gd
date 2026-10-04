@@ -40,7 +40,7 @@ func _build_ui() -> void:
 	panel.offset_left = -460.0
 	panel.offset_top = 12.0
 	panel.offset_right = -12.0
-	panel.offset_bottom = 700.0
+	panel.offset_bottom = 900.0
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(panel)
 
@@ -67,6 +67,12 @@ func _build_ui() -> void:
 		func(v): world.set_sky("rayleigh_scale_height", v))
 	_slider("Мультирассеяние", 0.0, 0.2, 0.025, 0.002,
 		func(v): world.set_sky("rayleigh_multi_scattering", v))
+	_slider("Облака: покрытие", 0.0, 1.0, 0.5, 0.01,
+		func(v): world.set_sky("cloud_cover", v))
+	_slider("Облака: размер", 0.4, 3.0, 1.25, 0.05,
+		func(v): world.set_sky("cloud_size", v))
+	_slider("Облака: дрейф, м/с", 0.0, 25.0, 7.0, 0.5,
+		func(v): world.set_sky("cloud_drift", v))
 
 	_section("ПЕСОК")
 	_slider("Блёстки (доля)", 0.0, 0.5, 0.20, 0.01,
@@ -84,11 +90,51 @@ func _build_ui() -> void:
 	_slider("Порог glow", 0.5, 1.5, world.get_glow_threshold(), 0.02,
 		func(v): world.set_glow_threshold(v))
 
+	_section("ЦВЕТ (ГРЕЙДИНГ)")
+	_preset_slider()
+	_slider("Сила грейда", 0.0, 1.0, main.color_grade.intensity, 0.01,
+		func(v): main.color_grade.set_intensity(v))
+	_slider("Тепло", -1.0, 1.0, 0.15, 0.01,
+		func(v): main.color_grade.set_param("temperature", v))
+	_slider("Контраст", 0.6, 1.7, 1.04, 0.01,
+		func(v): main.color_grade.set_param("contrast", v))
+	_slider("Вибранс", -0.6, 0.6, 0.12, 0.01,
+		func(v): main.color_grade.set_param("vibrance", v))
+	_slider("Ночь (Пуркинье)", 0.0, 1.0, 0.0, 0.01,
+		func(v): main.color_grade.set_param("night", v))
+
 	_section("ВЕТЕР")
 	_slider("Направление°", -180.0, 180.0, rad_to_deg(main.game.wind_base), 1.0,
 		func(v): main.game.wind_base = deg_to_rad(v))
 
 	_label("F3 — скрыть панель")
+
+
+## Строка выбора пресета грейдинга (целые шаги + имя пресета).
+func _preset_slider() -> void:
+	var grade: ColorGrader = main.color_grade
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	_box.add_child(row)
+
+	var l := _label("Пресет")
+	l.custom_minimum_size = Vector2(170.0, 0)
+	row.add_child(l)
+
+	var s := HSlider.new()
+	s.min_value = 0.0
+	s.max_value = float(grade.preset_count() - 1)
+	s.step = 1.0
+	s.value = grade.preset_idx
+	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	s.custom_minimum_size = Vector2(150.0, 20.0)
+	row.add_child(s)
+
+	var vlabel := _label(grade.preset_name(grade.preset_idx))
+	vlabel.custom_minimum_size = Vector2(130.0, 0)
+	row.add_child(vlabel)
+	s.value_changed.connect(func(v): grade.apply_preset(int(v)))
+	s.value_changed.connect(func(v): vlabel.text = grade.preset_name(int(v)))
 
 
 func _section(title: String) -> void:
