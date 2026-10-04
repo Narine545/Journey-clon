@@ -17,24 +17,6 @@ ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
 WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
---res://shaders/sky.gdshader--
-  229 |  float v = 0.0;
-  230 |  float a = 0.5;
-E 231->  mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
-  232 |  for (int i = 0; i < 4; i++) {
-  233 |  v += a * cnoise(p);
-SHADER ERROR: Invalid arguments for the built-in function: "mat2(float,float,float,float)".
-          at: (null) (res://shaders/sky.gdshader:231)
-          GDScript backtrace (most recent call first):
-              [0] _build_environment (res://scripts/world.gd:25)
-              [1] setup (res://scripts/world.gd:16)
-              [2] _ready (res://scripts/main.gd:22)
-ERROR: Shader compilation failed.
-   at: set_code (drivers/gles3/storage/material_storage.cpp:2875)
-   GDScript backtrace (most recent call first):
-       [0] _build_environment (res://scripts/world.gd:25)
-       [1] setup (res://scripts/world.gd:16)
-       [2] _ready (res://scripts/main.gd:22)
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_a_run.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_d_back.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_e_side.png -> 0
@@ -43,6 +25,6 @@ ERROR: Shader compilation failed.
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_c_trail.png -> 0
 WARNING: 1 RID of type "CanvasItem" was leaked.
    at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2733)
-WARNING: 14 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+WARNING: 6 ObjectDB instances were leaked at exit (run with `--verbose` for details).
    at: cleanup (core/object/object.cpp:2536)
 ERROR: 1 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
