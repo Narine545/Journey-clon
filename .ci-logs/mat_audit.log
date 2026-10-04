@@ -22,10 +22,6 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 [AUDIT] load res://assets/Rosalie_Blackwood/materials/Cloth_Material.tres
 [AUDIT]   ShaderMaterial
 [AUDIT] load res://assets/Rosalie_Blackwood/materials/Dot_Material.tres
-WARNING: Subsurface scattering is only available when using the Forward+ renderer.
-     at: set_code (drivers/gles3/storage/material_storage.cpp:3167)
-     GDScript backtrace (most recent call first):
-         [0] _init (res://scripts/mat_audit.gd:24)
 [AUDIT]   ShaderMaterial
 [AUDIT] load res://assets/Rosalie_Blackwood/materials/Eye_Shadow_Material.tres
 [AUDIT]   ShaderMaterial
