@@ -1,7 +1,9 @@
 class_name Player
 extends Node3D
 ## Путник. Аналитическая кинематика по полю высот террейна:
-## вниз по склону разгоняемся, в гору — теряем ход, на крутом спуске — «сёрф».
+## в гору — теряем ход, на крутом спуске — «сёрф», и ТОЛЬКО по зажатому
+## Shift: без Shift песок держит на любом уклоне (ходьба и стойка),
+## самовольного скольжения нет ни при каких обстоятельствах.
 ## Никакой смерти, таймеров и провалов — только движение.
 ##
 ## Походка и песок связаны накрепко: шаг (фаза покачивания тела) рождает
@@ -17,10 +19,10 @@ const JUMP_V := 8.6
 const GLIDE_G := 5.5 # гравитация при парении
 const AIR_ACCEL := 6.0
 
-const SURF_TRACK_SPEED := 4.6 # выше — СКАЛЬЗЯЩИЙ сёрф: стойка, ноги не движутся
+const SURF_TRACK_SPEED := 4.6 # выше — СКАЛЬЗЯЩИЙ сёрф (возможен только со Shift)
 const WALK_RESUME_SPEED := 4.0 # гистерезис: обратно к шагу чуть ниже порога
 
-const HOLD_SLOPE_ACC := 9.8 # ~22°: на более пологих склонах песок ДЕРЖИТ
+const HOLD_SLOPE_ACC := 9.8 # ~22°: со Shift на более пологих склонах песок ДЕРЖИТ
 const STOP_SPEED := 1.1 # м/с: без ввода путник выпахивается до остановки
 
 const BOUND_X := 185.0
@@ -209,15 +211,21 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	# скорость живёт в плоскости склона
 	vel = vel - n * vel.dot(n)
 
+	# СКОЛЬЖЕНИЕ — ТОЛЬКО ОСОЗНАННОЕ: Shift открывает «сёрф-режим».
+	# Без Shift песок держит на любом уклоне: путница ходит и стоит,
+	# самовольного сползания нет.
+	var surf_armed := Input.is_action_pressed("slide_mod")
+
 	# скольжение: тянет вниз по склону (в гору — тормозит)
 	var g := Vector3.DOWN * GRAVITY
 	var slope_acc := g - n * g.dot(n)
 	var slope_mag := slope_acc.length()
 	var no_input := wish.length_squared() < 0.001
 
-	# Песок ДЕРЖИТ путника: без ввода на пологом склоне — полная остановка
-	# (статическое трение). Скольжение — только на крутых сёрф-лицах.
-	if no_input and vel.length() < STOP_SPEED and slope_mag < HOLD_SLOPE_ACC:
+	# Песок ДЕРЖИТ путника: без ввода — полная остановка (статическое
+	# трение). Без Shift — на ЛЮБОМ уклоне; со Shift песок «течёт»
+	# только на крутых сёрф-лицах (уклон выше HOLD_SLOPE_ACC).
+	if no_input and vel.length() < STOP_SPEED and (not surf_armed or slope_mag < HOLD_SLOPE_ACC):
 		vel = vel.move_toward(Vector3.ZERO, 30.0 * delta)
 		surf01 = 0.0
 		if Input.is_action_just_pressed("jump"):
@@ -228,7 +236,8 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 		global_position.y = terrain.ground_height(global_position.x, global_position.z)
 		return
 
-	vel += slope_acc * delta
+	if surf_armed:
+		vel += slope_acc * delta # сток по склону — только в сёрф-режиме
 
 	# управление: проецируем желание на склон
 	if wish.length_squared() > 0.001:
@@ -242,8 +251,9 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	var fric := lerpf(1.7, 0.22, n_speed)
 	if no_input:
 		fric *= 2.8 # отпустил клавиши — песок выпахивает и тормозит
-	var slope_factor := clampf((1.0 - n.y) * 2.6, 0.0, 1.0)
-	fric *= 1.0 - slope_factor * 0.85
+	if surf_armed:
+		var slope_factor := clampf((1.0 - n.y) * 2.6, 0.0, 1.0)
+		fric *= 1.0 - slope_factor * 0.85 # крутая дюна «течёт» — но только со Shift
 	vel *= exp(-fric * delta)
 
 	# потолок скорости: на спуске выше (сёрф)
@@ -254,12 +264,12 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	var surf_bias := clampf(dvel, 0.0, 1.0) * n_speed
 	# в горку шаг слабеет (песок пересыпается из-под ног) — подъём читается
 	# как подъём, а не езда вверх по стеклу
-	var surf_mix := clampf(surf_bias * 1.5, 0.0, 1.0)
+	var surf_mix := clampf(surf_bias * 1.5, 0.0, 1.0) if surf_armed else 0.0
 	var max_spd := lerpf(WALK_MAX * lerpf(1.0, 0.55, _uphill01()), SURF_MAX, surf_mix)
 	if spd > max_spd:
 		var over := spd - max_spd
 		vel = vel.normalized() * (spd - over * clampf(delta * 8.0, 0.0, 1.0))
-	surf01 = clampf(surf_bias * (spd / SURF_MAX) * 1.4, 0.0, 1.0)
+	surf01 = clampf(surf_bias * (spd / SURF_MAX) * 1.4, 0.0, 1.0) if surf_armed else 0.0
 
 	# прыжок — вверх по инерции склона, с лёгким задиранием песка
 	if Input.is_action_just_pressed("jump"):

@@ -2,8 +2,9 @@ class_name SmokeTest
 extends Node
 ## Автотест геймплея для headless-прогона (без графики).
 ## Включается переменной окружения JOURNEY_SMOKE=1; в обычной игре неактивен.
-## Прогоняет фазы: покой → печать следа → бег к маяку → скатывание
-## с крутой дюны → прыжок/парение. Проверяет, что следы — настоящие:
+## Прогоняет фазы: покой → печать следа → ходьба в гору → крутая дюна
+## БЕЗ Shift (песок обязан держать) и СО Shift (сёрф-разгон) →
+## прыжок/парение. Проверяет, что следы — настоящие:
 ## песок реально проминается и физика это видит.
 
 var main: Node3D
@@ -78,7 +79,9 @@ func _physics_process(_delta: float) -> void:
 				_check_prints_real(p)
 				_next()
 
-		2: # телепорт на сёрф-склон (28–33°), без ввода — песок должен потянуть вниз
+		2: # телепорт на сёрф-склон (28–33°). БЕЗ Shift песок обязан держать
+			# намертво — никакого самовольного скольжения; с зажатым Shift —
+			# сёрф-разгон по склону.
 			if phase_frames == 1:
 				var steep := _find_surf_spot(t)
 				p.global_position = Vector3(steep.x, t.ground_height(steep.x, steep.y), steep.y)
@@ -86,10 +89,21 @@ func _physics_process(_delta: float) -> void:
 				p.grounded = true
 				_peak_speed = 0.0
 				_grounded_frames = 0
-			if p.grounded:
-				_grounded_frames += 1
 			_peak_speed = maxf(_peak_speed, p.vel.length())
-			if phase_frames > 120:
+			if phase_frames == 90:
+				# БЕЗ SHIFT: стоим на крутой дюне — скольжения быть не должно
+				_check(_peak_speed < 3.5,
+					"slide-off: без Shift не скользит (пик %.1f м/с)" % _peak_speed)
+				_check(p.vel.length() < 1.0,
+					"slide-off: без Shift остановился (%.2f м/с)" % p.vel.length())
+				_check(p.grounded, "slide-off: на земле")
+				Input.action_press("slide_mod")
+				_peak_speed = 0.0
+				_grounded_frames = 0
+			elif phase_frames > 90 and p.grounded:
+				_grounded_frames += 1
+			if phase_frames > 210:
+				Input.action_release("slide_mod")
 				_check(_peak_speed > 11.0, "slide: пик разгона по склону %.1f м/с (ожидалось >11)" % _peak_speed)
 				_check(_grounded_frames > 96, "slide: на склоне %d из 120 кадров на земле (липнем к дюне)" % _grounded_frames)
 				_check(not p.walk_anim_active(), "slide: при скольжении ноги не семенят (стойка, не шаг)")

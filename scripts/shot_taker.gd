@@ -31,14 +31,15 @@ func _physics_process(_delta: float) -> void:
 		150:
 			_capture("shot_a_run.png") # игровой вид: ходьба в горку (шаг с анимацией)
 		200:
-			Input.action_release("move_back")
+			Input.action_release("move_forward") # закончили ходьбу в гору
 		220:
 			# разворот к маяку (камера за спиной — без спирали)
 			if main.player != null:
 				main.player.heading = PI
 			if main.cam_rig != null:
 				main.cam_rig.snap_behind(PI)
-			Input.action_press("move_forward") # спуск к маяку: сёрф
+			Input.action_press("move_forward") # спуск к маяку
+			Input.action_press("slide_mod") # сёрф — только осознанный (Shift)
 		260:
 			_look_back_camera() # взгляд НАЗАД, от солнца — теневая сторона дюн
 		290:
@@ -67,6 +68,7 @@ func _physics_process(_delta: float) -> void:
 			_capture("shot_c_trail.png") # следы сверху (шаги в гору + борозда сёрфа)
 		490:
 			Input.action_release("move_forward")
+			Input.action_release("slide_mod")
 			get_tree().quit(0)
 
 
