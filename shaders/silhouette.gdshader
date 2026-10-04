@@ -5,7 +5,7 @@ render_mode unshaded, fog_disabled, shadows_disabled, cull_disabled;
 
 uniform vec3 haze_color : source_color = vec3(0.96, 0.66, 0.55);
 uniform vec3 peak_color : source_color = vec3(0.34, 0.24, 0.42);
-uniform float haze_amount = 0.72; // насколько пик утопает в дымке
+uniform float haze_amount = 0.58; // насколько пик утопает в дымке
 
 varying vec3 w_pos;
 varying vec3 w_normal;

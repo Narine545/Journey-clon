@@ -17,14 +17,12 @@ func setup(game_ref) -> void:
 
 
 func _build_environment() -> void:
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.23, 0.21, 0.41)
-	sky_mat.sky_horizon_color = Color(1.00, 0.68, 0.46)
-	sky_mat.ground_bottom_color = Color(0.22, 0.16, 0.28)
-	sky_mat.ground_horizon_color = Color(0.98, 0.64, 0.47)
-	sky_mat.sun_angle_max = 9.0 # мягкий широкий ореол вокруг солнца
-	sky_mat.sun_curve = 0.07
-	sky_mat.sky_energy_multiplier = 1.0
+	# Физически достоверное небо (Рэлей + Mie + озон): градиент, ореол
+	# солнца и краски заката рождаются рассеянием, а не покраской.
+	# Half-res проход — дёшево даже на встроенной графике.
+	var sky_mat := ShaderMaterial.new()
+	sky_mat.shader = load("res://shaders/sky.gdshader")
+	sky_mat.set_shader_parameter("sun_direction", Game.SUN_DIR)
 
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
@@ -151,12 +149,12 @@ func _build_barchans() -> void:
 
 	# [позиция, радиус, высота, просадка рогов, поворот°]
 	var specs := [
-		[Vector2(-430.0, -640.0), 210.0, 46.0, 26.0, -8.0],
-		[Vector2(-40.0, -700.0), 260.0, 58.0, 30.0, 4.0],
-		[Vector2(310.0, -660.0), 230.0, 50.0, 27.0, -5.0],
-		[Vector2(650.0, -720.0), 200.0, 42.0, 24.0, 10.0],
-		[Vector2(-720.0, -730.0), 240.0, 52.0, 28.0, -12.0],
-		[Vector2(80.0, -560.0), 170.0, 36.0, 20.0, 6.0],
+		[Vector2(-440.0, -640.0), 240.0, 56.0, 30.0, -8.0],
+		[Vector2(-40.0, -700.0), 300.0, 70.0, 34.0, 4.0],
+		[Vector2(310.0, -660.0), 265.0, 60.0, 31.0, -5.0],
+		[Vector2(650.0, -720.0), 230.0, 52.0, 28.0, 10.0],
+		[Vector2(-720.0, -730.0), 275.0, 62.0, 32.0, -12.0],
+		[Vector2(80.0, -560.0), 195.0, 44.0, 23.0, 6.0],
 	]
 	for spec in specs:
 		var mi := MeshInstance3D.new()

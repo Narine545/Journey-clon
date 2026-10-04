@@ -14,7 +14,7 @@ render_mode unshaded, fog_disabled, cull_disabled;
 // =====================================================================
 
 uniform vec3 sun_dir = vec3(0.16, 0.44, -0.88);
-uniform vec3 dune_col : source_color = vec3(0.50, 0.34, 0.33);
+uniform vec3 dune_col : source_color = vec3(0.55, 0.36, 0.33);
 uniform vec3 dune_hot : source_color = vec3(0.90, 0.52, 0.32);
 uniform vec3 haze_col : source_color = vec3(1.00, 0.70, 0.48);
 uniform vec3 sky_col : source_color = vec3(0.27, 0.24, 0.44);
@@ -89,6 +89,6 @@ void fragment() {
 
 	// дымка мягче игровой: дальние дюны — призраки в мареве
 	float dist = length(p - ro);
-	float fog = 1.0 - exp(-pow(dist / 760.0, 2.0));
+	float fog = 1.0 - exp(-pow(dist / 880.0, 2.0));
 	ALBEDO = mix(col, haze_col, fog);
 }

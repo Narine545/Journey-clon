@@ -78,7 +78,8 @@ float mega_phase(vec2 wp, vec2 wdir, vec2 wperp) {
 	float u = dot(wp, wdir);
 	float v = dot(wp, wperp);
 	float rn = vnoise(wp * 0.15);
-	return v * 0.70 + u * 0.16 + rn * 2.6 + TIME * 0.25;
+	float rn2 = vnoise(wp * 0.07 + vec2(9.1, 3.3)); // вторая октава варпа
+	return v * 0.70 + u * 0.16 + rn * 2.6 + rn2 * 3.4 + TIME * 0.25;
 }
 
 void vertex() {
@@ -90,7 +91,8 @@ void vertex() {
 	vec2 wdir_v = normalize(wind_dir);
 	vec2 wperp_v = vec2(-wdir_v.y, wdir_v.x);
 	float mph = mega_phase(w_pos.xz, wdir_v, wperp_v);
-	float hrip = (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30) * 0.055 * wind_power;
+	float hrip = (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
+		+ cos(mph * 0.47 + 0.8) * 0.22) * 0.055 * wind_power;
 	hrip *= 1.0 - 0.6 * clamp(abs(h) * 10.0, 0.0, 1.0); // следы сглаживают рябь
 	VERTEX.y += h + hrip;
 	w_pos.y += h + hrip;
@@ -128,8 +130,9 @@ void fragment() {
 	float mph = mega_phase(wp, wdir, wperp);
 	float ms1 = sin(mph);
 	float ms2 = sin(mph * 2.63 + 1.7);
-	float mdv = (-0.62 * 0.70 * ms1 - 0.30 * 2.63 * 0.70 * ms2) * 0.055;
-	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2) * 0.055;
+	float ms3 = sin(mph * 0.47 + 0.8);
+	float mdv = (-0.62 * 0.70 * ms1 - 0.30 * 2.63 * 0.70 * ms2 - 0.22 * 0.47 * 0.70 * ms3) * 0.055;
+	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2 - 0.22 * 0.47 * 0.16 * ms3) * 0.055;
 	vec2 mgrad = (wperp * mdv + wdir * mdu) * wind_power * (1.0 - 0.6 * churn);
 	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y));
 

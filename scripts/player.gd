@@ -17,7 +17,7 @@ const JUMP_V := 8.6
 const GLIDE_G := 5.5 # гравитация при парении
 const AIR_ACCEL := 6.0
 
-const SURF_TRACK_SPEED := 10.8 # выше этой скорости — не шаги, а борозда
+const SURF_TRACK_SPEED := 6.5 # выше этой скорости — не шаги, а борозда
 
 const HOLD_SLOPE_ACC := 9.8 # ~22°: на более пологих склонах песок ДЕРЖИТ
 const STOP_SPEED := 2.4 # м/с: без ввода путник выпахивается до остановки
@@ -42,6 +42,7 @@ var _gait_phase := 0.0 # фаза шага: π = постановка стопы
 var _last_step_idx := 0
 var _foot_side := 1.0
 var _squash := 0.0
+var _sink := 0.0 # погружение в песок (подъём/сёрф — путник тонет)
 var _air_time := 0.0 # секунд с последнего касания земли
 var _track_on := false
 var _track_last := Vector2.ZERO
@@ -381,9 +382,9 @@ func _update_gait(delta: float) -> void:
 		if not _track_on:
 			_track_on = true
 			_track_last = behind
-		elif behind.distance_to(_track_last) >= 0.34:
+		elif behind.distance_to(_track_last) >= 0.26:
 			var spd01 := clampf(hspd / SURF_MAX, 0.0, 1.0)
-			sand.stamp_track(_track_last, behind, 0.62, 0.07 + 0.06 * spd01, 0.035)
+			sand.stamp_track(_track_last, behind, 0.62, 0.08 + 0.07 * spd01, 0.035)
 			_track_last = behind
 		return
 
@@ -414,7 +415,7 @@ func _plant_foot(pos: Vector2, fwd: Vector2, hspd: float) -> void:
 		p, f,
 		(0.46 + 0.22 * spd01) * randf_range(0.85, 1.20),  # длина — каждый шаг своя
 		(0.26 + 0.14 * spd01) * randf_range(0.85, 1.30),  # ширина
-		(0.048 + 0.034 * spd01 + 0.05 * uphill) * randf_range(0.80, 1.30),
+		(0.052 + 0.036 * spd01 + 0.08 * uphill) * randf_range(0.80, 1.35),
 		0.016 + 0.014 * spd01
 	)
 	# процедурный «пинок»: с подъёма песок выползает из-под стопы вбок
@@ -459,8 +460,12 @@ func _update_visual(delta: float) -> void:
 
 	# шаг: тело качается той же фазой, что и стопы бьют по песку
 	_squash = lerpf(_squash, 0.0, 1.0 - exp(-9.0 * delta))
+	# погружение: в гору песок поддаётся, на сёрфе режем глубоко —
+	# путник ЗАМЕТНО тонет в песке (до ~18 см)
+	var sink_t := clampf(_uphill01() * 0.75 + surf01 * 0.45 + clampf(spd / SURF_MAX, 0.0, 1.0) * 0.25, 0.0, 1.0)
+	_sink = lerpf(_sink, sink_t, 1.0 - exp(-6.0 * delta))
 	var bob_y := sin(_gait_phase) * 0.05 * clampf(spd / 6.0, 0.0, 1.0) * (1.0 - surf01)
-	visual.position = Vector3(0.0, bob_y - _squash * 0.30, 0.0)
+	visual.position = Vector3(0.0, bob_y - _squash * 0.30 - _sink * 0.18, 0.0)
 
 
 func _update_game_state() -> void:
