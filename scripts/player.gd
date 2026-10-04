@@ -297,7 +297,7 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 			sand.stamp_foot(
 				Vector2(pos.x, pos.z),
 				Vector2(sin(heading), cos(heading)),
-				0.30, 0.22, 0.030, 0.012
+				0.34, 0.24, 0.050, 0.018
 			)
 		vel += n * JUMP_V * 0.35 + Vector3.UP * JUMP_V * 0.75
 		grounded = false
@@ -363,7 +363,7 @@ func _step_air(delta: float, wish: Vector3) -> void:
 			sand.stamp_land(
 				Vector2(global_position.x, global_position.z),
 				Vector2(sin(heading), cos(heading)),
-				0.05 + 0.05 * impact01
+				0.06 + 0.08 * impact01
 			)
 		if audio != null and impact > 2.5:
 			audio.on_land(impact01)
@@ -412,7 +412,7 @@ func _update_gait(delta: float) -> void:
 			_track_last = behind
 		elif behind.distance_to(_track_last) >= 0.34:
 			var spd01 := clampf(hspd / SURF_MAX, 0.0, 1.0)
-			sand.stamp_track(_track_last, behind, 0.52, 0.05 + 0.05 * spd01, 0.03)
+			sand.stamp_track(_track_last, behind, 0.62, 0.07 + 0.06 * spd01, 0.035)
 			_track_last = behind
 		return
 
@@ -429,24 +429,44 @@ func _update_gait(delta: float) -> void:
 		_plant_foot(pos, fwd, hspd)
 
 
-## Постановка стопы: чередование левой/правой чуть в стороне от курса.
+## Постановка стопы: песок поддаётся бесформенно. Подъём — путник тонет
+## глубже (песок сползает из-под ног), каждый шаг — свой размер, поворот
+## и разброс, иногда выброс песка в сторону. Никаких «отпечатков ботинка».
 func _plant_foot(pos: Vector2, fwd: Vector2, hspd: float) -> void:
 	var spd01 := clampf(hspd / SURF_MAX, 0.0, 1.0)
 	var perp := Vector2(-fwd.y, fwd.x)
-	var p := pos - fwd * 0.30 + perp * (0.10 * _foot_side)
+	var uphill := _uphill01()
+	var p := pos - fwd * 0.30 + perp * (0.10 * _foot_side + randf_range(-0.04, 0.04))
 	_foot_side = -_foot_side
-	var rnd := randf_range(0.88, 1.12) # каждый шаг чуть другой
+	var f := fwd.rotated(randf_range(-0.35, 0.35)) # стопа развёрнута случайно
 	sand.stamp_foot(
-		p, fwd,
-		0.46 + 0.22 * spd01,               # длина стопы
-		0.24,                                # ширина
-		(0.034 + 0.028 * spd01) * rnd,      # глубина
-		0.015 + 0.013 * spd01               # вал выброшенного песка
+		p, f,
+		(0.46 + 0.22 * spd01) * randf_range(0.85, 1.20),  # длина — каждый шаг своя
+		(0.26 + 0.14 * spd01) * randf_range(0.85, 1.30),  # ширина
+		(0.048 + 0.034 * spd01 + 0.05 * uphill) * randf_range(0.80, 1.30),
+		0.016 + 0.014 * spd01
 	)
+	# процедурный «пинок»: с подъёма песок выползает из-под стопы вбок
+	if randf() < 0.30 + uphill * 0.45:
+		var kick := p + f * randf_range(0.10, 0.45) + perp * randf_range(-0.30, 0.30) * _foot_side
+		sand.stamp_track(kick, kick + f * 0.22, randf_range(0.10, 0.20), randf_range(0.02, 0.05), 0.010)
 	if audio != null:
 		audio.on_step(clampf(hspd / 10.0, 0.0, 1.0))
-	if spd01 > 0.30:
+	if spd01 > 0.30 or uphill > 0.4:
 		_step_dust.restart()
+
+
+## 0..1 — насколько движение сейчас В ГОРКУ (песок поддаётся глубже).
+func _uphill01() -> float:
+	if not grounded:
+		return 0.0
+	var hv := Vector3(vel.x, 0.0, vel.z)
+	if hv.length() < 0.5:
+		return 0.0
+	var n := terrain.ground_normal(global_position.x, global_position.z)
+	var g := Vector3.DOWN * GRAVITY
+	var downhill := (g - n * g.dot(n)).normalized()
+	return clampf(-hv.normalized().dot(downhill), 0.0, 1.0)
 
 
 func _update_fx() -> void:

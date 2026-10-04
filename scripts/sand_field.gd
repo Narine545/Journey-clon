@@ -22,8 +22,8 @@ const N := 800 # текселей на сторону карты
 const TEXEL := 0.12 # метров на тексель
 const EXTENT := float(N) * TEXEL # окно 96×96 м вокруг путника
 
-const MAX_DEPTH := 0.16 # предельное продавливание, м
-const MAX_RISE := 0.11 # предельная высота вала, м
+const MAX_DEPTH := 0.22 # предельное продавливание, м
+const MAX_RISE := 0.13 # предельная высота вала, м
 
 const SETTLE_BLEND := 0.26 # доля оседания за визит точки релаксации
 const TALUS_STEP := 0.075 # перепад на тексель (~32°), после которого песок «течёт»
@@ -122,12 +122,12 @@ func stamp_foot(
 	var half_len := p_len * 0.5
 	var a := pos - fwd * half_len
 	var b := pos + fwd * half_len
-	_stamp_capsule(a, b, p_wid * 0.5, p_depth, p_rim, 0.15, true)
+	_stamp_capsule(a, b, p_wid * 0.5, p_depth, p_rim, 0.19, true)
 
 
 ## Борозда скольжения: непрерывная churned ложбина с валиками по бокам.
 func stamp_track(a: Vector2, b: Vector2, p_wid: float, p_depth: float, p_rim: float) -> void:
-	_stamp_capsule(a, b, p_wid * 0.5, p_depth, p_rim, 0.18, false)
+	_stamp_capsule(a, b, p_wid * 0.5, p_depth, p_rim, 0.22, false)
 
 
 ## Отпечаток посадки: широкое овальное углубление от двух стоп.
@@ -314,7 +314,7 @@ func _stamp_capsule(a: Vector2, b: Vector2, half_wid: float, depth: float, rim: 
 					shape = 0.82 + 0.36 * _smoothf(along, -1.0, 0.3)
 					shape *= 1.0 - 0.25 * _smoothf(along, 0.3, 1.0)
 				var dl := depth * (0.45 + 0.55 * c01) * shape
-				dl *= 1.0 + _churn.get_noise_2d(cx, cz) * 0.30
+				dl *= 1.0 + _churn.get_noise_2d(cx, cz) * 0.55
 				delta = -dl
 			elif d < band:
 				var k := (d - half_wid) / rim_w
@@ -323,7 +323,7 @@ func _stamp_capsule(a: Vector2, b: Vector2, half_wid: float, depth: float, rim: 
 				if foot:
 					toe = 1.0 + 0.7 * _smoothf(t, 0.55, 1.0)
 				delta = rim * bell * bell * toe
-				delta *= 1.0 + _churn.get_noise_2d(cx + 7.0, cz) * 0.35
+				delta *= 1.0 + _churn.get_noise_2d(cx + 7.0, cz) * 0.50
 			if delta != 0.0:
 				var idx := _idx(gi, gj)
 				_grid[idx] = clampf(_grid[idx] + delta, -MAX_DEPTH, MAX_RISE)
