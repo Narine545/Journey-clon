@@ -61,20 +61,14 @@ jobs:
             exit 1
           fi
 
-      - name: Диагностика SSS-материала (источник предупреждения Compatibility)
+      - name: Аудит материалов персонажа (GL; диагностика SSS-предупреждения)
         run: |
           mkdir -p .ci-logs
-          {
-            echo "=== subsurf в импортированных .scn ==="
-            for f in .godot/imported/*.scn; do
-              if grep -qa "subsurf" "$f" 2>/dev/null; then
-                echo "НАЙДЕНО в: $f"
-                strings "$f" | grep -a -B6 -A6 "subsurf" | head -60 || true
-              fi
-            done
-            echo "=== subsurf в исходниках проекта ==="
-            grep -rn "subsurf" assets/ scenes/ scripts/ shaders/ 2>/dev/null || echo "не найдено"
-          } | tee .ci-logs/sss_probe.txt || true
+          xvfb-run -a -s "-screen 0 1600x900x24" \
+            godot_bin/godot --path . -s res://scripts/mat_audit.gd \
+            > mat_audit.log 2>&1 || true
+          cat mat_audit.log
+          cp -f mat_audit.log .ci-logs/ 2>/dev/null || true
 
       - name: Smoke run (автотест геймплея)
         run: |
@@ -138,6 +132,7 @@ jobs:
           cp -f import.log .ci-logs/ 2>/dev/null || true
           cp -f smoke.log .ci-logs/ 2>/dev/null || true
           cp -f render.log .ci-logs/ 2>/dev/null || true
+          cp -f mat_audit.log .ci-logs/ 2>/dev/null || true
           git add .ci-logs
           git commit -m "ci: артефакты прогона ${GITHUB_SHA::7}" || true
           git push origin HEAD:${GITHUB_REF#refs/heads/} || true

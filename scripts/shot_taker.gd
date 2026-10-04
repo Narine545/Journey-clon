@@ -15,7 +15,13 @@ func setup(main_ref) -> void:
 	_shot_dir = OS.get_environment("SHOT_DIR")
 	if _shot_dir.is_empty():
 		_shot_dir = "."
-	# первый отрезок — В ГОРКУ от спавна: чистая ходьба с анимацией шага
+	# первый отрезок — В ГОРКУ от спавна: чистая ходьба с анимацией шага.
+	# Курс и камеру задаём явно: иначе камера доворачивается пол-оборота
+	# и путница по спирали уходит на спуск вместо прямой ходьбы.
+	if main.player != null:
+		main.player.heading = 0.0
+	if main.cam_rig != null:
+		main.cam_rig._yaw = 0.0
 	Input.action_press("move_back")
 
 
@@ -27,6 +33,11 @@ func _physics_process(_delta: float) -> void:
 		200:
 			Input.action_release("move_back")
 		220:
+			# разворот к маяку (камера за спиной — без спирали)
+			if main.player != null:
+				main.player.heading = PI
+			if main.cam_rig != null:
+				main.cam_rig._yaw = PI
 			Input.action_press("move_forward") # спуск к маяку: сёрф
 		260:
 			_look_back_camera() # взгляд НАЗАД, от солнца — теневая сторона дюн
