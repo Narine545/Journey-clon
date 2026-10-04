@@ -163,7 +163,6 @@ scripts/smoke_test.gd— headless-автотест (JOURNEY_SMOKE=1)
 shaders/sand.gdshader       — шейдер песка (смещения + нормали следов)
 shaders/cloth.gdshader      — ткань путника и шарфа
 shaders/beacon.gdshader     — столб света
-shaders/silhouette.gdshader — дальние пики
 ```
 
 ## Что дальше (по плану этапов)
