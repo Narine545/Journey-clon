@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode unshaded, fog_disabled, shadows_disabled;
+render_mode unshaded, fog_disabled, shadows_disabled, cull_disabled;
 
 // Дальние пики-силуэты: чуть темнее дымки, с тёплой кромкой к солнцу.
 

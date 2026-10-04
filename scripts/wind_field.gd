@@ -51,7 +51,8 @@ func setup(game_ref, player_ref: Player, terrain_ref: Terrain) -> void:
 	terrain = terrain_ref
 
 	_amb_mi = _make_mi(Color(0.62, 0.44, 0.24, 0.40))
-	_gust_mi = _make_mi(Color(0.90, 0.60, 0.28, 0.55))
+	# шлейф сёрфа — пыльный (не аддитивный, не «золотые искры»)
+	_gust_mi = _make_mi_ex(Color(0.94, 0.82, 0.66, 0.42), false)
 	add_child(_amb_mi)
 	add_child(_gust_mi)
 
@@ -222,7 +223,11 @@ func _spawn(gusty: bool, anywhere: bool) -> Wisp:
 
 
 func _make_mi(tint: Color) -> MeshInstance3D:
+	return _make_mi_ex(tint, true)
+
+
+func _make_mi_ex(tint: Color, additive: bool) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
-	mi.material_override = ProcTextures.streak_material(tint)
+	mi.material_override = ProcTextures.streak_material(tint, additive)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi

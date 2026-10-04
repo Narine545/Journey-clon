@@ -45,7 +45,6 @@ var _squash := 0.0
 var _air_time := 0.0 # секунд с последнего касания земли
 var _track_on := false
 var _track_last := Vector2.ZERO
-var _surf_sparks: CPUParticles3D
 var _land_dust: CPUParticles3D
 var _step_dust: CPUParticles3D
 
@@ -64,33 +63,6 @@ func setup(game_ref, terrain_ref: Terrain, sand_ref: SandField) -> void:
 
 
 func _build_fx() -> void:
-	# брызги песка из-под ног на настоящем сёрфе: вытянутые золотые
-	# чёрточки (не круглые облачка!), короткая жизнь. local_coords
-	# по умолчанию false — частицы остаются в мире позади путника.
-	_surf_sparks = CPUParticles3D.new()
-	_surf_sparks.amount = 70
-	_surf_sparks.lifetime = 0.28
-	_surf_sparks.lifetime_randomness = 0.3
-	_surf_sparks.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	_surf_sparks.emission_sphere_radius = 0.15
-	_surf_sparks.spread = 14.0
-	_surf_sparks.initial_velocity_min = 3.0
-	_surf_sparks.initial_velocity_max = 6.0
-	_surf_sparks.gravity = Vector3(0.0, -12.0, 0.0)
-	_surf_sparks.particle_flag_align_y = true
-	_surf_sparks.scale_amount_min = 0.7
-	_surf_sparks.scale_amount_max = 1.3
-	_surf_sparks.color_ramp = ProcTextures.fade_ramp()
-	var spray_mesh := BoxMesh.new()
-	spray_mesh.size = Vector3(0.018, 0.30, 0.018)
-	spray_mesh.material = ProcTextures.streak_material(Color(0.80, 0.52, 0.22, 0.60))
-	_surf_sparks.mesh = spray_mesh
-	_surf_sparks.visibility_aabb = AABB(Vector3(-8.0, -8.0, -8.0), Vector3(16.0, 16.0, 16.0))
-	_surf_sparks.position = Vector3(0.0, 0.10, 0.0)
-	_surf_sparks.emitting = false
-	_surf_sparks.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_surf_sparks)
-
 	# пыль при посадке — мягкое облачко цвета песка (не аддитивное)
 	_land_dust = CPUParticles3D.new()
 	_land_dust.amount = 40
@@ -207,7 +179,6 @@ func _physics_process(delta: float) -> void:
 		_step_air(delta, wish)
 	_bounds(delta)
 	_update_gait(delta)
-	_update_fx()
 	_update_visual(delta)
 	_update_game_state()
 
@@ -467,18 +438,6 @@ func _uphill01() -> float:
 	var g := Vector3.DOWN * GRAVITY
 	var downhill := (g - n * g.dot(n)).normalized()
 	return clampf(-hv.normalized().dot(downhill), 0.0, 1.0)
-
-
-func _update_fx() -> void:
-	# золотые брызги — только настоящий сёрф (обычный бег с горы не считается)
-	var hv := Vector3(vel.x, 0.0, vel.z)
-	var hspd := hv.length()
-	var spark := grounded and hspd > 11.5
-	_surf_sparks.emitting = spark
-	if spark:
-		# летят назад и чуть вверх от ног, ложась дугой на песок
-		var back := -hv / hspd
-		_surf_sparks.direction = (back + Vector3.UP * 0.30).normalized()
 
 
 func _update_visual(delta: float) -> void:

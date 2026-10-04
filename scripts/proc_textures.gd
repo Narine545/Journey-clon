@@ -53,12 +53,14 @@ static func soft_material(tint: Color) -> StandardMaterial3D:
 
 
 ## Штрих/лента песка: без билборда, двусторонняя (плоская лента видна
-## с обеих сторон). Слабо аддитивная, тёплая: песчинки «ловят солнце»,
-## а не светят белым.
-static func streak_material(tint: Color) -> StandardMaterial3D:
+## с обеих сторон). additive=true — «ловит солнце»; false — пыльный след.
+static func streak_material(tint: Color, additive := true) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	if additive:
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	else:
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.albedo_color = tint
