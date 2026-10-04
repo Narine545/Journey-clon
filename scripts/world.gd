@@ -61,7 +61,7 @@ func _build_environment() -> void:
 func _build_sun() -> void:
 	# Свет нужен в первую очередь небу (диск солнца).
 	_sun = DirectionalLight3D.new()
-	var forward := -game.sun_dir.normalized()
+	var forward: Vector3 = -(game.sun_dir as Vector3).normalized()
 	_sun.basis = Basis.looking_at(forward, Vector3.UP)
 	_sun.light_color = Color(1.0, 0.83, 0.66)
 	_sun.light_energy = 1.15
