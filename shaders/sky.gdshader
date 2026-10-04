@@ -56,6 +56,19 @@ uniform float base_altitude = 4.0;
 /** Цвет «планеты» под ногами — золото песка. */
 uniform vec3 ground_color = vec3(0.42, 0.28, 0.17);
 
+group_uniforms Clouds;
+
+/** Облака: покрытие неба (0 — чисто, 1 — плотно). */
+uniform float cloud_cover : hint_range(0.0, 1.0, 0.01) = 0.5;
+/** Резкость края: меньше — мягче и пушистее. */
+uniform float cloud_softness : hint_range(0.05, 0.6, 0.01) = 0.22;
+/** Размер облаков: больше — крупнее. */
+uniform float cloud_size : hint_range(0.4, 3.0, 0.05) = 1.25;
+/** Скорость дрейфа, м/с. */
+uniform float cloud_drift : hint_range(0.0, 25.0, 0.5) = 7.0;
+/** Непрозрачность облачных форм. */
+uniform float cloud_opacity : hint_range(0.0, 1.0, 0.01) = 0.92;
+
 group_uniforms Quality;
 
 uniform int view_samples : hint_range(0, 256) = 12;
@@ -189,6 +202,76 @@ vec3 integrate_radiance(vec3 ray_origin, vec3 ray_direction, float target_distan
 	return accumulated_radiance + sun_disk;
 }
 
+// ---------------------------------------------------------------------
+// Облака: мягкий кучевой «потолок» — по мотивам Sunshine Clouds, но
+// без композитора и compute (в Compatibility их нет): слой FBM-форм
+// рисуется прямо в небе, дёшево и без единой текстуры. Светотень —
+// пробой формы со стороны солнца, у кромки против солнца — серебро.
+// ---------------------------------------------------------------------
+float chash(vec2 p) {
+	p = fract(p * vec2(127.1, 311.7));
+	p += dot(p, p + 34.23);
+	return fract(p.x * p.y);
+}
+
+float cnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(
+		mix(chash(i), chash(i + vec2(1.0, 0.0)), f.x),
+		mix(chash(i + vec2(0.0, 1.0)), chash(i + vec2(1.0, 1.0)), f.x),
+		f.y
+	);
+}
+
+float fbm2(vec2 p) {
+	float v = 0.0;
+	float a = 0.5;
+	mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
+	for (int i = 0; i < 4; i++) {
+		v += a * cnoise(p);
+		p = rot * p * 2.02;
+		a *= 0.5;
+	}
+	return v;
+}
+
+/** Форма облака: низкочастотная масса + высокочастичная «кучевость» кромки. */
+float cloud_shape(vec2 p) {
+	return fbm2(p) + (fbm2(p * 2.6 + vec2(11.3, 7.1)) - 0.5) * 0.16;
+}
+
+vec4 cloud_layer(vec3 dir, vec3 sun_dir) {
+	// только над горизонтом; у самого горизонта растворяются в даль
+	float band = smoothstep(0.02, 0.16, dir.y);
+	if (band <= 0.002) {
+		return vec4(0.0);
+	}
+	vec2 uv = dir.xz / (dir.y + 0.10);
+	vec2 p = uv * (3.0 / cloud_size)
+		+ vec2(0.916, 0.401) * TIME * cloud_drift * 0.006;
+	float shape = cloud_shape(p);
+	float thr = mix(0.70, 0.34, cloud_cover);
+	float density = smoothstep(thr, thr + cloud_softness, shape);
+	if (density <= 0.003) {
+		return vec4(0.0);
+	}
+	// тень/свет: со стороны солнца форма плотнее — значит, мы в тени
+	float shape_sun = cloud_shape(p + normalize(sun_dir.xz + vec2(1e-4, 1e-4)) * 0.34);
+	float lit = clamp(0.5 + (shape - shape_sun) * 2.1, 0.0, 1.0);
+	// низкое солнце — облака теплеют (закатная краска)
+	float elev = clamp(sun_dir.y * 1.7, 0.0, 1.0);
+	vec3 sun_col = mix(vec3(1.06, 0.63, 0.40), vec3(1.02, 0.99, 0.95), elev);
+	vec3 shade_col = mix(vec3(0.60, 0.50, 0.50), vec3(0.56, 0.60, 0.70), elev);
+	vec3 col = mix(shade_col, sun_col, lit);
+	// серебряная кромка: тонкий край облака против солнца светится
+	float rim = 1.0 - smoothstep(0.0, 0.45, density);
+	float towards = max(dot(dir, sun_dir), 0.0);
+	col += vec3(1.0, 0.87, 0.68) * pow(rim, 3.0) * pow(towards, 5.0) * 1.35;
+	return vec4(col, density * band * cloud_opacity);
+}
+
 void sky() {
 	vec3 final_color = vec3(0.0);
 	vec3 sun_dir = normalize(sun_direction);
@@ -219,6 +302,10 @@ void sky() {
 		vec3 to_eye = get_transmittance(ray_origin, ray_direction, atmosphere_distance, view_samples);
 		final_color += ground_albedo * to_eye;
 	}
+	// кучевые облака поверх атмосферы
+	vec4 cl = cloud_layer(ray_direction, sun_dir);
+	final_color = mix(final_color, cl.rgb, cl.a);
+
 	// дебандинг: физический градиент не должен полосить
 	float dither = fract(sin(dot(SCREEN_UV * vec2(917.0, 533.0), vec2(12.9898, 78.233))) * 43758.5453);
 	COLOR = final_color + vec3((dither - 0.5) * (2.5 / 255.0));
