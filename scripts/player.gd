@@ -48,7 +48,11 @@ var _track_on := false
 var _track_last := Vector2.ZERO
 var _land_dust: CPUParticles3D
 var _step_dust: CPUParticles3D
-var _cloth_mat: ShaderMaterial
+var _char: Node3D
+var _anim_player: AnimationPlayer
+var _anim_sm: AnimationStateMachine
+var _skel: Skeleton3D
+var _neck_idx := -1
 
 
 func setup(game_ref, terrain_ref: Terrain, sand_ref: SandField) -> void:
@@ -128,50 +132,29 @@ func _build_body() -> void:
 	visual = Node3D.new()
 	add_child(visual)
 
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://shaders/cloth.gdshader")
-	_cloth_mat = mat
-	mat.set_shader_parameter("sun_dir", game.sun_dir)
-	mat.set_shader_parameter("cloth_main", Color(0.50, 0.15, 0.15))
-	mat.set_shader_parameter("cloth_lit", Color(1.0, 0.60, 0.40))
-	mat.set_shader_parameter("horizon_col", Game.HORIZON_COL)
-	mat.set_shader_parameter("sky_col", Game.SKY_COL)
-	mat.set_shader_parameter("fog_distance", Game.FOG_DISTANCE)
+	# Розали Блэквуд — готовая модель с анимациями и физикой волос
+	# (MIT, ассет Godot Asset Library; путь/лицензия — в README).
+	# Кинематика, походка и следы наши — модель чисто визуальная.
+	var char_scene: PackedScene = load("res://scenes/rosalie_blackwood.tscn")
+	if char_scene == null:
+		push_error("PLAYER: нет сцены персонажа res://scenes/rosalie_blackwood.tscn")
+		return
+	_char = char_scene.instantiate()
+	_anim_sm = _char.get_node_or_null("AnimationStateMachine")
+	if _anim_sm != null:
+		_anim_sm.initial_animation = &"Idle"
+	visual.add_child(_char)
+	_anim_player = _char.get_node_or_null("AnimationPlayer")
+	_skel = _char.get_node_or_null("Armature/Skeleton3D")
+	if _skel != null:
+		_neck_idx = _skel.find_bone("Neck")
 
-	#robe
-	var robe := MeshInstance3D.new()
-	var robe_mesh := CylinderMesh.new()
-	robe_mesh.top_radius = 0.22
-	robe_mesh.bottom_radius = 0.44
-	robe_mesh.height = 0.55
-	robe_mesh.radial_segments = 14
-	robe.mesh = robe_mesh
-	robe.material_override = mat
-	robe.position = Vector3(0.0, 0.30, 0.0)
-	visual.add_child(robe)
-
-	# тело
-	var body := MeshInstance3D.new()
-	var body_mesh := CapsuleMesh.new()
-	body_mesh.radius = 0.26
-	body_mesh.height = 1.05
-	body.mesh = body_mesh
-	body.material_override = mat
-	body.position = Vector3(0.0, 0.66, 0.0)
-	visual.add_child(body)
-
-	# голова
-	var head := MeshInstance3D.new()
-	var head_mesh := SphereMesh.new()
-	head_mesh.radius = 0.19
-	head_mesh.height = 0.38
-	head.mesh = head_mesh
-	head.material_override = mat
-	head.position = Vector3(0.0, 1.30, 0.05)
-	visual.add_child(head)
-
-	for child in visual.get_children():
-		child.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Шаги ассета — ботинки по твёрдому полу — нам не подходят: у нас свой
+	# синтез песка, привязанный к настоящим отпечаткам. Глушим узел,
+	# не трогая сами анимации (аудиотреки замолкают вместе с ним).
+	var steps: AudioStreamPlayer3D = _char.get_node_or_null("FootstepPlayer")
+	if steps != null:
+		steps.volume_db = -80.0
 
 
 func _physics_process(delta: float) -> void:
@@ -183,6 +166,7 @@ func _physics_process(delta: float) -> void:
 	_bounds(delta)
 	_update_gait(delta)
 	_update_visual(delta)
+	_update_animation(delta)
 	_update_game_state()
 
 
@@ -475,12 +459,64 @@ func _update_game_state() -> void:
 	game.player_altitude = global_position.y
 
 
-## Направление солнца на ткани (DEV-панель).
-func apply_sun(dir: Vector3) -> void:
-	if _cloth_mat != null:
-		_cloth_mat.set_shader_parameter("sun_dir", dir)
+## Солнце для персонажа: модель освещается DirectionalLight напрямую
+## (cell-шейдер читает LIGHT), отдельной ткани больше нет (DEV-панель).
+func apply_sun(_dir: Vector3) -> void:
+	pass
 
 
-## Мировая точка крепления шарфа.
+## Мировая точка крепления шарфа: кость шеи Розали (живёт с анимацией),
+## чуть выше и позади — шарф лежит на плечах. Без скелета — запасная высота.
 func neck_pos() -> Vector3:
-	return visual.global_transform * Vector3(0.0, 1.05, -0.16)
+	if _skel != null and _neck_idx >= 0:
+		var pose: Transform3D = _skel.get_bone_global_pose(_neck_idx)
+		return _skel.global_transform * (pose.origin + Vector3(0.0, 0.07, -0.12))
+	return visual.global_transform * Vector3(0.0, 1.45, -0.12)
+
+
+## Показ/скрытие тела для камеры от первого лица (шарф и пыль остаются).
+func set_body_visible(v: bool) -> void:
+	if visual != null:
+		visual.visible = v
+
+
+func body_visible() -> bool:
+	return visual != null and visual.visible
+
+
+## Анимации Розали: та же логика, что в ассетном контроллере, но ведомая
+## нашей физической скоростью. Start/Stop с перекрытием стоп, темп Walk
+## следует за скоростью (авторская анимация — на шаг ~1 м/с).
+func _update_animation(_delta: float) -> void:
+	if _anim_sm == null or _anim_player == null:
+		return
+	var hv := Vector3(vel.x, 0.0, vel.z)
+	var hspd := hv.length()
+	var state: StringName = _anim_sm.get_current_state()
+
+	if not grounded:
+		# прыжковых анимаций в ассете нет: в полёте — спокойная поза,
+		# парение читается шарфом и наклоном тела
+		if state != &"Idle" and state != &"":
+			_anim_sm.travel(&"Idle")
+		_anim_player.speed_scale = 1.0
+		return
+
+	if hspd > 0.7:
+		if state == &"Idle" or String(state).begins_with("Walk_Stop"):
+			_anim_player.speed_scale = 1.2
+			_anim_sm.travel(&"Walk_Start")
+		elif state == &"Walk_Start":
+			_anim_player.speed_scale = 1.2
+		else:
+			# Walk: темп ходьбы тянется за скоростью (7 м/с — быстрая рысь)
+			_anim_player.speed_scale = clampf(hspd * 0.5, 0.8, 2.4)
+	else:
+		_anim_player.speed_scale = 1.0
+		if state == &"Walk":
+			# остановка с той ноги, что сейчас впереди
+			var t := _anim_player.current_animation_position / _anim_player.current_animation_length
+			if t >= 0.2 and t <= 0.75:
+				_anim_sm.travel(&"Walk_Stop_Right")
+			else:
+				_anim_sm.travel(&"Walk_Stop_Left")

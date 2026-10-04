@@ -33,6 +33,16 @@ func _physics_process(_delta: float) -> void:
 			_capture("shot_e_side.png") # и здесь тоже
 		285:
 			_game_camera() # вернуть игровую камеру
+		320:
+			Input.action_press("camera_toggle") # первое лицо
+		321:
+			Input.action_release("camera_toggle")
+		350:
+			_capture("shot_f_fp.png") # вид глазами Розали (шарф летит за спиной)
+		352:
+			Input.action_press("camera_toggle") # назад, в третье лицо
+		353:
+			Input.action_release("camera_toggle")
 		375:
 			_capture("shot_b_run2.png") # ещё игровой вид позднее
 		385:
