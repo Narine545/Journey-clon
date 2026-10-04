@@ -63,8 +63,11 @@ func _physics_process(_delta: float) -> void:
 					_walk_ok += 1
 				if spd <= 3.05 and spd >= 0.4:
 					_walk_speed_ok += 1
+				print("[SMOKE] ходьба: кадр %d pos=(%.1f, %.1f) spd=%.2f state=%s" % [
+					phase_frames, p.global_position.x, p.global_position.z, spd,
+					p.walk_anim_active()])
 			if phase_frames == 130:
-				Input.action_release("move_back")
+				Input.action_release("move_forward")
 			if phase_frames > 260:
 				_check(_walk_ok >= _walk_samples - 2,
 					"walk: анимация шага играла %d из %d проверок" % [_walk_ok, _walk_samples])

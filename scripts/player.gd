@@ -135,7 +135,31 @@ func _build_body() -> void:
 	# Розали Блэквуд — готовая модель с анимациями и физикой волос
 	# (MIT, ассет Godot Asset Library; путь/лицензия — в README).
 	# Кинематика, походка и следы наши — модель чисто визуальная.
+	# (временная диагностика SSS: bisect загрузок до сцены персонажа)
+	print("[AUDIT2] материалы")
+	for mpath in [
+		"res://assets/Rosalie_Blackwood/materials/Body_Skin_Material.tres",
+		"res://assets/Rosalie_Blackwood/materials/Cloth_Material.tres",
+		"res://assets/Rosalie_Blackwood/materials/Dot_Material.tres",
+		"res://assets/Rosalie_Blackwood/materials/Eye_Shadow_Material.tres",
+		"res://assets/Rosalie_Blackwood/materials/Face_Skin_Material.tres",
+		"res://assets/Rosalie_Blackwood/materials/Facial_Features_Material.tres",
+		"res://assets/Rosalie_Blackwood/materials/Hair_Material.tres",
+		"res://assets/Rosalie_Blackwood/materials/Iris_Color_Material.tres",
+		"res://assets/Rosalie_Blackwood/materials/Iris_Higlights_Material.tres",
+	]:
+		load(mpath)
+	print("[AUDIT2] ресурсы физики волос")
+	for rpath in [
+		"res://assets/Rosalie_Blackwood/resources/Hair_Wiggle.tres",
+		"res://assets/Rosalie_Blackwood/resources/Fringe_Wiggle.tres",
+		"res://assets/Rosalie_Blackwood/resources/Belt_Wiggle.tres",
+		"res://assets/Rosalie_Blackwood/resources/Footstep_Stream_Randomizer.tres",
+	]:
+		load(rpath)
+	print("[AUDIT2] сцена персонажа")
 	var char_scene: PackedScene = load("res://scenes/rosalie_blackwood.tscn")
+	print("[AUDIT2] сцена загружена")
 	if char_scene == null:
 		push_error("PLAYER: нет сцены персонажа res://scenes/rosalie_blackwood.tscn")
 		return
