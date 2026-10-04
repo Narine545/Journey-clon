@@ -53,6 +53,23 @@ func setup(player_ref: Player, terrain_ref: Terrain) -> void:
 	cam.look_at(_look, Vector3.UP)
 
 
+## Мгновенно поставить камеру за путницей по курсу yaw — без длинного
+## облёта (нужно тестам и служебным разворотам: иначе камера пол-секунды
+## крутится вокруг героини, а ввод «от камеры» закручивает её спиралью).
+func snap_behind(yaw: float) -> void:
+	_yaw = yaw
+	var p: Vector3 = player.global_position
+	var f := Vector3(sin(_yaw), 0.0, cos(_yaw))
+	_pos = p + Vector3.UP * 2.1 - f * 5.4
+	_look = p + Vector3.UP * 1.4 + f * 2.2
+	if terrain != null:
+		var gh := terrain.ground_height(_pos.x, _pos.z) + 0.75
+		if _pos.y < gh:
+			_pos.y = gh
+	cam.global_position = _pos
+	cam.look_at(_look, Vector3.UP)
+
+
 func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("camera_toggle"):
 		fp_mode = not fp_mode

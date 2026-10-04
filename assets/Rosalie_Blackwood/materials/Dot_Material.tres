@@ -2,7 +2,7 @@
 
 [sub_resource type="Shader" id="Shader_lwupp"]
 code = "shader_type spatial;
-render_mode diffuse_toon, specular_toon, depth_prepass_alpha, sss_mode_skin;
+render_mode diffuse_toon, specular_toon, depth_prepass_alpha;
 
 // Общие параметры
 uniform sampler2D albedo_texture : source_color;
@@ -16,7 +16,6 @@ uniform float shadow_softness : hint_range(0.0, 0.2) = 0.05;
 uniform bool use_sdf = false;
 uniform sampler2D sdf_map : source_color;
 uniform bool hard_transition = false;
-uniform float sss_strength : hint_range(0.0, 0.5) = 0.08;
 
 varying vec2 uv2_coords;
 
@@ -39,10 +38,6 @@ void fragment() {
     ALBEDO = base_color;
     ALPHA = final_alpha;
     
-    // SSS применяется только в SDF режиме
-    if (use_sdf) {
-        SSS_STRENGTH = sss_strength;
-    }
 }
 
 void light() {
@@ -129,4 +124,3 @@ shader_parameter/shadow_color = Color(0.4, 0.35, 0.5, 1)
 shader_parameter/shadow_softness = 0.05
 shader_parameter/use_sdf = false
 shader_parameter/hard_transition = false
-shader_parameter/sss_strength = 0.08

@@ -48,11 +48,12 @@ func _physics_process(_delta: float) -> void:
 			# невозможен), значит анимация ног обязана играть. Затем отпуск —
 			# песок должен остановить путницу.
 			if phase_frames == 1:
-				# лицом и камерой в горку: иначе camera-yaw догоняет курс
-				# через пол-оборота и путница по спирали уезжает на спуск
+				# лицом и камерой В ГОРКУ, идём ВПЕРЁД (ввод — «от камеры»):
+				# иначе камера доворачивается пол-оборота и путница по спирали
+				# уезжает на спуск вместо прямой ходьбы
 				p.heading = 0.0
-				main.cam_rig._yaw = 0.0
-				Input.action_press("move_back")
+				main.cam_rig.snap_behind(0.0)
+				Input.action_press("move_forward")
 			if phase_frames % 12 == 0 and phase_frames <= 130:
 				_path.append(Vector2(p.global_position.x, p.global_position.z))
 			if phase_frames % 10 == 0 and phase_frames >= 30 and phase_frames <= 110:
