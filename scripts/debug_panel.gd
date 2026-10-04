@@ -145,4 +145,3 @@ func _on_sun_changed(elev: Variant, azim: Variant) -> void:
 	main.world.apply_sun(dir)
 	main.terrain.apply_sun(dir)
 	main.player.apply_sun(dir)
-	main.scarf.apply_sun(dir)

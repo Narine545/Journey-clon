@@ -61,6 +61,21 @@ jobs:
             exit 1
           fi
 
+      - name: Диагностика SSS-материала (источник предупреждения Compatibility)
+        run: |
+          mkdir -p .ci-logs
+          {
+            echo "=== subsurf в импортированных .scn ==="
+            for f in .godot/imported/*.scn; do
+              if grep -qa "subsurf" "$f" 2>/dev/null; then
+                echo "НАЙДЕНО в: $f"
+                strings "$f" | grep -a -B6 -A6 "subsurf" | head -60 || true
+              fi
+            done
+            echo "=== subsurf в исходниках проекта ==="
+            grep -rn "subsurf" assets/ scenes/ scripts/ shaders/ 2>/dev/null || echo "не найдено"
+          } | tee .ci-logs/sss_probe.txt || true
+
       - name: Smoke run (автотест геймплея)
         run: |
           JOURNEY_SMOKE=1 godot_bin/godot --headless --path . --quit-after 4000 > smoke.log 2>&1

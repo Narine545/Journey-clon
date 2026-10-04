@@ -10,7 +10,6 @@ var cam_rig: CameraRig
 var sand: SandField
 var audio
 var wind: WindField
-var scarf: Scarf
 var debug_panel: DebugPanel
 
 
@@ -46,10 +45,6 @@ func _ready() -> void:
 	wind = WindField.new()
 	add_child(wind)
 	wind.setup(game, player, terrain)
-
-	scarf = Scarf.new()
-	add_child(scarf)
-	scarf.setup(game, player)
 
 	cam_rig = CameraRig.new()
 	add_child(cam_rig)

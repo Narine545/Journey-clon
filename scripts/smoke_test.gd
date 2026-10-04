@@ -13,6 +13,9 @@ var results: Array[String] = []
 var _fail := false
 var _peak_speed := 0.0
 var _grounded_frames := 0
+var _walk_samples := 0
+var _walk_ok := 0
+var _walk_speed_ok := 0
 var _path: Array[Vector2] = [] # запись пути для проверки следов
 var _depth0 := 0.0 # глубина свежего следа для проверки заноса
 var _fill_pos := Vector2.ZERO # где штампнули след для проверки заноса
@@ -41,23 +44,28 @@ func _physics_process(_delta: float) -> void:
 				_check(p.grounded and absf(p.global_position.y - gh) < 0.3, "idle: на земле")
 				_next()
 
-		1: # бег к маяку, затем ОТПУСКАЕМ клавиши — песок должен остановить
+		1: # ходьба В ГОРКУ от спавна: там шаг гарантирован (в горку сёрф
+			# невозможен), значит анимация ног обязана играть. Затем отпуск —
+			# песок должен остановить путницу.
 			if phase_frames == 1:
-				Input.action_press("move_forward")
-			if phase_frames % 12 == 0 and phase_frames <= 240:
+				Input.action_press("move_back")
+			if phase_frames % 12 == 0 and phase_frames <= 130:
 				_path.append(Vector2(p.global_position.x, p.global_position.z))
-			if phase_frames == 240:
-				Input.action_release("move_forward")
-				var dz: float = Terrain.SPAWN.y - p.global_position.z
+			if phase_frames % 10 == 0 and phase_frames >= 30 and phase_frames <= 110:
 				var spd := Vector3(p.vel.x, 0.0, p.vel.z).length()
-				_check(dz > 20.0, "run: к маяку dz=%.1f м (ожидалось >20)" % dz)
-				_check(spd > 3.0, "run: скорость %.1f м/с" % spd)
-				var st: int = main.sand.stamp_count
-				_check(st > 12, "run: следов отштамповано %d (ожидалось >12)" % st)
-			if phase_frames == 300:
-				print("[SMOKE] выбег (без ввода): %.1f м/с" % p.vel.length())
-			if phase_frames > 460:
-				_check(p.vel.length() < 1.2, "stop: без ввода остановился (%.2f м/с)" % p.vel.length())
+				_walk_samples += 1
+				if p.walk_anim_active():
+					_walk_ok += 1
+				if spd <= 3.05 and spd >= 0.4:
+					_walk_speed_ok += 1
+			if phase_frames == 130:
+				Input.action_release("move_back")
+			if phase_frames > 260:
+				_check(_walk_ok >= _walk_samples - 2,
+					"walk: анимация шага играла %d из %d проверок" % [_walk_ok, _walk_samples])
+				_check(_walk_speed_ok >= _walk_samples - 2,
+					"walk: скорость шага в норме %d из %d проверок" % [_walk_speed_ok, _walk_samples])
+				_check(p.vel.length() < 1.0, "stop: без ввода остановился (%.2f м/с)" % p.vel.length())
 				_check(p.grounded, "stop: на земле")
 				_check_prints_real(p)
 				_next()
@@ -76,6 +84,7 @@ func _physics_process(_delta: float) -> void:
 			if phase_frames > 120:
 				_check(_peak_speed > 11.0, "slide: пик разгона по склону %.1f м/с (ожидалось >11)" % _peak_speed)
 				_check(_grounded_frames > 96, "slide: на склоне %d из 120 кадров на земле (липнем к дюне)" % _grounded_frames)
+				_check(not p.walk_anim_active(), "slide: при скольжении ноги не семенят (стойка, не шаг)")
 				_next()
 
 		3: # прыжок, затем удержание — парение

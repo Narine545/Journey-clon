@@ -10,17 +10,17 @@ extends Node3D
 ## вместе со всеми своими следами (terrain.ground_height).
 
 const GRAVITY := 26.0
-const WALK_ACCEL := 34.0
-const WALK_MAX := 7.0 # бодрая рысь — следы всё ещё читаются
+const WALK_ACCEL := 26.0
+const WALK_MAX := 2.4 # шаг анимации рассчитан на ~1 м/с: темп = скорости, стопы не скользят
 const SURF_MAX := 17.5
 const JUMP_V := 8.6
 const GLIDE_G := 5.5 # гравитация при парении
 const AIR_ACCEL := 6.0
 
-const SURF_TRACK_SPEED := 6.5 # выше этой скорости — не шаги, а борозда
+const SURF_TRACK_SPEED := 3.0 # выше этой скорости — не шаги, а СКАЛЬЗЯЩИЙ сёрф: ноги не движутся
 
 const HOLD_SLOPE_ACC := 9.8 # ~22°: на более пологих склонах песок ДЕРЖИТ
-const STOP_SPEED := 2.4 # м/с: без ввода путник выпахивается до остановки
+const STOP_SPEED := 1.1 # м/с: без ввода путник выпахивается до остановки
 
 const BOUND_X := 185.0
 const BOUND_Z_MIN := -445.0
@@ -51,8 +51,8 @@ var _step_dust: CPUParticles3D
 var _char: Node3D
 var _anim_player: AnimationPlayer
 var _anim_sm: AnimationStateMachine
-var _skel: Skeleton3D
-var _neck_idx := -1
+var _plant_off := 0.0 # посадка опорной стопы на рельеф (FootPlant)
+var _n_sm := Vector3.UP # сглаженная нормаль дюны (наклон корпуса при ходьбе)
 
 
 func setup(game_ref, terrain_ref: Terrain, sand_ref: SandField) -> void:
@@ -145,9 +145,15 @@ func _build_body() -> void:
 		_anim_sm.initial_animation = &"Idle"
 	visual.add_child(_char)
 	_anim_player = _char.get_node_or_null("AnimationPlayer")
-	_skel = _char.get_node_or_null("Armature/Skeleton3D")
-	if _skel != null:
-		_neck_idx = _skel.find_bone("Neck")
+
+	# посадка стоп по рельефу: анимация ходьбы — для ровного пола,
+	# а дюны — сплошные склоны. FootPlant меряет высоту стоп над
+	# настоящим песком и прижимает корпус к рельефу.
+	var skel: Skeleton3D = _char.get_node_or_null("Armature/Skeleton3D")
+	if skel != null:
+		var plant := FootPlant.new()
+		skel.add_child(plant)
+		plant.setup(self)
 
 	# Шаги ассета — ботинки по твёрдому полу — нам не подходят: у нас свой
 	# синтез песка, привязанный к настоящим отпечаткам. Глушим узел,
@@ -243,7 +249,10 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	if spd > 0.01:
 		dvel = vel.dot(downhill) / spd # -1..1: движение совпадает со спуском
 	var surf_bias := clampf(dvel, 0.0, 1.0) * n_speed
-	var max_spd := lerpf(WALK_MAX, SURF_MAX, clampf(surf_bias * 1.5, 0.0, 1.0))
+	# в горку шаг слабеет (песок пересыпается из-под ног) — подъём читается
+	# как подъём, а не езда вверх по стеклу
+	var surf_mix := clampf(surf_bias * 1.5, 0.0, 1.0)
+	var max_spd := lerpf(WALK_MAX * lerpf(1.0, 0.55, _uphill01()), SURF_MAX, surf_mix)
 	if spd > max_spd:
 		var over := spd - max_spd
 		vel = vel.normalized() * (spd - over * clampf(delta * 8.0, 0.0, 1.0))
@@ -378,8 +387,9 @@ func _update_gait(delta: float) -> void:
 	if hspd < 0.7:
 		return
 
-	# частота шагов растёт со скоростью — мелкая рысь путника
-	var cadence: float = clampf(0.9 + hspd * 0.68, 1.0, 5.0)
+	# частота шагов = темпу анимации: цикл Walk — 1.33 с на ~1 м/с,
+	# стопы ставятся ровно там, где анимация их ставит
+	var cadence: float = clampf(1.5 * hspd, 0.8, 4.5)
 	_gait_phase += cadence * PI * delta
 	var step_idx := int(_gait_phase / PI)
 	if step_idx > _last_step_idx:
@@ -409,8 +419,8 @@ func _plant_foot(pos: Vector2, fwd: Vector2, hspd: float) -> void:
 		var kick := p + f * randf_range(0.10, 0.45) + perp * randf_range(-0.30, 0.30) * _foot_side
 		sand.stamp_track(kick, kick + f * 0.22, randf_range(0.10, 0.20), randf_range(0.02, 0.05), 0.010)
 	if audio != null:
-		audio.on_step(clampf(hspd / 10.0, 0.0, 1.0))
-	if spd01 > 0.30 or uphill > 0.4:
+		audio.on_step(clampf(hspd / 3.0, 0.0, 1.0))
+	if spd01 > 0.10 or uphill > 0.4:
 		_step_dust.restart()
 
 
@@ -435,8 +445,13 @@ func _update_visual(delta: float) -> void:
 	var spd := vel.length()
 	var n := terrain.ground_normal(global_position.x, global_position.z) if grounded else Vector3.UP
 
-	# выравнивание по склону при сёрфе + наклон вперёд от скорости
-	var up := Vector3.UP.lerp(n, surf01 * 0.55).normalized()
+	# корпус следует рельефу дюны (сглаженно): на склоне путница
+	# наклоняется к дюне и при ходьбе, не только в сёрфе
+	_n_sm = _n_sm.lerp(n, 1.0 - exp(-8.0 * delta)).normalized()
+	var align := 0.0
+	if grounded:
+		align = lerpf(0.45, 0.62, surf01)
+	var up := Vector3.UP.lerp(_n_sm, align).normalized()
 	var fwd := Vector3(sin(heading), 0.0, cos(heading))
 	fwd = (fwd - up * fwd.dot(up)).normalized()
 	var x_axis := up.cross(fwd).normalized()
@@ -450,8 +465,9 @@ func _update_visual(delta: float) -> void:
 	# путник ЗАМЕТНО тонет в песке (до ~18 см)
 	var sink_t := clampf(_uphill01() * 0.75 + surf01 * 0.45 + clampf(spd / SURF_MAX, 0.0, 1.0) * 0.25, 0.0, 1.0)
 	_sink = lerpf(_sink, sink_t, 1.0 - exp(-6.0 * delta))
-	var bob_y := sin(_gait_phase) * 0.05 * clampf(spd / 6.0, 0.0, 1.0) * (1.0 - surf01)
-	visual.position = Vector3(0.0, bob_y - _squash * 0.30 - _sink * 0.18, 0.0)
+	# собственное покачивание анимации не дублируем — лишь лёгкий такт шага
+	var bob_y := sin(_gait_phase) * 0.025 * clampf(spd / 2.6, 0.0, 1.0) * (1.0 - surf01)
+	visual.position = Vector3(0.0, bob_y - _squash * 0.30 - _sink * 0.18 - _plant_off, 0.0)
 
 
 func _update_game_state() -> void:
@@ -465,16 +481,26 @@ func apply_sun(_dir: Vector3) -> void:
 	pass
 
 
-## Мировая точка крепления шарфа: кость шеи Розали (живёт с анимацией),
-## чуть выше и позади — шарф лежит на плечах. Без скелета — запасная высота.
-func neck_pos() -> Vector3:
-	if _skel != null and _neck_idx >= 0:
-		var pose: Transform3D = _skel.get_bone_global_pose(_neck_idx)
-		return _skel.global_transform * (pose.origin + Vector3(0.0, 0.07, -0.12))
-	return visual.global_transform * Vector3(0.0, 1.45, -0.12)
+## Погружение стоп в песок (подъём/сёрф) — для посадки стоп по рельефу.
+func foot_sink_m() -> float:
+	return _sink * 0.18
 
 
-## Показ/скрытие тела для камеры от первого лица (шарф и пыль остаются).
+## Идёт ли сейчас анимация шага (smoke-тест: шаг обязан играть при ходьбе
+## и обязан молчать при скольжении).
+func walk_anim_active() -> bool:
+	if _anim_sm == null:
+		return false
+	var st := String(_anim_sm.get_current_state())
+	return st == "Walk" or st == "Walk_Start"
+
+
+## Смещение корпуса от FootPlant: опорная стопа стоит на дюне.
+func note_plant_offset(off: float) -> void:
+	_plant_off = off
+
+
+## Показ/скрытие тела для камеры от первого лица (пыль остаётся).
 func set_body_visible(v: bool) -> void:
 	if visual != null:
 		visual.visible = v
@@ -492,31 +518,31 @@ func _update_animation(_delta: float) -> void:
 		return
 	var hv := Vector3(vel.x, 0.0, vel.z)
 	var hspd := hv.length()
-	var state: StringName = _anim_sm.get_current_state()
+	var state := String(_anim_sm.get_current_state())
 
-	if not grounded:
-		# прыжковых анимаций в ассете нет: в полёте — спокойная поза,
-		# парение читается шарфом и наклоном тела
-		if state != &"Idle" and state != &"":
-			_anim_sm.travel(&"Idle")
+	# СКОЛЬЖЕНИЕ (сёрф, разгон на спуске) и ПОЛЁТ: ноги не движутся.
+	# Позы для прыжка/бега у этого рига нет — Розали замирает в стойке,
+	# динамику читают наклон корпуса, след-борозда и пыль.
+	if not grounded or hspd > SURF_TRACK_SPEED or surf01 > 0.4:
+		if state != "Idle" and state != "":
+			_anim_player.play(&"Idle", 0.3)
 		_anim_player.speed_scale = 1.0
 		return
 
 	if hspd > 0.7:
-		if state == &"Idle" or String(state).begins_with("Walk_Stop"):
-			_anim_player.speed_scale = 1.2
-			_anim_sm.travel(&"Walk_Start")
-		elif state == &"Walk_Start":
-			_anim_player.speed_scale = 1.2
-		else:
-			# Walk: темп ходьбы тянется за скоростью (7 м/с — быстрая рысь)
-			_anim_player.speed_scale = clampf(hspd * 0.5, 0.8, 2.4)
+		# Темп анимации = скорости: авторский цикл Walk рассчитан на ~1 м/с
+		# и покрывает 1.33 м за цикл. Играя его ровно со скоростью движения,
+		# получаем стопы, прилипшие к песку, на любой скорости шага.
+		var ss := clampf(hspd, 0.7, 3.0)
+		_anim_player.speed_scale = ss
+		if state == "Idle" or state.begins_with("Walk_Stop"):
+			_anim_player.play(&"Walk_Start", 0.2)
 	else:
 		_anim_player.speed_scale = 1.0
-		if state == &"Walk":
+		if state == "Walk":
 			# остановка с той ноги, что сейчас впереди
 			var t := _anim_player.current_animation_position / _anim_player.current_animation_length
+			var stop := &"Walk_Stop_Left"
 			if t >= 0.2 and t <= 0.75:
-				_anim_sm.travel(&"Walk_Stop_Right")
-			else:
-				_anim_sm.travel(&"Walk_Stop_Left")
+				stop = &"Walk_Stop_Right"
+			_anim_sm.travel(stop)

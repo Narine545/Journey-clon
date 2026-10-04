@@ -15,41 +15,46 @@ func setup(main_ref) -> void:
 	_shot_dir = OS.get_environment("SHOT_DIR")
 	if _shot_dir.is_empty():
 		_shot_dir = "."
-	Input.action_press("move_forward")
+	# первый отрезок — В ГОРКУ от спавна: чистая ходьба с анимацией шага
+	Input.action_press("move_back")
 
 
 func _physics_process(_delta: float) -> void:
 	_frames += 1
 	match _frames:
 		150:
-			_capture("shot_a_run.png") # игровой вид: бег к маяку (солнце в кадре)
+			_capture("shot_a_run.png") # игровой вид: ходьба в горку (шаг с анимацией)
 		200:
+			Input.action_release("move_back")
+		220:
+			Input.action_press("move_forward") # спуск к маяку: сёрф
+		260:
 			_look_back_camera() # взгляд НАЗАД, от солнца — теневая сторона дюн
-		230:
+		290:
 			_capture("shot_d_back.png") # блёстки должны жить и здесь
-		245:
+		305:
 			_side_camera() # взгляд Сбоку, поперёк пути
-		275:
+		335:
 			_capture("shot_e_side.png") # и здесь тоже
-		285:
-			_game_camera() # вернуть игровую камеру
-		320:
-			Input.action_press("camera_toggle") # первое лицо
-		321:
-			Input.action_release("camera_toggle")
 		350:
-			_capture("shot_f_fp.png") # вид глазами Розали (шарф летит за спиной)
-		352:
-			Input.action_press("camera_toggle") # назад, в третье лицо
-		353:
+			_game_camera() # вернуть игровую камеру
+		380:
+			Input.action_press("camera_toggle") # первое лицо
+		381:
 			Input.action_release("camera_toggle")
-		375:
+		410:
+			_capture("shot_f_fp.png") # вид глазами Розали
+		412:
+			Input.action_press("camera_toggle") # назад, в третье лицо
+		413:
+			Input.action_release("camera_toggle")
+		440:
 			_capture("shot_b_run2.png") # ещё игровой вид позднее
-		385:
+		450:
 			_top_camera() # камера над тропой, взгляд на следы
-		415:
-			_capture("shot_c_trail.png") # следы сверху
-		425:
+		480:
+			_capture("shot_c_trail.png") # следы сверху (шаги в гору + борозда сёрфа)
+		490:
 			Input.action_release("move_forward")
 			get_tree().quit(0)
 
