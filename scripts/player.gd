@@ -19,6 +19,9 @@ const AIR_ACCEL := 6.0
 
 const SURF_TRACK_SPEED := 10.8 # выше этой скорости — не шаги, а борозда
 
+const HOLD_SLOPE_ACC := 9.8 # ~22°: на более пологих склонах песок ДЕРЖИТ
+const STOP_SPEED := 2.4 # м/с: без ввода путник выпахивается до остановки
+
 const BOUND_X := 185.0
 const BOUND_Z_MIN := -445.0
 const BOUND_Z_MAX := 50.0
@@ -242,6 +245,22 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	# скольжение: тянет вниз по склону (в гору — тормозит)
 	var g := Vector3.DOWN * GRAVITY
 	var slope_acc := g - n * g.dot(n)
+	var slope_mag := slope_acc.length()
+	var no_input := wish.length_squared() < 0.001
+
+	# Песок ДЕРЖИТ путника: без ввода на пологом склоне — полная остановка
+	# (статическое трение). Скольжение — только на крутых сёрф-лицах.
+	if no_input and vel.length() < STOP_SPEED and slope_mag < HOLD_SLOPE_ACC:
+		vel = vel.move_toward(Vector3.ZERO, 30.0 * delta)
+		surf01 = 0.0
+		if Input.is_action_just_pressed("jump"):
+			vel += n * JUMP_V * 0.35 + Vector3.UP * JUMP_V * 0.75
+			grounded = false
+			return
+		global_position += vel * delta
+		global_position.y = terrain.ground_height(global_position.x, global_position.z)
+		return
+
 	vel += slope_acc * delta
 
 	# управление: проецируем желание на склон
@@ -254,6 +273,8 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	var spd := vel.length()
 	var n_speed := clampf(spd / 10.0, 0.0, 1.0)
 	var fric := lerpf(1.7, 0.22, n_speed)
+	if no_input:
+		fric *= 2.8 # отпустил клавиши — песок выпахивает и тормозит
 	var slope_factor := clampf((1.0 - n.y) * 2.6, 0.0, 1.0)
 	fric *= 1.0 - slope_factor * 0.85
 	vel *= exp(-fric * delta)

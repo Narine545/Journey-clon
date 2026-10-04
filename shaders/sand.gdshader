@@ -74,12 +74,27 @@ float sand_h(vec2 wp) {
 	return texture(sand_map, uv).r * edge;
 }
 
+// Фаза мега-ряби (слой 2): одинакова в vertex (высота) и fragment (нормаль)
+float mega_phase(vec2 wp, vec2 wdir, vec2 wperp) {
+	float u = dot(wp, wdir);
+	float v = dot(wp, wperp);
+	float rn = vnoise(wp * 0.15);
+	return v * 0.70 + u * 0.16 + rn * 2.6 + TIME * 0.25;
+}
+
 void vertex() {
 	w_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	// песок реально проминается: смещаем вершину по карте
+	// песок реально проминается: смещаем вершину по карте (слой 3)
 	float h = sand_h(w_pos.xz);
-	VERTEX.y += h;
-	w_pos.y += h;
+	// слой 2 (как в Journey): мега-рябь — НАСТОЯЩАЯ геометрия,
+	// волны ~9 м гребнями поперёк ветра, медленно ползут по ветру
+	vec2 wdir_v = normalize(wind_dir);
+	vec2 wperp_v = vec2(-wdir_v.y, wdir_v.x);
+	float mph = mega_phase(w_pos.xz, wdir_v, wperp_v);
+	float hrip = (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30) * 0.055 * wind_power;
+	hrip *= 1.0 - 0.6 * clamp(abs(h) * 10.0, 0.0, 1.0); // следы сглаживают рябь
+	VERTEX.y += h + hrip;
+	w_pos.y += h + hrip;
 	w_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	v_dune = UV2;
 }
@@ -110,6 +125,14 @@ void fragment() {
 	vec2 sgrad = vec2(hx1 - hx0, hz1 - hz0) / (2.0 * t);
 	float churn = clamp(abs(h) * 10.0, 0.0, 1.0); // потревоженный песок
 	N = normalize(N - vec3(sgrad.x, 0.0, sgrad.y));
+	// слой 2: нормаль геометрической мега-ряби — та же фаза, что в vertex
+	float mph = mega_phase(wp, wdir, wperp);
+	float ms1 = sin(mph);
+	float ms2 = sin(mph * 2.63 + 1.7);
+	float mdv = (-0.62 * 0.70 * ms1 - 0.30 * 2.63 * 0.70 * ms2) * 0.055;
+	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2) * 0.055;
+	vec2 mgrad = (wperp * mdv + wdir * mdu) * wind_power * (1.0 - 0.6 * churn);
+	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y));
 
 	// ---------- 1. Рябь от ветра ----------
 	// Гребни вытянуты вдоль ветра, рисунок медленно бежит по ветру.

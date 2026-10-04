@@ -41,12 +41,12 @@ func _physics_process(_delta: float) -> void:
 				_check(p.grounded and absf(p.global_position.y - gh) < 0.3, "idle: на земле")
 				_next()
 
-		1: # 240 кадров вперёд — путник уходит к маяку
+		1: # бег к маяку, затем ОТПУСКАЕМ клавиши — песок должен остановить
 			if phase_frames == 1:
 				Input.action_press("move_forward")
-			if phase_frames % 12 == 0:
+			if phase_frames % 12 == 0 and phase_frames <= 240:
 				_path.append(Vector2(p.global_position.x, p.global_position.z))
-			if phase_frames > 240:
+			if phase_frames == 240:
 				Input.action_release("move_forward")
 				var dz: float = Terrain.SPAWN.y - p.global_position.z
 				var spd := Vector3(p.vel.x, 0.0, p.vel.z).length()
@@ -54,6 +54,11 @@ func _physics_process(_delta: float) -> void:
 				_check(spd > 3.0, "run: скорость %.1f м/с" % spd)
 				var st: int = main.sand.stamp_count
 				_check(st > 12, "run: следов отштамповано %d (ожидалось >12)" % st)
+			if phase_frames == 300:
+				print("[SMOKE] выбег (без ввода): %.1f м/с" % p.vel.length())
+			if phase_frames > 460:
+				_check(p.vel.length() < 1.2, "stop: без ввода остановился (%.2f м/с)" % p.vel.length())
+				_check(p.grounded, "stop: на земле")
 				_check_prints_real(p)
 				_next()
 

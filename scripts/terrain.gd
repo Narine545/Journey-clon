@@ -242,7 +242,7 @@ func _sample_grid(x: float, z: float) -> float:
 ## над точкой. 8 азимутов × 3 дистанции, sin(horizon) усредняется.
 ## Запекаем раз в 4-й вершины, в шейдер уходит через UV2.y.
 func _build_ao() -> void:
-	var m := SEGMENTS / AO_STEP # 128
+	var m := SEGMENTS >> 2 # AO_STEP = 4 — сдвиг вместо деления (без варнинга)
 	var mm := m + 1
 	_ao_grid.resize(mm * mm)
 	for j in range(mm):
@@ -268,7 +268,7 @@ func _build_ao() -> void:
 
 ## AO в узел полной сетки (билинейно из грубой).
 func _ao_at(ix: int, iz: int) -> float:
-	var m := SEGMENTS / AO_STEP
+	var m := SEGMENTS >> 2 # AO_STEP = 4
 	var fx := float(ix) / float(AO_STEP)
 	var fz := float(iz) / float(AO_STEP)
 	var i0 := mini(int(fx), m - 1)
