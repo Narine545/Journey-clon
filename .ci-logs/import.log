@@ -9,31 +9,127 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  83% ] [90m[1mfirst_scan_filesystem[22m | Starting file scan...[39m[0m
 [92m[ DONE ][39m [1mfirst_scan_filesystem[22m
 [0m
-[   0% ] [90m[1mupdate_scripts_classes[22m | Started Registering global classes... (14 steps)[39m[0m
-[   0% ] [90m[1mupdate_scripts_classes[22m | SoundScape[39m[0m
-[   6% ] [90m[1mupdate_scripts_classes[22m | CameraRig[39m[0m
-[  13% ] [90m[1mupdate_scripts_classes[22m | DebugPanel[39m[0m
-[  20% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
-[  26% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
-[  33% ] [90m[1mupdate_scripts_classes[22m | Player[39m[0m
-[  40% ] [90m[1mupdate_scripts_classes[22m | ProcTextures[39m[0m
-[  46% ] [90m[1mupdate_scripts_classes[22m | SandField[39m[0m
-[  53% ] [90m[1mupdate_scripts_classes[22m | Scarf[39m[0m
-[  60% ] [90m[1mupdate_scripts_classes[22m | ShotTaker[39m[0m
-[  66% ] [90m[1mupdate_scripts_classes[22m | SmokeTest[39m[0m
-[  73% ] [90m[1mupdate_scripts_classes[22m | Terrain[39m[0m
-[  80% ] [90m[1mupdate_scripts_classes[22m | WindField[39m[0m
-[  86% ] [90m[1mupdate_scripts_classes[22m | GameWorld[39m[0m
+[   0% ] [90m[1mupdate_scripts_classes[22m | Started Registering global classes... (30 steps)[39m[0m
+[   0% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[   3% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[   6% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[   9% ] [90m[1mupdate_scripts_classes[22m | WiggleBone[39m[0m
+[  12% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  16% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  19% ] [90m[1mupdate_scripts_classes[22m | DMWBWigglePositionModifier3D[39m[0m
+[  22% ] [90m[1mupdate_scripts_classes[22m | DMWBWigglePositionProperties3D[39m[0m
+[  25% ] [90m[1mupdate_scripts_classes[22m | WiggleProperties[39m[0m
+[  29% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  32% ] [90m[1mupdate_scripts_classes[22m | DMWBWiggleRotationModifier3D[39m[0m
+[  35% ] [90m[1mupdate_scripts_classes[22m | DMWBWiggleRotationProperties3D[39m[0m
+[  38% ] [90m[1mupdate_scripts_classes[22m | AnimationStateMachine[39m[0m
+[  41% ] [90m[1mupdate_scripts_classes[22m | SoundScape[39m[0m
+[  45% ] [90m[1mupdate_scripts_classes[22m | CameraRig[39m[0m
+[  48% ] [90m[1mupdate_scripts_classes[22m | DebugPanel[39m[0m
+[  51% ] [90m[1mupdate_scripts_classes[22m | EyeJitterModifier[39m[0m
+[  54% ] [90m[1mupdate_scripts_classes[22m | FaceAnimator[39m[0m
+[  58% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  61% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  64% ] [90m[1mupdate_scripts_classes[22m | Player[39m[0m
+[  67% ] [90m[1mupdate_scripts_classes[22m | ProcTextures[39m[0m
+[  70% ] [90m[1mupdate_scripts_classes[22m | SandField[39m[0m
+[  74% ] [90m[1mupdate_scripts_classes[22m | Scarf[39m[0m
+[  77% ] [90m[1mupdate_scripts_classes[22m | ShotTaker[39m[0m
+[  80% ] [90m[1mupdate_scripts_classes[22m | SmokeTest[39m[0m
+[  83% ] [90m[1mupdate_scripts_classes[22m | Terrain[39m[0m
+[  87% ] [90m[1mupdate_scripts_classes[22m | Transition[39m[0m
+[  90% ] [90m[1mupdate_scripts_classes[22m | WindField[39m[0m
+[  93% ] [90m[1mupdate_scripts_classes[22m | GameWorld[39m[0m
 [92m[ DONE ][39m [1mupdate_scripts_classes[22m
 [0m
-[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (1 steps)[39m[0m
+[   0% ] [90m[1m_update_scan_actions[22m | Started Scanning actions... (20 steps)[39m[0m
+[   0% ] [90m[1m_update_scan_actions[22m | wiggle_bone.svg[39m[0m
+[   4% ] [90m[1m_update_scan_actions[22m | wiggle_position_modifier_3d.svg[39m[0m
+[   9% ] [90m[1m_update_scan_actions[22m | wiggle_position_properties_3d.svg[39m[0m
+[  14% ] [90m[1m_update_scan_actions[22m | wiggle_rotation_modifier_3d.svg[39m[0m
+[  19% ] [90m[1m_update_scan_actions[22m | wiggle_rotation_properties_3d.svg[39m[0m
+[  23% ] [90m[1m_update_scan_actions[22m | step_1.wav[39m[0m
+[  28% ] [90m[1m_update_scan_actions[22m | step_2.wav[39m[0m
+[  33% ] [90m[1m_update_scan_actions[22m | step_3.wav[39m[0m
+[  38% ] [90m[1m_update_scan_actions[22m | step_4.wav[39m[0m
+[  42% ] [90m[1m_update_scan_actions[22m | step_5.wav[39m[0m
+[  47% ] [90m[1m_update_scan_actions[22m | Cloth_Color_Single.png[39m[0m
+[  52% ] [90m[1m_update_scan_actions[22m | Eye_Glare_Color.png[39m[0m
+[  57% ] [90m[1m_update_scan_actions[22m | Hair_Color_Single.png[39m[0m
+[  61% ] [90m[1m_update_scan_actions[22m | Hair_Shadow_Constant.png[39m[0m
+[  66% ] [90m[1m_update_scan_actions[22m | Highlight_Mask.png[39m[0m
+[  71% ] [90m[1m_update_scan_actions[22m | Iris_Color.png[39m[0m
+[  76% ] [90m[1m_update_scan_actions[22m | sdf_combined.png[39m[0m
+[  80% ] [90m[1m_update_scan_actions[22m | Skin_color_final.png[39m[0m
+[  85% ] [90m[1m_update_scan_actions[22m | Rosalie Blackwood.glb[39m[0m
+[  90% ] [90m[1m_update_scan_actions[22m | icon.svg[39m[0m
+[92m[ DONE ][39m [1m_update_scan_actions[22m
+[0m
+[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (20 steps)[39m[0m
 [   0% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   4% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   9% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  14% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  19% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  23% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  28% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  33% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  38% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  42% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  47% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  52% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  57% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  61% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  66% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  71% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  76% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  80% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  85% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  90% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
 [   0% ] [90m[1mreimport[22m | Executing pre-reimport operations...[39m[0m
+[   0% ] [90m[1mpreload_reimporting_scene[22m | Started Preparing scenes for reload (1 steps)[39m[0m
+[   0% ] [90m[1mpreload_reimporting_scene[22m | Analyzing scene [empty][39m[0m
+[  50% ] [90m[1mpreload_reimporting_scene[22m | Preparation done.[39m[0m
+[92m[ DONE ][39m [1mpreload_reimporting_scene[22m
+[0m
 [   0% ] [90m[1mreimport[22m | icon.svg[39m[0m
-[  50% ] [90m[1mreimport[22m | Finalizing Asset Import...[39m[0m
+[   4% ] [90m[1mreimport[22m | Skin_color_final.png[39m[0m
+[   9% ] [90m[1mreimport[22m | sdf_combined.png[39m[0m
+[  14% ] [90m[1mreimport[22m | Iris_Color.png[39m[0m
+[  19% ] [90m[1mreimport[22m | Highlight_Mask.png[39m[0m
+[  23% ] [90m[1mreimport[22m | Hair_Shadow_Constant.png[39m[0m
+[  28% ] [90m[1mreimport[22m | Hair_Color_Single.png[39m[0m
+[  28% ] [90m[1mreimport[22m | Hair_Color_Single.png[39m[0m
+[  33% ] [90m[1mreimport[22m | Eye_Glare_Color.png[39m[0m
+[  38% ] [90m[1mreimport[22m | Cloth_Color_Single.png[39m[0m
+[  42% ] [90m[1mreimport[22m | wiggle_rotation_properties_3d.svg[39m[0m
+[  47% ] [90m[1mreimport[22m | wiggle_rotation_modifier_3d.svg[39m[0m
+[  52% ] [90m[1mreimport[22m | wiggle_position_properties_3d.svg[39m[0m
+[  57% ] [90m[1mreimport[22m | wiggle_position_modifier_3d.svg[39m[0m
+[  61% ] [90m[1mreimport[22m | wiggle_bone.svg[39m[0m
+[  61% ] [90m[1mreimport[22m | wiggle_bone.svg[39m[0m
+[  66% ] [90m[1mreimport[22m | icon.svg[39m[0m
+[  71% ] [90m[1mreimport[22m | Skin_color_final.png[39m[0m
+[  76% ] [90m[1mreimport[22m | sdf_combined.png[39m[0m
+[  80% ] [90m[1mreimport[22m | Iris_Color.png[39m[0m
+[  85% ] [90m[1mreimport[22m | Highlight_Mask.png[39m[0m
+[  90% ] [90m[1mreimport[22m | Rosalie Blackwood.glb[39m[0m
+[   0% ] [90m[1mimport[22m | Started Import Scene (104 steps)[39m[0m
+[   0% ] [90m[1mimport[22m | Importing Scene...[39m[0m
+[   1% ] [90m[1mimport[22m | Running Custom Script...[39m[0m
+WARNING: AnimationMixer: 'Walk', couldn't resolve track:  'FootstepPlayer'. This warning can be disabled in Project Settings.
+     at: _update_caches (scene/animation/animation_mixer.cpp:725)
+WARNING: AnimationMixer: 'Walk_Stop_Left', couldn't resolve track:  'FootstepPlayer'. This warning can be disabled in Project Settings.
+     at: _update_caches (scene/animation/animation_mixer.cpp:725)
+WARNING: AnimationMixer: 'Walk_Stop_Right', couldn't resolve track:  'FootstepPlayer'. This warning can be disabled in Project Settings.
+     at: _update_caches (scene/animation/animation_mixer.cpp:725)
+[  99% ] [90m[1mimport[22m | Saving...[39m[0m
+[92m[ DONE ][39m [1mimport[22m
+[0m
+[  95% ] [90m[1mreimport[22m | Finalizing Asset Import...[39m[0m
 [92m[ DONE ][39m [1mreimport[22m
 [0m
-[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (1 steps)[39m[0m
+[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (20 steps)[39m[0m
 [   0% ] [90m[1mreimport[22m | Executing post-reimport operations...[39m[0m
 [92m[ DONE ][39m [1mreimport[22m
 [0m
