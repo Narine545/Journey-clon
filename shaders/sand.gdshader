@@ -29,7 +29,6 @@ uniform float ripple_freq = 2.2;      // плотность гребней по�
 uniform float ripple_speed = 1.5;     // скорость бега ряби по ветру
 uniform float ripple_strength = 0.50; // глубина ряби (влияние на нормаль)
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
-uniform float streak_amount = 0.32;   // сила ветровых струй
 
 // ---- Настоящий песок: карта смещений ----
 uniform sampler2D sand_map : filter_linear, repeat_enable;
@@ -192,8 +191,9 @@ void fragment() {
 	// ---------- 2b. След: настоящий рельеф красится как настоящий ----------
 	float press = clamp(-h * 12.0, 0.0, 1.0); // дно следа
 	float rise = clamp(h * 18.0, 0.0, 1.0);   // вал выброшенного песка
-	// дно: темнее и холоднее (песок уплотнён и в тени собственной стенки)
-	base = mix(base, base * vec3(0.60, 0.56, 0.72), press * 0.75);
+	// дно: свежий песок под песком — ТОТ ЖЕ цвет, лишь чуть плотнее;
+	// глубину рисуют собственные нормали выемки, а не тёмная краска
+	base = mix(base, base * vec3(0.92, 0.90, 0.99), press * 0.30);
 	// вал: свежий сухой песок — светлее и теплее
 	base = mix(base, base * vec3(1.18, 1.07, 0.88), rise * 0.5);
 
@@ -204,10 +204,11 @@ void fragment() {
 	//     летишь боком, и когда солнце за спиной (как в Journey).
 	vec3 V = normalize(CAMERA_POSITION_WORLD - w_pos);
 	vec3 H = normalize(V + L);
-	// клетки растут с дистанцией, оставаясь ~пиксель: вблизи 8 мм,
-	// на 100 м — 11 см, на 300 м — 33 см. Субпиксельные клетки дали бы
-	// мерцающую белую вуаль вместо искр (проверено измерениями CI-кадров)
-	float density = clamp(900.0 / max(dist, 0.001), 3.0, 130.0);
+	// LOD «мип-уровнями»: плотность меняется СТУПЕНЯМИ (3·2^k клеток/м) —
+	// сетка прибита к миру. Непрерывный пересчёт от дистанции заставлял
+	// блёстки «плыть» и растягиваться в шлейф при движении камеры.
+	float need = 900.0 / max(dist, 0.001);
+	float density = clamp(pow(2.0, floor(log2(need / 3.0))) * 3.0, 6.0, 130.0);
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));
@@ -221,7 +222,8 @@ void fragment() {
 	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(22.0, 80.0, cellb));
 	// небесный блик: зерно поймало взгляд — работает в ЛЮБОМ направлении
 	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(20.0, 70.0, cellc));
-	float glint = step(1.0 - glitter_amount, cellid);
+	// вдаль искр меньше — далеко не «ковёр», а редкие вспышки
+	float glint = step(1.0 - glitter_amount * exp(-dist * 0.0035), cellid);
 	float rate = mix(2.0, 8.0, cellb);
 	glint *= 0.40 + 0.60 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0));
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
@@ -243,14 +245,7 @@ void fragment() {
 	// скользящий ракурс: ближний песок у кромки дюны слегка рдеет
 	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.22 * ao * near_gloss;
 
-	// ---------- 4. Ветровые струи ----------
-	// Медленные светящиеся полосы: вытянуты по ветру и тянутся вдоль него.
-	float sn1 = vnoise(vec2(u * 0.045 - TIME * 0.85, v * 0.5));
-	float sn2 = vnoise(vec2(u * 0.11 - TIME * 1.35 + 40.0, v * 1.05));
-	float streak = smoothstep(0.55, 0.92, sn1 * 0.65 + sn2 * 0.35);
-	base += vec3(1.0, 0.80, 0.55) * streak * streak_amount * wind_power * (0.35 + 0.65 * smoothstep(0.0, 0.5, wrap));
-
-	// ---------- 5. Дымка к горизонту ----------
+	// ---------- 4. Дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
 	float above = smoothstep(-2.0, 16.0, w_pos.y - CAMERA_POSITION_WORLD.y);
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);
