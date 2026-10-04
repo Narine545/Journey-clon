@@ -129,10 +129,13 @@ jobs:
           git config user.name "ci-bot"
           git config user.email "ci-bot@users.noreply.github.com"
           mkdir -p .ci-logs
-          cp -f import.log .ci-logs/ 2>/dev/null || true
-          cp -f smoke.log .ci-logs/ 2>/dev/null || true
-          cp -f render.log .ci-logs/ 2>/dev/null || true
-          cp -f mat_audit.log .ci-logs/ 2>/dev/null || true
+          # чистим логи из чекаута: шаг мог быть пропущен, и старый лог
+          # с прошлого прогона выглядел бы как свежий
+          rm -f .ci-logs/import.log .ci-logs/smoke.log .ci-logs/render.log .ci-logs/mat_audit.log
+          cp -f import.log .ci-logs/ 2>/dev/null || echo "import: пропущен" > .ci-logs/import.log
+          cp -f smoke.log .ci-logs/ 2>/dev/null || echo "smoke: пропущен" > .ci-logs/smoke.log
+          cp -f render.log .ci-logs/ 2>/dev/null || echo "render: пропущен" > .ci-logs/render.log
+          cp -f mat_audit.log .ci-logs/ 2>/dev/null || echo "mat_audit: пропущен" > .ci-logs/mat_audit.log
           git add .ci-logs
           git commit -m "ci: артефакты прогона ${GITHUB_SHA::7}" || true
           git push origin HEAD:${GITHUB_REF#refs/heads/} || true

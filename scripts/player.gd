@@ -17,7 +17,8 @@ const JUMP_V := 8.6
 const GLIDE_G := 5.5 # гравитация при парении
 const AIR_ACCEL := 6.0
 
-const SURF_TRACK_SPEED := 3.0 # выше этой скорости — не шаги, а СКАЛЬЗЯЩИЙ сёрф: ноги не движутся
+const SURF_TRACK_SPEED := 4.6 # выше — СКАЛЬЗЯЩИЙ сёрф: стойка, ноги не движутся
+const WALK_RESUME_SPEED := 4.0 # гистерезис: обратно к шагу чуть ниже порога
 
 const HOLD_SLOPE_ACC := 9.8 # ~22°: на более пологих склонах песок ДЕРЖИТ
 const STOP_SPEED := 1.1 # м/с: без ввода путник выпахивается до остановки
@@ -53,6 +54,8 @@ var _anim_player: AnimationPlayer
 var _anim_sm: AnimationStateMachine
 var _plant_off := 0.0 # посадка опорной стопы на рельеф (FootPlant)
 var _n_sm := Vector3.UP # сглаженная нормаль дюны (наклон корпуса при ходьбе)
+var _riding := false # гистерезис «шаг ↔ скольжение» (скорость ходьбы ~3 м/с
+	# гуляет вокруг порога — без гистерезиса анимация мерцает)
 
 
 func setup(game_ref, terrain_ref: Terrain, sand_ref: SandField) -> void:
@@ -135,31 +138,7 @@ func _build_body() -> void:
 	# Розали Блэквуд — готовая модель с анимациями и физикой волос
 	# (MIT, ассет Godot Asset Library; путь/лицензия — в README).
 	# Кинематика, походка и следы наши — модель чисто визуальная.
-	# (временная диагностика SSS: bisect загрузок до сцены персонажа)
-	print("[AUDIT2] материалы")
-	for mpath in [
-		"res://assets/Rosalie_Blackwood/materials/Body_Skin_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Cloth_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Dot_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Eye_Shadow_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Face_Skin_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Facial_Features_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Hair_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Iris_Color_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Iris_Higlights_Material.tres",
-	]:
-		load(mpath)
-	print("[AUDIT2] ресурсы физики волос")
-	for rpath in [
-		"res://assets/Rosalie_Blackwood/resources/Hair_Wiggle.tres",
-		"res://assets/Rosalie_Blackwood/resources/Fringe_Wiggle.tres",
-		"res://assets/Rosalie_Blackwood/resources/Belt_Wiggle.tres",
-		"res://assets/Rosalie_Blackwood/resources/Footstep_Stream_Randomizer.tres",
-	]:
-		load(rpath)
-	print("[AUDIT2] сцена персонажа")
 	var char_scene: PackedScene = load("res://scenes/rosalie_blackwood.tscn")
-	print("[AUDIT2] сцена загружена")
 	if char_scene == null:
 		push_error("PLAYER: нет сцены персонажа res://scenes/rosalie_blackwood.tscn")
 		return
@@ -545,9 +524,14 @@ func _update_animation(_delta: float) -> void:
 	var state := String(_anim_sm.get_current_state())
 
 	# СКОЛЬЖЕНИЕ (сёрф, разгон на спуске) и ПОЛЁТ: ноги не движутся.
-	# Позы для прыжка/бега у этого рига нет — Розали замирает в стойке,
+	# Позы для прыжка/бега у этого рига нет — Розали замирает стойкой,
 	# динамику читают наклон корпуса, след-борозда и пыль.
-	if not grounded or hspd > SURF_TRACK_SPEED or surf01 > 0.4:
+	# Гистерезис: в сёрф — выше 4.6 м/с, обратно к шагу — ниже 4.0.
+	if hspd > SURF_TRACK_SPEED or surf01 > 0.45:
+		_riding = true
+	elif hspd < WALK_RESUME_SPEED:
+		_riding = false
+	if not grounded or _riding:
 		if state != "Idle" and state != "":
 			_anim_player.play(&"Idle", 0.3)
 		_anim_player.speed_scale = 1.0

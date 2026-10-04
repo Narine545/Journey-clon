@@ -61,7 +61,7 @@ func _physics_process(_delta: float) -> void:
 				_walk_samples += 1
 				if p.walk_anim_active():
 					_walk_ok += 1
-				if spd <= 3.05 and spd >= 0.4:
+				if spd < 4.6 and spd >= 0.4:
 					_walk_speed_ok += 1
 				print("[SMOKE] ходьба: кадр %d pos=(%.1f, %.1f) spd=%.2f state=%s" % [
 					phase_frames, p.global_position.x, p.global_position.z, spd,
