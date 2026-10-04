@@ -228,7 +228,7 @@ float cnoise(vec2 p) {
 float fbm2(vec2 p) {
 	float v = 0.0;
 	float a = 0.5;
-	mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
+	mat2 rot = mat2(vec2(0.80, 0.60), vec2(-0.60, 0.80));
 	for (int i = 0; i < 4; i++) {
 		v += a * cnoise(p);
 		p = rot * p * 2.02;
