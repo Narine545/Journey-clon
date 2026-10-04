@@ -1,12 +1,14 @@
 shader_type sky;
-render_mode use_half_res_pass;
 
 // =====================================================================
 // Физически достоверное небо: рассеяние Рэлея, Mie (двухдолевая фаза
 // Хеньи-Гринштейна), поглощение озоном, диск солнца, планета.
 // По мотивам «Freeman's Sky Shader» (NiwlGames, CC0) — адаптация под
 // Compatibility: солнце передаётся uniform'ом (в GLES3-небе нет
-// LIGHT0_DIRECTION), высота наблюдателя фиксирована (нет POSITION).
+// LIGHT0_DIRECTION), высота наблюдателя фиксирована (нет POSITION),
+// half-res проход не используется (в GLES3 не заполняется для
+// кастомных материалов неба — дали чёрный зенит; считаем напрямую,
+// сэмплов меньше: 12×4).
 // =====================================================================
 
 group_uniforms Sun;
@@ -56,8 +58,8 @@ uniform vec3 ground_color = vec3(0.42, 0.28, 0.17);
 
 group_uniforms Quality;
 
-uniform int view_samples : hint_range(0, 256) = 16;
-uniform int sun_samples : hint_range(0, 256) = 6;
+uniform int view_samples : hint_range(0, 256) = 12;
+uniform int sun_samples : hint_range(0, 256) = 4;
 
 
 float get_atmosphere_radius() {
@@ -188,38 +190,34 @@ vec3 integrate_radiance(vec3 ray_origin, vec3 ray_direction, float target_distan
 }
 
 void sky() {
-	if (AT_HALF_RES_PASS) {
-		vec3 final_color = vec3(0.0);
-		vec3 sun_dir = normalize(sun_direction);
+	vec3 final_color = vec3(0.0);
+	vec3 sun_dir = normalize(sun_direction);
 
-		vec3 ray_origin = vec3(0.0, planet_radius + base_altitude, 0.0);
-		vec3 ray_direction = EYEDIR;
+	vec3 ray_origin = vec3(0.0, planet_radius + base_altitude, 0.0);
+	vec3 ray_direction = EYEDIR;
 
-		float atmosphere_radius = get_atmosphere_radius();
-		vec2 atmosphere_hit = ray_sphere_intersection(ray_origin, ray_direction, atmosphere_radius);
-		vec2 ground_hit = ray_sphere_intersection(ray_origin, ray_direction, planet_radius);
-		bool hits_ground = ground_hit.y > 0.0;
-		float atmosphere_distance = hits_ground ? ground_hit.x : atmosphere_hit.y;
-		int samples = hits_ground ? view_samples / 2 : view_samples;
+	float atmosphere_radius = get_atmosphere_radius();
+	vec2 atmosphere_hit = ray_sphere_intersection(ray_origin, ray_direction, atmosphere_radius);
+	vec2 ground_hit = ray_sphere_intersection(ray_origin, ray_direction, planet_radius);
+	bool hits_ground = ground_hit.y > 0.0;
+	float atmosphere_distance = hits_ground ? ground_hit.x : atmosphere_hit.y;
+	int samples = hits_ground ? view_samples / 2 : view_samples;
 
-		final_color = integrate_radiance(ray_origin, ray_direction, atmosphere_distance, samples, sun_dir);
+	final_color = integrate_radiance(ray_origin, ray_direction, atmosphere_distance, samples, sun_dir);
 
-		// «планета» под ногами: золото песка в рассеянном свете
-		if (hits_ground) {
-			vec3 ground_point = ray_origin + ray_direction * atmosphere_distance;
-			vec3 ground_normal = normalize(ground_point);
-			float direct_light = max(dot(ground_normal, sun_dir), 0.0);
-			vec3 sun_transmittance = vec3(0.0);
-			if (direct_light > 0.0) {
-				float ground_to_sun = ray_sphere_intersection(ground_point, sun_dir, atmosphere_radius).y;
-				sun_transmittance = get_transmittance(ground_point, sun_dir, ground_to_sun, sun_samples);
-			}
-			vec3 ground_albedo = ground_color * (direct_light * sun_intensity * sun_transmittance) * (1.0 / PI);
-			vec3 to_eye = get_transmittance(ray_origin, ray_direction, atmosphere_distance, view_samples);
-			final_color += ground_albedo * to_eye;
+	// «планета» под ногами: золото песка в рассеянном свете
+	if (hits_ground) {
+		vec3 ground_point = ray_origin + ray_direction * atmosphere_distance;
+		vec3 ground_normal = normalize(ground_point);
+		float direct_light = max(dot(ground_normal, sun_dir), 0.0);
+		vec3 sun_transmittance = vec3(0.0);
+		if (direct_light > 0.0) {
+			float ground_to_sun = ray_sphere_intersection(ground_point, sun_dir, atmosphere_radius).y;
+			sun_transmittance = get_transmittance(ground_point, sun_dir, ground_to_sun, sun_samples);
 		}
-		COLOR = final_color;
-	} else {
-		COLOR = HALF_RES_COLOR.rgb;
+		vec3 ground_albedo = ground_color * (direct_light * sun_intensity * sun_transmittance) * (1.0 / PI);
+		vec3 to_eye = get_transmittance(ray_origin, ray_direction, atmosphere_distance, view_samples);
+		final_color += ground_albedo * to_eye;
 	}
+	COLOR = final_color;
 }
