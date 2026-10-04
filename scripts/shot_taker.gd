@@ -64,7 +64,7 @@ func _look_back_camera() -> void:
 	cam.global_position = p.global_position - fwd * 9.0 + Vector3.UP * 3.2
 	cam.look_at(p.global_position + fwd * 8.0 + Vector3.UP * 1.2, Vector3.UP)
 	cam.fov = 74.0
-	cam.far = 1400.0
+	cam.far = 1800.0
 	cam.make_current()
 
 
@@ -78,7 +78,7 @@ func _side_camera() -> void:
 	cam.global_position = p.global_position + right * 9.0 + Vector3.UP * 3.0
 	cam.look_at(p.global_position - right * 6.0 + Vector3.UP * 1.0, Vector3.UP)
 	cam.fov = 74.0
-	cam.far = 1400.0
+	cam.far = 1800.0
 	cam.make_current()
 
 
@@ -99,5 +99,5 @@ func _top_camera() -> void:
 	cam.global_position = pos
 	cam.look_at(look, Vector3.UP)
 	cam.fov = 70.0
-	cam.far = 1400.0
+	cam.far = 1800.0
 	cam.make_current()

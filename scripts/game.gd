@@ -4,7 +4,8 @@ extends Node
 ## Никакого HUD и текста не предусмотрено.
 
 # --- Солнце и палитра (глава 1: тёплые дюны, вечер) ---
-const SUN_DIR := Vector3(0.16, 0.44, -0.88) # полдень-на-закат: выше, ровнее свет
+# Направление К солнцу — вар (меняется DEV-панелью F3)
+var sun_dir := Vector3(0.16, 0.44, -0.88) # полдень-на-закат: выше, ровнее свет
 
 const SAND_SUNNY := Color(0.98, 0.62, 0.30) # ярко-золотой песок
 const SAND_HOT := Color(1.00, 0.78, 0.42) # раскалённые гребни
@@ -15,7 +16,8 @@ const SKY_COL := Color(0.27, 0.24, 0.44)
 const FOG_DISTANCE := 340.0
 
 # --- Ветер ---
-var wind_angle := -1.26 # базовое направление: почти к маяку (−Z), чуть вправо
+var wind_base := -1.26 # базовое направление: почти к маяку (−Z), чуть вправо
+var wind_angle := -1.26 # текущее (гуляет вокруг базы)
 var wind_strength := 1.0
 var elapsed := 0.0
 
@@ -31,7 +33,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	elapsed += delta
 	# Ветер живёт: медленно гуляет направление и сила (сумма синусов — органично и дёшево).
-	wind_angle = -1.26 + 0.38 * sin(elapsed * 0.021) + 0.16 * sin(elapsed * 0.047 + 1.7)
+	wind_angle = wind_base + 0.38 * sin(elapsed * 0.021) + 0.16 * sin(elapsed * 0.047 + 1.7)
 	wind_strength = 1.0 + 0.22 * sin(elapsed * 0.033 + 4.0) + 0.10 * sin(elapsed * 0.081)
 
 

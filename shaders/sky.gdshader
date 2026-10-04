@@ -219,5 +219,7 @@ void sky() {
 		vec3 to_eye = get_transmittance(ray_origin, ray_direction, atmosphere_distance, view_samples);
 		final_color += ground_albedo * to_eye;
 	}
-	COLOR = final_color;
+	// дебандинг: физический градиент не должен полосить
+	float dither = fract(sin(dot(SCREEN_UV * vec2(917.0, 533.0), vec2(12.9898, 78.233))) * 43758.5453);
+	COLOR = final_color + vec3((dither - 0.5) * (2.5 / 255.0));
 }

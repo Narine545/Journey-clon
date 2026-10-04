@@ -28,7 +28,7 @@ func setup(player_ref: Player, terrain_ref: Terrain) -> void:
 	add_child(cam)
 	cam.fov = FOV_BASE
 	cam.near = 0.1
-	cam.far = 1400.0
+	cam.far = 1800.0 # карта выросла — дальние дюны в кадре
 	cam.make_current() # камера одна, но порядок добавления не должен иметь значения
 
 	_yaw = player.heading

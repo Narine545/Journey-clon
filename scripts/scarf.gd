@@ -13,6 +13,7 @@ var player: Player
 var _points: Array[Vector3] = []
 var _prev: Array[Vector3] = []
 var _imesh: ImmediateMesh
+var _mat: ShaderMaterial
 
 
 func setup(game_ref, player_ref: Player) -> void:
@@ -31,8 +32,9 @@ func setup(game_ref, player_ref: Player) -> void:
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 	var mat := ShaderMaterial.new()
+	_mat = mat
 	mat.shader = load("res://shaders/cloth.gdshader")
-	mat.set_shader_parameter("sun_dir", Game.SUN_DIR)
+	mat.set_shader_parameter("sun_dir", game.sun_dir)
 	mat.set_shader_parameter("cloth_main", Color(0.58, 0.11, 0.12))
 	mat.set_shader_parameter("cloth_lit", Color(1.0, 0.56, 0.36))
 	mat.set_shader_parameter("horizon_col", Game.HORIZON_COL)
@@ -40,6 +42,12 @@ func setup(game_ref, player_ref: Player) -> void:
 	mat.set_shader_parameter("fog_distance", Game.FOG_DISTANCE)
 	mat.set_shader_parameter("tip_glow", 0.22) # лёгкое свечение кончика (задел под энергию)
 	material_override = mat
+
+
+## Направление солнца на шарфе (DEV-панель).
+func apply_sun(dir: Vector3) -> void:
+	if _mat != null:
+		_mat.set_shader_parameter("sun_dir", dir)
 
 
 func _physics_process(delta: float) -> void:

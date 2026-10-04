@@ -1,177 +1,72 @@
 class_name GameWorld
 extends Node3D
-## Небо, солнце, дымка, горизонт. Всё строится кодом в setup().
-## Горизонт закрыт гигантскими барханами: серповидные дюны-меши
-## в дымке (силуэты) + дальнее море барханов SDF-реймарчингом.
+## Небо, солнце, дымка, виньетка. Всё строится кодом в setup().
+## Горизонт закрыт настоящими дальними дюнами — карта террейна
+## расширена (см. Terrain), никаких декораций-подставок.
 
 var game # автозагрузка Game
+
+var _sky_mat: ShaderMaterial
+var _sun: DirectionalLight3D
+var _env: Environment
 
 
 func setup(game_ref) -> void:
 	game = game_ref
 	_build_environment()
 	_build_sun()
-	_build_barchans()
-	_build_sdf_dunes()
 	_build_vignette()
 
 
 func _build_environment() -> void:
 	# Физически достоверное небо (Рэлей + Mie + озон): градиент, ореол
 	# солнца и краски заката рождаются рассеянием, а не покраской.
-	# Half-res проход — дёшево даже на встроенной графике.
-	var sky_mat := ShaderMaterial.new()
-	sky_mat.shader = load("res://shaders/sky.gdshader")
-	sky_mat.set_shader_parameter("sun_direction", Game.SUN_DIR)
+	_sky_mat = ShaderMaterial.new()
+	_sky_mat.shader = load("res://shaders/sky.gdshader")
+	_sky_mat.set_shader_parameter("sun_direction", game.sun_dir)
 
 	var sky := Sky.new()
-	sky.sky_material = sky_mat
+	sky.sky_material = _sky_mat
 
-	var env := Environment.new()
-	env.background_mode = Environment.BG_SKY
-	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 1.0
+	_env = Environment.new()
+	_env.background_mode = Environment.BG_SKY
+	_env.sky = sky
+	_env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	_env.ambient_light_energy = 1.0
 
 	# Киношный тонмаппинг: мягкие света, тёплая плёночная картинка
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.08
-	env.tonemap_white = 4.0
+	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	_env.tonemap_exposure = 1.08
+	_env.tonemap_white = 4.0
 
 	# Свечение: солнце и искры песка (в Compatibility glow есть)
-	env.glow_enabled = true
-	env.glow_intensity = 0.55
-	env.glow_strength = 1.0
-	env.glow_bloom = 0.08
-	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
-	env.glow_hdr_threshold = 0.95
+	_env.glow_enabled = true
+	_env.glow_intensity = 0.55
+	_env.glow_strength = 1.0
+	_env.glow_bloom = 0.08
+	_env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	_env.glow_hdr_threshold = 0.95
 
 	# Дымка в цвет горизонта — для любых материалов со стандартным туманом.
-	env.fog_enabled = true
-	env.fog_light_color = Game.HORIZON_COL
-	env.fog_density = 0.0034
-	env.fog_sky_affect = 0.0
+	_env.fog_enabled = true
+	_env.fog_light_color = Game.HORIZON_COL
+	_env.fog_density = 0.0034
+	_env.fog_sky_affect = 0.0
 
 	var world_env := WorldEnvironment.new()
-	world_env.environment = env
+	world_env.environment = _env
 	add_child(world_env)
 
 
 func _build_sun() -> void:
 	# Свет нужен в первую очередь небу (диск солнца).
-	var sun := DirectionalLight3D.new()
-	var forward := -Game.SUN_DIR.normalized()
-	sun.basis = Basis.looking_at(forward, Vector3.UP)
-	sun.light_color = Color(1.0, 0.83, 0.66)
-	sun.light_energy = 1.15
-	sun.shadow_enabled = false
-	add_child(sun)
-
-
-# ---------------------------------------------------------------------------
-# Горизонт: большие барханы-серпы (процедурные меши, силуэты в дымке)
-# ---------------------------------------------------------------------------
-
-## Серп бархана: дуга с сужающимися рогами и горбом посередине.
-## Параметрическая сетка (дуга × поперёк), нормали — разностями.
-func _barchan_mesh(radius: float, height: float, horn_drop: float) -> ArrayMesh:
-	var seg := 40
-	var rings := 10
-	var arc := 3.4 # радиан (~195°) — рога обнимают горизонт
-	var stride := rings + 1
-	var count := (seg + 1) * stride
-
-	var verts := PackedVector3Array()
-	verts.resize(count)
-	var normals := PackedVector3Array()
-	normals.resize(count)
-
-	for i in range(seg + 1):
-		var u := float(i) / float(seg)
-		var ang := -arc * 0.5 + arc * u
-		var taper := 0.22 + 0.78 * sin(PI * u) # рога узкие, живот широкий
-		var width := radius * 0.42 * taper
-		var hmax := height * pow(sin(PI * clampf(u * 1.08, 0.0, 1.0)), 1.25)
-		for j in range(stride):
-			var v := float(j) / float(rings) * 2.0 - 1.0 # -1..1 поперёк
-			var profile := pow(maxf(cos(v * PI * 0.5), 0.0), 1.35) # горб
-			var horns := -pow(absf(v), 2.0) * horn_drop * (0.35 + 0.65 * (1.0 - sin(PI * u)))
-			var x := sin(ang) * radius + cos(ang) * v * width
-			var z := -cos(ang) * radius + sin(ang) * v * width
-			var y := hmax * profile + horns
-			verts[i * stride + j] = Vector3(x, y, z)
-
-	# нормали конечными разностями по сетке (вверх)
-	for i in range(seg + 1):
-		var i0 := maxi(i - 1, 0)
-		var i1 := mini(i + 1, seg)
-		for j in range(stride):
-			var j0 := maxi(j - 1, 0)
-			var j1 := mini(j + 1, rings)
-			var du := verts[i1 * stride + j] - verts[i0 * stride + j]
-			var dv := verts[i * stride + j1] - verts[i * stride + j0]
-			var n := dv.cross(du)
-			if n.y < 0.0:
-				n = -n
-			normals[i * stride + j] = n.normalized()
-
-	var idx := PackedInt32Array()
-	idx.resize(seg * rings * 6)
-	var w := 0
-	for i in range(seg):
-		for j in range(rings):
-			var a := i * stride + j
-			var b := a + 1
-			var c := a + stride
-			var d := c + 1
-			idx[w] = a
-			idx[w + 1] = b
-			idx[w + 2] = c
-			idx[w + 3] = b
-			idx[w + 4] = d
-			idx[w + 5] = c
-			w += 6
-
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_INDEX] = idx
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return mesh
-
-
-func _build_barchans() -> void:
-	# Силуэтный материал: дюны почти растворены в дымке, читаются массой
-	var silhouette_mat := ShaderMaterial.new()
-	silhouette_mat.shader = load("res://shaders/silhouette.gdshader")
-
-	# [позиция, радиус, высота, просадка рогов, поворот°]
-	var specs := [
-		[Vector2(-440.0, -640.0), 240.0, 56.0, 30.0, -8.0],
-		[Vector2(-40.0, -700.0), 300.0, 70.0, 34.0, 4.0],
-		[Vector2(310.0, -660.0), 265.0, 60.0, 31.0, -5.0],
-		[Vector2(650.0, -720.0), 230.0, 52.0, 28.0, 10.0],
-		[Vector2(-720.0, -730.0), 275.0, 62.0, 32.0, -12.0],
-		[Vector2(80.0, -560.0), 195.0, 44.0, 23.0, 6.0],
-	]
-	for spec in specs:
-		var mi := MeshInstance3D.new()
-		mi.mesh = _barchan_mesh(spec[1], spec[2], spec[3])
-		mi.material_override = silhouette_mat
-		mi.position = Vector3(spec[0].x, -6.0, spec[0].y)
-		mi.rotate_y(deg_to_rad(spec[4]))
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(mi)
-
-
-func _build_sdf_dunes() -> void:
-	# Дальнее море барханов: SDF-реймарчинг с плавным CSG (слой за слоем
-	# за серпами) — горизонт «закрыт» и тает в мареве
-	var far := SdfDunes.new()
-	add_child(far)
-	far.setup()
+	_sun = DirectionalLight3D.new()
+	var forward := -game.sun_dir.normalized()
+	_sun.basis = Basis.looking_at(forward, Vector3.UP)
+	_sun.light_color = Color(1.0, 0.83, 0.66)
+	_sun.light_energy = 1.15
+	_sun.shadow_enabled = false
+	add_child(_sun)
 
 
 ## Виньетка: лёгкое затемнение углов — собирает кадр, работает в любом
@@ -186,3 +81,41 @@ func _build_vignette() -> void:
 	layer.layer = 10
 	layer.add_child(rect)
 	add_child(layer)
+
+
+# ---------------------------------------------------------------------------
+# API для DEV-панели (F3)
+# ---------------------------------------------------------------------------
+
+func set_sky(param: String, value) -> void:
+	_sky_mat.set_shader_parameter(param, value)
+
+
+func get_exposure() -> float:
+	return _env.tonemap_exposure
+
+
+func set_exposure(v: float) -> void:
+	_env.tonemap_exposure = v
+
+
+func get_glow_threshold() -> float:
+	return _env.glow_hdr_threshold
+
+
+func set_glow_threshold(v: float) -> void:
+	_env.glow_hdr_threshold = v
+
+
+## Смена солнца: небо + свет (базис и цвет по Кельвину — низкое солнце
+## краснеет, высокое белеет).
+func apply_sun(dir: Vector3) -> void:
+	_sky_mat.set_shader_parameter("sun_direction", dir)
+	_sun.basis = Basis.looking_at(-dir.normalized(), Vector3.UP)
+	var elev01 := smoothf(dir.y, 0.05, 0.55)
+	_sun.light_color = Color(1.0, 0.83, 0.66).lerp(Color(1.0, 0.97, 0.92), elev01)
+
+
+func smoothf(v: float, a: float, b: float) -> float:
+	var t := clampf((v - a) / (b - a), 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)

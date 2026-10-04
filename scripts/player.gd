@@ -48,6 +48,7 @@ var _track_on := false
 var _track_last := Vector2.ZERO
 var _land_dust: CPUParticles3D
 var _step_dust: CPUParticles3D
+var _cloth_mat: ShaderMaterial
 
 
 func setup(game_ref, terrain_ref: Terrain, sand_ref: SandField) -> void:
@@ -129,7 +130,8 @@ func _build_body() -> void:
 
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/cloth.gdshader")
-	mat.set_shader_parameter("sun_dir", Game.SUN_DIR)
+	_cloth_mat = mat
+	mat.set_shader_parameter("sun_dir", game.sun_dir)
 	mat.set_shader_parameter("cloth_main", Color(0.50, 0.15, 0.15))
 	mat.set_shader_parameter("cloth_lit", Color(1.0, 0.60, 0.40))
 	mat.set_shader_parameter("horizon_col", Game.HORIZON_COL)
@@ -471,6 +473,12 @@ func _update_visual(delta: float) -> void:
 func _update_game_state() -> void:
 	game.surf01 = game.surf01 * 0.9 + surf01 * 0.1 # сглаженное для музыки/камеры
 	game.player_altitude = global_position.y
+
+
+## Направление солнца на ткани (DEV-панель).
+func apply_sun(dir: Vector3) -> void:
+	if _cloth_mat != null:
+		_cloth_mat.set_shader_parameter("sun_dir", dir)
 
 
 ## Мировая точка крепления шарфа.

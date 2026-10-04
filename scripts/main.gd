@@ -3,18 +3,21 @@ extends Node3D
 ## Вся сцена собирается программно, чтобы ошибки всплывали при запуске.
 
 var game
+var world: GameWorld
 var terrain: Terrain
 var player: Player
 var cam_rig: CameraRig
 var sand: SandField
 var audio
 var wind: WindField
+var scarf: Scarf
+var debug_panel: DebugPanel
 
 
 func _ready() -> void:
 	game = get_node("/root/Game")
 
-	var world := GameWorld.new()
+	world = GameWorld.new()
 	add_child(world)
 	world.setup(game)
 
@@ -44,7 +47,7 @@ func _ready() -> void:
 	add_child(wind)
 	wind.setup(game, player, terrain)
 
-	var scarf := Scarf.new()
+	scarf = Scarf.new()
 	add_child(scarf)
 	scarf.setup(game, player)
 
@@ -57,6 +60,11 @@ func _ready() -> void:
 		var smoke := SmokeTest.new()
 		add_child(smoke)
 		smoke.setup(self)
+
+	# DEV-панель крутилок: F3 (по умолчанию скрыта, в игре текста нет)
+	debug_panel = DebugPanel.new()
+	add_child(debug_panel)
+	debug_panel.setup(self)
 
 	# CI-скриншоты (запускается под xvfb с настоящим GL)
 	if OS.get_environment("JOURNEY_SHOT") == "1":

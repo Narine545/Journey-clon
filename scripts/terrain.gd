@@ -10,9 +10,9 @@ extends MeshInstance3D
 ## смещения из карты следов, и физика, и камера, и ветер ходят по этой
 ## сумме — путник ступает в собственные следы.
 
-const SIZE := 1040.0 # сторона мира (метры)
-const SEGMENTS := 512 # разбиение (513x513 вершин, ячейка 2 м)
-const CENTER := Vector2(0.0, -190.0) # центр плоскости
+const SIZE := 1400.0 # сторона мира (метры) — горизонт закрывают НАСТОЯЩИЕ дюны
+const SEGMENTS := 600 # разбиение (601x601 вершин, ячейка 2.33 м)
+const CENTER := Vector2(0.0, -260.0) # центр плоскости
 
 const SPAWN := Vector2(0.0, 40.0) # старт игрока
 const PATH_END_Z := -430.0 # конец пути у стены перед маяком
@@ -140,7 +140,7 @@ func height_at(x: float, z: float) -> float:
 	var edge := 0.0
 	edge += smoothf(absf(x), 210.0, 320.0) # по бокам
 	edge += smoothf(z, 70.0, 160.0) # за спиной старта
-	edge += smoothf(-z, 460.0, 570.0) # за маяком
+	edge += smoothf(-z, 560.0, 720.0) # дальняя стена дюн — дальше новые поля
 	h += edge * (26.0 + dune * 22.0)
 
 	# 8) длинный спуск: волны-перекаты поперёк пути, перестроенные под
@@ -355,7 +355,7 @@ func _build_mesh() -> void:
 
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/sand.gdshader")
-	mat.set_shader_parameter("sun_dir", Game.SUN_DIR)
+	mat.set_shader_parameter("sun_dir", game.sun_dir)
 	mat.set_shader_parameter("sand_sunny", Game.SAND_SUNNY)
 	mat.set_shader_parameter("sand_hot", Game.SAND_HOT)
 	mat.set_shader_parameter("sand_shade", Game.SAND_SHADE)
@@ -380,6 +380,18 @@ func _process(_delta: float) -> void:
 		# окно карты настоящего песка скользит за путником
 		if sand != null:
 			m.set_shader_parameter("sand_origin", Vector2(sand.win_x0, sand.win_z0))
+
+
+## Направление солнца (DEV-панель).
+func apply_sun(dir: Vector3) -> void:
+	if material_override != null:
+		(material_override as ShaderMaterial).set_shader_parameter("sun_dir", dir)
+
+
+## Параметр шейдера песка (DEV-панель).
+func set_sand(param: String, value) -> void:
+	if material_override != null:
+		(material_override as ShaderMaterial).set_shader_parameter(param, value)
 
 
 ## Подключает поле настоящего песка (создаётся после террейна).

@@ -29,6 +29,7 @@ uniform float ripple_freq = 2.2;      // плотность гребней по�
 uniform float ripple_speed = 1.5;     // скорость бега ряби по ветру
 uniform float ripple_strength = 0.50; // глубина ряби (влияние на нормаль)
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
+uniform float mega_amp = 0.055; // амплитуда мега-ряби (слой 2)
 
 // ---- Настоящий песок: карта смещений ----
 uniform sampler2D sand_map : filter_linear, repeat_enable;
@@ -92,7 +93,7 @@ void vertex() {
 	vec2 wperp_v = vec2(-wdir_v.y, wdir_v.x);
 	float mph = mega_phase(w_pos.xz, wdir_v, wperp_v);
 	float hrip = (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
-		+ cos(mph * 0.47 + 0.8) * 0.22) * 0.055 * wind_power;
+		+ cos(mph * 0.47 + 0.8) * 0.22) * mega_amp * wind_power;
 	hrip *= 1.0 - 0.6 * clamp(abs(h) * 10.0, 0.0, 1.0); // следы сглаживают рябь
 	VERTEX.y += h + hrip;
 	w_pos.y += h + hrip;
@@ -131,8 +132,8 @@ void fragment() {
 	float ms1 = sin(mph);
 	float ms2 = sin(mph * 2.63 + 1.7);
 	float ms3 = sin(mph * 0.47 + 0.8);
-	float mdv = (-0.62 * 0.70 * ms1 - 0.30 * 2.63 * 0.70 * ms2 - 0.22 * 0.47 * 0.70 * ms3) * 0.055;
-	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2 - 0.22 * 0.47 * 0.16 * ms3) * 0.055;
+	float mdv = (-0.62 * 0.70 * ms1 - 0.30 * 2.63 * 0.70 * ms2 - 0.22 * 0.47 * 0.70 * ms3) * mega_amp;
+	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2 - 0.22 * 0.47 * 0.16 * ms3) * mega_amp;
 	vec2 mgrad = (wperp * mdv + wdir * mdu) * wind_power * (1.0 - 0.6 * churn);
 	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y));
 
