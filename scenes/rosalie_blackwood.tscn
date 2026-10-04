@@ -1,0 +1,2260 @@
+[gd_scene format=3 uid="uid://ds8wfoth7uqv4"]
+
+[ext_resource type="PackedScene" uid="uid://ca15c76k3ux1o" path="res://assets/Rosalie_Blackwood/Rosalie Blackwood.glb" id="1_driun"]
+[ext_resource type="Script" uid="uid://6fgx73tctu5v" path="res://addons/wigglebone/wiggle_rotation_modifier_3d.gd" id="7_trway"]
+[ext_resource type="Resource" uid="uid://dhpbmr8csspqy" path="res://assets/Rosalie_Blackwood/resources/Hair_Wiggle.tres" id="8_cd8ts"]
+[ext_resource type="Script" uid="uid://0ao00kvfj3xh" path="res://addons/wigglebone/wiggle_rotation_properties_3d.gd" id="8_nugfr"]
+[ext_resource type="Resource" uid="uid://n65acnsqes8t" path="res://assets/Rosalie_Blackwood/resources/Fringe_Wiggle.tres" id="10_18ur4"]
+[ext_resource type="Resource" uid="uid://cy6xbfba5t0fm" path="res://assets/Rosalie_Blackwood/resources/Belt_Wiggle.tres" id="11_18ur4"]
+[ext_resource type="Script" uid="uid://cu7klm6ckjl7c" path="res://addons/wigglebone/wiggle_position_modifier_3d.gd" id="11_8747x"]
+[ext_resource type="Script" uid="uid://bql827mr5257k" path="res://scripts/FaceAnimator.gd" id="12_b4sqd"]
+[ext_resource type="Script" uid="uid://drby2y6p2e1rv" path="res://scripts/AnimationStateMachine.gd" id="12_cd8ts"]
+[ext_resource type="Script" uid="uid://btvj2gpi4b4s3" path="res://scripts/Transition.gd" id="13_18ur4"]
+[ext_resource type="Resource" uid="uid://cq2couo6dds1b" path="res://assets/Rosalie_Blackwood/resources/Breast_Wiggle.tres" id="13_8747x"]
+[ext_resource type="Script" uid="uid://b1v7teteg3gbv" path="res://scripts/EyeJitterModifier.gd" id="13_cpci4"]
+[ext_resource type="Resource" uid="uid://cekyyv4obsdwa" path="res://assets/Rosalie_Blackwood/resources/Skirt_Base_Wiggle.tres" id="14_cpci4"]
+[ext_resource type="Resource" uid="uid://dbkhn68p7uu36" path="res://assets/Rosalie_Blackwood/resources/Skirt_Middle_Wiggle.tres" id="15_0q5av"]
+[ext_resource type="Resource" uid="uid://cai5brlb0vwn2" path="res://assets/Rosalie_Blackwood/resources/Skirt_Wiggle.tres" id="16_omeyd"]
+[ext_resource type="AudioStream" uid="uid://bgqcgmj7dm38j" path="res://assets/Rosalie_Blackwood/resources/Footstep_Stream_Randomizer.tres" id="17_omeyd"]
+
+[sub_resource type="Resource" id="Resource_yf5fn"]
+script = ExtResource("8_nugfr")
+spring_freq = 2.5
+angular_damp = 6.0
+metadata/_custom_type_script = "uid://0ao00kvfj3xh"
+
+[sub_resource type="Curve" id="Curve_0q5av"]
+_data = [Vector2(0, 0.8527131), 0.0, 0.0, 0, 0, Vector2(1, 0.31782943), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="Resource" id="Resource_tjsri"]
+script = ExtResource("13_18ur4")
+xfade_time = 0.2
+metadata/_custom_type_script = "uid://btvj2gpi4b4s3"
+
+[sub_resource type="Resource" id="Resource_vrpfr"]
+script = ExtResource("13_18ur4")
+xfade_time = 0.1
+at_end = true
+metadata/_custom_type_script = "uid://btvj2gpi4b4s3"
+
+[sub_resource type="Resource" id="Resource_f5vmy"]
+script = ExtResource("13_18ur4")
+xfade_time = 0.2
+at_end = true
+metadata/_custom_type_script = "uid://btvj2gpi4b4s3"
+
+[sub_resource type="Resource" id="Resource_wf4jp"]
+script = ExtResource("13_18ur4")
+xfade_time = 0.2
+at_end = true
+metadata/_custom_type_script = "uid://btvj2gpi4b4s3"
+
+[sub_resource type="Resource" id="Resource_1nbmg"]
+script = ExtResource("13_18ur4")
+xfade_time = 0.2
+at_end = true
+metadata/_custom_type_script = "uid://btvj2gpi4b4s3"
+
+[sub_resource type="Resource" id="Resource_7524x"]
+script = ExtResource("13_18ur4")
+xfade_time = 0.2
+metadata/_custom_type_script = "uid://btvj2gpi4b4s3"
+
+[sub_resource type="Resource" id="Resource_ql7fg"]
+script = ExtResource("13_18ur4")
+xfade_time = 0.4
+metadata/_custom_type_script = "uid://btvj2gpi4b4s3"
+
+[node name="Rosalie Blackwood" unique_id=1206269100 instance=ExtResource("1_driun")]
+
+[node name="Skeleton3D" parent="Armature" parent_id_path=PackedInt32Array(2136602004) index="0" unique_id=944242521]
+animate_physical_bones = false
+
+[node name="Body_Highpoly" parent="Armature/Skeleton3D" index="0" unique_id=457902332]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly" parent="Armature/Skeleton3D" index="1" unique_id=417863958]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_001" parent="Armature/Skeleton3D" index="2" unique_id=268609218]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_002" parent="Armature/Skeleton3D" index="3" unique_id=177461370]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_003" parent="Armature/Skeleton3D" index="4" unique_id=27744609]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_004" parent="Armature/Skeleton3D" index="5" unique_id=1466429103]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_005" parent="Armature/Skeleton3D" index="6" unique_id=1400622371]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_006" parent="Armature/Skeleton3D" index="7" unique_id=669129856]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_007" parent="Armature/Skeleton3D" index="8" unique_id=1661032052]
+transform = Transform3D(0.99999994, 0, 0, 0, 0.99999994, 0, 0, 0, 1, 0, 0, 0)
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_008" parent="Armature/Skeleton3D" index="9" unique_id=1020076193]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_009" parent="Armature/Skeleton3D" index="10" unique_id=241048190]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_010" parent="Armature/Skeleton3D" index="11" unique_id=896012870]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_011" parent="Armature/Skeleton3D" index="12" unique_id=1578808563]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Cloth_Highpoly_012" parent="Armature/Skeleton3D" index="13" unique_id=1863781197]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="Hair_Highpoly" parent="Armature/Skeleton3D" index="14" unique_id=288936328]
+visibility_range_end = 5.0
+visibility_range_end_margin = 0.5
+
+[node name="WiggleRotationLock_L_1_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="15" unique_id=725458627]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.86466515, 0.44169188, 0.23929615, -0.45086053, -0.89239496, 0.018053833, 0.22152086, -0.092278674, 0.970764, 0.08690227, 1.5889894, -0.011084121)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_1_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="16" unique_id=1587568924]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.7860489, 0.5514868, 0.27926883, -0.6169701, -0.7278803, -0.29917943, 0.038281098, -0.40746984, 0.9123994, 0.17838457, 1.4041586, -0.030196704)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.001"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_1_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="17" unique_id=1324293893]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.99769527, -0.008152947, 0.06737435, 0.0030560866, -0.9971341, -0.07539433, 0.067796126, -0.07501434, 0.99486005, 0.27864796, 1.2718258, -0.10427702)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.002"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_2_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="18" unique_id=627452481]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.7408861, 0.20180242, 0.6405967, -0.27429998, -0.96152174, -0.014342237, 0.61305314, -0.18634158, 0.7677319, 0.081707805, 1.590254, -0.069447145)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.003"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_2_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="19" unique_id=1115913235]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.6703249, 0.34280714, 0.6581412, -0.5259218, -0.8451429, -0.095446266, 0.5235037, -0.41011038, 0.7468095, 0.120853126, 1.4037396, -0.10559336)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.004"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_2_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="20" unique_id=1634283681]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.69435775, 0.006766334, 0.71959955, -0.03502761, -0.9990734, -0.024404116, 0.71876746, -0.042150643, 0.6939507, 0.17745978, 1.2641835, -0.17331368)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.05"
+properties = SubResource("Resource_yf5fn")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_3_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="21" unique_id=943027688]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.37066078, 0.109430164, 0.922299, -0.25654963, -0.9664461, 0.011563995, 0.8926178, -0.23232917, 0.3862981, 0.031191884, 1.5902535, -0.10970645)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.006"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_3_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="22" unique_id=467619061]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.35033256, 0.18173982, 0.91882306, -0.3632046, -0.9305773, 0.045580566, 0.8633204, -0.3177528, 0.39202026, 0.051865645, 1.4076709, -0.15359853)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.007"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_3_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="23" unique_id=912029457]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.36639056, 0.043417178, 0.9294465, -0.09751855, -0.9951857, 0.008045796, 0.92532194, -0.087690674, 0.3688606, 0.08130209, 1.2569448, -0.20506509)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.008"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_C_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="24" unique_id=1762987974]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(1, -2.9154795e-10, -5.8236367e-12, -2.8208602e-10, -0.97222, 0.23400414, -7.388529e-11, -0.23400414, -0.97221994, -5.1796766e-17, 1.5902535, -0.113271505)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_C_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="25" unique_id=337784850]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.99989945, -5.29527e-09, -0.01418185, 0.00524622, -0.9290454, 0.3698881, -0.013175628, -0.36992502, -0.928955, -5.4631178e-11, 1.408076, -0.1571199)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.001"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_C_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="26" unique_id=1241446841]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.999368, 3.4458935e-07, -0.035547208, 0.0024574175, -0.9975931, 0.06907773, -0.03546173, -0.06912014, -0.9969656, 9.403585e-10, 1.2451854, -0.22197917)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.002"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_1_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="27" unique_id=222036980]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.86466515, -0.44169188, -0.23929615, 0.45086053, -0.89239496, 0.018053804, -0.22152086, -0.092278704, 0.970764, -0.08690227, 1.5889894, -0.011084121)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_1_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="28" unique_id=1919462361]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.78604895, -0.55148673, -0.27926892, 0.61697, -0.72788036, -0.29917958, -0.038281187, -0.40746996, 0.9123994, -0.17838457, 1.4041586, -0.03019671)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.001"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_1_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="29" unique_id=798401350]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.9976952, 0.008152954, -0.06737445, -0.003056042, -0.997134, -0.07539582, -0.067796245, -0.07501574, 0.99486, -0.27864796, 1.2718258, -0.10427705)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.002"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_2_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="30" unique_id=2067989507]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.74088585, -0.20180233, -0.6405966, 0.27429992, -0.9615215, -0.014342334, -0.6130531, -0.18634164, 0.76773196, -0.081707805, 1.590254, -0.069447145)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.003"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_2_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="31" unique_id=1274285265]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.6703248, -0.34280714, -0.65814096, 0.5259215, -0.8451428, -0.09544606, -0.5235037, -0.41011012, 0.74680966, -0.12085311, 1.4037396, -0.10559337)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.004"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_2_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="32" unique_id=1408424239]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.6943893, -0.005840741, -0.7195768, 0.030000053, -0.99931747, -0.020838097, -0.7189641, -0.03605678, 0.6940904, -0.17745976, 1.2641835, -0.17331365)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.05"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_3_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="33" unique_id=519148736]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.37066078, -0.10943018, -0.922299, 0.2565497, -0.9664461, 0.0115639875, -0.8926178, -0.2323292, 0.3862981, -0.031191884, 1.5902535, -0.10970645)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.006"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_3_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="34" unique_id=1963797335]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.3503326, -0.18173987, -0.91882306, 0.36320457, -0.9305774, 0.045580614, -0.86332047, -0.31775275, 0.3920203, -0.05186565, 1.4076709, -0.15359853)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.007"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_3_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="35" unique_id=254351422]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.3663906, -0.043416783, -0.9294465, 0.0975187, -0.99518573, 0.008045346, -0.92532206, -0.08769091, 0.3688606, -0.08130211, 1.2569448, -0.20506507)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.008"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationHolster_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="36" unique_id=1322723574]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.73847103, 0.6654238, -0.10895739, 0.6731764, -0.71830404, 0.17570658, 0.0386548, -0.20310172, -0.97839415, 0.12463054, 1.1421325, 0.0069377795)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Holster.001"
+properties = ExtResource("11_18ur4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationHolster_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="37" unique_id=949101141]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.7074183, 0.6843778, -0.17659739, 0.7062386, -0.694357, 0.13818707, -0.028049447, -0.22247587, -0.9745344, 0.14073077, 1.1247529, 0.0020236438)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Holster.002"
+properties = ExtResource("11_18ur4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WigglePositionBreast_L" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="38" unique_id=2098457598]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.8567967, 0.4636258, 0.22572228, 0.23232454, 0.04371907, -0.9716554, -0.46035272, 0.88495153, -0.0702533, 0.04322854, 1.3164314, 0.055175494)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("11_8747x")
+bone_name = "Breast.L"
+properties = ExtResource("13_8747x")
+metadata/_custom_type_script = "uid://cu7klm6ckjl7c"
+
+[node name="WigglePositionBreast_R" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="39" unique_id=132150035]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.8567967, -0.4636258, -0.22572231, -0.23232457, 0.043719187, -0.97165525, 0.46035275, 0.8849516, -0.07025316, -0.043228533, 1.3164314, 0.055175483)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("11_8747x")
+bone_name = "Breast.R"
+properties = ExtResource("13_8747x")
+metadata/_custom_type_script = "uid://cu7klm6ckjl7c"
+
+[node name="WiggleRotationSkirt_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="40" unique_id=633164682]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.0035569072, 0.0014136434, -0.99999267, 0.7017664, -0.7124056, 0.0014890651, -0.71239823, -0.7017665, -0.0035259863, 1.323489e-23, 1.1322415, -0.06767629)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="41" unique_id=553327123]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.011489821, 0.00021532443, -0.99993396, 0.35558864, -0.93463457, 0.003884681, -0.93457186, -0.3556098, -0.010815328, 0.00017634004, 1.0433748, -0.15521578)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.001"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="42" unique_id=586214376]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.0012906697, 5.7319645e-05, -0.9999991, 0.68486005, -0.7286741, -0.00092567154, -0.7286734, -0.6848606, 0.00090124086, 0.00025704096, 0.69308436, -0.2884943)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.002"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="43" unique_id=1763012592]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.16242099, 0.5074528, -0.84623355, 0.7301562, -0.5150483, -0.44899586, -0.6636953, -0.69080883, -0.2868651, 0.04667867, 1.1322417, -0.049001824)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="44" unique_id=25468917]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.034180336, 0.24293669, -0.96943957, 0.23793665, -0.94409347, -0.228196, -0.97067887, -0.2228651, -0.090073034, 0.11886464, 1.0589752, -0.14727049)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.001"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="45" unique_id=2088629711]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.05017103, 0.42718375, -0.9027715, 0.5275643, -0.7561759, -0.38713503, -0.84803206, -0.49569276, -0.18742879, 0.20840025, 0.71102464, -0.2294086)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.002"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_4" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="46" unique_id=1580118899]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.026554585, 0.6632117, -0.7479607, 0.22786814, -0.73254204, -0.6414502, -0.97332984, -0.1534029, -0.17057714, 0.10561061, 1.1290331, -0.017897867)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.003"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_5" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="47" unique_id=1223496429]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.10470933, 0.42146176, -0.90078074, 0.019424558, -0.9064537, -0.4218582, -0.9943132, 0.026675265, -0.10310088, 0.18617943, 1.0400418, -0.036533706)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.004"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_6" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="48" unique_id=993680466]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.0690507, 0.66261804, -0.7457676, 0.18793207, -0.7428075, -0.64258736, -0.97975177, -0.0957825, -0.17581856, 0.34451216, 0.69950986, -0.02651247)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.005"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_1" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="49" unique_id=1808920480]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.16242123, -0.50745183, 0.84623396, -0.73015636, -0.5150484, -0.44899535, 0.66369486, -0.6908094, -0.2868644, -0.04667867, 1.1322417, -0.049001824)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_2" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="50" unique_id=867638739]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.034181178, -0.24293657, 0.9694396, -0.23793644, -0.9440936, -0.22819561, 0.9706786, -0.2228651, -0.090073764, -0.11886449, 1.0589752, -0.14727052)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.001"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_3" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="51" unique_id=56589216]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.05017086, -0.4271841, 0.9027716, -0.52756405, -0.75617605, -0.38713527, 0.848032, -0.49569276, -0.1874291, -0.20840013, 0.7110243, -0.22940871)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.002"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_4" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="52" unique_id=1456690328]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.026554346, -0.6632109, 0.7479613, -0.22786748, -0.7325427, -0.6414496, 0.9733298, -0.1534028, -0.17057642, -0.10561061, 1.1290331, -0.017897867)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.003"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_5" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="53" unique_id=1367447045]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.10471012, -0.42146185, 0.90078044, -0.019424535, -0.9064536, -0.42185825, 0.9943127, 0.026675478, -0.10310161, -0.18617938, 1.0400417, -0.03653368)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.004"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_6" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="54" unique_id=2144752014]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.0690512, -0.66261774, 0.7457676, -0.187932, -0.7428077, -0.642587, 0.9797513, -0.09578227, -0.17581892, -0.344512, 0.6995098, -0.02651237)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.005"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="SpringBoneFringe" type="SpringBoneSimulator3D" parent="Armature/Skeleton3D" index="55" unique_id=286682790]
+setting_count = 2
+settings/0/root_bone_name = "Fringe.L"
+settings/0/root_bone = 66
+settings/0/end_bone_name = "Fringe.L.002"
+settings/0/end_bone = 68
+settings/0/extend_end_bone = false
+settings/0/center_from = 1
+settings/0/center_node = NodePath("../..")
+settings/0/individual_config = false
+settings/0/rotation_axis = 3
+settings/0/radius/value = 0.032
+settings/0/radius/damping_curve = SubResource("Curve_0q5av")
+settings/0/stiffness/value = 1.0
+settings/0/stiffness/damping_curve = null
+settings/0/drag/value = 1.0
+settings/0/drag/damping_curve = null
+settings/0/gravity/value = 0.2
+settings/0/gravity/damping_curve = null
+settings/0/gravity/direction = Vector3(0, -1, 0)
+settings/0/joints/0/bone_name = "Fringe.L"
+settings/0/joints/0/bone = 66
+settings/0/joints/1/bone_name = "Fringe.L.001"
+settings/0/joints/1/bone = 67
+settings/0/joints/2/bone_name = "Fringe.L.002"
+settings/0/joints/2/bone = 68
+settings/0/enable_all_child_collisions = true
+settings/0/exclude_collision_count = 0
+settings/1/root_bone_name = "Fringe.R"
+settings/1/root_bone = 69
+settings/1/end_bone_name = "Fringe.R.002"
+settings/1/end_bone = 71
+settings/1/extend_end_bone = false
+settings/1/center_from = 1
+settings/1/center_node = NodePath("../..")
+settings/1/individual_config = false
+settings/1/rotation_axis = 3
+settings/1/radius/value = 0.032
+settings/1/radius/damping_curve = SubResource("Curve_0q5av")
+settings/1/stiffness/value = 1.0
+settings/1/stiffness/damping_curve = null
+settings/1/drag/value = 1.0
+settings/1/drag/damping_curve = null
+settings/1/gravity/value = 0.2
+settings/1/gravity/damping_curve = null
+settings/1/gravity/direction = Vector3(0, -1, 0)
+settings/1/joints/0/bone_name = "Fringe.R"
+settings/1/joints/0/bone = 69
+settings/1/joints/1/bone_name = "Fringe.R.001"
+settings/1/joints/1/bone = 70
+settings/1/joints/2/bone_name = "Fringe.R.002"
+settings/1/joints/2/bone = 71
+settings/1/enable_all_child_collisions = true
+settings/1/exclude_collision_count = 0
+
+[node name="SpringBoneCollisionPlane3D" type="SpringBoneCollisionPlane3D" parent="Armature/Skeleton3D/SpringBoneFringe" index="0" unique_id=1114577649]
+transform = Transform3D(1, -4.1927228e-23, -1.1728136e-22, -7.940934e-23, 0.51963484, -0.8543885, 2.646978e-23, 0.85438836, 0.5196347, 1.5892989e-16, 1.3829829, 0.09251924)
+bone_name = "Ribcage"
+bone = 60
+position_offset = Vector3(0, 0.138, 0.088)
+rotation_offset = Quaternion(0.701, 0, 0, 1)
+
+[node name="SpringBoneCollisionCapsule3D" type="SpringBoneCollisionCapsule3D" parent="Armature/Skeleton3D/SpringBoneFringe" index="1" unique_id=379251727]
+transform = Transform3D(1, 2.4684884e-22, -1.4334867e-22, -1.9898768e-22, 0.96153903, 0.2746133, 1.3533367e-22, -0.27461326, 0.961539, 1.5892988e-16, 1.5729997, -0.028947612)
+bone_name = "Head"
+bone = 64
+position_offset = Vector3(0, 0.04, -0.028)
+rotation_offset = Quaternion(-0.14, 0, 0, 1)
+radius = 0.09
+height = 0.303
+
+[node name="LookAtHead" type="LookAtModifier3D" parent="Armature/Skeleton3D" index="56" unique_id=322972471]
+bone_name = "Head"
+bone = 64
+origin_offset = Vector3(0, 0.1, 0)
+duration = 0.6
+transition_type = 1
+ease_type = 2
+use_angle_limitation = true
+symmetry_limitation = true
+primary_limit_angle = 6.2831855
+primary_damp_threshold = 1.0
+secondary_limit_angle = 0.6981317
+secondary_damp_threshold = 1.0
+
+[node name="LookAtLeftEye" type="LookAtModifier3D" parent="Armature/Skeleton3D" index="57" unique_id=630081403]
+bone_name = "Mch_Eye.L"
+bone = 93
+forward_axis = 2
+primary_rotation_axis = 2
+origin_offset = Vector3(0.035, 0.04, 0)
+duration = 0.2
+use_angle_limitation = true
+symmetry_limitation = false
+primary_positive_limit_angle = 0.17453292
+primary_positive_damp_threshold = 1.0
+primary_negative_limit_angle = 0.2617994
+primary_negative_damp_threshold = 1.0
+secondary_positive_limit_angle = 0.10471976
+secondary_positive_damp_threshold = 1.0
+secondary_negative_limit_angle = 0.12217305
+secondary_negative_damp_threshold = 1.0
+
+[node name="LookAtRightEye" type="LookAtModifier3D" parent="Armature/Skeleton3D" index="58" unique_id=158383915]
+bone_name = "Mch_Eye.R"
+bone = 94
+forward_axis = 2
+primary_rotation_axis = 2
+origin_offset = Vector3(-0.035, 0.04, 0)
+duration = 0.2
+use_angle_limitation = true
+symmetry_limitation = false
+primary_positive_limit_angle = 0.17453292
+primary_positive_damp_threshold = 1.0
+primary_negative_limit_angle = 0.2617994
+primary_negative_damp_threshold = 1.0
+secondary_positive_limit_angle = 0.10471976
+secondary_positive_damp_threshold = 1.0
+secondary_negative_limit_angle = 0.12217305
+secondary_negative_damp_threshold = 1.0
+
+[node name="FaceAnimator" type="Node3D" parent="Armature/Skeleton3D" index="59" unique_id=1883984610]
+script = ExtResource("12_b4sqd")
+skeleton_path = NodePath("..")
+idle_time_min = 2.0
+idle_time_max = 8.0
+hold_time_max = 2.03
+double_blink_chance = 0.05
+patterns = {
+&"Happy": {
+&"duration_scale": 3.0,
+&"shapes": {
+&"Happy_Eyes": 0.75,
+&"Iris_Big": 0.475,
+&"Mounth_Smile": 0.738,
+&"Wide_Eyebrows": 0.563
+}
+},
+&"Squint": {
+&"duration_scale": 5.0,
+&"shapes": {
+&"Anger_Eyebrows": 0.363,
+&"Anger_Eyes": 0.388,
+&"Eyeshimmer": 0.182,
+&"Mounth_Default": 0.463
+}
+},
+&"Thoughtfulness": {
+&"duration_scale": 1.0,
+&"shapes": {
+&"Annoyance_Eyebrows": 0.35,
+&"Iris_Small": 0.525,
+&"Mounth_Default": 1.0,
+&"Sad_Eyes": 1.0
+}
+}
+}
+
+[node name="PointView" type="ModifierBoneTarget3D" parent="Armature/Skeleton3D" index="60" unique_id=519720033]
+transform = Transform3D(1, -2.2204431e-16, -1.1046701e-06, -1.1046701e-06, 2.4528586e-22, -1, 2.2204423e-16, 0.9999999, 2.019484e-28, 6.4339426e-16, 1.5678912, 1.0000001)
+bone_name = "Point_View"
+bone = 20
+
+[node name="EyeJitterModifier" type="SkeletonModifier3D" parent="Armature/Skeleton3D" index="61" unique_id=301212467]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("13_cpci4")
+eye_bones = Array[StringName]([&"Mch_Eye.L", &"Mch_Eye.R"])
+change_interval = 1.7
+metadata/_custom_type_script = "uid://b1v7teteg3gbv"
+
+[node name="Body_Lowpoly" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="0" unique_id=1054408153]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="1" unique_id=837319618]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_001" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="2" unique_id=862658081]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_002" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="3" unique_id=855804887]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_003" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="4" unique_id=1790239960]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_004" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="5" unique_id=641987660]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_005" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="6" unique_id=983478]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_006" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="7" unique_id=1405045294]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_007" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="8" unique_id=1192261165]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_008" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="9" unique_id=93165671]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_009" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="10" unique_id=962333443]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_010" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="11" unique_id=351962360]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_011" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="12" unique_id=425654159]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Cloth_Lowpoly_012" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="13" unique_id=348527446]
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="Hair_Lowpoly" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="14" unique_id=1495536443]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0012531877, 0, -0.0007673502)
+visibility_range_begin = 4.5
+visibility_range_begin_margin = 0.5
+
+[node name="WiggleRotationLock_L_1_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="15" unique_id=1547529621]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.86466515, 0.44169188, 0.23929615, -0.45086053, -0.89239496, 0.018053833, 0.22152086, -0.092278674, 0.970764, 0.08690227, 1.5889894, -0.011084121)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_1_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="16" unique_id=472935558]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.7860489, 0.5514868, 0.27926883, -0.6169701, -0.7278803, -0.29917943, 0.038281098, -0.40746984, 0.9123994, 0.17838457, 1.4041586, -0.030196704)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.001"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_1_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="17" unique_id=835492650]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.99769527, -0.008152947, 0.06737435, 0.0030560866, -0.9971341, -0.07539433, 0.067796126, -0.07501434, 0.99486005, 0.27864796, 1.2718258, -0.10427702)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.002"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_2_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="18" unique_id=1550528300]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.7408861, 0.20180242, 0.6405967, -0.27429998, -0.96152174, -0.014342237, 0.61305314, -0.18634158, 0.7677319, 0.081707805, 1.590254, -0.069447145)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.003"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_2_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="19" unique_id=1558610807]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.6703249, 0.34280714, 0.6581412, -0.5259218, -0.8451429, -0.095446266, 0.5235037, -0.41011038, 0.7468095, 0.120853126, 1.4037396, -0.10559336)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.004"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_2_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="20" unique_id=90472453]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.69435775, 0.006766334, 0.71959955, -0.03502761, -0.9990734, -0.024404116, 0.71876746, -0.042150643, 0.6939507, 0.17745978, 1.2641835, -0.17331368)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.05"
+properties = SubResource("Resource_yf5fn")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_3_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="21" unique_id=918381898]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.37066078, 0.109430164, 0.922299, -0.25654963, -0.9664461, 0.011563995, 0.8926178, -0.23232917, 0.3862981, 0.031191884, 1.5902535, -0.10970645)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.006"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_3_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="22" unique_id=2027421593]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.35033256, 0.18173982, 0.91882306, -0.3632046, -0.9305773, 0.045580566, 0.8633204, -0.3177528, 0.39202026, 0.051865645, 1.4076709, -0.15359853)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.007"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_L_3_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="23" unique_id=2006241571]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.36639056, 0.043417178, 0.9294465, -0.09751855, -0.9951857, 0.008045796, 0.92532194, -0.087690674, 0.3688606, 0.08130209, 1.2569448, -0.20506509)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.L.008"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_C_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="24" unique_id=1800873191]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(1, -2.9154795e-10, -5.8236367e-12, -2.8208602e-10, -0.97222, 0.23400414, -7.388529e-11, -0.23400414, -0.97221994, -5.1796766e-17, 1.5902535, -0.113271505)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_C_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="25" unique_id=1518392204]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.99989945, -5.29527e-09, -0.01418185, 0.00524622, -0.9290454, 0.3698881, -0.013175628, -0.36992502, -0.928955, -5.4631178e-11, 1.408076, -0.1571199)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.001"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_C_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="26" unique_id=151517141]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.999368, 3.4458935e-07, -0.035547208, 0.0024574175, -0.9975931, 0.06907773, -0.03546173, -0.06912014, -0.9969656, 9.403585e-10, 1.2451854, -0.22197917)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.002"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_1_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="27" unique_id=2132810606]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.86466515, -0.44169188, -0.23929615, 0.45086053, -0.89239496, 0.018053804, -0.22152086, -0.092278704, 0.970764, -0.08690227, 1.5889894, -0.011084121)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_1_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="28" unique_id=83319987]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.78604895, -0.55148673, -0.27926892, 0.61697, -0.72788036, -0.29917958, -0.038281187, -0.40746996, 0.9123994, -0.17838457, 1.4041586, -0.03019671)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.001"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_1_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="29" unique_id=1400136153]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.9976952, 0.008152954, -0.06737445, -0.003056042, -0.997134, -0.07539582, -0.067796245, -0.07501574, 0.99486, -0.27864796, 1.2718258, -0.10427705)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.002"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_2_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="30" unique_id=1965310804]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.74088585, -0.20180233, -0.6405966, 0.27429992, -0.9615215, -0.014342334, -0.6130531, -0.18634164, 0.76773196, -0.081707805, 1.590254, -0.069447145)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.003"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_2_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="31" unique_id=1181688251]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.6703248, -0.34280714, -0.65814096, 0.5259215, -0.8451428, -0.09544606, -0.5235037, -0.41011012, 0.74680966, -0.12085311, 1.4037396, -0.10559337)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.004"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_2_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="32" unique_id=426710019]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.6943893, -0.005840741, -0.7195768, 0.030000053, -0.99931747, -0.020838097, -0.7189641, -0.03605678, 0.6940904, -0.17745976, 1.2641835, -0.17331365)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.05"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_3_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="33" unique_id=121022916]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.37066078, -0.10943018, -0.922299, 0.2565497, -0.9664461, 0.0115639875, -0.8926178, -0.2323292, 0.3862981, -0.031191884, 1.5902535, -0.10970645)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.006"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_3_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="34" unique_id=1409325820]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.3503326, -0.18173987, -0.91882306, 0.36320457, -0.9305774, 0.045580614, -0.86332047, -0.31775275, 0.3920203, -0.05186565, 1.4076709, -0.15359853)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.007"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationLock_R_3_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="35" unique_id=345717734]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.3663906, -0.043416783, -0.9294465, 0.0975187, -0.99518573, 0.008045346, -0.92532206, -0.08769091, 0.3688606, -0.08130211, 1.2569448, -0.20506507)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Hair.R.008"
+properties = ExtResource("8_cd8ts")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationFringe_L_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="36" unique_id=355729471]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.93782294, 0.28525394, 0.1977837, -0.27517432, -0.9582676, 0.07728034, 0.2115742, 0.018050266, 0.9771797, 0.0539659, 1.6410065, 0.05348841)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Fringe.L"
+properties = ExtResource("10_18ur4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationFringe_L_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="37" unique_id=1671584581]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.9817926, -0.03519887, 0.18667741, 0.08117303, -0.9661684, 0.24474458, 0.17174761, 0.2554413, 0.9514317, 0.085016884, 1.5366951, 0.05545326)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Fringe.L.001"
+properties = ExtResource("10_18ur4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationFringe_R_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="38" unique_id=811730300]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.9616144, -0.19603747, 0.19200741, 0.21485077, -0.9731448, 0.082448676, 0.170688, 0.12053676, 0.977909, -0.06971639, 1.6500987, 0.046306707)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Fringe.R"
+properties = ExtResource("10_18ur4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationFringe_R_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="39" unique_id=955403192]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.9677201, 0.13895787, 0.21024874, -0.049902506, -0.9233775, 0.3805954, 0.24702567, 0.35781863, 0.9005066, -0.09139641, 1.5424774, 0.059637025)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Fringe.R.001"
+properties = ExtResource("10_18ur4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationHolster_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="40" unique_id=758036975]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.73847103, 0.6654238, -0.10895739, 0.6731764, -0.71830404, 0.17570658, 0.0386548, -0.20310172, -0.97839415, 0.12463054, 1.1421325, 0.0069377795)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Holster.001"
+properties = ExtResource("11_18ur4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationHolster_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="41" unique_id=1935316691]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.7074183, 0.6843778, -0.17659739, 0.7062386, -0.694357, 0.13818707, -0.028049447, -0.22247587, -0.9745344, 0.14073077, 1.1247529, 0.0020236438)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Holster.002"
+properties = ExtResource("11_18ur4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WigglePositionBreast_L" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="42" unique_id=758065643]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.8567967, 0.4636258, 0.22572228, 0.23232454, 0.04371907, -0.9716554, -0.46035272, 0.88495153, -0.0702533, 0.04322854, 1.3164314, 0.055175494)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("11_8747x")
+bone_name = "Breast.L"
+properties = ExtResource("13_8747x")
+metadata/_custom_type_script = "uid://cu7klm6ckjl7c"
+
+[node name="WigglePositionBreast_R" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="43" unique_id=1588293541]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.8567967, -0.4636258, -0.22572231, -0.23232457, 0.043719187, -0.97165525, 0.46035275, 0.8849516, -0.07025316, -0.043228533, 1.3164314, 0.055175483)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("11_8747x")
+bone_name = "Breast.R"
+properties = ExtResource("13_8747x")
+metadata/_custom_type_script = "uid://cu7klm6ckjl7c"
+
+[node name="WiggleRotationSkirt_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="44" unique_id=937110787]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.0035569072, 0.0014136434, -0.99999267, 0.7017664, -0.7124056, 0.0014890651, -0.71239823, -0.7017665, -0.0035259863, 1.323489e-23, 1.1322415, -0.06767629)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="45" unique_id=1769127358]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.011489821, 0.00021532443, -0.99993396, 0.35558864, -0.93463457, 0.003884681, -0.93457186, -0.3556098, -0.010815328, 0.00017634004, 1.0433748, -0.15521578)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.001"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="46" unique_id=1729064695]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.0012906697, 5.7319645e-05, -0.9999991, 0.68486005, -0.7286741, -0.00092567154, -0.7286734, -0.6848606, 0.00090124086, 0.00025704096, 0.69308436, -0.2884943)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.002"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="47" unique_id=379435631]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.16242099, 0.5074528, -0.84623355, 0.7301562, -0.5150483, -0.44899586, -0.6636953, -0.69080883, -0.2868651, 0.04667867, 1.1322417, -0.049001824)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="48" unique_id=1520611808]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.034180336, 0.24293669, -0.96943957, 0.23793665, -0.94409347, -0.228196, -0.97067887, -0.2228651, -0.090073034, 0.11886464, 1.0589752, -0.14727049)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.001"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="49" unique_id=842120362]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.05017103, 0.42718375, -0.9027715, 0.5275643, -0.7561759, -0.38713503, -0.84803206, -0.49569276, -0.18742879, 0.20840025, 0.71102464, -0.2294086)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.002"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_4" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="50" unique_id=1053934533]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.026554286, 0.66321135, -0.747961, 0.22786772, -0.73254234, -0.6414499, -0.9733299, -0.15340286, -0.17057654, 0.10561061, 1.1290331, -0.017897867)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.003"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_5" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="51" unique_id=634560925]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.104709595, 0.421462, -0.9007807, 0.019424647, -0.9064537, -0.4218583, -0.9943131, 0.026675314, -0.1031011, 0.18617955, 1.0400417, -0.03653372)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.004"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_L_6" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="52" unique_id=1844488138]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.06905079, 0.6626181, -0.7457676, 0.1879321, -0.7428076, -0.64258736, -0.97975177, -0.09578246, -0.17581858, 0.34451222, 0.69950986, -0.026512474)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.L.005"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_1" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="53" unique_id=1450744087]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.16242123, -0.50745183, 0.84623396, -0.73015636, -0.5150484, -0.44899535, 0.66369486, -0.6908094, -0.2868644, -0.04667867, 1.1322417, -0.049001824)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_2" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="54" unique_id=1053632662]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.034181178, -0.24293657, 0.9694396, -0.23793644, -0.9440936, -0.22819561, 0.9706786, -0.2228651, -0.090073764, -0.11886449, 1.0589752, -0.14727052)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.001"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_3" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="55" unique_id=2006708976]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(-0.05017086, -0.4271841, 0.9027716, -0.52756405, -0.75617605, -0.38713527, 0.848032, -0.49569276, -0.1874291, -0.20840013, 0.7110243, -0.22940871)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.002"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_4" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="56" unique_id=1268819068]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.026554346, -0.6632109, 0.7479613, -0.22786748, -0.7325427, -0.6414496, 0.9733298, -0.1534028, -0.17057642, -0.10561061, 1.1290331, -0.017897867)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.003"
+properties = ExtResource("14_cpci4")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_5" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="57" unique_id=643993736]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.10471012, -0.42146185, 0.90078044, -0.019424535, -0.9064536, -0.42185825, 0.9943127, 0.026675478, -0.10310161, -0.18617938, 1.0400417, -0.03653368)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.004"
+properties = ExtResource("15_0q5av")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="WiggleRotationSkirt_R_6" type="SkeletonModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="58" unique_id=143544255]
+unique_name_in_owner = false
+process_mode = 0
+process_priority = 0
+process_physics_priority = 0
+process_thread_group = 0
+physics_interpolation_mode = 0
+auto_translate_mode = 0
+editor_description = ""
+transform = Transform3D(0.0690512, -0.66261774, 0.7457676, -0.187932, -0.7428077, -0.642587, 0.9797513, -0.09578227, -0.17581892, -0.344512, 0.6995098, -0.02651237)
+rotation_edit_mode = 0
+rotation_order = 2
+top_level = false
+visible = true
+visibility_parent = NodePath("")
+active = true
+influence = 1.0
+script = ExtResource("7_trway")
+bone_name = "Skirt.R.005"
+properties = ExtResource("16_omeyd")
+metadata/_custom_type_script = "uid://6fgx73tctu5v"
+
+[node name="LookAtHead" type="LookAtModifier3D" parent="Armature_001/Skeleton3D" parent_id_path=PackedInt32Array(201421077) index="59" unique_id=1527564684]
+bone_name = "Head"
+bone = 64
+duration = 0.6
+transition_type = 1
+use_angle_limitation = true
+symmetry_limitation = true
+primary_limit_angle = 1.0471976
+primary_damp_threshold = 1.0
+secondary_limit_angle = 6.2831855
+secondary_damp_threshold = 1.0
+
+[node name="AnimationPlayer" parent="." index="2" unique_id=1741393740]
+playback_default_blend_time = 0.2
+
+[node name="AnimationStateMachine" type="Node3D" parent="." index="3" unique_id=1336252917 node_paths=PackedStringArray("animation_player")]
+script = ExtResource("12_cd8ts")
+animation_player = NodePath("../AnimationPlayer")
+transitions = Dictionary[String, ExtResource("13_18ur4")]({
+"Idle_to_Walk_Start": SubResource("Resource_tjsri"),
+"Walk_Start_to_Walk": SubResource("Resource_vrpfr"),
+"Walk_Start_to_Walk_Stop_Left": SubResource("Resource_f5vmy"),
+"Walk_Stop_Left_to_Idle": SubResource("Resource_wf4jp"),
+"Walk_Stop_Right_to_Idle": SubResource("Resource_1nbmg"),
+"Walk_to_Walk_Stop_Left": SubResource("Resource_7524x"),
+"Walk_to_Walk_Stop_Right": SubResource("Resource_ql7fg")
+})
+
+[node name="FootstepPlayer" type="AudioStreamPlayer3D" parent="." index="4" unique_id=47442163]
+stream = ExtResource("17_omeyd")
+max_db = -8.0
+max_distance = 5.0

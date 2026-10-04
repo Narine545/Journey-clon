@@ -1,0 +1,37 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://bj8vqm23yhig5"]
+
+[ext_resource type="Shader" uid="uid://rcfwhqfv66fm" path="res://assets/Rosalie_Blackwood/shaders/outline_shader.gdshader" id="1_we1dx"]
+[ext_resource type="Shader" uid="uid://ctefjsg7yn47y" path="res://assets/Rosalie_Blackwood/shaders/cell_shader.gdshader" id="1_wsqof"]
+[ext_resource type="Texture2D" uid="uid://dk7hgrt3y71x0" path="res://assets/Rosalie_Blackwood/textures/Cloth_Color_Single.png" id="2_we1dx"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2x4wc"]
+render_priority = 1
+shader = ExtResource("1_we1dx")
+shader_parameter/albedo_texture = ExtResource("2_we1dx")
+shader_parameter/min_thickness = 0.0030000001425
+shader_parameter/max_thickness = 0.03000000072648
+
+[resource]
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_2x4wc")
+shader = ExtResource("1_wsqof")
+shader_parameter/albedo_texture = ExtResource("2_we1dx")
+shader_parameter/albedo_color = Color(1, 1, 1, 1)
+shader_parameter/albedo_saturation = 1.50000007125
+shader_parameter/gamma = 0.50000002375
+shader_parameter/alpha = 1.0
+shader_parameter/use_texture = true
+shader_parameter/shadow_texture = ExtResource("2_we1dx")
+shader_parameter/shadow_softness = 0.05
+shader_parameter/shadow_saturation = 0.80000003567093
+shader_parameter/emission = true
+shader_parameter/emission_border = 0.85
+shader_parameter/emission_color = Color(0.7797905, 0.8903746, 0.98154014, 1)
+shader_parameter/use_sdf = false
+shader_parameter/hard_transition = false
+shader_parameter/use_static_shadow = false
+shader_parameter/use_specular = false
+shader_parameter/specular_intensity = 1.0
+shader_parameter/specular_threshold = 0.3
+shader_parameter/specular_color = Color(1, 0.95, 0.9, 1)
+shader_parameter/specular_power = 16.0

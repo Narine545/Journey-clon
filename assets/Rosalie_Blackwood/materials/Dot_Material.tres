@@ -1,0 +1,132 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://drcxisxox3ikv"]
+
+[sub_resource type="Shader" id="Shader_lwupp"]
+code = "shader_type spatial;
+render_mode diffuse_toon, specular_toon, depth_prepass_alpha, sss_mode_skin;
+
+// Общие параметры
+uniform sampler2D albedo_texture : source_color;
+uniform vec3 albedo_color : source_color = vec3(1.0);
+uniform bool use_texture = true;
+uniform float alpha : hint_range(0.0, 1.0) = 1.0;
+uniform vec3 shadow_color : source_color = vec3(0.4, 0.35, 0.5);
+uniform float shadow_softness : hint_range(0.0, 0.2) = 0.05;
+
+// Параметры для SDF режима
+uniform bool use_sdf = false;
+uniform sampler2D sdf_map : source_color;
+uniform bool hard_transition = false;
+uniform float sss_strength : hint_range(0.0, 0.5) = 0.08;
+
+varying vec2 uv2_coords;
+
+void vertex() {
+    uv2_coords = UV2;
+}
+
+void fragment() {
+    vec3 base_color;
+    float final_alpha = alpha;
+    
+    if (use_texture) {
+        vec4 tex_color = texture(albedo_texture, UV);
+        base_color = tex_color.rgb;
+        final_alpha *= tex_color.a;
+    } else {
+        base_color = albedo_color;
+    }
+    
+    ALBEDO = base_color;
+    ALPHA = final_alpha;
+    
+    // SSS применяется только в SDF режиме
+    if (use_sdf) {
+        SSS_STRENGTH = sss_strength;
+    }
+}
+
+void light() {
+    vec3 normal = normalize(NORMAL);
+    vec3 light_dir = normalize(LIGHT);
+    
+    float NdotL = dot(normal, light_dir);
+    float normalized = NdotL * 0.5 + 0.5;
+    
+    float is_light;
+    vec3 final_color;
+    
+    // --- SDF РЕЖИМ ---
+    if (use_sdf) {
+        // Получаем вектор forward объекта в мировом пространстве
+        vec3 object_forward = (MODEL_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz;
+        vec3 object_forward_xz = normalize(object_forward * vec3(1.0, 0.0, 1.0));
+
+        vec3 world_light = (INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).xyz;
+        vec3 light_xz = normalize(world_light * vec3(1.0, 0.0, 1.0));
+        
+        // Угол падения света (NdotL_sdf) от -1 до 1
+        float NdotL_sdf = dot(object_forward_xz, light_xz);
+        
+        // Для SDF нужен диапазон 0-1, где 0 = сзади, 1 = прямо
+        float angle_for_sdf = 1.0 - (NdotL_sdf + 1.0) / 2.0;
+        angle_for_sdf = clamp(angle_for_sdf, 0.0, 1.0);
+
+        // Дискретизация на 12 шагов (0, 0.083, 0.166... 1.0)
+        float steps = 15.0 / 180.0;
+        float discretized;
+        if (hard_transition) {
+            discretized = floor(angle_for_sdf / steps) * steps;
+        } else {
+            discretized = angle_for_sdf;
+        }
+        
+        // ВЫБИРАЕМ КАНАЛ SDF по направлению света
+        vec3 sdf = texture(sdf_map, uv2_coords).rgb;
+        float sdf_value;
+        
+        if (light_xz.x < 0.1) {
+            sdf_value = sdf.g;
+        } else if (light_xz.x > -0.1) {
+            sdf_value = sdf.r;
+        } else {
+            sdf_value = sdf.b;
+        }
+        
+        // Сравниваем дискретизированный угол со значением SDF
+        float difference = sdf_value - discretized;
+		//float difference = discretized - sdf_value;
+        
+        // Плавный переход на основе разницы
+        is_light = clamp(difference / shadow_softness, 0.0, 1.0);
+        
+        final_color = mix(shadow_color, vec3(1.0), is_light);
+        
+        if (NdotL_sdf < -0.9) {
+            final_color = shadow_color;
+        }
+    } 
+    // --- ОБЫЧНЫЙ РЕЖИМ ---
+    else {
+        float shadow_center = 0.5;
+        is_light = smoothstep(shadow_center, shadow_center + shadow_softness, normalized);
+        final_color = mix(shadow_color, vec3(1.0), is_light);
+        
+        if (NdotL <= 0.0) {
+            final_color = shadow_color;
+        }
+    }
+    
+    DIFFUSE_LIGHT = ALBEDO * LIGHT_COLOR * final_color;
+}"
+
+[resource]
+render_priority = 0
+shader = SubResource("Shader_lwupp")
+shader_parameter/albedo_color = Color(0.6995592, 0.54938483, 0.5611054, 1)
+shader_parameter/use_texture = false
+shader_parameter/alpha = 1.0
+shader_parameter/shadow_color = Color(0.4, 0.35, 0.5, 1)
+shader_parameter/shadow_softness = 0.05
+shader_parameter/use_sdf = false
+shader_parameter/hard_transition = false
+shader_parameter/sss_strength = 0.08

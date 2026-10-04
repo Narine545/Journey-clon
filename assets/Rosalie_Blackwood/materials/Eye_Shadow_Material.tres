@@ -1,0 +1,25 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://cb1hcxg3x6j6o"]
+
+[ext_resource type="Shader" uid="uid://ctefjsg7yn47y" path="res://assets/Rosalie_Blackwood/shaders/cell_shader.gdshader" id="1_gun1c"]
+
+[resource]
+render_priority = 1
+shader = ExtResource("1_gun1c")
+shader_parameter/albedo_color = Color(0.45885283, 0.32033998, 0.33507892, 1)
+shader_parameter/albedo_saturation = 1.50000007125
+shader_parameter/gamma = 1.0
+shader_parameter/alpha = 0.6690000317775
+shader_parameter/use_texture = false
+shader_parameter/shadow_softness = 0.05
+shader_parameter/shadow_saturation = 1.0
+shader_parameter/emission = true
+shader_parameter/emission_border = 0.85
+shader_parameter/emission_color = Color(1, 1, 1, 1)
+shader_parameter/use_sdf = false
+shader_parameter/hard_transition = false
+shader_parameter/use_static_shadow = false
+shader_parameter/use_specular = false
+shader_parameter/specular_intensity = 1.0
+shader_parameter/specular_threshold = 0.3
+shader_parameter/specular_color = Color(1, 0.95, 0.9, 1)
+shader_parameter/specular_power = 16.0
