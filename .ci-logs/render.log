@@ -25,6 +25,6 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_c_trail.png -> 0
 WARNING: 1 RID of type "CanvasItem" was leaked.
    at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2733)
-WARNING: 6 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+WARNING: 14 ObjectDB instances were leaked at exit (run with `--verbose` for details).
    at: cleanup (core/object/object.cpp:2536)
 ERROR: 1 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.

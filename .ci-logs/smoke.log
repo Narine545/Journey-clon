@@ -1,16 +1,16 @@
 Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 
 [SMOKE] коридор спуска: средний уклон 19.1°, длиннейший прогон 220 м
-[SMOKE] ходьба: кадр 30 pos=(0.0, 41.5) spd=3.79 state=true
-[SMOKE] ходьба: кадр 40 pos=(0.0, 42.1) spd=3.94 state=true
-[SMOKE] ходьба: кадр 50 pos=(-0.0, 42.8) spd=3.96 state=true
-[SMOKE] ходьба: кадр 60 pos=(-0.0, 43.4) spd=3.99 state=true
-[SMOKE] ходьба: кадр 70 pos=(0.0, 44.1) spd=3.90 state=true
-[SMOKE] ходьба: кадр 80 pos=(0.0, 44.7) spd=3.92 state=true
-[SMOKE] ходьба: кадр 90 pos=(-0.0, 45.4) spd=4.00 state=true
+[SMOKE] ходьба: кадр 30 pos=(0.0, 41.5) spd=3.83 state=true
+[SMOKE] ходьба: кадр 40 pos=(-0.0, 42.1) spd=3.92 state=true
+[SMOKE] ходьба: кадр 50 pos=(-0.0, 42.8) spd=3.97 state=true
+[SMOKE] ходьба: кадр 60 pos=(-0.0, 43.4) spd=4.00 state=true
+[SMOKE] ходьба: кадр 70 pos=(-0.0, 44.1) spd=3.90 state=true
+[SMOKE] ходьба: кадр 80 pos=(-0.0, 44.7) spd=3.86 state=true
+[SMOKE] ходьба: кадр 90 pos=(-0.0, 45.4) spd=3.98 state=true
 [SMOKE] ходьба: кадр 100 pos=(-0.0, 46.1) spd=4.02 state=true
-[SMOKE] ходьба: кадр 110 pos=(0.0, 46.7) spd=3.96 state=true
-[SMOKE] диагностика: глубочайшая промятость в зоне ±18 м: -0.211
+[SMOKE] ходьба: кадр 110 pos=(-0.0, 46.7) spd=3.94 state=true
+[SMOKE] диагностика: глубочайшая промятость в зоне ±18 м: -0.181
 [SMOKE] сёрф-склон: (-70.0, -130.0) ny=0.86658453941345
 [SMOKE] занос: свежий след -0.060 м
 [SMOKE] занос: через 13 с -0.035 м (59% глубины)
@@ -25,7 +25,7 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [SMOKE] PASS walk: скорость шага в норме 9 из 9 проверок
 [SMOKE] PASS stop: без ввода остановился (0.00 м/с)
 [SMOKE] PASS stop: на земле
-[SMOKE] PASS run: промятости вдоль пути -0.120 м (ожидалось < -0.008)
+[SMOKE] PASS run: промятости вдоль пути -0.179 м (ожидалось < -0.008)
 [SMOKE] PASS slide-off: без Shift не скользит (пик 0.0 м/с)
 [SMOKE] PASS slide-off: без Shift остановился (0.00 м/с)
 [SMOKE] PASS slide-off: на земле
