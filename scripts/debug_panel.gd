@@ -111,11 +111,11 @@ func _build_ui() -> void:
 		func(v): main.color_grade.set_param("night", v))
 
 	_section("ВОЛЮМЕТРИК (ТУМАН)")
-	_slider("Плотность", 0.005, 0.30, 0.09, 0.002,
+	_slider("Плотность", 0.005, 0.12, 0.026, 0.001,
 		func(v): world.set_vol_fog("volumetric_fog_density", v))
-	_slider("Дальность, м", 32.0, 192.0, 72.0, 4.0,
+	_slider("Дальность, м", 48.0, 256.0, 160.0, 4.0,
 		func(v): world.set_vol_fog("volumetric_fog_length", v))
-	_slider("Анизотропия", 0.0, 1.0, 0.55, 0.02,
+	_slider("Анизотропия", 0.0, 1.0, 0.72, 0.02,
 		func(v): world.set_vol_fog("volumetric_fog_anisotropy", v))
 	_slider("Подсветка неба", 0.0, 1.0, 0.12, 0.02,
 		func(v): world.set_vol_fog("volumetric_fog_ambient_inject", v))
@@ -209,4 +209,3 @@ func _on_sun_changed(elev: Variant, azim: Variant) -> void:
 	main.game.sun_dir = dir
 	main.world.apply_sun(dir)
 	main.terrain.apply_sun(dir)
-	main.player.apply_sun(dir)

@@ -13,6 +13,7 @@ var audio
 var wind: WindField
 var color_grade: ColorGrader
 var debug_panel: DebugPanel
+var zombies: Array[SandZombie] = []
 
 
 func _ready() -> void:
@@ -43,6 +44,11 @@ func _ready() -> void:
 	add_child(player)
 	player.setup(game, terrain, sand)
 	sand.player = player
+
+	# Противники появляются силуэтами вдоль маршрута, а не у лица игрока.
+	# В smoke-тесте отключены, чтобы AI не вмешивался в замеры движения.
+	if OS.get_environment("JOURNEY_SMOKE") != "1":
+		_spawn_zombies()
 
 	# звук: шаги, скольжение, ветер, амбиент-пад — весь синтезируется кодом
 	audio = SoundScape.new()
@@ -81,3 +87,29 @@ func _ready() -> void:
 		var shot := ShotTaker.new()
 		add_child(shot)
 		shot.setup(self)
+
+
+func _spawn_zombies() -> void:
+	for spawn in [Vector2(-13.0, -32.0), Vector2(18.0, -92.0), Vector2(-8.0, -142.0)]:
+		var zombie := SandZombie.new()
+		add_child(zombie)
+		zombie.setup(player, terrain, spawn)
+		zombies.append(zombie)
+
+
+## Ближайший живой противник на линии выстрела до песка.
+func shoot_zombie(origin: Vector3, direction: Vector3, max_distance: float) -> Dictionary:
+	var best_distance := max_distance
+	var best: SandZombie = null
+	for zombie in zombies:
+		if not is_instance_valid(zombie):
+			continue
+		var distance := zombie.ray_hit_distance(origin, direction, best_distance)
+		if distance >= 0.0 and distance < best_distance:
+			best_distance = distance
+			best = zombie
+	if best == null:
+		return {}
+	var hit_position := origin + direction * best_distance
+	best.take_damage(hit_position)
+	return {"position": hit_position, "distance": best_distance}

@@ -10,11 +10,15 @@ const SCALE := 0.014 # ассет в сантиметрах; крупнее — 
 const TARGET_CENTER := Vector3(0.02, -0.26, -0.42) # по центру кадра, чуть ниже
 const ROT_Y := PI # Sketchfab-модели смотрят на камеру — разворачиваем от себя
 
-# Анимации ассета ОГРОМНЫЕ (Draw 5.3 с, Shoot 4.1 с, Reload 3.8 с) — это
-# «демо-темп». Сжимаем speed_scale'ом до игровых длительностей.
-const T_DRAW := 0.70
-const T_SHOOT := 0.34
-const T_RELOAD := 1.40
+# В glTF клипы лежат на общей монтажной шкале. Проигрываем только диапазон
+# с реальными ключами через AnimationPlayer.play_section(): темп остаётся 1×,
+# но многосекундная пустота до Shoot/Draw не попадает в воспроизведение.
+const CLIP_SECTIONS := {
+	&"Reload": Vector2(0.0333333, 3.7666667),
+	&"Shoot": Vector2(3.7666667, 4.10),
+	&"Hide": Vector2(4.10, 4.4666667),
+	&"Draw": Vector2(4.50, 5.3333335),
+}
 const RAY_MAX := 140.0
 const RAY_STEP := 0.6
 
@@ -46,6 +50,7 @@ func setup(main_ref, rig_ref: CameraRig) -> void:
 	if _anim == null:
 		push_error("ARMS: в модели нет AnimationPlayer")
 		return
+	_anim.animation_finished.connect(_on_animation_finished)
 
 	# авто-посадка: меряем общий AABB модели и ставим её центр в TARGET_CENTER
 	add_child(inst)
@@ -95,7 +100,14 @@ func setup(main_ref, rig_ref: CameraRig) -> void:
 	_dust.emitting = false
 	_dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-	_play(&"Draw", T_DRAW)
+	_play(&"Draw")
+
+
+func _on_animation_finished(finished_clip: StringName) -> void:
+	if finished_clip == &"Reload" and _reloading:
+		_reloading = false
+		ammo = MAG
+	_busy_t = 0.0
 
 
 func _find_anim(node: Node) -> AnimationPlayer:
@@ -133,11 +145,10 @@ func _union_aabb(node: Node, xform: Transform3D) -> AABB:
 func _physics_process(delta: float) -> void:
 	if _anim == null:
 		return
+	# _busy_t — диагностическое оставшееся время; завершение состояния идёт
+	# от animation_finished, поэтому логика не расходится с видимой рукой.
 	if _busy_t > 0.0:
-		_busy_t -= delta
-		if _busy_t <= 0.0 and _reloading:
-			_reloading = false
-			ammo = MAG
+		_busy_t = maxf(0.0, _busy_t - delta)
 	if _flash != null and _flash.light_energy > 0.01:
 		_flash.light_energy *= exp(-38.0 * delta)
 	elif _flash != null:
@@ -165,8 +176,7 @@ func try_shoot() -> void:
 		return
 	ammo -= 1
 	shots_fired += 1
-	_play(&"Shoot", T_SHOOT)
-	_busy_t = T_SHOOT * 0.9 # полуавто: темп чуть быстрее анимации
+	_play(&"Shoot")
 	if _flash != null:
 		_flash.light_energy = 5.0
 	if _main.audio != null:
@@ -177,6 +187,18 @@ func try_shoot() -> void:
 	var from := cam.global_position
 	var dir := -cam.global_transform.basis.z
 	var hit: Variant = _ray_sand(from, dir)
+	var sand_distance := RAY_MAX
+	if hit != null:
+		sand_distance = from.distance_to(hit)
+	# Противник проверяется до точки песка: пуля не проходит сквозь дюну.
+	var enemy_hit: Dictionary = _main.shoot_zombie(from, dir, sand_distance)
+	if not enemy_hit.is_empty():
+		last_hit = enemy_hit["position"]
+		last_hit_valid = true
+		if _dust != null:
+			_dust.global_position = last_hit
+			_dust.restart()
+		return
 	last_hit_valid = hit != null
 	if hit != null:
 		last_hit = hit
@@ -202,19 +224,23 @@ func try_reload() -> void:
 	if _anim == null or _busy_t > 0.0 or ammo == MAG or _reloading:
 		return
 	_reloading = true
-	_play(&"Reload", T_RELOAD)
-	_busy_t = T_RELOAD
+	_play(&"Reload")
 	if _main.audio != null:
 		_main.audio.on_reload()
 
 
-## Проиграть анимацию ассета, сжатую до игровой длительности:
-## speed_scale = длина_ассета / длительность.
-func _play(p_anim: StringName, target_time: float) -> void:
+## Проиграть очищенный клип в авторском темпе. Состояние завершает сигнал
+## AnimationPlayer, а не отдельный таймер, который раньше рассинхронизировался.
+func _play(p_anim: StringName) -> void:
 	_anim.stop()
-	_anim.play(p_anim)
-	var len_s: float = maxf(_anim.current_animation_length, 0.05)
-	_anim.speed_scale = clampf(len_s / target_time, 0.5, 20.0)
+	_anim.speed_scale = 1.0
+	var section: Vector2 = CLIP_SECTIONS.get(p_anim, Vector2(0.0, -1.0))
+	if section.y > section.x:
+		_anim.play_section(p_anim, section.x, section.y)
+		_busy_t = section.y - section.x
+	else:
+		_anim.play(p_anim)
+		_busy_t = _anim.current_animation_length
 
 
 ## Импортные материалы пересвечены в ночи: приглушаем альбедо,
@@ -222,6 +248,9 @@ func _play(p_anim: StringName, target_time: float) -> void:
 func _dim_materials(root: Node) -> void:
 	if root is MeshInstance3D:
 		var mi: MeshInstance3D = root
+		# Viewmodel отделён от светового слоя мира. Камера его по-прежнему видит,
+		# но фонарь (cull mask 1) не засвечивает оружие в упор.
+		mi.layers = 2
 		for i in range(mi.get_surface_override_material_count()):
 			var m = mi.get_surface_override_material(i)
 			if m is StandardMaterial3D:
@@ -275,7 +304,7 @@ func busy() -> float:
 
 
 ## Текущая анимация (для тестов/диагностики).
-func anim_name() -> String:
+func current_animation_name() -> String:
 	if _anim == null:
 		return ""
 	return _anim.current_animation

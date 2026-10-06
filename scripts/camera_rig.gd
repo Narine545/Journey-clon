@@ -50,7 +50,13 @@ func setup(main_ref) -> void:
 	flashlight.spot_attenuation = 1.4
 	flashlight.light_color = Color(1.0, 0.93, 0.80)
 	flashlight.light_energy = 2.6
-	flashlight.shadow_enabled = false
+	# Руки живут на visual layer 2, мир — на layer 1. Фонарь освещает только
+	# мир: больше никакого белого пятна на кистях и затворе перед камерой.
+	flashlight.light_cull_mask = 1
+	# Отдельный коэффициент обязателен для читаемого конуса в объёмном тумане.
+	flashlight.light_volumetric_fog_energy = 2.2
+	flashlight.shadow_enabled = true
+	flashlight.shadow_bias = 0.08
 	flashlight.visible = flash_on
 
 	# руки с пистолетом — прямо на камере

@@ -163,7 +163,7 @@ func _physics_process(_delta: float) -> void:
 				else:
 					_check(false, "shoot: кратер в песке — попадания не было")
 			elif arms != null and not Input.is_action_pressed("reload") \
-					and arms.anim_name() != "Reload" and arms.ammo != FpsArms.MAG:
+					and arms.current_animation_name() != "Reload" and arms.ammo != FpsArms.MAG:
 				# перезарядка ещё не принята (руки могли быть заняты выстрелом):
 				# циклим нажатие, пока AnimationPlayer не возьмёт Reload
 				if phase_frames % 4 == 0:

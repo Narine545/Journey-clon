@@ -44,7 +44,7 @@ const PRESETS := [
 		"tint_shadows": Color(0.90, 0.95, 1.10),
 		"tint_midtones": Color(0.95, 0.98, 1.05),
 		"tint_highlights": Color(1.00, 1.00, 1.02),
-		"brightness": 0.72, "contrast": 1.12, "vibrance": -0.10,
+		"brightness": 0.90, "contrast": 1.08, "vibrance": -0.06,
 		"temperature": -0.25, "night": 0.8,
 	},
 	{
@@ -59,7 +59,7 @@ const PRESETS := [
 
 var _mat: ShaderMaterial
 var preset_idx := 4 # ночь: «Пуркинье» — хоррор по умолчанию
-var intensity := 0.55
+var intensity := 0.38
 
 
 func setup() -> void:

@@ -1,6 +1,6 @@
 ; Engine configuration file.
 ; Медитативное путешествие к свету — вертикальный срез в духе Journey.
-; Рендерер жёстко зафиксирован: Compatibility (OpenGL 3.3), 60 FPS на встроенной графике.
+; Рендерер жёстко зафиксирован: Forward+ (Vulkan) для объёмного тумана и glow.
 
 config_version=5
 
@@ -8,7 +8,7 @@ config_version=5
 
 config/name="To The Light"
 run/main_scene="res://scenes/main.tscn"
-config/features=PackedStringArray("4.7", "GL Compatibility")
+config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]

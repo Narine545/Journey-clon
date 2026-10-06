@@ -1,5 +1,7 @@
 shader_type spatial;
-render_mode unshaded, fog_disabled;
+// Материал участвует в настоящем освещении Forward+: тени, SSAO/SSIL,
+// фонарь и volumetric fog. Раньше unshaded делал дюны неизбежно плоскими.
+render_mode diffuse_burley, specular_schlick_ggx;
 
 // =====================================================================
 // Шейдер песка — сердце игры.
@@ -255,4 +257,10 @@ void fragment() {
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);
 
 	ALBEDO = mix(base, fcol, fog);
+	// Аналитическая нормаль следов и ряби теперь питает реальный BRDF,
+	// поэтому фонарь скользит по гребням, а впадины получают контактную тень.
+	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0)).xyz);
+	ROUGHNESS = mix(0.88, 0.62, clamp(fres, 0.0, 1.0)) + churn * 0.08;
+	SPECULAR = 0.28;
+	METALLIC = 0.0;
 }
