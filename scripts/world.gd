@@ -176,7 +176,7 @@ func set_vol_fog(param: String, value) -> void:
 ## небо, свет, песок, туман, экспозицию, грейдинг.
 func apply_night01(v: float) -> void:
 	game.night01 = clampf(v, 0.0, 1.0)
-	var n := game.night01
+	var n: float = game.night01
 	_env.ambient_light_energy = lerpf(1.0, 0.30, n)
 	_env.tonemap_exposure = lerpf(1.08, 1.16, n)
 	_env.fog_light_color = Game.HORIZON_COL.lerp(Color(0.23, 0.28, 0.42), n)
