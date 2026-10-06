@@ -1,1 +1,53 @@
-smoke: пропущен
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+SCRIPT ERROR: Invalid access to property or key 'transform' on a base object of type 'AnimationPlayer'.
+          at: FpsArms._union_aabb (res://scripts/fps_arms.gd:112)
+          GDScript backtrace (most recent call first):
+              [0] _union_aabb (res://scripts/fps_arms.gd:112)
+              [1] setup (res://scripts/fps_arms.gd:48)
+              [2] setup (res://scripts/camera_rig.gd:59)
+              [3] _ready (res://scripts/main.gd:60)
+[SMOKE] коридор спуска: средний уклон 19.1°, длиннейший прогон 220 м
+[SMOKE] ходьба: кадр 30 pos=(0.0, 41.3) spd=3.82
+[SMOKE] ходьба: кадр 40 pos=(0.0, 42.0) spd=3.90
+[SMOKE] ходьба: кадр 50 pos=(0.0, 42.6) spd=3.97
+[SMOKE] ходьба: кадр 60 pos=(0.0, 43.3) spd=3.98
+[SMOKE] ходьба: кадр 70 pos=(0.0, 44.0) spd=3.88
+[SMOKE] ходьба: кадр 80 pos=(0.0, 44.6) spd=3.96
+[SMOKE] ходьба: кадр 90 pos=(0.0, 45.3) spd=4.02
+[SMOKE] ходьба: кадр 100 pos=(0.0, 45.9) spd=4.01
+[SMOKE] ходьба: кадр 110 pos=(0.0, 46.6) spd=3.96
+[SMOKE] диагностика: глубочайшая промятость в зоне ±18 м: -0.195
+[SMOKE] сёрф-склон: (-70.0, -130.0) ny=0.86658453941345
+[SMOKE] занос: свежий след -0.060 м
+[SMOKE] занос: через 13 с -0.036 м (60% глубины)
+[SMOKE] PASS winding: вывернутых граней 0 из 200 (должно быть 0)
+[SMOKE] PASS descent: средний уклон коридора 19.1° (ожидалось >8)
+[SMOKE] PASS descent: длиннейший спуск 220 м без остановки (ожидалось ≥60)
+[SMOKE] PASS stamp: дно отпечатка -0.052 м (ожидалось < -0.02)
+[SMOKE] PASS stamp: вал вокруг отпечатка 0.0135 м (ожидалось > 0)
+[SMOKE] PASS stamp: физика видит след (ground_height на 0.052 ниже дюн)
+[SMOKE] PASS idle: на земле
+[SMOKE] PASS walk: скорость шага в норме 9 из 9 проверок
+[SMOKE] PASS stop: без ввода остановился (0.00 м/с)
+[SMOKE] PASS stop: на земле
+[SMOKE] PASS run: промятости вдоль пути -0.121 м (ожидалось < -0.008)
+[SMOKE] PASS slide-off: без Shift не скользит (пик 0.0 м/с)
+[SMOKE] PASS slide-off: без Shift остановился (0.00 м/с)
+[SMOKE] PASS slide-off: на земле
+[SMOKE] PASS slide: пик разгона по склону 14.2 м/с (ожидалось >11)
+[SMOKE] PASS slide: на склоне 121 из 120 кадров на земле (липнем к дюне)
+[SMOKE] PASS slide: сёрф-режим активен (surf01 до 1.00)
+[SMOKE] PASS jump/glide: полёт был
+[SMOKE] PASS shoot: патроны потрачены (9 из 12)
+[SMOKE] PASS shoot: выстрелов сделано 3
+[SMOKE] PASS shoot: попадание в песок зафиксировано
+[SMOKE] FAIL shoot: кратер в песке 0.000 м (ожидалось < -0.002)
+[SMOKE] FAIL reload: перезарядка не завершилась (ammo=9)
+[SMOKE] PASS занос: след затягивается, но не мгновенно (осталось 60%)
+[SMOKE] итог: ЕСТЬ ПРОВАЛЫ
+WARNING: 1 RID of type "CanvasItem" was leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2733)
+WARNING: 14 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+ERROR: 1 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
