@@ -307,6 +307,7 @@ void sky() {
 	final_color = mix(final_color, cl.rgb, cl.a);
 
 	// дебандинг: физический градиент не должен полосить
-	float dither = fract(sin(dot(SCREEN_UV * vec2(917.0, 533.0), vec2(12.9898, 78.233))) * 43758.5453);
+	// (EYEDIR вместо SCREEN_UV — одинаково работает в Forward+ и Compatibility)
+	float dither = fract(sin(dot(EYEDIR.xz * 917.0, vec2(12.9898, 78.233))) * 43758.5453);
 	COLOR = final_color + vec3((dither - 0.5) * (2.5 / 255.0));
 }

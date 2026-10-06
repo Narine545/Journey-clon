@@ -40,7 +40,7 @@ func _build_ui() -> void:
 	panel.offset_left = -460.0
 	panel.offset_top = 12.0
 	panel.offset_right = -12.0
-	panel.offset_bottom = 900.0
+	panel.offset_bottom = 960.0
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(panel)
 
@@ -100,8 +100,20 @@ func _build_ui() -> void:
 		func(v): main.color_grade.set_param("contrast", v))
 	_slider("Вибранс", -0.6, 0.6, 0.12, 0.01,
 		func(v): main.color_grade.set_param("vibrance", v))
-	_slider("Ночь (Пуркинье)", 0.0, 1.0, 0.0, 0.01,
+	_slider("Ночь (Пуркинье)", 0.0, 1.0, 0.8, 0.01,
 		func(v): main.color_grade.set_param("night", v))
+
+	_section("ВОЛЮМЕТРИК (ТУМАН)")
+	_slider("Плотность", 0.005, 0.25, 0.055, 0.002,
+		func(v): world.set_vol_fog("volumetric_fog_density", v))
+	_slider("Дальность, м", 32.0, 192.0, 72.0, 4.0,
+		func(v): world.set_vol_fog("volumetric_fog_length", v))
+	_slider("Анизотропия", 0.0, 1.0, 0.55, 0.02,
+		func(v): world.set_vol_fog("volumetric_fog_anisotropy", v))
+	_slider("Подсветка неба", 0.0, 1.0, 0.12, 0.02,
+		func(v): world.set_vol_fog("volumetric_fog_ambient_inject", v))
+	_slider("Фонарик", 0.0, 12.0, 5.5, 0.25,
+		func(v): main.cam_rig.flashlight.light_energy = v)
 
 	_section("ВЕТЕР")
 	_slider("Направление°", -180.0, 180.0, rad_to_deg(main.game.wind_base), 1.0,

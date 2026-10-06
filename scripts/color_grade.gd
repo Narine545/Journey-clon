@@ -58,8 +58,8 @@ const PRESETS := [
 ]
 
 var _mat: ShaderMaterial
-var preset_idx := 1 # стартуем с «Тёплой пустыни» — она и есть наш кадр
-var intensity := 0.7
+var preset_idx := 4 # ночь: «Пуркинье» — хоррор по умолчанию
+var intensity := 0.55
 
 
 func setup() -> void:

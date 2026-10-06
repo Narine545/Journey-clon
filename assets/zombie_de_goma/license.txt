@@ -1,0 +1,11 @@
+Model Information:
+* title:	Zombie De Goma
+* source:	https://sketchfab.com/3d-models/zombie-de-goma-d0da88595c6b47129170937d1e442733
+* author:	julianmurcia245 (https://sketchfab.com/julianmurcia245)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Zombie De Goma" (https://sketchfab.com/3d-models/zombie-de-goma-d0da88595c6b47129170937d1e442733) by julianmurcia245 (https://sketchfab.com/julianmurcia245) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

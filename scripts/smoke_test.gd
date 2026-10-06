@@ -2,10 +2,10 @@ class_name SmokeTest
 extends Node
 ## Автотест геймплея для headless-прогона (без графики).
 ## Включается переменной окружения JOURNEY_SMOKE=1; в обычной игре неактивен.
-## Прогоняет фазы: покой → печать следа → ходьба в гору → крутая дюна
-## БЕЗ Shift (песок обязан держать) и СО Shift (сёрф-разгон) →
-## прыжок/парение. Проверяет, что следы — настоящие:
-## песок реально проминается и физика это видит.
+## Фазы: покой → печать следа → ходьба в гору → крутая дюна БЕЗ Shift
+## (песок держит) и СО Shift (сёрф) → прыжок/парение → СТРЕЛЬБА
+## (патроны, кратер в песке, перезарядка, мышь) → занос следов.
+## Проверяет, что следы — настоящие: песок реально проминается.
 
 var main: Node3D
 var phase := 0
@@ -15,11 +15,15 @@ var _fail := false
 var _peak_speed := 0.0
 var _grounded_frames := 0
 var _walk_samples := 0
-var _walk_ok := 0
 var _walk_speed_ok := 0
+var _max_surf01 := 0.0
 var _path: Array[Vector2] = [] # запись пути для проверки следов
 var _depth0 := 0.0 # глубина свежего следа для проверки заноса
 var _fill_pos := Vector2.ZERO # где штампнули след для проверки заноса
+var _yaw0 := 0.0
+var _pitch0 := 0.0
+var _shoot_frame := 0
+var _shots_checked := false
 
 
 func setup(main_ref: Node3D) -> void:
@@ -33,9 +37,10 @@ func _physics_process(_delta: float) -> void:
 	phase_frames += 1
 	var p: Player = main.player
 	var t: Terrain = main.terrain
+	var arms: FpsArms = main.arms
 
 	match phase:
-		0: # покой: мир стабилен, персонаж прижат к песку
+		0: # покой: мир стабилен, игрок прижат к песку
 			if phase_frames == 1:
 				_check_winding(t)
 				_check_descent(t)
@@ -45,33 +50,23 @@ func _physics_process(_delta: float) -> void:
 				_check(p.grounded and absf(p.global_position.y - gh) < 0.3, "idle: на земле")
 				_next()
 
-		1: # ходьба В ГОРКУ от спавна: там шаг гарантирован (в горку сёрф
-			# невозможен), значит анимация ног обязана играть. Затем отпуск —
-			# песок должен остановить путницу.
+		1: # ходьба В ГОРУ от спавна (yaw=0 = +Z, в гору): скорость шага
+			# в норме, отпечатки остаются, отпуск — песок останавливает.
 			if phase_frames == 1:
-				# лицом и камерой В ГОРКУ, идём ВПЕРЁД (ввод — «от камеры»):
-				# иначе камера доворачивается пол-оборота и путница по спирали
-				# уезжает на спуск вместо прямой ходьбы
-				p.heading = 0.0
-				main.cam_rig.snap_behind(0.0)
+				main.cam_rig.set_view(0.0, -0.2)
 				Input.action_press("move_forward")
 			if phase_frames % 12 == 0 and phase_frames <= 130:
 				_path.append(Vector2(p.global_position.x, p.global_position.z))
 			if phase_frames % 10 == 0 and phase_frames >= 30 and phase_frames <= 110:
 				var spd := Vector3(p.vel.x, 0.0, p.vel.z).length()
 				_walk_samples += 1
-				if p.walk_anim_active():
-					_walk_ok += 1
 				if spd < 4.6 and spd >= 0.4:
 					_walk_speed_ok += 1
-				print("[SMOKE] ходьба: кадр %d pos=(%.1f, %.1f) spd=%.2f state=%s" % [
-					phase_frames, p.global_position.x, p.global_position.z, spd,
-					p.walk_anim_active()])
+				print("[SMOKE] ходьба: кадр %d pos=(%.1f, %.1f) spd=%.2f" % [
+					phase_frames, p.global_position.x, p.global_position.z, spd])
 			if phase_frames == 130:
 				Input.action_release("move_forward")
 			if phase_frames > 260:
-				_check(_walk_ok >= _walk_samples - 2,
-					"walk: анимация шага играла %d из %d проверок" % [_walk_ok, _walk_samples])
 				_check(_walk_speed_ok >= _walk_samples - 2,
 					"walk: скорость шага в норме %d из %d проверок" % [_walk_speed_ok, _walk_samples])
 				_check(p.vel.length() < 1.0, "stop: без ввода остановился (%.2f м/с)" % p.vel.length())
@@ -89,6 +84,7 @@ func _physics_process(_delta: float) -> void:
 				p.grounded = true
 				_peak_speed = 0.0
 				_grounded_frames = 0
+				_max_surf01 = 0.0
 			_peak_speed = maxf(_peak_speed, p.vel.length())
 			if phase_frames == 90:
 				# БЕЗ SHIFT: стоим на крутой дюне — скольжения быть не должно
@@ -102,11 +98,12 @@ func _physics_process(_delta: float) -> void:
 				_grounded_frames = 0
 			elif phase_frames > 90 and p.grounded:
 				_grounded_frames += 1
+				_max_surf01 = maxf(_max_surf01, p.surf01)
 			if phase_frames > 210:
 				Input.action_release("slide_mod")
 				_check(_peak_speed > 11.0, "slide: пик разгона по склону %.1f м/с (ожидалось >11)" % _peak_speed)
 				_check(_grounded_frames > 96, "slide: на склоне %d из 120 кадров на земле (липнем к дюне)" % _grounded_frames)
-				_check(not p.walk_anim_active(), "slide: при скольжении ноги не семенят (стойка, не шаг)")
+				_check(_max_surf01 > 0.5, "slide: сёрф-режим активен (surf01 до %.2f)" % _max_surf01)
 				_next()
 
 		3: # прыжок, затем удержание — парение
@@ -121,8 +118,66 @@ func _physics_process(_delta: float) -> void:
 				_check(not p.grounded or p.vel.length() > 0.5, "jump/glide: полёт был")
 				_next()
 
-		4: # занос: свежий след должен затягиваться песком за ~15 секунд
-			# путник закреплён на месте (тест!), точка штампа — фиксированная
+		4: # СТРЕЛЬБА: три выстрела в дюну — патроны тратятся, в песке
+			# кратер; перезарядка восстанавливает магазин; мышь вертит взгляд.
+			# Тайминги анимаций ассета неизвестны — стреляем по busy().
+			if phase_frames == 1:
+				# возвращаемся на стартовое плато и целимся в дюну перед собой
+				p.global_position = Vector3(
+					Terrain.SPAWN.x,
+					t.ground_height(Terrain.SPAWN.x, Terrain.SPAWN.y),
+					Terrain.SPAWN.y
+				)
+				p.vel = Vector3.ZERO
+				p.grounded = true
+				main.cam_rig.set_view(0.0, -1.0)
+				_shoot_frame = 0
+				_shots_checked = false
+				if arms == null:
+					_check(false, "shoot: руки не загрузились")
+					_next()
+			elif arms != null and arms.shots_fired < 3:
+				if arms.busy() <= 0.0 and phase_frames - _shoot_frame > 5:
+					_shoot_frame = phase_frames
+					Input.action_press("shoot")
+				if Input.is_action_pressed("shoot") and phase_frames - _shoot_frame >= 2:
+					Input.action_release("shoot")
+			elif arms != null and not _shots_checked:
+				_shots_checked = true
+				Input.action_release("shoot")
+				_check(arms.ammo == FpsArms.MAG - 3,
+					"shoot: патроны потрачены (%d из %d)" % [arms.ammo, FpsArms.MAG])
+				_check(arms.shots_fired == 3, "shoot: выстрелов сделано %d" % arms.shots_fired)
+				_check(arms.last_hit_valid, "shoot: попадание в песок зафиксировано")
+				if arms.last_hit_valid:
+					var d := main.sand.disp_at(arms.last_hit.x, arms.last_hit.z)
+					_check(d < -0.002, "shoot: кратер в песке %.3f м (ожидалось < -0.002)" % d)
+				else:
+					_check(false, "shoot: кратер в песке — попадания не было")
+				Input.action_press("reload")
+			elif arms != null and (arms.busy() > 0.0 or arms.ammo != FpsArms.MAG):
+				# перезарядка идёт (анимация может быть длинной)
+				if Input.is_action_pressed("reload"):
+					Input.action_release("reload")
+				if phase_frames > 800:
+					_check(false, "reload: перезарядка не завершилась (ammo=%d)" % arms.ammo)
+					_next()
+			elif arms != null:
+				Input.action_release("reload")
+				_check(arms.ammo == FpsArms.MAG,
+					"reload: магазин полон (%d из %d)" % [arms.ammo, FpsArms.MAG])
+				# мышь: apply_mouse_motion — тот же путь, что и настоящий ввод
+				_yaw0 = main.cam_rig.yaw
+				_pitch0 = main.cam_rig.pitch
+				main.cam_rig.apply_mouse_motion(Vector2(220.0, 130.0))
+				var dy := absf(main.cam_rig.yaw - _yaw0)
+				var dp := main.cam_rig.pitch - _pitch0
+				_check(dy > 0.2, "mouse: yaw слушается мыши (Δ%.2f рад)" % dy)
+				_check(dp > 0.1, "mouse: pitch слушается мыши (Δ%.2f рад)" % dp)
+				_next()
+
+		5: # занос: свежий след должен затягиваться песком за ~15 секунд
+			# игрок закреплён на месте (тест!), точка штампа — фиксированная
 			p.vel = Vector3.ZERO
 			if phase_frames == 1:
 				# возвращаемся на стартовое плато и замираем
@@ -133,7 +188,7 @@ func _physics_process(_delta: float) -> void:
 				)
 				p.grounded = true
 			if phase_frames == 3:
-				# кадр ждём: окно песка переезжает к путнику только в _process
+				# кадр ждём: окно песка переезжает к игроку только в _process
 				_fill_pos = Vector2(p.global_position.x + 1.2, p.global_position.z + 1.2)
 				main.sand.stamp_foot(_fill_pos, Vector2(0.0, -1.0), 0.5, 0.26, 0.05, 0.02)
 				for k in range(6):
@@ -149,7 +204,7 @@ func _physics_process(_delta: float) -> void:
 			if phase_frames > 805:
 				_next()
 
-		5:
+		6:
 			_finish()
 
 
@@ -158,7 +213,7 @@ func _next() -> void:
 	phase_frames = 0
 
 
-## Ручная печать следа рядом с путником: песок реально продавлен,
+## Ручная печать следа рядом с игроком: песок реально продавлен,
 ## вокруг — вал, и физика (ground_height) это видит.
 func _check_stamp(p: Player, t: Terrain) -> void:
 	var sand: SandField = main.sand
@@ -178,9 +233,8 @@ func _check_stamp(p: Player, t: Terrain) -> void:
 	_check(gh < bh - 0.01, "stamp: физика видит след (ground_height на %.3f ниже дюн)" % (bh - gh))
 
 
-## После пробежки позади путника должны остаться настоящие промятости.
-## Проверяем вдоль ЗАПИСАННОГО пути (рельеф увывает бег в стороны),
-## плюс широкая диагностика по всей зоне позади.
+## После пробежки позади игрока должны остаться настоящие промятости.
+## Проверяем вдоль ЗАПИСАННОГО пути (рельеф увывает бег в стороны).
 func _check_prints_real(p: Player) -> void:
 	var sand: SandField = main.sand
 	var deepest := 0.0
@@ -191,7 +245,7 @@ func _check_prints_real(p: Player) -> void:
 			deepest = minf(deepest, sand.disp_at(pt.x + off.x, pt.y + off.y))
 	_check(deepest < -0.008, "run: промятости вдоль пути %.3f м (ожидалось < -0.008)" % deepest)
 
-	# диагностика: самое глубокое место в квадрате 36×36 м вокруг путника
+	# диагностика: самое глубокое место в квадрате 36×36 м вокруг игрока
 	var cx := p.global_position.x
 	var cz := p.global_position.z
 	var dmin := 0.0

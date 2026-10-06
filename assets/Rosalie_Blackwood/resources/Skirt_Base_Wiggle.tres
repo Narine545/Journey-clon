@@ -1,9 +1,0 @@
-[gd_resource type="Resource" script_class="DMWBWiggleRotationProperties3D" format=3 uid="uid://cekyyv4obsdwa"]
-
-[ext_resource type="Script" uid="uid://0ao00kvfj3xh" path="res://addons/wigglebone/wiggle_rotation_properties_3d.gd" id="1_32v8s"]
-
-[resource]
-script = ExtResource("1_32v8s")
-angular_damp = 7.692
-swing_span = 0.3543018381548489
-metadata/_custom_type_script = "uid://0ao00kvfj3xh"

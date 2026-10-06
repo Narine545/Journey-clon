@@ -7,6 +7,7 @@ var world: GameWorld
 var terrain: Terrain
 var player: Player
 var cam_rig: CameraRig
+var arms: FpsArms
 var sand: SandField
 var audio
 var wind: WindField
@@ -29,6 +30,8 @@ func _ready() -> void:
 	terrain = Terrain.new()
 	add_child(terrain)
 	terrain.setup(game)
+	# тестовый «маяк»: огонёк в коридоре дюн — как свет играет в тумане
+	world.build_beacon(terrain)
 
 	# настоящий песок: поле смещений, скользящее окно за путником
 	sand = SandField.new()
@@ -54,7 +57,8 @@ func _ready() -> void:
 
 	cam_rig = CameraRig.new()
 	add_child(cam_rig)
-	cam_rig.setup(player, terrain)
+	cam_rig.setup(self)
+	arms = cam_rig.arms
 
 	# headless-автотест геймплея: включается только переменной окружения
 	if OS.get_environment("JOURNEY_SMOKE") == "1":

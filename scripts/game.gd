@@ -3,9 +3,10 @@ extends Node
 ## Единственный источник истины о ветре: его читают шейдер песка и частицы.
 ## Никакого HUD и текста не предусмотрено.
 
-# --- Солнце и палитра (глава 1: тёплые дюны, вечер) ---
-# Направление К солнцу — вар (меняется DEV-панелью F3)
-var sun_dir := Vector3(0.16, 0.44, -0.88) # полдень-на-закат: выше, ровнее свет
+# --- Светила и палитра (FPS-хоррор: ночь, луна над коридором дюн) ---
+# Направление К луне/солнцу — вар (меняется DEV-панелью F3)
+var night := true # ночь: луна холодная и тусклая, мир держит фонарик и туман
+var sun_dir := Vector3(0.34, 0.20, -0.92) # низкая луна над «маяком»
 
 const SAND_SUNNY := Color(0.98, 0.62, 0.30) # ярко-золотой песок
 const SAND_HOT := Color(1.00, 0.78, 0.42) # раскалённые гребни
@@ -53,14 +54,14 @@ func _ensure_input() -> void:
 	_add_key_action("move_left", [KEY_A, KEY_LEFT])
 	_add_key_action("move_right", [KEY_D, KEY_RIGHT])
 	_add_key_action("jump", [KEY_SPACE])
-	if not InputMap.has_action("sing"):
-		InputMap.add_action("sing")
-		var key := InputEventKey.new()
-		key.physical_keycode = KEY_E
-		InputMap.action_add_event("sing", key)
+	_add_key_action("slide_mod", [KEY_SHIFT])
+	_add_key_action("reload", [KEY_R])
+	_add_key_action("flashlight", [KEY_F])
+	if not InputMap.has_action("shoot"):
+		InputMap.add_action("shoot")
 		var mouse := InputEventMouseButton.new()
 		mouse.button_index = MOUSE_BUTTON_LEFT
-		InputMap.action_add_event("sing", mouse)
+		InputMap.action_add_event("shoot", mouse)
 
 
 func _add_key_action(action: String, keys: Array) -> void:

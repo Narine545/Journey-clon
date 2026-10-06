@@ -1,51 +1,46 @@
 extends SceneTree
-## Диагностический скрипт CI (запускается под xvfb с настоящим GL):
-## печатает каждую загрузку материалов персонажа по отдельности —
-## предупреждение Compatibility о subsurface scattering встаёт МЕЖДУ
-## печатами и точно указывает виновника.
+## Диагностический скрипт CI (запускается под xvfb с настоящим рендером):
+## печатает загрузку сцен новых ассетов (зомби, руки с пистолетом)
+## по отдельности — предупреждения рендера встают МЕЖДУ печатами
+## и точно указывают виновника.
 
 
 func _init() -> void:
-	var mats := [
-		"res://assets/Rosalie_Blackwood/materials/Body_Skin_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Cloth_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Dot_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Eye_Shadow_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Face_Skin_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Facial_Features_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Hair_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Iris_Color_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Iris_Higlights_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Jacket_Material.tres",
-		"res://assets/Rosalie_Blackwood/materials/Raincoat_Material.tres",
-	]
-	for f in mats:
-		print("[AUDIT] load ", f)
-		var m: Material = load(f) as Material
-		if m is BaseMaterial3D:
-			var b: BaseMaterial3D = m
-			print("[AUDIT]   BaseMaterial3D subsurf=", b.subsurf_scatter_enabled,
-				" strength=", b.subsurf_scatter_strength,
-				" skin=", b.subsurf_scatter_skin_mode)
-		elif m != null:
-			print("[AUDIT]   ", m.get_class())
+	print("[AUDIT] load руки с пистолетом (Mark 23)")
+	var arms_ps: PackedScene = load("res://assets/mark_23_animated/scene.gltf")
+	if arms_ps != null:
+		var arms: Node = arms_ps.instantiate()
+		_dump(arms, "mark_23")
+		arms.free()
+	else:
+		print("[AUDIT] !! сцена рук не загрузилась")
 
-	print("[AUDIT] load сцены персонажа")
-	var ps: PackedScene = load("res://scenes/rosalie_blackwood.tscn")
-	print("[AUDIT] instantiate")
-	var node: Node = ps.instantiate()
-	print("[AUDIT] перечисление материалов инстанса")
+	print("[AUDIT] load зомби (Zombie De Goma)")
+	var z_ps: PackedScene = load("res://assets/zombie_de_goma/scene.gltf")
+	if z_ps != null:
+		var z: Node = z_ps.instantiate()
+		_dump(z, "zombie")
+		z.free()
+	else:
+		print("[AUDIT] !! сцена зомби не загрузилась")
+
+	print("[AUDIT] конец")
+	quit(0)
+
+
+func _dump(node: Node, tag: String) -> void:
 	var found: Array[Material] = []
 	_collect(node, found)
+	var anims := 0
+	for c in node.find_children("*", "AnimationPlayer", true, false):
+		anims += (c as AnimationPlayer).get_animation_list().size()
+	print("[AUDIT] %s: материалов %d, анимаций %d" % [tag, found.size(), anims])
 	for m in found:
 		var extra := ""
 		if m is BaseMaterial3D:
 			var b: BaseMaterial3D = m
-			extra = " subsurf=%s strength=%.2f" % [str(b.subsurf_scatter_enabled), b.subsurf_scatter_strength]
+			extra = " subsurf=%s" % str(b.subsurf_scatter_enabled)
 		print("[AUDIT]   ", m.get_class(), " '", m.resource_name, "'", extra)
-	node.free()
-	print("[AUDIT] конец")
-	quit(0)
 
 
 func _collect(n: Node, out: Array[Material]) -> void:

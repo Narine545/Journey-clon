@@ -41,6 +41,12 @@ jobs:
           chmod +x godot_bin/godot
           godot_bin/godot --version
 
+      - name: Vulkan (lavapipe) для рендер-проверки
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mesa-vulkan-drivers vulkan-tools > /dev/null
+          vulkaninfo --summary 2>/dev/null | grep -A2 "GPU0" || echo "lavapipe: инфо недоступна"
+
       - name: Import project
         run: |
           godot_bin/godot --headless --path . --import > import.log 2>&1
@@ -95,8 +101,9 @@ jobs:
           fi
 
       # Headless (dummy-рендерер) НЕ компилирует шейдеры. Прогоняем несколько
-      # кадров под xvfb + Mesa llvmpipe с настоящим GL — поймаем ошибки шейдеров.
-      - name: Render check (шейдеры + скриншоты, xvfb + llvmpipe)
+      # кадров под xvfb + Vulkan lavapipe (софтверный) с настоящим Forward+ —
+      # поймаем ошибки шейдеров и снимем кадры (проект на forward_plus).
+      - name: Render check (шейдеры + скриншоты, xvfb + Vulkan lavapipe)
         run: |
           if ! command -v xvfb-run >/dev/null 2>&1; then
             echo "::warning::xvfb-run недоступен — рендер-проверка пропущена"
@@ -105,7 +112,8 @@ jobs:
           mkdir -p .ci-logs/shots
           SHOT_DIR="$PWD/.ci-logs/shots" JOURNEY_SHOT=1 \
             xvfb-run -a -s "-screen 0 1600x900x24" \
-            godot_bin/godot --path . --resolution 1600x900 --quit-after 900 \
+            godot_bin/godot --path . --rendering-method forward_plus \
+            --resolution 1600x900 --quit-after 900 \
             > render.log 2>&1 || true
           cat render.log
           ls -la .ci-logs/shots || true
@@ -113,12 +121,16 @@ jobs:
             echo "::error::Ошибки компиляции шейдеров"
             exit 1
           fi
-          if grep -q "OpenGL" render.log; then
-            echo "Рендер поднялся, шейдеры скомпилированы"
-          else
-            echo "::warning::GL-контекст не поднялся — проверка шейдеров могла не состояться"
+          if grep -qiE "do not support any of the supported Vulkan|Could not create.*Vulkan|Your video card" render.log; then
+            echo "::error::Vulkan-контекст не поднялся (lavapipe?)"
+            exit 1
           fi
-          if [ ! -f .ci-logs/shots/shot_c_trail.png ]; then
+          if grep -q "Vulkan" render.log; then
+            echo "Vulkan-рендер поднялся, шейдеры скомпилированы"
+          else
+            echo "::warning::Vulkan-контекст не найден в логе — проверка могла не состояться"
+          fi
+          if [ ! -f .ci-logs/shots/shot_f_trail.png ]; then
             echo "::error::Скриншоты не сохранились — что-то не так с рендером"
             exit 1
           fi

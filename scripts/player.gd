@@ -1,29 +1,29 @@
 class_name Player
 extends Node3D
-## Путник. Аналитическая кинематика по полю высот террейна:
-## в гору — теряем ход, на крутом спуске — «сёрф», и ТОЛЬКО по зажатому
-## Shift: без Shift песок держит на любом уклоне (ходьба и стойка),
-## самовольного скольжения нет ни при каких обстоятельствах.
-## Никакой смерти, таймеров и провалов — только движение.
+## Кинематика игрока от первого лица по полю высот террейна: ходьба по
+## дюнам, прыжок/парение и «сёрф». Тело не рендерится — вид от первого
+## лица, руки с пистолетом висят на камере (FpsArms); этот узел — физика,
+## следы на песке и пыль.
 ##
-## Походка и песок связаны накрепко: шаг (фаза покачивания тела) рождает
-## отпечаток стопы в SandField, лёгкую пыль и звук; сёрф режет непрерывную
-## борозду; посадка вдавливает песок. Путник ходит ПО поверхности дюн
-## вместе со всеми своими следами (terrain.ground_height).
+## Скольжение — ТОЛЬКО по зажатому Shift: без Shift песок держит на любом
+## уклоне, самовольного скольжения нет ни при каких обстоятельствах.
+##
+## Песок и шаги связаны накротко: фаза шага рождает отпечаток стопы в
+## SandField, лёгкую пыль и звук; сёрф режет непрерывную борозду.
+## Игрок ходит ПО поверхности дюн вместе со всеми следами.
 
 const GRAVITY := 26.0
 const WALK_ACCEL := 26.0
-const WALK_MAX := 2.4 # шаг анимации рассчитан на ~1 м/с: темп = скорости, стопы не скользят
+const WALK_MAX := 2.4 # спокойный шаг; в FPS темп задаёт анимация рук не ног
 const SURF_MAX := 17.5
 const JUMP_V := 8.6
 const GLIDE_G := 5.5 # гравитация при парении
 const AIR_ACCEL := 6.0
 
 const SURF_TRACK_SPEED := 4.6 # выше — СКАЛЬЗЯЩИЙ сёрф (возможен только со Shift)
-const WALK_RESUME_SPEED := 4.0 # гистерезис: обратно к шагу чуть ниже порога
 
 const HOLD_SLOPE_ACC := 9.8 # ~22°: со Shift на более пологих склонах песок ДЕРЖИТ
-const STOP_SPEED := 1.1 # м/с: без ввода путник выпахивается до остановки
+const STOP_SPEED := 1.1 # м/с: без ввода игрок выпахивается до остановки
 
 const BOUND_X := 185.0
 const BOUND_Z_MIN := -445.0
@@ -31,7 +31,7 @@ const BOUND_Z_MAX := 50.0
 
 var vel := Vector3.ZERO
 var grounded := true
-var heading := PI # старт лицом к маяку (-Z)
+var heading := PI # курс камеры (пишет CameraRig каждый кадр)
 var surf01 := 0.0 # 0..1 — насколько мы «сёрфим» (камера, музыка, эффекты)
 var gliding := false
 
@@ -39,25 +39,15 @@ var game
 var terrain: Terrain
 var sand: SandField
 var audio # SoundScape (подключается после создания)
-var visual: Node3D
 
 var _gait_phase := 0.0 # фаза шага: π = постановка стопы
 var _last_step_idx := 0
 var _foot_side := 1.0
-var _squash := 0.0
-var _sink := 0.0 # погружение в песок (подъём/сёрф — путник тонет)
 var _air_time := 0.0 # секунд с последнего касания земли
 var _track_on := false
 var _track_last := Vector2.ZERO
 var _land_dust: CPUParticles3D
 var _step_dust: CPUParticles3D
-var _char: Node3D
-var _anim_player: AnimationPlayer
-var _anim_sm: AnimationStateMachine
-var _plant_off := 0.0 # посадка опорной стопы на рельеф (FootPlant)
-var _n_sm := Vector3.UP # сглаженная нормаль дюны (наклон корпуса при ходьбе)
-var _riding := false # гистерезис «шаг ↔ скольжение» (скорость ходьбы ~3 м/с
-	# гуляет вокруг порога — без гистерезиса анимация мерцает)
 
 
 func setup(game_ref, terrain_ref: Terrain, sand_ref: SandField) -> void:
@@ -69,7 +59,6 @@ func setup(game_ref, terrain_ref: Terrain, sand_ref: SandField) -> void:
 		terrain.sample_height(Terrain.SPAWN.x, Terrain.SPAWN.y),
 		Terrain.SPAWN.y
 	)
-	_build_body()
 	_build_fx()
 
 
@@ -103,7 +92,7 @@ func _build_fx() -> void:
 	_land_dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_land_dust)
 
-	# пылинка от каждого шага на бегу — песок «пыхтит» под ногами
+	# пылинка от каждого шага — песок «пыхтит» под ногами
 	_step_dust = CPUParticles3D.new()
 	_step_dust.amount = 9
 	_step_dust.one_shot = true
@@ -133,41 +122,6 @@ func _build_fx() -> void:
 	add_child(_step_dust)
 
 
-func _build_body() -> void:
-	visual = Node3D.new()
-	add_child(visual)
-
-	# Розали Блэквуд — готовая модель с анимациями и физикой волос
-	# (MIT, ассет Godot Asset Library; путь/лицензия — в README).
-	# Кинематика, походка и следы наши — модель чисто визуальная.
-	var char_scene: PackedScene = load("res://scenes/rosalie_blackwood.tscn")
-	if char_scene == null:
-		push_error("PLAYER: нет сцены персонажа res://scenes/rosalie_blackwood.tscn")
-		return
-	_char = char_scene.instantiate()
-	_anim_sm = _char.get_node_or_null("AnimationStateMachine")
-	if _anim_sm != null:
-		_anim_sm.initial_animation = &"Idle"
-	visual.add_child(_char)
-	_anim_player = _char.get_node_or_null("AnimationPlayer")
-
-	# посадка стоп по рельефу: анимация ходьбы — для ровного пола,
-	# а дюны — сплошные склоны. FootPlant меряет высоту стоп над
-	# настоящим песком и прижимает корпус к рельефу.
-	var skel: Skeleton3D = _char.get_node_or_null("Armature/Skeleton3D")
-	if skel != null:
-		var plant := FootPlant.new()
-		skel.add_child(plant)
-		plant.setup(self)
-
-	# Шаги ассета — ботинки по твёрдому полу — нам не подходят: у нас свой
-	# синтез песка, привязанный к настоящим отпечаткам. Глушим узел,
-	# не трогая сами анимации (аудиотреки замолкают вместе с ним).
-	var steps: AudioStreamPlayer3D = _char.get_node_or_null("FootstepPlayer")
-	if steps != null:
-		steps.volume_db = -80.0
-
-
 func _physics_process(delta: float) -> void:
 	var wish := _wish_dir()
 	if grounded:
@@ -176,8 +130,6 @@ func _physics_process(delta: float) -> void:
 		_step_air(delta, wish)
 	_bounds(delta)
 	_update_gait(delta)
-	_update_visual(delta)
-	_update_animation(delta)
 	_update_game_state()
 
 
@@ -212,7 +164,7 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	vel = vel - n * vel.dot(n)
 
 	# СКОЛЬЖЕНИЕ — ТОЛЬКО ОСОЗНАННОЕ: Shift открывает «сёрф-режим».
-	# Без Shift песок держит на любом уклоне: путница ходит и стоит,
+	# Без Shift песок держит на любом уклоне: игрок ходит и стоит,
 	# самовольного сползания нет.
 	var surf_armed := Input.is_action_pressed("slide_mod")
 
@@ -222,7 +174,7 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	var slope_mag := slope_acc.length()
 	var no_input := wish.length_squared() < 0.001
 
-	# Песок ДЕРЖИТ путника: без ввода — полная остановка (статическое
+	# Песок ДЕРЖИТ игрока: без ввода — полная остановка (статическое
 	# трение). Без Shift — на ЛЮБОМ уклоне; со Shift песок «течёт»
 	# только на крутых сёрф-лицах (уклон выше HOLD_SLOPE_ACC).
 	if no_input and vel.length() < STOP_SPEED and (not surf_armed or slope_mag < HOLD_SLOPE_ACC):
@@ -288,8 +240,8 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	var gh := terrain.ground_height(global_position.x, global_position.z)
 	var gap := global_position.y - gh
 	# На разгоняющемся спуске рельеф «убегает» из-под ног быстрее гравитации.
-	# Держим путника на склоне в пределах скоростного зазора — сёрф льнёт
-	# к дюне (как в Journey), в полёт бросает только настоящий обрыв.
+	# Держим игрока на склоне в пределах скоростного зазора — сёрф льнёт
+	# к дюне, в полёт бросает только настоящий обрыв.
 	var launch := 0.45 + Vector2(vel.x, vel.z).length() * 0.10
 	if gap > launch:
 		grounded = false
@@ -304,7 +256,7 @@ func _step_air(delta: float, wish: Vector3) -> void:
 	var grav := GLIDE_G if gliding else GRAVITY
 	vel.y -= grav * delta
 
-	# лёгкое управление в воздухе (путник слегка планирует)
+	# лёгкое управление в воздухе (слегка планируем)
 	if wish.length_squared() > 0.001:
 		vel.x += wish.x * AIR_ACCEL * delta
 		vel.z += wish.z * AIR_ACCEL * delta
@@ -335,7 +287,6 @@ func _step_air(delta: float, wish: Vector3) -> void:
 		var n := terrain.ground_normal(global_position.x, global_position.z)
 		var impact := maxf(0.0, -vel.y)
 		var impact01 := clampf(impact / 15.0, 0.0, 1.0)
-		_squash = impact01
 		vel = vel - n * vel.dot(n)
 		surf01 = 0.0
 		# настоящий отпечаток посадки: песок вдавлен обеими стопами
@@ -369,11 +320,10 @@ func _bounds(delta: float) -> void:
 
 
 # ---------------------------------------------------------------------------
-## Походка и следы. Фаза _gait_phase крутится с частотой шагов; на каждом π
-## стопа касается песка: отпечаток + пыль + звук. Покачивание тела — это
-## тот же sin(_gait_phase), так что видимый шаг и след совпадают кадр в кадр.
-## На сёрфе шаги сменяются непрерывной бороздой (штампуется чуть позади,
-## чтобы песок не «проваливался» под ногами рывком).
+## Следы на песке. Фаза _gait_phase крутится с частотой шагов; на каждом π
+## стопа касается песка: отпечаток + пыль + звук. На сёрфе шаги сменяются
+## непрерывной бороздой (штампуется чуть позади, чтобы песок не
+## «проваливался» под ногами рывком).
 # ---------------------------------------------------------------------------
 func _update_gait(delta: float) -> void:
 	if sand == null or not grounded:
@@ -381,7 +331,10 @@ func _update_gait(delta: float) -> void:
 		return
 	var hv := Vector3(vel.x, 0.0, vel.z)
 	var hspd := hv.length()
+	# отпечатки ставятся ПО ХОДУ ДВИЖЕНИЯ (стрейф в FPS — тоже шаги)
 	var fwd := Vector2(sin(heading), cos(heading))
+	if hspd > 0.5:
+		fwd = Vector2(hv.x, hv.z) / hspd
 	var pos := Vector2(global_position.x, global_position.z)
 
 	# сёрф: непрерывная churned борозда с валиками по краям
@@ -394,14 +347,13 @@ func _update_gait(delta: float) -> void:
 			var spd01 := clampf(hspd / SURF_MAX, 0.0, 1.0)
 			sand.stamp_track(_track_last, behind, 0.62, 0.08 + 0.07 * spd01, 0.035)
 			_track_last = behind
-		return
+			return
 
 	_track_on = false
 	if hspd < 0.7:
 		return
 
-	# частота шагов = темпу анимации: цикл Walk — 1.33 с на ~1 м/с,
-	# стопы ставятся ровно там, где анимация их ставит
+	# частота шагов = темпу: цикл ~1.33 с, стопы там, где идём
 	var cadence: float = clampf(1.5 * hspd, 0.8, 4.5)
 	_gait_phase += cadence * PI * delta
 	var step_idx := int(_gait_phase / PI)
@@ -410,9 +362,9 @@ func _update_gait(delta: float) -> void:
 		_plant_foot(pos, fwd, hspd)
 
 
-## Постановка стопы: песок поддаётся бесформенно. Подъём — путник тонет
-## глубже (песок сползает из-под ног), каждый шаг — свой размер, поворот
-## и разброс, иногда выброс песка в сторону. Никаких «отпечатков ботинка».
+## Постановка стопы: песок поддаётся бесформенно. Подъём — глубже
+## (песок сползает из-под ног), каждый шаг — свой размер, поворот
+## и разброс. Никаких «отпечатков ботинка».
 func _plant_foot(pos: Vector2, fwd: Vector2, hspd: float) -> void:
 	var spd01 := clampf(hspd / SURF_MAX, 0.0, 1.0)
 	var perp := Vector2(-fwd.y, fwd.x)
@@ -450,117 +402,13 @@ func _uphill01() -> float:
 	return clampf(-hv.normalized().dot(downhill), 0.0, 1.0)
 
 
-func _update_visual(delta: float) -> void:
-	var hv := Vector3(vel.x, 0.0, vel.z)
-	if hv.length() > 0.8:
-		heading = lerp_angle(heading, atan2(hv.x, hv.z), 1.0 - exp(-10.0 * delta))
-
-	var spd := vel.length()
-	var n := terrain.ground_normal(global_position.x, global_position.z) if grounded else Vector3.UP
-
-	# корпус следует рельефу дюны (сглаженно): на склоне путница
-	# наклоняется к дюне и при ходьбе, не только в сёрфе
-	_n_sm = _n_sm.lerp(n, 1.0 - exp(-8.0 * delta)).normalized()
-	var align := 0.0
-	if grounded:
-		align = lerpf(0.45, 0.62, surf01)
-	var up := Vector3.UP.lerp(_n_sm, align).normalized()
-	var fwd := Vector3(sin(heading), 0.0, cos(heading))
-	fwd = (fwd - up * fwd.dot(up)).normalized()
-	var x_axis := up.cross(fwd).normalized()
-	var y_axis := fwd.cross(x_axis)
-	var lean := clampf(spd / SURF_MAX, 0.0, 1.0) * 0.32 + (0.12 if gliding else 0.0)
-	visual.basis = Basis(x_axis, y_axis, fwd) * Basis(Vector3.RIGHT, lean)
-
-	# шаг: тело качается той же фазой, что и стопы бьют по песку
-	_squash = lerpf(_squash, 0.0, 1.0 - exp(-9.0 * delta))
-	# погружение: в гору песок поддаётся, на сёрфе режем глубоко —
-	# путник ЗАМЕТНО тонет в песке (до ~18 см)
-	var sink_t := clampf(_uphill01() * 0.75 + surf01 * 0.45 + clampf(spd / SURF_MAX, 0.0, 1.0) * 0.25, 0.0, 1.0)
-	_sink = lerpf(_sink, sink_t, 1.0 - exp(-6.0 * delta))
-	# собственное покачивание анимации не дублируем — лишь лёгкий такт шага
-	var bob_y := sin(_gait_phase) * 0.025 * clampf(spd / 2.6, 0.0, 1.0) * (1.0 - surf01)
-	visual.position = Vector3(0.0, bob_y - _squash * 0.30 - _sink * 0.18 - _plant_off, 0.0)
-
-
 func _update_game_state() -> void:
 	game.surf01 = game.surf01 * 0.9 + surf01 * 0.1 # сглаженное для музыки/камеры
 	game.player_altitude = global_position.y
 
 
-## Солнце для персонажа: модель освещается DirectionalLight напрямую
-## (cell-шейдер читает LIGHT), отдельной ткани больше нет (DEV-панель).
-func apply_sun(_dir: Vector3) -> void:
-	pass
-
-
-## Погружение стоп в песок (подъём/сёрф) — для посадки стоп по рельефу.
-func foot_sink_m() -> float:
-	return _sink * 0.18
-
-
-## Идёт ли сейчас анимация шага (smoke-тест: шаг обязан играть при ходьбе
-## и обязан молчать при скольжении).
-func walk_anim_active() -> bool:
-	if _anim_sm == null:
-		return false
-	var st := String(_anim_sm.get_current_state())
-	return st == "Walk" or st == "Walk_Start"
-
-
-## Смещение корпуса от FootPlant: опорная стопа стоит на дюне.
-func note_plant_offset(off: float) -> void:
-	_plant_off = off
-
-
-## Показ/скрытие тела для камеры от первого лица (пыль остаётся).
-func set_body_visible(v: bool) -> void:
-	if visual != null:
-		visual.visible = v
-
-
-func body_visible() -> bool:
-	return visual != null and visual.visible
-
-
-## Анимации Розали: та же логика, что в ассетном контроллере, но ведомая
-## нашей физической скоростью. Start/Stop с перекрытием стоп, темп Walk
-## следует за скоростью (авторская анимация — на шаг ~1 м/с).
-func _update_animation(_delta: float) -> void:
-	if _anim_sm == null or _anim_player == null:
-		return
+## Покачивание головы для камеры: тот же такт, что ставит следы.
+func gait_bob() -> float:
 	var hv := Vector3(vel.x, 0.0, vel.z)
-	var hspd := hv.length()
-	var state := String(_anim_sm.get_current_state())
-
-	# СКОЛЬЖЕНИЕ (сёрф, разгон на спуске) и ПОЛЁТ: ноги не движутся.
-	# Позы для прыжка/бега у этого рига нет — Розали замирает стойкой,
-	# динамику читают наклон корпуса, след-борозда и пыль.
-	# Гистерезис: в сёрф — выше 4.6 м/с, обратно к шагу — ниже 4.0.
-	if hspd > SURF_TRACK_SPEED or surf01 > 0.45:
-		_riding = true
-	elif hspd < WALK_RESUME_SPEED:
-		_riding = false
-	if not grounded or _riding:
-		if state != "Idle" and state != "":
-			_anim_player.play(&"Idle", 0.3)
-		_anim_player.speed_scale = 1.0
-		return
-
-	if hspd > 0.7:
-		# Темп анимации = скорости: авторский цикл Walk рассчитан на ~1 м/с
-		# и покрывает 1.33 м за цикл. Играя его ровно со скоростью движения,
-		# получаем стопы, прилипшие к песку, на любой скорости шага.
-		var ss := clampf(hspd, 0.7, 3.0)
-		_anim_player.speed_scale = ss
-		if state == "Idle" or state.begins_with("Walk_Stop"):
-			_anim_player.play(&"Walk_Start", 0.2)
-	else:
-		_anim_player.speed_scale = 1.0
-		if state == "Walk":
-			# остановка с той ноги, что сейчас впереди
-			var t := _anim_player.current_animation_position / _anim_player.current_animation_length
-			var stop := &"Walk_Stop_Left"
-			if t >= 0.2 and t <= 0.75:
-				stop = &"Walk_Stop_Right"
-			_anim_sm.travel(stop)
+	var spd01 := clampf(hv.length() / 2.6, 0.0, 1.0)
+	return sin(_gait_phase) * 0.03 * spd01 * (1.0 - surf01)

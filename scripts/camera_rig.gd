@@ -1,157 +1,113 @@
 class_name CameraRig
 extends Node3D
-## Следящая камера: плывёт за путником, заглядывает вперёд по скорости,
-## расширяет FOV на сёрфе и никогда не проваливается под песок.
-##
-## Клавиша C — вид от первого лица: тело скрывается, из «своего» в кадре
-## остаются развевающиеся волосы. Возврат в третье лицо — тело появляется,
-## когда камера отлетела от головы подальше.
+## FPS-камера: обзор мышью (захват курсора), глаза на высоте 1.62 м,
+## лёгкое покачивание в такт шагам, FOV «дышит» на сёрфе.
+## Фонарик — конус тёплого света: в волюметрическом тумане он виден
+## как настоящий луч (F — включить/выключить, ESC — отпустить курсор).
 
-const POS_DAMP := 4.2
-const LOOK_DAMP := 7.0
-const YAW_DAMP := 2.4
-const FOV_BASE := 74.0
-const FOV_SURF := 88.0
+const EYE := 1.62
+const FOV_BASE := 78.0
+const FOV_SURF := 92.0
 const SURF_REF_SPEED := 17.5
-
-const FP_EYE := 1.52 # глаза Розали (кость головы на 1.53 в покое)
-const FP_FWD := 0.22 # чуть вперёд от лица, чтобы ресницы не резали кадр
-const FP_POS_DAMP := 18.0 # в голове камера держится жёстче
-const FP_LOOK_DOWN := -0.34 # взгляд чуть ниже горизонта
-const FP_GLIDE_UP := 0.85 # в парении смотрим чуть вверх
+const PITCH_MIN := -1.35
+const PITCH_MAX := 1.35
+const SENS := 0.0022 # рад на пиксель
 
 var cam: Camera3D
 var player: Player
 var terrain: Terrain
+var arms: FpsArms
+var flashlight: SpotLight3D
+var flash_on := true
 
-var _pos := Vector3.ZERO
-var _look := Vector3.ZERO
-var _yaw := PI
+var yaw := PI # курс: fwd = (sin(yaw), 0, cos(yaw)); старт — лицом к «маяку» (-Z)
+var pitch := 0.0
+
 var _fov := FOV_BASE
-var fp_mode := false
-var _fp_yaw := PI
+var _interactive := true # в автотестах/CI курсор не захватываем
 
 
-func setup(player_ref: Player, terrain_ref: Terrain) -> void:
-	player = player_ref
-	terrain = terrain_ref
+func setup(main_ref) -> void:
+	player = main_ref.player
+	terrain = main_ref.terrain
+	_interactive = OS.get_environment("JOURNEY_SMOKE") != "1" \
+		and OS.get_environment("JOURNEY_SHOT") != "1"
 
 	cam = Camera3D.new()
 	add_child(cam)
 	cam.fov = FOV_BASE
-	cam.near = 0.1
-	cam.far = 1800.0 # карта выросла — дальние дюны в кадре
-	cam.make_current() # камера одна, но порядок добавления не должен иметь значения
+	cam.near = 0.02 # руки с пистолетом близко к камере
+	cam.far = 1800.0
+	cam.make_current()
 
-	_yaw = player.heading
-	var p := player.global_position
-	_pos = p + Vector3(0.0, 2.3, 6.5) # за спиной, взгляд к маяку
-	_look = p + Vector3.UP * 1.4
+	# фонарик: тёплый конус чуть ниже взгляда — в тумане читается лучом
+	flashlight = SpotLight3D.new()
+	cam.add_child(flashlight)
+	flashlight.position = Vector3(0.14, -0.16, 0.0)
+	flashlight.rotation_degrees = Vector3(-7.0, 0.0, 0.0)
+	flashlight.spot_range = 46.0
+	flashlight.spot_angle = 26.0
+	flashlight.spot_attenuation = 1.4
+	flashlight.light_color = Color(1.0, 0.93, 0.80)
+	flashlight.light_energy = 5.5
+	flashlight.shadow_enabled = false
+	flashlight.visible = flash_on
 
-	# сразу корректный кадр — без вспышки «камеры в начале координат»
-	cam.global_position = _pos
-	cam.look_at(_look, Vector3.UP)
+	# руки с пистолетом — прямо на камере
+	arms = FpsArms.new()
+	cam.add_child(arms)
+	arms.setup(main_ref, self)
+
+	yaw = player.heading
+	if _interactive:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
-## Мгновенно поставить камеру за путницей по курсу yaw — без длинного
-## облёта (нужно тестам и служебным разворотам: иначе камера пол-секунды
-## крутится вокруг героини, а ввод «от камеры» закручивает её спиралью).
-func snap_behind(yaw: float) -> void:
-	_yaw = yaw
-	var p: Vector3 = player.global_position
-	var f := Vector3(sin(_yaw), 0.0, cos(_yaw))
-	_pos = p + Vector3.UP * 2.1 - f * 5.4
-	_look = p + Vector3.UP * 1.4 + f * 2.2
-	if terrain != null:
-		var gh := terrain.ground_height(_pos.x, _pos.z) + 0.75
-		if _pos.y < gh:
-			_pos.y = gh
-	cam.global_position = _pos
-	cam.look_at(_look, Vector3.UP)
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		apply_mouse_motion(event.relative)
+	elif event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_ESCAPE and _interactive:
+			# ESC — отпустить/захватить курсор (пауза-лайт)
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE \
+				if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
+		elif event.physical_keycode == KEY_F:
+			flash_on = not flash_on
+			flashlight.visible = flash_on
+	elif event is InputEventMouseButton and event.pressed and _interactive:
+		if event.button_index == MOUSE_BUTTON_LEFT \
+				and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			if arms != null:
+				arms.suppress_shoot_frames = 3 # клик-захват — не выстрел
+
+
+## Поворот взгляда мышью (радиан на пиксель) — общий путь для ввода и тестов.
+func apply_mouse_motion(rel: Vector2) -> void:
+	yaw = wrapf(yaw - rel.x * SENS, -PI, PI)
+	pitch = clampf(pitch - rel.y * SENS, PITCH_MIN, PITCH_MAX)
+
+
+## Задать взгляд напрямую (тесты/сценарии CI).
+func set_view(new_yaw: float, new_pitch: float) -> void:
+	yaw = wrapf(new_yaw, -PI, PI)
+	pitch = clampf(new_pitch, PITCH_MIN, PITCH_MAX)
 
 
 func _physics_process(delta: float) -> void:
-	if Input.is_action_just_pressed("camera_toggle"):
-		fp_mode = not fp_mode
-		if fp_mode:
-			player.set_body_visible(false)
-			_fp_yaw = _yaw
+	player.heading = yaw
 
-	if fp_mode:
-		_step_first_person(delta)
-	else:
-		_step_third_person(delta)
-		# из первого лица: тело возвращаем не мгновенно — пусть камера
-		# отлетит от головы, иначе пролетим сквозь лицо
-		if not player.body_visible():
-			var eye: Vector3 = player.global_position + Vector3.UP * FP_EYE
-			if _pos.distance_to(eye) > 1.1:
-				player.set_body_visible(true)
+	var p := player.global_position
+	cam.global_position = p + Vector3(0.0, EYE + player.gait_bob(), 0.0)
+
+	# взгляд: базис строим из yaw/pitch (forward = (sin, 0, cos) при pitch=0)
+	var b := Basis(Vector3.UP, yaw + PI) * Basis(Vector3.RIGHT, pitch)
+	cam.basis = b
 
 	_update_fov(delta)
 
 
-## Третье лицо (основной, «путевой» вид как в Journey).
-func _step_third_person(delta: float) -> void:
-	var p: Vector3 = player.global_position
-	var hv := Vector3(player.vel.x, 0.0, player.vel.z)
-
-	# камера доворачивается за направлением движения — плавно, с задержкой
-	if hv.length() > 1.5:
-		var target_yaw := atan2(hv.x, hv.z)
-		_yaw = lerp_angle(_yaw, target_yaw, 1.0 - exp(-YAW_DAMP * delta))
-
-	var f := Vector3(sin(_yaw), 0.0, cos(_yaw))
-	var spd01 := clampf(hv.length() / SURF_REF_SPEED, 0.0, 1.0)
-	var dist := lerpf(5.4, 7.2, spd01)
-	var height := lerpf(2.1, 3.0, spd01)
-
-	var desired := p + Vector3.UP * height - f * dist
-	var look_target := p + Vector3.UP * 1.4 + f * 2.2 + hv * 0.30
-	if look_target.distance_to(p) > 8.0:
-		look_target = p + (look_target - p).normalized() * 8.0
-
-	_pos = _pos.lerp(desired, 1.0 - exp(-POS_DAMP * delta))
-	_look = _look.lerp(look_target, 1.0 - exp(-LOOK_DAMP * delta))
-
-	# песок не должен оказаться в кадре между камерой и небом
-	# (учитываем и промятости — камера не режет борозды сёрфа)
-	var gh := terrain.ground_height(_pos.x, _pos.z) + 0.75
-	if _pos.y < gh:
-		_pos.y = gh
-
-	cam.global_position = _pos
-	cam.look_at(_look, Vector3.UP)
-
-
-## Первое лицо: глаза Розали, мягкое следование за взглядом путницы.
-func _step_first_person(delta: float) -> void:
-	var p: Vector3 = player.global_position
-	var hv := Vector3(player.vel.x, 0.0, player.vel.z)
-
-	# взгляд поворачивается за курсом, но ленивее тела — живая камера
-	if hv.length() > 1.5:
-		_fp_yaw = lerp_angle(_fp_yaw, player.heading, 1.0 - exp(-YAW_DAMP * delta))
-
-	var f := Vector3(sin(_fp_yaw), 0.0, cos(_fp_yaw))
-	var desired := p + Vector3.UP * FP_EYE + f * FP_FWD
-	_pos = _pos.lerp(desired, 1.0 - exp(-FP_POS_DAMP * delta))
-
-	# взгляд: вперёд по курсу, чуть вниз; в парении — чуть вверх (в небо)
-	var lift := FP_GLIDE_UP if player.gliding else 0.0
-	var look_target := _pos + f * 4.0 + Vector3.UP * (FP_LOOK_DOWN + lift) + hv * 0.10
-	_look = _look.lerp(look_target, 1.0 - exp(-LOOK_DAMP * delta))
-
-	# и в первом лице не ныряем под песок
-	var gh := terrain.ground_height(_pos.x, _pos.z) + 0.30
-	if _pos.y < gh:
-		_pos.y = gh
-
-	cam.global_position = _pos
-	cam.look_at(_look, Vector3.UP)
-
-
-## FOV дышит со скоростью: сёрф «раскрывает» мир (в обоих видах).
+## FOV дышит со скоростью: сёрф «раскрывает» мир.
 func _update_fov(delta: float) -> void:
 	var hv := Vector3(player.vel.x, 0.0, player.vel.z)
 	var spd01 := clampf(hv.length() / SURF_REF_SPEED, 0.0, 1.0)

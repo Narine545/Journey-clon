@@ -32,6 +32,9 @@ var _slide_gain := 0.0
 var _wind_gain := 0.0
 var _shimmer_gain := 0.0
 var _pad_fade := 0.0
+var _shot: AudioStreamPlayer
+var _gun_empty: AudioStreamPlayer
+var _reload_sfx: AudioStreamPlayer
 
 
 func setup(game_ref, player_ref: Player) -> void:
@@ -124,6 +127,19 @@ func _make_sounds() -> void:
 	_shimmer.volume_db = linear_to_db(0.0001)
 	_shimmer.play()
 
+	# оружие: выстрел, сухой щелчок пустого магазина, перезарядка
+	_shot = AudioStreamPlayer.new()
+	_shot.stream = _gen_shot()
+	add_child(_shot)
+
+	_gun_empty = AudioStreamPlayer.new()
+	_gun_empty.stream = _gen_empty_click()
+	add_child(_gun_empty)
+
+	_reload_sfx = AudioStreamPlayer.new()
+	_reload_sfx.stream = _gen_reload()
+	add_child(_reload_sfx)
+
 
 func _process(delta: float) -> void:
 	var hv := Vector3(player.vel.x, 0.0, player.vel.z)
@@ -177,6 +193,20 @@ func on_land(impact01: float) -> void:
 	_land.pitch_scale = 0.72 + randf() * 0.16
 	_land.volume_db = linear_to_db(0.18 + 0.34 * impact01)
 	_land.play()
+
+
+func on_shot() -> void:
+	_shot.pitch_scale = 0.94 + randf() * 0.10
+	_shot.play()
+
+
+func on_gun_empty() -> void:
+	_gun_empty.play()
+
+
+func on_reload() -> void:
+	_reload_sfx.pitch_scale = 0.95 + randf() * 0.08
+	_reload_sfx.play()
 
 
 # ---------------------------------------------------------------------------
@@ -284,6 +314,68 @@ func _gen_land() -> AudioStreamWAV:
 		var env := minf(t / 0.003, 1.0) * exp(-t * 16.0)
 		var thump := sin(TAU * 82.0 * t) * exp(-t * 20.0) * 0.55
 		s[i] = (lp * 0.8 + thump) * env
+	return _stream(s, RATE_SFX, false)
+
+
+## Выстрел: мгновенная атака, тело — быстро глохнущий шум
+## плюс низкий удар (дульный тон).
+func _gen_shot() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	var n := int(0.30 * RATE_SFX)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp1 := 0.0
+	var lp2 := 0.0
+	for i in n:
+		var t := float(i) / RATE_SFX
+		var w := rng.randf_range(-1.0, 1.0)
+		var cut := lerpf(0.85, 0.05, powf(t / 0.30, 0.6))
+		lp1 += (w - lp1) * cut
+		lp2 += (lp1 - lp2) * cut
+		var env := minf(t / 0.0025, 1.0) * exp(-t * 13.0)
+		var thump := sin(TAU * 95.0 * t) * exp(-t * 26.0) * 0.6
+		s[i] = (lp2 * 1.4 + thump) * env
+	var peak := 0.0001
+	for i in n:
+		peak = maxf(peak, absf(s[i]))
+	for i in n:
+		s[i] = s[i] / peak * 0.9
+	return _stream(s, RATE_SFX, false)
+
+
+## Пустой магазин: сухой короткий щелчок.
+func _gen_empty_click() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 931
+	var n := int(0.05 * RATE_SFX)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE_SFX
+		var w := rng.randf_range(-1.0, 1.0)
+		lp += (w - lp) * 0.45
+		var env := minf(t / 0.001, 1.0) * exp(-t * 90.0)
+		s[i] = lp * env * 0.6
+	return _stream(s, RATE_SFX, false)
+
+
+## Перезарядка: два механических щелчка — магазин вышел, магазин вошёл.
+func _gen_reload() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1157
+	var n := int(0.55 * RATE_SFX)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE_SFX
+		var w := rng.randf_range(-1.0, 1.0)
+		lp += (w - lp) * 0.30
+		var click1 := exp(-absf(t - 0.08) * 70.0)
+		var click2 := exp(-absf(t - 0.38) * 70.0)
+		s[i] = lp * (click1 + click2) * 0.85
 	return _stream(s, RATE_SFX, false)
 
 
