@@ -110,6 +110,7 @@ jobs:
             exit 0
           fi
           mkdir -p .ci-logs/shots
+          rm -f .ci-logs/shots/*.png # чистим кадры прошлого прогона
           SHOT_DIR="$PWD/.ci-logs/shots" JOURNEY_SHOT=1 \
             xvfb-run -a -s "-screen 0 1600x900x24" \
             godot_bin/godot --path . --rendering-method forward_plus \
