@@ -151,14 +151,28 @@ func _physics_process(_delta: float) -> void:
 				_check(arms.last_hit_valid, "shoot: попадание в песок зафиксировано")
 				if arms.last_hit_valid:
 					var d: float = main.sand.disp_at(arms.last_hit.x, arms.last_hit.z)
-					_check(d < -0.002, "shoot: кратер в песке %.3f м (ожидалось < -0.002)" % d)
+					# диагностика: точка попадания и песок вокруг неё
+					var px: float = arms.last_hit.x
+					var pz: float = arms.last_hit.z
+					var dmin: float = 0.0
+					for off in [Vector2(0, 0), Vector2(0.15, 0), Vector2(-0.15, 0), Vector2(0, 0.15), Vector2(0, -0.15)]:
+						dmin = minf(dmin, main.sand.disp_at(px + off.x, pz + off.y))
+					print("[SMOKE] shoot: hit=(%.2f, %.2f) disp=%.4f (мин. вокруг %.4f), игрок=(%.1f, %.1f)" % [
+						px, pz, d, dmin, p.global_position.x, p.global_position.z])
+					_check(dmin < -0.002, "shoot: кратер в песке %.3f м (ожидалось < -0.002)" % dmin)
 				else:
 					_check(false, "shoot: кратер в песке — попадания не было")
-				Input.action_press("reload")
+			elif arms != null and not Input.is_action_pressed("reload") \
+					and arms.anim_name() != "Reload" and arms.ammo != FpsArms.MAG:
+				# перезарядка ещё не принята (руки могли быть заняты выстрелом):
+				# циклим нажатие, пока AnimationPlayer не возьмёт Reload
+				if phase_frames % 4 == 0:
+					Input.action_press("reload")
+				elif phase_frames % 4 == 2:
+					Input.action_release("reload")
 			elif arms != null and (arms.busy() > 0.0 or arms.ammo != FpsArms.MAG):
 				# перезарядка идёт (анимация может быть длинной)
-				if Input.is_action_pressed("reload"):
-					Input.action_release("reload")
+				Input.action_release("reload")
 				if phase_frames > 800:
 					_check(false, "reload: перезарядка не завершилась (ammo=%d)" % arms.ammo)
 					_next()

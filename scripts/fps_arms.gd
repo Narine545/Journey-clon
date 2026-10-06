@@ -109,7 +109,9 @@ func _union_aabb(node: Node, xform: Transform3D) -> AABB:
 			out = b
 			has_box = true
 	for c in node.get_children():
-		var cb := _union_aabb(c, xform * Transform3D(c.transform))
+		# AnimationPlayer и прочие не-3D узлы трансформа не имеют
+		var cb := _union_aabb(c, xform * Transform3D((c as Node3D).transform)) if c is Node3D \
+			else _union_aabb(c, xform)
 		if not cb.size == Vector3.ZERO:
 			if has_box:
 				out = out.merge(cb)
