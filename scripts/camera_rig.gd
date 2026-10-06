@@ -43,13 +43,13 @@ func setup(main_ref) -> void:
 	# фонарик: тёплый конус чуть ниже взгляда — в тумане читается лучом
 	flashlight = SpotLight3D.new()
 	cam.add_child(flashlight)
-	flashlight.position = Vector3(0.14, -0.16, 0.0)
-	flashlight.rotation_degrees = Vector3(-7.0, 0.0, 0.0)
-	flashlight.spot_range = 46.0
-	flashlight.spot_angle = 26.0
+	flashlight.position = Vector3(0.10, -0.26, 0.0)
+	flashlight.rotation_degrees = Vector3(-11.0, 0.0, 0.0)
+	flashlight.spot_range = 42.0
+	flashlight.spot_angle = 27.0
 	flashlight.spot_attenuation = 1.4
 	flashlight.light_color = Color(1.0, 0.93, 0.80)
-	flashlight.light_energy = 5.5
+	flashlight.light_energy = 2.6
 	flashlight.shadow_enabled = false
 	flashlight.visible = flash_on
 

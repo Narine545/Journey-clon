@@ -6,9 +6,15 @@ extends Node3D
 ## HUD не предусмотрено: счёт патронов «в руках» — пустой магазин щёлкает.
 
 const MAG := 12
-const SCALE := 0.01 # ассет в сантиметрах
-const TARGET_CENTER := Vector3(0.18, -0.30, -0.46) # центр модели относительно камеры
+const SCALE := 0.014 # ассет в сантиметрах; крупнее — оружие читается
+const TARGET_CENTER := Vector3(0.02, -0.26, -0.42) # по центру кадра, чуть ниже
 const ROT_Y := PI # Sketchfab-модели смотрят на камеру — разворачиваем от себя
+
+# Анимации ассета ОГРОМНЫЕ (Draw 5.3 с, Shoot 4.1 с, Reload 3.8 с) — это
+# «демо-темп». Сжимаем speed_scale'ом до игровых длительностей.
+const T_DRAW := 0.70
+const T_SHOOT := 0.34
+const T_RELOAD := 1.40
 const RAY_MAX := 140.0
 const RAY_STEP := 0.6
 
@@ -49,12 +55,15 @@ func setup(main_ref, rig_ref: CameraRig) -> void:
 	var center := (aabb.position + aabb.end) * 0.5 * SCALE
 	inst.position = TARGET_CENTER - center + Vector3(0.0, 0.0, 0.0)
 
-	# вспышка выстрела у среза ствола
+	# руки не должны пересвечиваться: глушим блики импортных материалов
+	_dim_materials(inst)
+
+	# вспышка выстрела у среза ствола (впереди — не лизывает руки)
 	_flash = OmniLight3D.new()
 	add_child(_flash)
-	_flash.position = TARGET_CENTER + Vector3(0.0, 0.10, -0.35)
+	_flash.position = TARGET_CENTER + Vector3(0.0, 0.06, -0.52)
 	_flash.light_color = Color(1.0, 0.82, 0.45)
-	_flash.omni_range = 10.0
+	_flash.omni_range = 6.0
 	_flash.light_energy = 0.0
 	_flash.shadow_enabled = false
 
@@ -86,7 +95,7 @@ func setup(main_ref, rig_ref: CameraRig) -> void:
 	_dust.emitting = false
 	_dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-	_play(&"Draw")
+	_play(&"Draw", T_DRAW)
 
 
 func _find_anim(node: Node) -> AnimationPlayer:
@@ -144,7 +153,10 @@ func _physics_process(delta: float) -> void:
 
 ## Выстрел: анимация, вспышка, звук; луч по рельефу — кратер в песке.
 func try_shoot() -> void:
-	if _anim == null or _busy_t > 0.0:
+	if _anim == null:
+		return
+	# выстрел прерывает достование, но не другую анимацию
+	if _busy_t > 0.0 and _anim.current_animation != "Draw":
 		return
 	if ammo <= 0:
 		if _main.audio != null:
@@ -153,10 +165,10 @@ func try_shoot() -> void:
 		return
 	ammo -= 1
 	shots_fired += 1
-	_play(&"Shoot")
-	_busy_t = _anim_len() * 0.55 # полуавто: темп чуть быстрее анимации
+	_play(&"Shoot", T_SHOOT)
+	_busy_t = T_SHOOT * 0.9 # полуавто: темп чуть быстрее анимации
 	if _flash != null:
-		_flash.light_energy = 7.0
+		_flash.light_energy = 5.0
 	if _main.audio != null:
 		_main.audio.on_shot()
 
@@ -190,19 +202,45 @@ func try_reload() -> void:
 	if _anim == null or _busy_t > 0.0 or ammo == MAG or _reloading:
 		return
 	_reloading = true
-	_play(&"Reload")
-	_busy_t = _anim_len()
+	_play(&"Reload", T_RELOAD)
+	_busy_t = T_RELOAD
 	if _main.audio != null:
 		_main.audio.on_reload()
 
 
-func _play(anim_name: StringName) -> void:
+## Проиграть анимацию ассета, сжатую до игровой длительности:
+## speed_scale = длина_ассета / длительность.
+func _play(p_anim: StringName, target_time: float) -> void:
 	_anim.stop()
-	_anim.play(anim_name)
+	_anim.play(p_anim)
+	var len_s: float = maxf(_anim.current_animation_length, 0.05)
+	_anim.speed_scale = clampf(len_s / target_time, 0.5, 20.0)
 
 
-func _anim_len() -> float:
-	return maxf(_anim.current_animation_length, 0.25)
+## Импортные материалы пересвечены в ночи: приглушаем альбедо,
+## грубим поверхность (убираем горячие блики).
+func _dim_materials(root: Node) -> void:
+	if root is MeshInstance3D:
+		var mi: MeshInstance3D = root
+		for i in range(mi.get_surface_override_material_count()):
+			var m = mi.get_surface_override_material(i)
+			if m is StandardMaterial3D:
+				var d: StandardMaterial3D = m.duplicate()
+				d.albedo_color = d.albedo_color * Color(0.5, 0.5, 0.5, 1.0)
+				d.roughness = maxf(d.roughness, 0.85)
+				d.metallic = 0.0
+				mi.set_surface_override_material(i, d)
+		if mi.mesh != null:
+			for i in range(mi.mesh.get_surface_count()):
+				var mm = mi.mesh.surface_get_material(i)
+				if mm is StandardMaterial3D:
+					var dd: StandardMaterial3D = mm.duplicate()
+					dd.albedo_color = dd.albedo_color * Color(0.5, 0.5, 0.5, 1.0)
+					dd.roughness = maxf(dd.roughness, 0.85)
+					dd.metallic = 0.0
+					mi.set_surface_override_material(i, dd)
+	for c in root.get_children():
+		_dim_materials(c)
 
 
 ## Аналитический луч по полю высот: марш с шагом, затем бисекция.

@@ -54,6 +54,13 @@ func _build_ui() -> void:
 	var world: GameWorld = main.world
 	var terrain: Terrain = main.terrain
 
+	_section("НОЧЬ / ДЕНЬ")
+	_slider("Ночь (0=день, 1=ночь)", 0.0, 1.0, main.game.night01, 0.01,
+		func(v):
+			world.apply_night01(v)
+			main.terrain.set_night01(v)
+			main.color_grade.set_param("night", 0.85 * v))
+
 	_section("НЕБО")
 	_slider("Солнце: высота°", 5.0, 85.0, _sun_elev, 0.5,
 		func(v): _on_sun_changed(v, null))
@@ -104,7 +111,7 @@ func _build_ui() -> void:
 		func(v): main.color_grade.set_param("night", v))
 
 	_section("ВОЛЮМЕТРИК (ТУМАН)")
-	_slider("Плотность", 0.005, 0.25, 0.055, 0.002,
+	_slider("Плотность", 0.005, 0.30, 0.09, 0.002,
 		func(v): world.set_vol_fog("volumetric_fog_density", v))
 	_slider("Дальность, м", 32.0, 192.0, 72.0, 4.0,
 		func(v): world.set_vol_fog("volumetric_fog_length", v))
@@ -112,7 +119,7 @@ func _build_ui() -> void:
 		func(v): world.set_vol_fog("volumetric_fog_anisotropy", v))
 	_slider("Подсветка неба", 0.0, 1.0, 0.12, 0.02,
 		func(v): world.set_vol_fog("volumetric_fog_ambient_inject", v))
-	_slider("Фонарик", 0.0, 12.0, 5.5, 0.25,
+	_slider("Фонарик", 0.0, 8.0, 2.6, 0.1,
 		func(v): main.cam_rig.flashlight.light_energy = v)
 
 	_section("ВЕТЕР")

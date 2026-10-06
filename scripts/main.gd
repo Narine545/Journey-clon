@@ -66,6 +66,11 @@ func _ready() -> void:
 		add_child(smoke)
 		smoke.setup(self)
 
+	# ночь: красим небо/свет/песок/туман/грейдинг одним параметром
+	world.apply_night01(game.night01)
+	terrain.set_night01(game.night01)
+	color_grade.set_param("night", 0.85 * game.night01)
+
 	# DEV-панель крутилок: F3 (по умолчанию скрыта, в игре текста нет)
 	debug_panel = DebugPanel.new()
 	add_child(debug_panel)

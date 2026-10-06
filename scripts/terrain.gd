@@ -388,6 +388,33 @@ func apply_sun(dir: Vector3) -> void:
 		(material_override as ShaderMaterial).set_shader_parameter("sun_dir", dir)
 
 
+## Ночь красит ПЕСОК: шейдер песка освещается собственной палитрой
+## (трёхсветовая схема), свет сцены его не трогает — поэтому день/ночь
+## проводим прямо в uniform-ы: холодная тусклая луна, короткая видимость.
+const DAY_SUNNY := Color(0.93, 0.52, 0.30)
+const DAY_HOT := Color(1.00, 0.68, 0.36)
+const DAY_SHADE := Color(0.40, 0.32, 0.52)
+const DAY_HORIZON := Color(0.96, 0.66, 0.55)
+const DAY_SKY := Color(0.28, 0.24, 0.43)
+const NIGHT_SUNNY := Color(0.135, 0.155, 0.24)
+const NIGHT_HOT := Color(0.19, 0.215, 0.32)
+const NIGHT_SHADE := Color(0.055, 0.065, 0.115)
+const NIGHT_HORIZON := Color(0.22, 0.27, 0.40)
+const NIGHT_SKY := Color(0.04, 0.05, 0.10)
+
+func set_night01(v: float) -> void:
+	if material_override == null:
+		return
+	var m: ShaderMaterial = material_override
+	m.set_shader_parameter("sand_sunny", DAY_SUNNY.lerp(NIGHT_SUNNY, v))
+	m.set_shader_parameter("sand_hot", DAY_HOT.lerp(NIGHT_HOT, v))
+	m.set_shader_parameter("sand_shade", DAY_SHADE.lerp(NIGHT_SHADE, v))
+	m.set_shader_parameter("horizon_col", DAY_HORIZON.lerp(NIGHT_HORIZON, v))
+	m.set_shader_parameter("sky_col", DAY_SKY.lerp(NIGHT_SKY, v))
+	m.set_shader_parameter("fog_distance", lerpf(340.0, 130.0, v))
+	m.set_shader_parameter("glitter_amount", lerpf(0.20, 0.06, v))
+
+
 ## Параметр шейдера песка (DEV-панель).
 func set_sand(param: String, value) -> void:
 	if material_override != null:

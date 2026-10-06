@@ -10,6 +10,7 @@ var _sky_mat: ShaderMaterial
 var _sun: DirectionalLight3D
 var _env: Environment
 var _beacon_light: OmniLight3D
+var compat_fallback := false # Vulkan не поднялся → Godot ушёл в Compatibility
 
 
 func setup(game_ref) -> void:
@@ -25,10 +26,6 @@ func _build_environment() -> void:
 	_sky_mat = ShaderMaterial.new()
 	_sky_mat.shader = load("res://shaders/sky.gdshader")
 	_sky_mat.set_shader_parameter("sun_direction", game.sun_dir)
-	if game.night:
-		# луна тусклая — небо ночное, но живое (градиент + звёздность
-		# рождается атмосферой, облака темнеют сами)
-		_sky_mat.set_shader_parameter("sun_intensity", 9.0)
 
 	var sky := Sky.new()
 	sky.sky_material = _sky_mat
@@ -37,11 +34,11 @@ func _build_environment() -> void:
 	_env.background_mode = Environment.BG_SKY
 	_env.sky = sky
 	_env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	_env.ambient_light_energy = 0.4 if game.night else 1.0
+	_env.ambient_light_energy = 1.0
 
 	# Киношный тонмаппинг: ночью чуть длиннее выдержка
 	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	_env.tonemap_exposure = 1.15 if game.night else 1.08
+	_env.tonemap_exposure = 1.08
 	_env.tonemap_white = 4.0
 
 	# Свечение: солнце и искры песка (в Compatibility glow есть)
@@ -55,14 +52,14 @@ func _build_environment() -> void:
 	# Дымка в цвет горизонта — для любых материалов со стандартным туманом.
 	_env.fog_enabled = true
 	_env.fog_light_color = Game.HORIZON_COL
-	_env.fog_density = 0.0034 if not game.night else 0.0055
+	_env.fog_density = 0.0034
 	_env.fog_sky_affect = 0.0
 
 	# ВОЛЮМЕТРИЧЕСКИЙ ТУМАН (Forward+/Vulkan): настоящий 3D-объём —
 	# луч фонаря и огонь маяка видны в воздухе. Ночь пустыни: плотный
 	# холодный туман гуляет по дюнам. Крутилки — в DEV-панели (F3).
 	_env.volumetric_fog_enabled = true
-	_env.volumetric_fog_density = 0.055
+	_env.volumetric_fog_density = 0.09
 	_env.volumetric_fog_albedo = Color(0.55, 0.58, 0.66)
 	_env.volumetric_fog_anisotropy = 0.55
 	_env.volumetric_fog_length = 72.0
@@ -82,15 +79,17 @@ func _build_sun() -> void:
 	_sun = DirectionalLight3D.new()
 	var forward: Vector3 = -(game.sun_dir as Vector3).normalized()
 	_sun.basis = Basis.looking_at(forward, Vector3.UP)
-	if game.night:
-		# луна: холодная и тусклая — мир держат фонарь, туман и маяк
-		_sun.light_color = Color(0.72, 0.78, 0.95)
-		_sun.light_energy = 0.32
-	else:
-		_sun.light_color = Color(1.0, 0.83, 0.66)
-		_sun.light_energy = 1.15
+	_sun.light_color = Color(1.0, 0.83, 0.66)
+	_sun.light_energy = 1.15
 	_sun.shadow_enabled = false
 	add_child(_sun)
+
+	# Если Vulkan не поднялся, Godot молча уходит в Compatibility —
+	# волюметрики там нет. Честно фиксируем и усиливаем depth-fog.
+	compat_fallback = RenderingServer.get_rendering_device() == null
+	if compat_fallback:
+		print("WORLD: Vulkan недоступен — Compatibility-фолбэк, ",
+			"волюметрический туман заменён плотной дымкой")
 
 
 ## Тестовый «маяк» в тумане: тёплый пульсирующий огонёк в коридоре дюн —
@@ -165,9 +164,29 @@ func set_glow_threshold(v: float) -> void:
 	_env.glow_hdr_threshold = v
 
 
-## Волюметрический туман: крутилки DEV-панели.
+## Волюметрический туман: крутилки DEV-панели. В Compatibility-фолбэке
+## плотность дополнительно уезжает в depth-fog — крутилки не мёртвые.
 func set_vol_fog(param: String, value) -> void:
 	_env.set(param, value)
+	if param == "volumetric_fog_density" and compat_fallback:
+		_env.fog_density = clampf(float(value) * 0.12, 0.002, 0.03)
+
+
+## ГЛАВНЫЙ ПОЛЗУНОК «НОЧЬ» (0=день, 1=ночь): красит всё сразу —
+## небо, свет, песок, туман, экспозицию, грейдинг.
+func apply_night01(v: float) -> void:
+	game.night01 = clampf(v, 0.0, 1.0)
+	var n := game.night01
+	_env.ambient_light_energy = lerpf(1.0, 0.30, n)
+	_env.tonemap_exposure = lerpf(1.08, 1.16, n)
+	_env.fog_light_color = Game.HORIZON_COL.lerp(Color(0.23, 0.28, 0.42), n)
+	_env.fog_density = lerpf(0.0034, 0.0068, n) if not compat_fallback \
+		else lerpf(0.0034, 0.011, n)
+	_env.volumetric_fog_density = lerpf(0.012, 0.09, n)
+	_env.volumetric_fog_albedo = Color(0.72, 0.72, 0.72).lerp(Color(0.55, 0.58, 0.66), n)
+	_sky_mat.set_shader_parameter("sun_intensity", lerpf(50.0, 8.0, n))
+	_sun.light_energy = lerpf(1.15, 0.30, n)
+	_sun.light_color = Color(1.0, 0.83, 0.66).lerp(Color(0.72, 0.78, 0.95), n)
 
 
 ## Смена солнца: небо + свет (базис и цвет по Кельвину — низкое солнце
@@ -175,7 +194,7 @@ func set_vol_fog(param: String, value) -> void:
 func apply_sun(dir: Vector3) -> void:
 	_sky_mat.set_shader_parameter("sun_direction", dir)
 	_sun.basis = Basis.looking_at(-dir.normalized(), Vector3.UP)
-	if game.night:
+	if game.night01 > 0.5:
 		var elev01n := smoothf(dir.y, 0.05, 0.55)
 		_sun.light_color = Color(0.68, 0.74, 0.95).lerp(Color(0.85, 0.90, 1.0), elev01n)
 	else:
