@@ -183,7 +183,7 @@ func _physics_process(_delta: float) -> void:
 				# мышь: apply_mouse_motion — тот же путь, что и настоящий ввод
 				_yaw0 = main.cam_rig.yaw
 				_pitch0 = main.cam_rig.pitch
-				main.cam_rig.apply_mouse_motion(Vector2(220.0, 130.0))
+				main.cam_rig.apply_mouse_motion(Vector2(220.0, -130.0))
 				var dy: float = absf(main.cam_rig.yaw - _yaw0)
 				var dp: float = main.cam_rig.pitch - _pitch0
 				_check(dy > 0.2, "mouse: yaw слушается мыши (Δ%.2f рад)" % dy)

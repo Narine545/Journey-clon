@@ -172,9 +172,11 @@ func try_shoot() -> void:
 			var d2 := Vector2(dir.x, dir.z)
 			if d2.length() > 0.01:
 				d2 = d2.normalized()
+			# кратер шире текселя сетки песка (0.12 м): пуля выбивает
+			# песок всплеском, полширины 0.13 перекрывает центры текселей
 			_main.sand.stamp_foot(
 				Vector2(hit.x, hit.z), d2,
-				0.16, 0.11, 0.034, 0.012
+				0.18, 0.26, 0.030, 0.014
 			)
 		if _dust != null:
 			_dust.global_position = hit + Vector3(0.0, 0.10, 0.0)
