@@ -330,7 +330,7 @@ func _gen_shot() -> AudioStreamWAV:
 	for i in n:
 		var t := float(i) / RATE_SFX
 		var w := rng.randf_range(-1.0, 1.0)
-		var cut := lerpf(0.85, 0.05, powf(t / 0.30, 0.6))
+		var cut := lerpf(0.85, 0.05, pow(t / 0.30, 0.6))
 		lp1 += (w - lp1) * cut
 		lp2 += (lp1 - lp2) * cut
 		var env := minf(t / 0.0025, 1.0) * exp(-t * 13.0)

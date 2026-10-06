@@ -150,7 +150,7 @@ func _physics_process(_delta: float) -> void:
 				_check(arms.shots_fired == 3, "shoot: выстрелов сделано %d" % arms.shots_fired)
 				_check(arms.last_hit_valid, "shoot: попадание в песок зафиксировано")
 				if arms.last_hit_valid:
-					var d := main.sand.disp_at(arms.last_hit.x, arms.last_hit.z)
+					var d: float = main.sand.disp_at(arms.last_hit.x, arms.last_hit.z)
 					_check(d < -0.002, "shoot: кратер в песке %.3f м (ожидалось < -0.002)" % d)
 				else:
 					_check(false, "shoot: кратер в песке — попадания не было")
@@ -170,8 +170,8 @@ func _physics_process(_delta: float) -> void:
 				_yaw0 = main.cam_rig.yaw
 				_pitch0 = main.cam_rig.pitch
 				main.cam_rig.apply_mouse_motion(Vector2(220.0, 130.0))
-				var dy := absf(main.cam_rig.yaw - _yaw0)
-				var dp := main.cam_rig.pitch - _pitch0
+				var dy: float = absf(main.cam_rig.yaw - _yaw0)
+				var dp: float = main.cam_rig.pitch - _pitch0
 				_check(dy > 0.2, "mouse: yaw слушается мыши (Δ%.2f рад)" % dy)
 				_check(dp > 0.1, "mouse: pitch слушается мыши (Δ%.2f рад)" % dp)
 				_next()

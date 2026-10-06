@@ -162,7 +162,7 @@ func try_shoot() -> void:
 	var cam: Camera3D = _rig.cam
 	var from := cam.global_position
 	var dir := -cam.global_transform.basis.z
-	var hit := _ray_sand(from, dir)
+	var hit: Variant = _ray_sand(from, dir)
 	last_hit_valid = hit != null
 	if hit != null:
 		last_hit = hit
