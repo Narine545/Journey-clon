@@ -9,73 +9,38 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  83% ] [90m[1mfirst_scan_filesystem[22m | Starting file scan...[39m[0m
 [92m[ DONE ][39m [1mfirst_scan_filesystem[22m
 [0m
-[   0% ] [90m[1mupdate_scripts_classes[22m | Started Registering global classes... (22 steps)[39m[0m
-[   0% ] [90m[1mupdate_scripts_classes[22m | FishingDemo[39m[0m
-[   4% ] [90m[1mupdate_scripts_classes[22m | RodCast[39m[0m
-[   8% ] [90m[1mupdate_scripts_classes[22m | SandFish[39m[0m
-[  13% ] [90m[1mupdate_scripts_classes[22m | WaterField[39m[0m
-[  17% ] [90m[1mupdate_scripts_classes[22m | WaterSurface[39m[0m
-[  21% ] [90m[1mupdate_scripts_classes[22m | SoundScape[39m[0m
-[  26% ] [90m[1mupdate_scripts_classes[22m | CameraRig[39m[0m
-[  30% ] [90m[1mupdate_scripts_classes[22m | ColorGrader[39m[0m
-[  34% ] [90m[1mupdate_scripts_classes[22m | DebugPanel[39m[0m
-[  39% ] [90m[1mupdate_scripts_classes[22m | FpsArms[39m[0m
-[  43% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
-[  47% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
-[  52% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
-[  56% ] [90m[1mupdate_scripts_classes[22m | Player[39m[0m
-[  60% ] [90m[1mupdate_scripts_classes[22m | ProcTextures[39m[0m
-[  65% ] [90m[1mupdate_scripts_classes[22m | SandField[39m[0m
-[  69% ] [90m[1mupdate_scripts_classes[22m | ShotTaker[39m[0m
-[  73% ] [90m[1mupdate_scripts_classes[22m | SmokeTest[39m[0m
-[  78% ] [90m[1mupdate_scripts_classes[22m | Terrain[39m[0m
-[  82% ] [90m[1mupdate_scripts_classes[22m | WindField[39m[0m
-[  86% ] [90m[1mupdate_scripts_classes[22m | GameWorld[39m[0m
-[  91% ] [90m[1mupdate_scripts_classes[22m | SandZombie[39m[0m
+[   0% ] [90m[1mupdate_scripts_classes[22m | Started Registering global classes... (21 steps)[39m[0m
+[   0% ] [90m[1mupdate_scripts_classes[22m | SoundScape[39m[0m
+[   4% ] [90m[1mupdate_scripts_classes[22m | CameraRig[39m[0m
+[   9% ] [90m[1mupdate_scripts_classes[22m | Coast[39m[0m
+[  13% ] [90m[1mupdate_scripts_classes[22m | ColorGrader[39m[0m
+[  18% ] [90m[1mupdate_scripts_classes[22m | DebugPanel[39m[0m
+[  22% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  27% ] [90m[1mupdate_scripts_classes[22m | [39m[0m
+[  31% ] [90m[1mupdate_scripts_classes[22m | MeshKit[39m[0m
+[  36% ] [90m[1mupdate_scripts_classes[22m | Pier[39m[0m
+[  40% ] [90m[1mupdate_scripts_classes[22m | Player[39m[0m
+[  45% ] [90m[1mupdate_scripts_classes[22m | ProcTextures[39m[0m
+[  50% ] [90m[1mupdate_scripts_classes[22m | CoastProps[39m[0m
+[  54% ] [90m[1mupdate_scripts_classes[22m | RodCast[39m[0m
+[  59% ] [90m[1mupdate_scripts_classes[22m | SandField[39m[0m
+[  63% ] [90m[1mupdate_scripts_classes[22m | SandFish[39m[0m
+[  68% ] [90m[1mupdate_scripts_classes[22m | ShotTaker[39m[0m
+[  72% ] [90m[1mupdate_scripts_classes[22m | SmokeTest[39m[0m
+[  77% ] [90m[1mupdate_scripts_classes[22m | WaterField[39m[0m
+[  81% ] [90m[1mupdate_scripts_classes[22m | WaterSurface[39m[0m
+[  86% ] [90m[1mupdate_scripts_classes[22m | WindField[39m[0m
+[  90% ] [90m[1mupdate_scripts_classes[22m | GameWorld[39m[0m
 [92m[ DONE ][39m [1mupdate_scripts_classes[22m
 [0m
-[   0% ] [90m[1m_update_scan_actions[22m | Started Scanning actions... (7 steps)[39m[0m
-[   0% ] [90m[1m_update_scan_actions[22m | Glove_D_baseColor.png[39m[0m
-[  12% ] [90m[1m_update_scan_actions[22m | Hand_D_baseColor.png[39m[0m
-[  25% ] [90m[1m_update_scan_actions[22m | Mark23_D_baseColor.png[39m[0m
-[  37% ] [90m[1m_update_scan_actions[22m | scene.gltf[39m[0m
-[  50% ] [90m[1m_update_scan_actions[22m | Material__meltyzombie_diffuse_tga_baseColor.png[39m[0m
-[  62% ] [90m[1m_update_scan_actions[22m | scene.gltf[39m[0m
-[  75% ] [90m[1m_update_scan_actions[22m | icon.svg[39m[0m
-[92m[ DONE ][39m [1m_update_scan_actions[22m
-[0m
-[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (7 steps)[39m[0m
+[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (1 steps)[39m[0m
 [   0% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  12% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  25% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  37% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  50% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  62% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  75% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
 [   0% ] [90m[1mreimport[22m | Executing pre-reimport operations...[39m[0m
-[   0% ] [90m[1mreimport[22m | Glove_D_baseColor.png[39m[0m
-[  12% ] [90m[1mreimport[22m | Hand_D_baseColor.png[39m[0m
-[  25% ] [90m[1mreimport[22m | Mark23_D_baseColor.png[39m[0m
-[  37% ] [90m[1mreimport[22m | Material__meltyzombie_diffuse_tga_baseColor.png[39m[0m
-[  50% ] [90m[1mreimport[22m | icon.svg[39m[0m
-[  62% ] [90m[1mreimport[22m | scene.gltf[39m[0m
-[   0% ] [90m[1mimport[22m | Started Import Scene (104 steps)[39m[0m
-[   0% ] [90m[1mimport[22m | Importing Scene...[39m[0m
-[   1% ] [90m[1mimport[22m | Running Custom Script...[39m[0m
-[  99% ] [90m[1mimport[22m | Saving...[39m[0m
-[92m[ DONE ][39m [1mimport[22m
-[0m
-[  75% ] [90m[1mreimport[22m | scene.gltf[39m[0m
-[   0% ] [90m[1mimport[22m | Started Import Scene (104 steps)[39m[0m
-[   0% ] [90m[1mimport[22m | Importing Scene...[39m[0m
-[   1% ] [90m[1mimport[22m | Running Custom Script...[39m[0m
-[  99% ] [90m[1mimport[22m | Saving...[39m[0m
-[92m[ DONE ][39m [1mimport[22m
-[0m
-[  87% ] [90m[1mreimport[22m | Finalizing Asset Import...[39m[0m
+[   0% ] [90m[1mreimport[22m | icon.svg[39m[0m
+[  50% ] [90m[1mreimport[22m | Finalizing Asset Import...[39m[0m
 [92m[ DONE ][39m [1mreimport[22m
 [0m
-[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (7 steps)[39m[0m
+[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (1 steps)[39m[0m
 [   0% ] [90m[1mreimport[22m | Executing post-reimport operations...[39m[0m
 [92m[ DONE ][39m [1mreimport[22m
 [0m
@@ -84,3 +49,33 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  16% ] [90m[1mloading_editor_layout[22m | Loading docks...[39m[0m
 [92m[ DONE ][39m [1mloading_editor_layout[22m
 [0m
+SCRIPT ERROR: Parse Error: Cannot infer the type of "z" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/pier.gd:96)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "z" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/pier.gd:111)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "y1" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/pier.gd:123)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "y2" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/pier.gd:124)
+SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
+          at: GDScript::reload (res://scripts/player.gd:0)
+SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
+          at: GDScript::reload (res://scripts/sand_field.gd:0)
+SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
+          at: GDScript::reload (res://scripts/coast.gd:0)
+SCRIPT ERROR: Parse Error: Invalid operands "float" and "Vector2" for "-" operator.
+          at: GDScript::reload (res://scripts/water_field.gd:158)
+SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
+          at: GDScript::reload (res://scripts/water_surface.gd:0)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "gh" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/rod_cast.gd:264)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "wy" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/rod_cast.gd:391)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "w2" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/rod_cast.gd:497)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "px" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/smoke_test.gd:178)
+SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
+          at: GDScript::reload (res://scripts/main.gd:0)
+ERROR: Failed to load script "res://scripts/main.gd" with error "Parse error".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
