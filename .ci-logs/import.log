@@ -54,23 +54,3 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  16% ] [90m[1mloading_editor_layout[22m | Loading docks...[39m[0m
 [92m[ DONE ][39m [1mloading_editor_layout[22m
 [0m
-SCRIPT ERROR: Parse Error: Cannot pass a value of type "Callable" as "float".
-          at: GDScript::reload (res://scripts/mesh_kit.gd:177)
-SCRIPT ERROR: Parse Error: Invalid argument for "add_cylinder()" function: argument 5 should be "float" but is "Callable".
-          at: GDScript::reload (res://scripts/mesh_kit.gd:177)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/pier.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/player.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/sand_field.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/coast.gd:0)
-SCRIPT ERROR: Parse Error: Identifier "_splash_t" not declared in the current scope.
-          at: GDScript::reload (res://scripts/fish_fight.gd:95)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/rod_cast.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/main.gd:0)
-ERROR: Failed to load script "res://scripts/main.gd" with error "Parse error".
-   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
