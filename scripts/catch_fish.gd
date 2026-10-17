@@ -8,6 +8,7 @@ extends Node3D
 ## игрок видел, что именно вытащил. Тело вытянуто по Z, нос — в −Z.
 
 var _body: MeshInstance3D
+var _head: MeshInstance3D
 var _belly: MeshInstance3D
 var _eyes: Array[MeshInstance3D] = []
 var _tail: Node3D
@@ -35,67 +36,98 @@ func _build() -> void:
 	_mat_fin.metallic = 0.05
 	_mat_fin.cull_mode = BaseMaterial3D.CULL_DISABLED
 
-	# тело: сфера, растянутая в длину (1 м по Z)
+	# тело — вытянутый эллипсоид. У рыбы, как у сигары, оба конца
+	# сужаются; поэтому тело — «капсула» из трёх долей с разным сжатием
+	# по длине, а не шар с приклеенным хвостом-конусом.
 	_body = MeshInstance3D.new()
 	var sph := SphereMesh.new()
 	sph.radius = 0.5
 	sph.height = 1.0
-	sph.radial_segments = 18
-	sph.rings = 10
+	sph.radial_segments = 22
+	sph.rings = 12
 	_body.mesh = sph
-	_body.scale = Vector3(0.34, 0.40, 1.0)
+	_body.scale = Vector3(0.19, 0.27, 0.72)
+	_body.position = Vector3(0.0, 0.0, -0.10)
 	_body.material_override = _mat_body
 	add_child(_body)
+
+	# голова — уже и круглее: нос не обрублен, силуэт узнаётся
+	var head := MeshInstance3D.new()
+	var hs := SphereMesh.new()
+	hs.radius = 0.5
+	hs.height = 1.0
+	hs.radial_segments = 18
+	hs.rings = 10
+	head.mesh = hs
+	head.scale = Vector3(0.17, 0.24, 0.30)
+	head.position = Vector3(0.0, 0.01, -0.44)
+	head.material_override = _mat_body
+	add_child(head)
+	_eyes.clear()
+	_head = head
+
+	# тело к хвосту сходит на конус — хвостовой стебель
+	var ped := MeshInstance3D.new()
+	var ps := SphereMesh.new()
+	ps.radius = 0.5
+	ps.height = 1.0
+	ps.radial_segments = 14
+	ps.rings = 8
+	ped.mesh = ps
+	ped.scale = Vector3(0.085, 0.11, 0.17)
+	ped.position = Vector3(0.0, 0.0, 0.34)
+	ped.material_override = _mat_body
+	add_child(ped)
 
 	# брюхо — светлее, чуть ниже и короче
 	_belly = MeshInstance3D.new()
 	var bs := SphereMesh.new()
 	bs.radius = 0.5
 	bs.height = 1.0
-	bs.radial_segments = 14
+	bs.radial_segments = 16
 	bs.rings = 8
 	_belly.mesh = bs
-	_belly.scale = Vector3(0.30, 0.24, 0.82)
-	_belly.position = Vector3(0.0, -0.09, 0.02)
+	_belly.scale = Vector3(0.17, 0.15, 0.62)
+	_belly.position = Vector3(0.0, -0.10, -0.10)
 	_belly.material_override = _mat_belly
 	add_child(_belly)
 
-	# хвост: конус, раструбом к телу, остриём назад
+	# хвост: раздвоенный «ласточкин» плавник из двух тонких плоскостей,
+	# а не приклеенный конус — по нему видно, что рыба плывёт
 	_tail = Node3D.new()
-	_tail.position = Vector3(0.0, 0.0, 0.46)
+	_tail.position = Vector3(0.0, 0.0, 0.42)
 	add_child(_tail)
-	var tail_fin := MeshInstance3D.new()
-	var tc := CylinderMesh.new()
-	tc.top_radius = 0.015
-	tc.bottom_radius = 0.17
-	tc.height = 0.30
-	tc.radial_segments = 10
-	tail_fin.mesh = tc
-	tail_fin.material_override = _mat_fin
-	tail_fin.position = Vector3(0.0, 0.0, 0.13)
-	tail_fin.rotation.x = PI * 0.5
-	tail_fin.scale = Vector3(0.20, 1.0, 1.0)
-	_tail.add_child(tail_fin)
+	for side in [-1.0, 1.0]:
+		var lobe := MeshInstance3D.new()
+		var lb := BoxMesh.new()
+		lb.size = Vector3(0.014, 0.30, 0.30)
+		lobe.mesh = lb
+		lobe.material_override = _mat_fin
+		lobe.position = Vector3(0.0, 0.09 * side, 0.14)
+		lobe.rotation.x = side * 0.55
+		lobe.rotation.z = side * 0.0
+		lobe.scale = Vector3(1.0, 1.0, 0.55)
+		_tail.add_child(lobe)
 
-	# спинной плавник и два грудных
-	_add_fin(Vector3(0.0, 0.20, -0.02), Vector3(0.018, 0.16, 0.26), 0.0)
-	_add_fin(Vector3(0.16, -0.02, -0.18), Vector3(0.012, 0.12, 0.14), -0.5)
-	_add_fin(Vector3(-0.16, -0.02, -0.18), Vector3(0.012, 0.12, 0.14), 0.5)
+	# спинной плавник и два грудных — тонкие плоскости по бокам
+	_add_fin(Vector3(0.0, 0.235, -0.10), Vector3(0.016, 0.14, 0.22), 0.0)
+	_add_fin(Vector3(0.155, -0.03, -0.24), Vector3(0.012, 0.10, 0.13), -0.6)
+	_add_fin(Vector3(-0.155, -0.03, -0.24), Vector3(0.012, 0.10, 0.13), 0.6)
 
 	# глаза
 	for side in [-1.0, 1.0]:
 		var eye := MeshInstance3D.new()
 		var es := SphereMesh.new()
-		es.radius = 0.026
-		es.height = 0.052
-		es.radial_segments = 8
-		es.rings = 5
+		es.radius = 0.030
+		es.height = 0.060
+		es.radial_segments = 10
+		es.rings = 6
 		eye.mesh = es
 		var em := StandardMaterial3D.new()
-		em.albedo_color = Color(0.04, 0.035, 0.03)
-		em.roughness = 0.2
+		em.albedo_color = Color(0.03, 0.025, 0.02)
+		em.roughness = 0.16
 		eye.material_override = em
-		eye.position = Vector3(0.13 * side, 0.045, -0.27)
+		eye.position = Vector3(0.125 * side, 0.055, -0.40)
 		add_child(eye)
 		_eyes.append(eye)
 
@@ -147,9 +179,15 @@ func setup(info: Dictionary) -> void:
 			sx = 0.95
 			sy = 1.0
 			sz = 1.25
-	_body.scale = Vector3(0.34 * sx, 0.40 * sy, sz)
-	_belly.scale = Vector3(0.30 * sx, 0.24 * sy, 0.82 * sz)
-	_tail.position.z = 0.46 * sz
+	_body.scale = Vector3(0.19 * sx, 0.27 * sy, 0.72 * sz)
+	_head.scale = Vector3(0.17 * sx, 0.24 * sy, 0.30 * sz)
+	_belly.scale = Vector3(0.17 * sx, 0.15 * sy, 0.62 * sz)
+	_head.position.z = -0.44 * sz
+	_belly.position.z = -0.10 * sz
+	for i in range(_eyes.size()):
+		var sd := -1.0 if i == 0 else 1.0
+		_eyes[i].position = Vector3(0.125 * sx * sd, 0.055 * sy, -0.40 * sz)
+	_tail.position.z = 0.42 * sz
 	# 3.3-метровый марлин в кадре не должен занимать пол-экрана
 	var size_cm: float = float(info.get("size_cm", 40.0))
 	var s := clampf(size_cm / 100.0, 0.20, 1.15)
