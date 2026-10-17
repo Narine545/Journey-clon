@@ -116,22 +116,15 @@ float ground_at(vec2 wp) {
 }
 
 void vertex() {
-	w_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	w_pos = (MODEL_MATRIX * vec4(VERTEX.x, VERTEX.y, VERTEX.z, 1.0)).xyz;
 	vec2 wdir_v = normalize(wind_dir);
 	vec2 wperp_v = vec2(-wdir_v.y, wdir_v.x);
 
-	float ground = ground_at(w_pos.xz);
-	float land = ground - sea_level;
-	// Та же формула прилива, что у sand.gdshader: плоскости воды и песка
-	// пересекаются РОВНО по мокрой кайме, и она ползёт по пляжу вместе
-	// с накатом. Мокрая полоса и пена живут в шейдере песка.
+	// Гладкая поверхность моря не подрезается по дну на уровне вершин;
+	// линию берега формируют фрагментная глубина и мягкий alpha-переход.
 	float hrip = swell_of(mega_phase(w_pos.xz, wdir_v, wperp_v))
 		* mega_amp * wind_power;
 	float y = hrip;
-	if (land < 0.0) {
-		// в воде плоскость не должна нырять под дно
-		y = max(y, land + 0.03);
-	}
 
 	VERTEX.y += y;
 	w_pos.y += y;
@@ -143,15 +136,16 @@ void fragment() {
 	vec2 wperp = vec2(-wdir.y, wdir.x);
 
 	// ---------- берег под водой ----------
-	// Глубина считается ПО ФРАГМЕНТУ: поверхность (вершины, прижатые к
-	// песку) минус высота песка в этом пикселе. Кромка получается ровной
-	// линией по рельефу, без лоскутов и прямоугольных пластин.
+	// Глубина считается ПО ФРАГМЕНТУ: поверхность моря минус высота
+	// песка в этом пикселе; кромка не зависит от рёбер сетки воды.
 	float ground = ground_at(wp);
 	float depth_m = w_pos.y - ground;
-	if (depth_m < 0.004) {
+	// Оставляем небольшой переход по обе стороны уреза, чтобы прозрачность
+	// сгладила субпиксельные расхождения между картой высот и сеткой берега.
+	if (depth_m < -0.08) {
 		discard;
 	}
-	float near_shore = 1.0 - smoothstep(0.0, 0.9, depth_m);
+	float near_shore = 1.0 - smoothstep(-0.08, 0.9, depth_m);
 	float mph = mega_phase(wp, wdir, wperp);
 	float hrip = swell_of(mph) * mega_amp * wind_power;
 
@@ -279,7 +273,7 @@ void fragment() {
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);
 	ALBEDO = mix(base, fcol, fog);
 
-	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0)).xyz);
+	NORMAL = normalize((VIEW_MATRIX * vec4(N.x, N.y, N.z, 0.0)).xyz);
 	float rough = mix(0.16, 0.55, near_shore);
 	ROUGHNESS = mix(rough, 0.88, foam);
 	SPECULAR = mix(0.55, 0.18, near_shore);
@@ -288,12 +282,13 @@ void fragment() {
 	// ---------- мягкий урез ----------
 	// Альфа растёт от нуля по глубине: кромка получается градиентной,
 	// а не ступенькой из полигонов.
-	float shore_a = smoothstep(0.0, 0.06, depth_m);
+	float shore_a = smoothstep(-0.08, 0.22, depth_m);
 	float sea_a = (0.62 + 0.38 * smoothstep(0.0, 1.2, depth_m)) * shore_a;
 	float a = max(sea_a, foam * 0.92);
 	// предметы (пирс, камни) закрывают воду мягко
 	float sd = texture(depth_tex, SCREEN_UV).r;
-	vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, sd, 1.0);
+	vec2 ndc_xy = SCREEN_UV * 2.0 - 1.0;
+	vec4 ndc = vec4(ndc_xy.x, ndc_xy.y, sd, 1.0);
 	vec4 vp = INV_PROJECTION_MATRIX * ndc;
 	vp.xyz /= vp.w;
 	float scene_z = -vp.z;

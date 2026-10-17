@@ -53,7 +53,7 @@ const CHARGE_PERIOD := 1.7
 
 # --- удилище ---
 const ROD_SEGMENTS := 20
-const BLANK_LEN := 1.02
+const BLANK_LEN := 1.48
 const BLANK_Y0 := 0.12
 const HANDLE_LEN := 0.27
 const GRIP_POS := Vector3(0.36, -0.62, -0.56)
@@ -563,8 +563,22 @@ func _sit(delta: float) -> Vector3:
 	var dip_m := 0.0
 	if not on_land:
 		dip_m = bite.dip() * 0.62
-		bp.y = water.surface_height(bp.x, bp.z) + 0.035 - dip_m \
-			+ sin(_t * 26.0) * 0.012 * bite.dip()
+		# Поплавок следует высоте и наклону той же волны, что рисует море.
+		# Небольшая инерционная качка добавляется поверх поклёвки.
+		var wave_y := water.surface_height(bp.x, bp.z)
+		bp.y = wave_y + 0.035 - dip_m \
+			+ sin(_t * 2.7 + bp.x * 0.31) * 0.018 * (1.0 - bite.dip())
+		var eps := 0.18
+		var sx := (water.surface_height(bp.x + eps, bp.z) - water.surface_height(bp.x - eps, bp.z)) / (2.0 * eps)
+		var sz := (water.surface_height(bp.x, bp.z + eps) - water.surface_height(bp.x, bp.z - eps)) / (2.0 * eps)
+		var normal := Vector3(-sx, 1.0, -sz).normalized()
+		var axis_x := Vector3.RIGHT - normal * Vector3.RIGHT.dot(normal)
+		if axis_x.length_squared() > 0.0001:
+			axis_x = axis_x.normalized()
+			var axis_z := axis_x.cross(normal).normalized()
+			var target_basis := Basis(axis_x, normal, axis_z)
+			var blend := 1.0 - exp(-5.0 * delta)
+			_bobber.global_transform.basis = _bobber.global_transform.basis.slerp(target_basis, blend)
 	elif coast != null:
 		bp.y = coast.ground_height(bp.x, bp.z) + 0.06
 	return bp
@@ -827,7 +841,7 @@ func _build_rod() -> void:
 	seat.position = Vector3(0.0, BLANK_Y0 + 0.02, 0.0)
 	_rod.add_child(seat)
 
-	# 12 сегментов бланка: «кости» с нарастающим изгибом
+	# 20 сегментов бланка: «кости» с нарастающим изгибом
 	_segs.clear()
 	for i in range(ROD_SEGMENTS):
 		var r0 := lerpf(0.0210, 0.0065, float(i) / float(ROD_SEGMENTS - 1))
@@ -1037,7 +1051,7 @@ func _update_rod(delta: float) -> void:
 	_update_spine(_bend)
 
 
-## Разложить изгиб по 12 сегментам (вес растёт к вершинке) и запомнить кончик.
+## Разложить изгиб по сегментам (вес растёт к вершинке) и запомнить кончик.
 func _update_spine(bend: float) -> void:
 	if _segs.is_empty():
 		return

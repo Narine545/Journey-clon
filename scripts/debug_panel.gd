@@ -90,10 +90,6 @@ func _build_ui() -> void:
 	_section("ПЕСОК / БЕРЕГ")
 	_slider("Блёстки (доля)", 0.0, 0.5, 0.20, 0.01,
 		func(v): coast.set_sand("glitter_amount", v))
-	_slider("Рябь (сила)", 0.0, 1.0, 0.50, 0.02,
-		func(v): coast.set_sand("ripple_strength", v))
-	_slider("Мега-рябь (амплитуда)", 0.0, 0.12, 0.055, 0.005,
-		func(v): coast.set_sand("mega_amp", v))
 	_slider("Дымка песка (м)", 100.0, 900.0, 340.0, 10.0,
 		func(v):
 			coast.set_sand("fog_distance", v)

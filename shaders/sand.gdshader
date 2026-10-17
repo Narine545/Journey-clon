@@ -27,11 +27,7 @@ uniform float fog_distance = 340.0;
 uniform vec2 wind_dir = vec2(0.32, -0.95); // нормализуется внутри
 uniform float wind_power = 1.0;
 
-uniform float ripple_freq = 4.0;      // плотность гребней поперёк ветра
-uniform float ripple_speed = 1.5;     // скорость бега ряби по ветру
-uniform float ripple_strength = 0.16; // глубина ряби (влияние на нормаль)
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
-uniform float mega_amp = 0.018; // амплитуда мега-ряби (слой 2, суша)
 uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
 // ---- Урез воды: мокрая полоса и подводный песок ----
@@ -103,11 +99,9 @@ void vertex() {
 	vec2 wdir_v = normalize(wind_dir);
 	vec2 wperp_v = vec2(-wdir_v.y, wdir_v.x);
 	float mph = mega_phase(w_pos.xz, wdir_v, wperp_v);
-	float hrip = (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
-		+ cos(mph * 0.47 + 0.8) * 0.22) * mega_amp * wind_power;
-	hrip *= 1.0 - 0.6 * clamp(abs(h) * 10.0, 0.0, 1.0); // следы сглаживают рябь
-	VERTEX.y += h + hrip;
-	w_pos.y += h + hrip;
+	// Волновая геометрическая рябь отключена: формы берега задаёт Coast.
+	VERTEX.y += h;
+	w_pos.y += h;
 	w_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	v_dune = UV2;
 }
@@ -116,8 +110,6 @@ void fragment() {
 	vec2 wp = w_pos.xz;
 	vec2 wdir = normalize(wind_dir);
 	vec2 wperp = vec2(-wdir.y, wdir.x);
-	float u = dot(wp, wdir);  // вдоль ветра
-	float v = dot(wp, wperp); // поперёк ветра
 
 	vec3 L = normalize(sun_dir);
 	vec3 N = normalize(w_normal);
@@ -138,35 +130,9 @@ void fragment() {
 	vec2 sgrad = vec2(hx1 - hx0, hz1 - hz0) / (2.0 * t);
 	float churn = clamp(abs(h) * 10.0, 0.0, 1.0); // потревоженный песок
 	N = normalize(N - vec3(sgrad.x, 0.0, sgrad.y));
-	// слой 2: нормаль геометрической мега-ряби — та же фаза, что в vertex
+	// Фазу ветра используем только для движения мокрой каймы;
+	// на самой суше волновые нормали и полосы не рисуются.
 	float mph = mega_phase(wp, wdir, wperp);
-	float ms1 = sin(mph);
-	float ms2 = sin(mph * 2.63 + 1.7);
-	float ms3 = sin(mph * 0.47 + 0.8);
-	float mdv = (-0.62 * 0.70 * ms1 - 0.30 * 2.63 * 0.70 * ms2 - 0.22 * 0.47 * 0.70 * ms3) * mega_amp;
-	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2 - 0.22 * 0.47 * 0.16 * ms3) * mega_amp;
-	vec2 mgrad = (wperp * mdv + wdir * mdu) * wind_power * (1.0 - 0.6 * churn) * 0.55;
-	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y));
-
-	// ---------- 1. Рябь от ветра ----------
-	// Гребни вытянуты вдоль ветра, рисунок медленно бежит по ветру.
-	// На потревоженном песке рябь стирается (песок перепахан).
-	float n1 = vnoise(wp * 0.33);
-	float n2 = vnoise(wp * 0.9 + vec2(17.0, 9.0));
-	float ph1 = v * ripple_freq + u * 0.22 + n1 * 4.2 + TIME * ripple_speed;
-	float ph2 = v * ripple_freq * 2.63 + u * 0.55 + n2 * 3.4 + TIME * ripple_speed * 1.6;
-	float amp1 = 0.62;
-	float amp2 = 0.38;
-	float c1 = cos(ph1) * amp1;
-	float c2 = cos(ph2) * amp2;
-	// лёгкое самозатенение: ложбинки ряби чуть темнее гребней
-	float rshade = clamp(0.5 + 0.45 * (c1 + c2), 0.0, 1.0);
-	// аналитический градиент волны по осям (v, u) -> возмущение нормали
-	float dv = (c1 * ripple_freq + c2 * ripple_freq * 2.63) * ripple_strength * wind_power;
-	float du = (c1 * 0.22 + c2 * 0.55) * ripple_strength * wind_power * 2.0;
-	vec2 grad = (wperp * dv + wdir * du) * detail;
-	grad *= 1.0 - 0.75 * churn; // вытоптанный песок не рябит
-	N = normalize(N - vec3(grad.x, 0.0, grad.y) * 0.5);
 
 	// ---------- 2. Свет: солнце + небо + отблеск (три источника) ----------
 	// Главный мотив тот же (тёплый склон к солнцу / сиреневая тень),
@@ -199,8 +165,7 @@ void fragment() {
 	base = mix(base, sand_shade, hollow * 0.18);
 	// крупный тональный шум: дюны не одинаковые
 	base *= mix(0.92, 1.07, vnoise(wp * 0.013 + vec2(3.1, 7.7)));
-	// рябь самозатеняется, песчинки дают видимое зерно
-	base *= 1.0 - 0.025 * (1.0 - rshade) * detail * (1.0 - 0.5 * churn);
+	// Мелкое зерно сохраняет фактуру песка без ветровых полос.
 	base *= 1.0 + (vnoise(wp * 2.7) - 0.5) * 0.08 * detail;
 
 	// ---------- 2a. Урез: прибой ----------
