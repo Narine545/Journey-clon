@@ -40,7 +40,7 @@ uniform float mega_amp = 0.055; // амплитуда мега-ряби — ка
 uniform float ripple_freq = 2.2;      // плотность гребней поперёк ветра
 uniform float ripple_speed = 1.5;     // скорость бега ряби по ветру
 uniform float ripple_strength = 0.50; // глубина ряби (влияние на нормаль)
-uniform float glitter_amount = 0.20;  // доля блестящих гранул — как у песка
+uniform float glitter_amount = 0.16;  // доля блестящих гранул — как у песка
 
 // ---- Кольца событий (всплеск / поклёвка / подмотка) ----
 uniform float ring_amp = 0.055;  // м при силе 1.0
@@ -251,8 +251,8 @@ void fragment() {
 	ALBEDO = mix(base, fcol, fog);
 	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0)).xyz);
 	// вода глаже песка: длинная солнечная дорожка читается как жидкость
-	ROUGHNESS = mix(0.60, 0.32, clamp(fres, 0.0, 1.0));
-	SPECULAR = 0.50;
+	ROUGHNESS = mix(0.68, 0.40, clamp(fres, 0.0, 1.0));
+	SPECULAR = 0.42;
 	METALLIC = 0.0;
 
 	// ---- Мягкий урез ----

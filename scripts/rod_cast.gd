@@ -818,17 +818,17 @@ func _basis_from_up(dir: Vector3) -> Basis:
 func _elev_deg() -> float:
 	match state:
 		S.CHARGE:
-			return 46.0 + charge_power() * 10.0
+			return 44.0 + charge_power() * 11.0
 		S.FLY:
-			return 14.0
+			return 12.0
 		S.FLOAT:
-			return 26.0
+			return 20.0
 		S.BITE:
-			return 15.0
+			return 12.0
 		S.FIGHT:
-			return 24.0 - _fight_t01() * 12.0
+			return 21.0 - _fight_t01() * 11.0
 		_:
-			return 30.0
+			return 22.0
 
 
 func _fight_t01() -> float:
