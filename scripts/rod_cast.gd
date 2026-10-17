@@ -80,6 +80,7 @@ var zone := "shallow"
 var _cam: Camera3D
 var _t := 0.0
 var _suppress := 0.4
+var _await_release := false # клик, достававший удочку, не должен сразу её заряжать
 
 # удилище
 var _rod: Node3D
@@ -207,6 +208,12 @@ func _st_resting(_delta: float) -> void:
 		# первый клик — достаём удочку (не забрасываем той же кнопкой)
 		if Input.is_action_just_pressed("rod_cast") and water != null:
 			stowed = false
+			_await_release = true
+		return
+	if _await_release:
+		# ждём, пока кнопку отпустят: иначе тот же клик уйдёт в заряд
+		if not Input.is_action_pressed("rod_cast"):
+			_await_release = false
 		return
 	if _suppress > 0.0:
 		return
