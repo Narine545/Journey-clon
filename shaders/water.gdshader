@@ -129,10 +129,12 @@ void vertex() {
 	// плёнка прибоя: где накат дотянулся до песка, вода лежит НА нём
 	float land = max(ground - sea_level, 0.0);
 	float reach = hrip * swash_lift + 0.02 - land;
-	float film_w = smoothstep(-0.06, 0.02, ground - sea_level)
+	float film_w = smoothstep(-0.02, 0.06, ground - sea_level)
 		* smoothstep(-0.02, 0.03, reach);
+	// плёнка лежит НА песке, но никогда не опускается ниже уровня моря
+	float y_film = max(ground - sea_level, 0.0) + 0.02;
 
-	float y = mix(hrip * damp, ground - sea_level + 0.02, film_w);
+	float y = mix(hrip * damp, y_film, film_w);
 	VERTEX.y += y;
 	w_pos.y += y;
 }
@@ -277,11 +279,13 @@ void fragment() {
 	METALLIC = 0.0;
 
 	// ---------- мягкий урез ----------
-	// Глубокая вода непрозрачна, тонкая плёнка на песке растворяется.
-	float sea_a = 0.62 + 0.38 * smoothstep(0.0, 1.2, depth_m);
-	float film_a = (0.26 + 0.22 * fn) * film;
-	float land01 = smoothstep(-0.05, 0.05, ground - sea_level);
-	float a = mix(sea_a, film_a, land01);
+	// Плоская вода гаснет ДО того, как песок выйдет из неё: там, где
+	// глубины нет, у моря нет и альфы — иначе на пляже висят лоскуты
+	// полигонов. Мокрую полосу и накат рисует плёнка прибоя.
+	float sea_a = (0.62 + 0.38 * smoothstep(0.0, 1.2, depth_m))
+		* smoothstep(0.0, 0.22, depth_m);
+	float film_a = (0.24 + 0.20 * fn) * film;
+	float a = max(sea_a, film_a);
 	a = max(a, foam * 0.92);
 	a *= film;
 	// предметы (пирс, камни) закрывают воду мягко
