@@ -145,6 +145,8 @@ void fragment() {
 		discard; // море не имеет права лезть на песок выше кромки
 	}
 	float depth_m = max(-dx, 0.0) * beach_slope + 0.02;
+	// тонкая вода у кромки: 0 — прибой на песке, 1 — нормальная глубина
+	float thin = smoothstep(0.0, 0.10, depth_m);
 
 	vec3 L = normalize(sun_dir);
 	vec3 N = vec3(0.0, 1.0, 0.0);
@@ -211,7 +213,7 @@ void fragment() {
 	vec3 base = mix(water_shallow, water_mid, smoothstep(0.0, 4.0, depth_m));
 	base = mix(base, water_deep, smoothstep(1.0, 12.0, depth_m));
 	// тонкая вода у самой кромки светлее: мокрый песок просвечивает
-	base = mix(base, water_shallow * 1.30, near_shore * 0.40);
+	base = mix(base, water_shallow * 1.55, near_shore * (0.62 - 0.45 * thin));
 	float ndl = clamp(dot(N, L) * 0.5 + 0.5, 0.0, 1.0);
 	base *= 0.72 + 0.42 * ndl;
 	base *= 0.92 + 0.16 * rshade * detail;
@@ -247,10 +249,10 @@ void fragment() {
 	// Две полосы: тонкая у самой кромки и вторая — накат чуть мористее.
 	float fn = vnoise(vec2(w_pos.x * 0.85 + u_time * 0.12, w_pos.z * 1.55));
 	float fn2 = vnoise(vec2(w_pos.x * 3.2 - u_time * 0.38, w_pos.z * 2.35));
-	float band1 = exp(-pow((dx + 0.10) / 0.42, 2.0));
-	float band2 = exp(-pow((dx + 2.1 + 0.55 * sin(w_pos.z * 0.21 + u_time * 1.15)) / 0.80, 2.0));
-	float foam = band1 * smoothstep(0.20, 0.72, fn) * (0.55 + 0.45 * fn2);
-	foam += band2 * smoothstep(0.55, 0.90, fn2) * 0.50;
+	float band1 = exp(-pow((dx + 0.16) / 0.58, 2.0));
+	float band2 = exp(-pow((dx + 2.3 + 0.70 * sin(w_pos.z * 0.21 + u_time * 1.15)) / 0.95, 2.0));
+	float foam = band1 * smoothstep(0.12, 0.62, fn) * (0.70 + 0.30 * fn2);
+	foam += band2 * smoothstep(0.48, 0.86, fn2) * 0.55;
 	foam *= smoothstep(0.0, 0.55, -dx + 0.9); // на сухом песке пены нет
 	foam = clamp(foam, 0.0, 1.0);
 	base = mix(base, foam_col * (0.72 + 0.28 * ndl), foam * 0.92);
@@ -270,8 +272,7 @@ void fragment() {
 	// ---------- мягкий урез ----------
 	// Полупрозрачная тонкая вода над мокрым песком + пена, которая
 	// прикрывает стык. У буфера сцены — мягкое пересечение с пирсом/камнями.
-	float thin = smoothstep(0.0, 0.10, depth_m);
-	float a = sea01 * (0.18 + 0.82 * thin);
+	float a = sea01 * (0.34 + 0.66 * thin);
 	a = max(a, foam * sea01 * 0.95);
 	float sd = texture(depth_tex, SCREEN_UV).r;
 	vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, sd, 1.0);

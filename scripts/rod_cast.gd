@@ -58,7 +58,7 @@ const BLANK_Y0 := 0.12
 const HANDLE_LEN := 0.27
 const GRIP_POS := Vector3(0.36, -0.62, -0.56)
 const STOW_POS := Vector3(0.32, -0.66, -0.50)
-const HOLD_DIR := Vector3(0.42, 0.46, -0.78) # поза в камере: вправо-вверх-вперёд
+const HOLD_DIR := Vector3(0.60, 0.42, -0.68) # поза в камере: вправо-вверх-вперёд
 const MAX_BEND := 1.30
 const LAND_DIST := 3.0
 const REEL_SPEED := 5.8   # м/с — леску видно, она не «телепортируется»
@@ -789,9 +789,9 @@ func _build_rod() -> void:
 	var mat_carbon := StandardMaterial3D.new()
 	# бланк светлее «чёрного карбона»: на светлом песке чёрное удилище
 	# пропадает, и остаётся только леска
-	mat_carbon.albedo_color = Color(0.24, 0.19, 0.16)
-	mat_carbon.roughness = 0.42
-	mat_carbon.metallic = 0.22
+	mat_carbon.albedo_color = Color(0.31, 0.25, 0.20)
+	mat_carbon.roughness = 0.46
+	mat_carbon.metallic = 0.18
 	var mat_metal := StandardMaterial3D.new()
 	mat_metal.albedo_color = Color(0.60, 0.57, 0.50)
 	mat_metal.roughness = 0.30
@@ -824,8 +824,8 @@ func _build_rod() -> void:
 	# 12 сегментов бланка: «кости» с нарастающим изгибом
 	_segs.clear()
 	for i in range(ROD_SEGMENTS):
-		var r0 := lerpf(0.0175, 0.0040, float(i) / float(ROD_SEGMENTS - 1))
-		var r1 := lerpf(0.0175, 0.0040, float(i + 1) / float(ROD_SEGMENTS - 1))
+		var r0 := lerpf(0.0210, 0.0050, float(i) / float(ROD_SEGMENTS - 1))
+		var r1 := lerpf(0.0210, 0.0050, float(i + 1) / float(ROD_SEGMENTS - 1))
 		var mi := MeshInstance3D.new()
 		var cm2 := CylinderMesh.new()
 		cm2.bottom_radius = r0
