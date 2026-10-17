@@ -1066,9 +1066,9 @@ func _tip_world() -> Vector3:
 func _update_bite_mark(delta: float) -> void:
 	if _bite_mark == null:
 		return
-	var show := state == S.BITE and _bobber.visible
-	_bite_mark.visible = show
-	if not show:
+	var near := state == S.BITE and _bobber.visible
+	_bite_mark.visible = near
+	if not near:
 		return
 	var bp := _bobber.global_position
 	_bite_mark.global_position = bp + Vector3.UP * 0.68

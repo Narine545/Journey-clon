@@ -66,7 +66,7 @@ func _ready() -> void:
 	water = WaterSurface.new()
 	add_child(water)
 	water.setup(game, Vector2(-150.0, 20.0), Coast.SEA_LEVEL)
-	water.set_shore(coast.shore_lut, Coast.SHORE_LUT_Z0, Coast.SHORE_LUT_Z1)
+	water.set_ground(coast.height_tex, coast.grid_origin, coast.grid_cell, coast.grid_n)
 	game.water = water
 
 	# песчаные киты под водой и их прыжки

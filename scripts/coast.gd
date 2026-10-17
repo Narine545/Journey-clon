@@ -10,9 +10,10 @@ extends MeshInstance3D
 ## ПОВЕРХНОСТЬ = берег + НАСТОЯЩИЙ ПЕСОК: SandField добавляет смещения
 ## от следов, и физика/камера/ветер идут по этой сумме.
 ##
-## Урез воды не «рисуется»: шейдер моря просто лежит на уровне 0, а там,
-## где песок выше — обычный depth-тест прячет воду. Мокрую полосу и
-## подводный песок красит шейдер песка (uniform-ы sea_level / wet_band).
+## Урез воды не «рисуется» линией: шейдер моря читает height_tex и кладёт
+## на песок тонкую плёнку прибоя, которая повторяет уклон пляжа и ползёт
+## с накатом. Глубже плёнка переходит в воду. Мокрую полосу и подводный
+## песок дополнительно красит шейдер песка (sea_level / wet_band).
 
 const SIZE := 900.0 # сторона мира (м)
 const SEGMENTS := 760 # 761×761 вершин, ячейка ~1.18 м — урез не «лесенкой»
@@ -57,6 +58,12 @@ var _ao_grid := PackedFloat32Array()
 ## Одномерная «карта уреза»: shore_x(z). Её читает море, чтобы плавно
 ## растворяться у песка (иначе линия пересечения рвётся треугольниками).
 var shore_lut: ImageTexture
+## Карта высот поверхности (та же, что у меша): шейдер моря кладёт
+## плёнку прибоя прямо на песок — иначе на буграх она рвётся лоскутами.
+var height_tex: ImageTexture
+var grid_n := 0
+var grid_origin := Vector2.ZERO
+var grid_cell := 1.0
 
 var _x0 := 0.0
 var _z0 := 0.0
@@ -337,6 +344,17 @@ func _build_grid() -> void:
 			var x := _x0 + float(ix) * _cell
 			_grid[i] = height_at(x, z)
 			_dgrid[i] = dune01_at(x, z)
+	_build_height_tex()
+
+
+## R32F-карта высот для моря: ровно те вершины, что видит глаз.
+func _build_height_tex() -> void:
+	grid_n = _row
+	grid_origin = Vector2(_x0, _z0)
+	grid_cell = _cell
+	var img := Image.create_from_data(_row, _row, false, Image.FORMAT_RF,
+		_grid.to_byte_array())
+	height_tex = ImageTexture.create_from_image(img)
 
 
 func _build_mesh() -> void:

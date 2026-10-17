@@ -2,29 +2,29 @@ shader_type spatial;
 // МОРЕ — отдельная стихия рядом с тёплым песком.
 //
 // Палитра намеренно НЕ песочная: мелководье — бирюза, глубина — синий
-// индиго, на закате поверхность ловит тёплый отблеск неба и солнечную
-// дорожку. Песок остаётся медово-оранжевым, поэтому суша и вода читаются
-// как два разных материала даже на горизонте.
+// индиго, под скользящим взглядом поверхность зеркалит небо и ловит
+// солнечную дорожку. Поэтому суша и вода читаются как два разных
+// материала даже на горизонте.
 //
-// Урез — самая сложная часть. Море знает линию берега из Coast.shore_lut
-// и по ней:
-//   • гасит вертикальную волну у кромки (иначе вода «протыкает» пляж
-//     треугольниками — те самые лоскуты);
-//   • растворяет альфу на мелководье — мокрый песок виден сквозь воду,
-//     стык получается мягким, без жёсткой линии;
-//   • добавляет пену: две бегущие полосы прибоя с рваным шумом, они
-//     прикрывают саму границу и читаются как накат.
-// Плюс depth-фейд по буферу сцены — вода мягко обтекает пирс и камни.
+// Урез. Море получает от Coast карту высот поверхности (height_tex) —
+// ровно ту, по которой построен меш берега. По ней:
+//   • глубина честная: цвет и прозрачность зависят от того, сколько
+//     воды над песком;
+//   • дыхание моря затухает к кромке, чтобы волна не протыкала пляж;
+//   • на песок ложится ТОНКАЯ ПЛЁНКА прибоя: она повторяет рельеф и
+//     ползёт вверх-вниз вместе с накатом, а её альфа растворяется в
+//     песке — стыка не видно, волна «накатывает и смешивается»;
+//   • пена двумя полосами с рваным шумом.
 //
-// Кольца событий (всплеск поплавка, поклёвка, подмотка) остались: это
-// единственный «водный» слой, который отвечает на действия игрока.
+// Кольца событий (всплеск поплавка, поклёвка, подмотка) — единственный
+// «водный» слой, который отвечает на действия игрока.
 
 render_mode diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_always;
 
 // ---- Вода: своя палитра, не песок ----
-uniform vec3 water_shallow : source_color = vec3(0.26, 0.60, 0.56);
-uniform vec3 water_mid : source_color = vec3(0.10, 0.36, 0.46);
-uniform vec3 water_deep : source_color = vec3(0.030, 0.140, 0.280);
+uniform vec3 water_shallow : source_color = vec3(0.30, 0.66, 0.62);
+uniform vec3 water_mid : source_color = vec3(0.10, 0.38, 0.48);
+uniform vec3 water_deep : source_color = vec3(0.035, 0.150, 0.300);
 uniform vec3 foam_col : source_color = vec3(0.95, 0.92, 0.86);
 uniform vec3 sun_col : source_color = vec3(1.0, 0.80, 0.52);
 uniform vec3 sun_dir = vec3(0.10, 0.26, -0.96); // к солнцу (как у песка)
@@ -42,8 +42,8 @@ uniform float wind_power = 1.0;
 uniform float mega_amp = 0.055;
 
 // ---- Мелкая рябь (только нормали) ----
-uniform float ripple_freq = 2.2;
-uniform float ripple_speed = 1.5;
+uniform float ripple_freq = 1.35;
+uniform float ripple_speed = 1.1;
 uniform float ripple_strength = 0.34;
 uniform float glitter_amount = 0.16;
 
@@ -58,12 +58,14 @@ uniform float ring_boost = 1.4;
 
 uniform float u_time = 0.0;
 
-// ---- Урез ----
-uniform sampler2D shore_lut : filter_linear, repeat_disable;
-uniform float shore_z0 = -460.0;
-uniform float shore_z1 = 460.0;
-uniform float beach_slope = 0.062; // уклон пляжа: высота волны → сдвиг кромки
-uniform float shore_fade = 0.06;  // м, мягкость стыка с предметами по depth
+// ---- Берег: карта высот и мягкий стык ----
+uniform sampler2D ground_tex : filter_linear, repeat_disable;
+uniform vec2 ground_origin = vec2(-280.0, -450.0);
+uniform float ground_cell = 1.184;
+uniform float ground_n = 761.0;
+uniform float sea_level = 0.0;
+uniform float swash_lift = 1.15; // во сколько раз накат выше амплитуды волны
+uniform float shore_fade = 0.03; // м, мягкость стыка с предметами по depth
 
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform vec4 u_rings[24]; // x, z, t0, amp; amp <= 0.0005 — слот пуст
@@ -103,9 +105,13 @@ float swell_of(float mph) {
 		+ cos(mph * 0.47 + 0.8) * 0.22;
 }
 
-float shore_x_at(float z) {
-	float zt = clamp((z - shore_z0) / (shore_z1 - shore_z0), 0.0, 1.0);
-	return texture(shore_lut, vec2(zt, 0.5)).r;
+// Высота поверхности берега: билинейная выборка той же карты, что у меша.
+float ground_at(vec2 wp) {
+	vec2 uv = (wp - ground_origin) / (ground_cell * (ground_n - 1.0));
+	if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) {
+		return -6.0; // за картой — глубокое море
+	}
+	return texture(ground_tex, uv).r;
 }
 
 void vertex() {
@@ -113,40 +119,42 @@ void vertex() {
 	vec2 wdir_v = normalize(wind_dir);
 	vec2 wperp_v = vec2(-wdir_v.y, wdir_v.x);
 
-	// у самой кромки вертикальную волну гасим: иначе она протыкает пляж
-	float sx_v = shore_x_at(w_pos.z);
-	float inland_v = w_pos.x - sx_v;              // + суша, − море
-	float lift_v = swell_of(mega_phase(w_pos.xz, wdir_v, wperp_v))
-		* mega_amp * wind_power / beach_slope;
-	float edge_v = smoothstep(-3.0, -0.4, inland_v - lift_v);
-	float damp = 1.0 - 0.94 * edge_v;
-
+	float ground = ground_at(w_pos.xz);
+	float depth = sea_level - ground;
+	// глубоко — дыхание моря, у кромки затухает до нуля
+	float damp = smoothstep(0.0, 2.2, depth);
 	float hrip = swell_of(mega_phase(w_pos.xz, wdir_v, wperp_v))
 		* mega_amp * wind_power;
-	VERTEX.y += hrip * damp;
-	w_pos.y += hrip * damp;
+
+	// плёнка прибоя: где накат дотянулся до песка, вода лежит НА нём
+	float land = max(ground - sea_level, 0.0);
+	float reach = hrip * swash_lift + 0.02 - land;
+	float film_w = smoothstep(-0.06, 0.02, ground - sea_level)
+		* smoothstep(-0.02, 0.03, reach);
+
+	float y = mix(hrip * damp, ground - sea_level + 0.02, film_w);
+	VERTEX.y += y;
+	w_pos.y += y;
 }
 
 void fragment() {
 	vec2 wp = w_pos.xz;
 	vec2 wdir = normalize(wind_dir);
 	vec2 wperp = vec2(-wdir.y, wdir.x);
-	float u = dot(wp, wdir);
-	float v = dot(wp, wperp);
 
-	// ---------- где проходит урез ----------
-	// Накат двигает кромку по пляжу: та же волна, что в vertex.
+	// ---------- берег под водой ----------
+	float ground = ground_at(wp);
+	float depth_m = max(sea_level - ground, 0.0);
+	float land_h = max(ground - sea_level, 0.0);
 	float mph = mega_phase(wp, wdir, wperp);
-	float lift = swell_of(mph) * mega_amp * wind_power / beach_slope;
-	float dx = (w_pos.x - shore_x_at(w_pos.z)) - lift; // > 0 — суша
-	float near_shore = smoothstep(-4.0, 0.0, dx);
-	float sea01 = 1.0 - smoothstep(-0.7, 1.0, dx);
-	if (dx > 1.1) {
-		discard; // море не имеет права лезть на песок выше кромки
+	float hrip = swell_of(mph) * mega_amp * wind_power;
+	// насколько накат уже накрыл эту точку пляжа (>0 — вода здесь)
+	float reach = hrip * swash_lift + 0.02 - land_h;
+	if (reach < -0.035 || land_h > 0.45) {
+		discard;
 	}
-	float depth_m = max(-dx, 0.0) * beach_slope + 0.02;
-	// тонкая вода у кромки: 0 — прибой на песке, 1 — нормальная глубина
-	float thin = smoothstep(0.0, 0.10, depth_m);
+	float film = smoothstep(-0.035, 0.03, reach);
+	float near_shore = smoothstep(0.9, 0.0, depth_m);
 
 	vec3 L = normalize(sun_dir);
 	vec3 N = vec3(0.0, 1.0, 0.0);
@@ -163,23 +171,25 @@ void fragment() {
 	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2
 		- 0.22 * 0.47 * 0.16 * ms3) * mega_amp;
 	vec2 mgrad = (wperp * mdv + wdir * mdu) * wind_power;
-	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y) * 0.72 * (1.0 - 0.70 * near_shore));
+	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y) * 0.42 * (1.0 - 0.75 * near_shore));
 
-	// ---------- слой 1: мелкая рябь ----------
+	// ---------- слой 1: ветровая рябь из трёх поездов ----------
+	// Один поезд давал «кордурой» — длинные параллельные полосы. Три
+	// направления под углом друг к другу + шум дают живую поверхность.
 	float n1 = vnoise(wp * 0.33);
-	float n2 = vnoise(wp * 0.9 + vec2(17.0, 9.0));
-	float ph1 = v * ripple_freq + u * 0.22 + n1 * 4.2 + u_time * ripple_speed;
-	float ph2 = v * ripple_freq * 2.63 + u * 0.55 + n2 * 3.4 + u_time * ripple_speed * 1.6;
-	float c1 = cos(ph1) * 0.62;
-	float c2 = cos(ph2) * 0.38;
-	float rshade = clamp(0.5 + 0.45 * (c1 + c2), 0.0, 1.0);
-	float dv = (c1 * ripple_freq + c2 * ripple_freq * 2.63) * ripple_strength * wind_power;
-	float du = (c1 * 0.22 + c2 * 0.55) * ripple_strength * wind_power * 2.0;
-	// рваный ветровой рисунок: амплитуда ряби гуляет по крупному шуму,
-	// иначе полосы читаются «кордуроем»
-	float amp = 0.45 + 0.55 * vnoise(wp * 0.11 + vec2(3.7, 1.3));
-	vec2 grad = (wperp * dv + wdir * du) * detail * amp * (1.0 - 0.65 * near_shore);
-	N = normalize(N - vec3(grad.x, 0.0, grad.y) * 0.42);
+	float n2 = vnoise(wp * 0.90 + vec2(17.0, 9.0));
+	vec2 d1 = wdir;
+	vec2 d2 = normalize(wdir + vec2(0.62, -0.55));
+	vec2 d3 = normalize(wdir + vec2(-0.78, -0.30));
+	float ph1 = dot(wp, d1) * ripple_freq + n1 * 5.0 + u_time * ripple_speed;
+	float ph2 = dot(wp, d2) * ripple_freq * 1.9 + n2 * 4.0 + u_time * ripple_speed * 1.5;
+	float ph3 = dot(wp, d3) * ripple_freq * 3.4 + n1 * 3.0 + u_time * ripple_speed * 2.3;
+	vec2 wgrad = d1 * cos(ph1) * 0.55 + d2 * cos(ph2) * 0.36
+		+ d3 * cos(ph3) * 0.24;
+	float amp = 0.40 + 0.60 * vnoise(wp * 0.11 + vec2(3.7, 1.3));
+	wgrad *= ripple_strength * wind_power * detail * amp
+		* (1.0 - 0.55 * near_shore);
+	N = normalize(N - vec3(wgrad.x, 0.0, wgrad.y) * 0.42);
 
 	// ---------- кольца событий ----------
 	float rk = PI_2 / ring_len;
@@ -208,18 +218,23 @@ void fragment() {
 	N = normalize(N - vec3(rgrad.x * ring_boost, 0.0, rgrad.y * ring_boost));
 
 	// ---------- цвет воды ----------
-	// Мелководье — бирюза, глубина — индиго. Никакого песочного тона:
-	// граница суши и воды должна читаться даже на скриншоте.
-	vec3 base = mix(water_shallow, water_mid, smoothstep(0.0, 4.0, depth_m));
+	vec3 base = mix(water_shallow, water_mid, smoothstep(0.0, 3.0, depth_m));
 	base = mix(base, water_deep, smoothstep(1.0, 12.0, depth_m));
-	// тонкая вода у самой кромки светлее: мокрый песок просвечивает
-	base = mix(base, water_shallow * 1.55, near_shore * (0.62 - 0.45 * thin));
+	base = mix(base, water_shallow * 1.22, near_shore * 0.45);
 	float ndl = clamp(dot(N, L) * 0.5 + 0.5, 0.0, 1.0);
-	base *= 0.72 + 0.42 * ndl;
-	base *= 0.92 + 0.16 * rshade * detail;
+	base *= 0.80 + 0.32 * ndl;
+
+	// ---------- френель: небо в воде ----------
+	vec3 V = normalize(CAMERA_POSITION_WORLD - w_pos);
+	vec3 R = reflect(-V, N);
+	float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.2);
+	vec3 sky_ref = mix(horizon_col, sky_col, smoothstep(0.02, 0.42, R.y));
+	// на скользящих ракурсах вода почти зеркалит небо — поэтому горизонт
+	// светлый, а не тёмная полоса
+	float mirror = clamp(0.05 + 0.92 * fres, 0.0, 0.90);
+	base = mix(base, sky_ref, mirror * (1.0 - 0.55 * film));
 
 	// солнечные искры — тёплые, как отблеск заката на воде
-	vec3 V = normalize(CAMERA_POSITION_WORLD - w_pos);
 	vec3 H = normalize(V + L);
 	float need = 900.0 / max(dist, 0.001);
 	float density = clamp(pow(2.0, floor(log2(need / 3.0))) * 3.0, 6.0, 130.0);
@@ -232,30 +247,22 @@ void fragment() {
 	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(30.0, 110.0, cellb));
 	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(24.0, 80.0, cellc));
 	float glint = step(1.0 - glitter_amount * exp(-dist * 0.0035), cellid);
-	// у самой кромки искр нет: там мелководье и пена
 	float glit_fade = exp(-dist * 0.004) * (1.0 - 0.92 * near_shore);
-	base += sun_col * (sun_lobe * 1.8 + sky_lobe * 0.30) * glint * glit_fade;
+	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26) * glint * glit_fade;
 
-	// отражение неба: у горизонта тёплый закат, под ногами — синяя вода
-	float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 4.0);
-	vec3 R = reflect(-V, N);
-	vec3 refl = mix(horizon_col * 0.82, sky_col * 0.95, clamp(R.y * 3.0, 0.0, 1.0));
-	base = mix(base, refl, 0.10 + 0.55 * fres);
-	// широкая солнечная дорожка
-	float path = pow(clamp(dot(N, H), 0.0, 1.0), 220.0);
-	base += sun_col * path * 0.50 * (1.0 - 0.85 * near_shore);
+	float path = pow(clamp(dot(N, H), 0.0, 1.0), 180.0);
+	base += sun_col * path * 0.55 * (1.0 - 0.85 * near_shore);
 
 	// ---------- пена прибоя ----------
-	// Две полосы: тонкая у самой кромки и вторая — накат чуть мористее.
-	float fn = vnoise(vec2(w_pos.x * 0.85 + u_time * 0.12, w_pos.z * 1.55));
-	float fn2 = vnoise(vec2(w_pos.x * 3.2 - u_time * 0.38, w_pos.z * 2.35));
-	float band1 = exp(-pow((dx + 0.16) / 0.58, 2.0));
-	float band2 = exp(-pow((dx + 2.3 + 0.70 * sin(w_pos.z * 0.21 + u_time * 1.15)) / 0.95, 2.0));
-	float foam = band1 * smoothstep(0.12, 0.62, fn) * (0.70 + 0.30 * fn2);
-	foam += band2 * smoothstep(0.48, 0.86, fn2) * 0.55;
-	foam *= smoothstep(0.0, 0.55, -dx + 0.9); // на сухом песке пены нет
+	float fn = vnoise(vec2(wp.x * 0.85 + u_time * 0.10, wp.y * 1.55));
+	float fn2 = vnoise(vec2(wp.x * 3.2 - u_time * 0.38, wp.y * 2.35));
+	// край плёнки: кромка воды на песке дышит вместе с накатом
+	float edge = exp(-pow(reach / 0.055, 2.0));
+	float edge2 = exp(-pow((reach + 0.10 + 0.03 * sin(wp.y * 0.21 + u_time * 1.15)) / 0.065, 2.0));
+	float foam = edge * smoothstep(0.10, 0.55, fn) * (0.72 + 0.28 * fn2);
+	foam += edge2 * smoothstep(0.45, 0.85, fn2) * 0.55;
 	foam = clamp(foam, 0.0, 1.0);
-	base = mix(base, foam_col * (0.72 + 0.28 * ndl), foam * 0.92);
+	base = mix(base, foam_col * (0.78 + 0.22 * ndl), foam * 0.92);
 
 	// ---------- дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
@@ -264,24 +271,26 @@ void fragment() {
 	ALBEDO = mix(base, fcol, fog);
 
 	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0)).xyz);
-	float rough = mix(0.30, 0.72, near_shore);
-	ROUGHNESS = mix(rough, 0.86, foam);
-	SPECULAR = mix(0.48, 0.10, near_shore);
+	float rough = mix(0.16, 0.55, near_shore);
+	ROUGHNESS = mix(rough, 0.88, foam);
+	SPECULAR = mix(0.55, 0.18, near_shore);
 	METALLIC = 0.0;
 
 	// ---------- мягкий урез ----------
-	// Полупрозрачная тонкая вода над мокрым песком + пена, которая
-	// прикрывает стык. У буфера сцены — мягкое пересечение с пирсом/камнями.
-	float a = sea01 * (0.34 + 0.66 * thin);
-	a = max(a, foam * sea01 * 0.95);
+	// Глубокая вода непрозрачна, тонкая плёнка на песке растворяется.
+	float sea_a = 0.62 + 0.38 * smoothstep(0.0, 1.2, depth_m);
+	float film_a = (0.26 + 0.22 * fn) * film;
+	float land01 = smoothstep(-0.05, 0.05, ground - sea_level);
+	float a = mix(sea_a, film_a, land01);
+	a = max(a, foam * 0.92);
+	a *= film;
+	// предметы (пирс, камни) закрывают воду мягко
 	float sd = texture(depth_tex, SCREEN_UV).r;
 	vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, sd, 1.0);
 	vec4 vp = INV_PROJECTION_MATRIX * ndc;
 	vp.xyz /= vp.w;
 	float scene_z = -vp.z;
 	float water_z = -VERTEX.z;
-	// важно: гасим воду только ПЕРЕД предметом (пирс/камень). Мелкий
-	// песок лежит ниже плоскости воды — он не должен делать воду прозрачной.
 	float obj_a = smoothstep(0.0, shore_fade, scene_z - water_z);
 	ALPHA = clamp(min(a, obj_a), 0.0, 1.0);
 }

@@ -10,8 +10,9 @@ extends MeshInstance3D
 ## гладко), дальше шаг геометрически растёт до километров — море уходит за
 ## горизонт, оставаясь дешёвым.
 ##
-## Урез: шейдер получает карту берега (shore_lut) и сам гасит волну,
-## растворяет альфу и добавляет пену — жёсткой линии пересечения нет.
+## Урез: шейдер получает карту высот берега (height_tex) и кладёт на песок
+## тонкую плёнку прибоя — она повторяет рельеф и растворяется в песке,
+## поэтому жёсткой линии пересечения нет.
 
 const SHADER_PATH := "res://shaders/water.gdshader"
 
@@ -40,8 +41,8 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 	if game != null:
 		_mat.set_shader_parameter("sun_dir", game.sun_dir)
 		_mat.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
-	# уклон пляжа нужен шейдеру, чтобы переводить высоту наката в сдвиг кромки
-	_mat.set_shader_parameter("beach_slope", Coast.BEACH_SLOPE)
+	# уровень моря: по карте высот берега шейдер считает глубину и плёнку прибоя
+	_mat.set_shader_parameter("sea_level", level_y)
 	material_override = _mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# море прозрачное (мягкий урез), но по-прежнему рисуется ПЕРВЫМ:
@@ -75,11 +76,12 @@ func set_param(param: String, value) -> void:
 		_mat.set_shader_parameter(param, value)
 
 
-## Карта уреза из Coast: море знает, где песок, и плавно гаснет у кромки.
-func set_shore(lut: Texture2D, z0: float, z1: float) -> void:
-	set_param("shore_lut", lut)
-	set_param("shore_z0", z0)
-	set_param("shore_z1", z1)
+## Карта высот берега из Coast: по ней море кладёт плёнку прибоя на песок.
+func set_ground(tex: Texture2D, origin: Vector2, cell: float, n: int) -> void:
+	set_param("ground_tex", tex)
+	set_param("ground_origin", origin)
+	set_param("ground_cell", cell)
+	set_param("ground_n", float(n))
 
 
 func apply_sun(dir: Vector3) -> void:
@@ -88,14 +90,14 @@ func apply_sun(dir: Vector3) -> void:
 
 ## Палитра моря: день — бирюза/индиго, ночь — почти чёрная глубина.
 ## Песок сюда НЕ подмешивается: у суши и воды разные материалы.
-const DAY_SHALLOW := Color(0.16, 0.46, 0.44)
-const DAY_MID := Color(0.045, 0.24, 0.33)
-const DAY_DEEP := Color(0.012, 0.070, 0.140)
+const DAY_SHALLOW := Color(0.30, 0.66, 0.62)
+const DAY_MID := Color(0.10, 0.38, 0.48)
+const DAY_DEEP := Color(0.035, 0.150, 0.300)
 const DAY_FOAM := Color(0.95, 0.92, 0.86)
-const NIGHT_SHALLOW := Color(0.028, 0.085, 0.095)
-const NIGHT_MID := Color(0.008, 0.032, 0.050)
-const NIGHT_DEEP := Color(0.002, 0.008, 0.018)
-const NIGHT_FOAM := Color(0.28, 0.34, 0.40)
+const NIGHT_SHALLOW := Color(0.045, 0.110, 0.120)
+const NIGHT_MID := Color(0.012, 0.040, 0.060)
+const NIGHT_DEEP := Color(0.003, 0.010, 0.022)
+const NIGHT_FOAM := Color(0.30, 0.36, 0.42)
 
 
 func apply_night01(v: float) -> void:
