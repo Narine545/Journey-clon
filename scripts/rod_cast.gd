@@ -55,9 +55,9 @@ const ROD_SEGMENTS := 12
 const BLANK_LEN := 1.02
 const BLANK_Y0 := 0.12
 const HANDLE_LEN := 0.27
-const GRIP_POS := Vector3(0.33, -0.46, -0.56)
-const STOW_POS := Vector3(0.31, -0.60, -0.50)
-const ROD_YAW := 0.22 # удилище уходит вправо, кадр остаётся свободным
+const GRIP_POS := Vector3(0.30, -0.44, -0.55)
+const STOW_POS := Vector3(0.30, -0.58, -0.50)
+const ROD_YAW := 0.38 # удилище уходит вправо, кадр остаётся свободным
 const MAX_BEND := 1.30
 const LAND_DIST := 3.0
 
@@ -318,12 +318,13 @@ func _st_float(delta: float) -> void:
 	if Input.is_action_just_pressed("rod_recall"):
 		_recall()
 		return
-	if on_land:
-		return
-	bite.update(delta)
-	if state != S.FLOAT:
-		return # поклёвка началась в этом же кадре — не перебиваем её зарядом
+	if not on_land:
+		bite.update(delta)
+		if state != S.FLOAT:
+			return # поклёвка началась в этом же кадре — не перебиваем её зарядом
 	if Input.is_action_just_pressed("rod_cast") and _suppress <= 0.0:
+		# можно перезабросить и с песка: поплавок просто перелетит
+		bite.cancel()
 		state = S.CHARGE
 		_power_t = 0.0
 
@@ -361,11 +362,11 @@ func _begin_fight(f: Dictionary) -> void:
 
 func _st_fight(delta: float) -> void:
 	var reeling := Input.is_action_pressed("rod_cast") and _suppress <= 0.0
-	fight.update(delta, reeling, stats, _hand_target())
+	var wy := water.surface_height(fight.fish_point.x, fight.fish_point.z)
+	fight.update(delta, reeling, stats, _hand_target(), wy)
 	if state != S.FIGHT:
 		return # сигнал finished уже перевёл состояние
-	var wy := water.surface_height(fight.fish_point.x, fight.fish_point.z)
-	var fp := fight.fish_world(wy)
+	var fp := fight.fish_world_pos
 	_bobber.global_position = fp + Vector3.UP * 0.04
 	_tension = fight.tension
 	tension_changed.emit(fight.tension / 100.0)
@@ -481,9 +482,9 @@ func _land_fish() -> void:
 	_suppress = 0.5
 	tension_changed.emit(0.0)
 	_held.setup(last_fish)
-	_held.scale *= 0.55
-	_held.position = Vector3(0.02, -0.30, -0.56)
-	_held.rotation = Vector3(-0.15, PI * 0.62, 0.35)
+	_held.scale *= 0.46
+	_held.position = Vector3(0.17, -0.33, -0.60)
+	_held.rotation = Vector3(-0.10, PI * 0.42, 0.30)
 	_held.visible = true
 	_held_t = 3.2
 	fish_landed.emit(size_cm)
@@ -654,8 +655,8 @@ func _build_world() -> void:
 	mat_lo.roughness = 0.45
 	var lo := MeshInstance3D.new()
 	var sl := SphereMesh.new()
-	sl.radius = 0.145
-	sl.height = 0.29
+	sl.radius = 0.175
+	sl.height = 0.35
 	lo.mesh = sl
 	lo.material_override = mat_lo
 	_bobber.add_child(lo)
@@ -664,11 +665,11 @@ func _build_world() -> void:
 	mat_hi.roughness = 0.5
 	var hi := MeshInstance3D.new()
 	var sh := SphereMesh.new()
-	sh.radius = 0.099
-	sh.height = 0.198
+	sh.radius = 0.120
+	sh.height = 0.240
 	hi.mesh = sh
 	hi.material_override = mat_hi
-	hi.position = Vector3(0.0, 0.115, 0.0)
+	hi.position = Vector3(0.0, 0.135, 0.0)
 	_bobber.add_child(hi)
 	_bobber.visible = false
 
@@ -934,6 +935,7 @@ func _update_rod(delta: float) -> void:
 		_bend_axis = Vector3.RIGHT
 	else:
 		_bend_axis = _bend_axis.normalized()
+	_rod.transform = Transform3D(Basis(_root_q), _root_pos)
 	_update_spine(_bend)
 
 
@@ -962,8 +964,8 @@ func _tip_world() -> Vector3:
 func _update_visual_fish(delta: float) -> void:
 	if _held.visible:
 		_held_t -= delta
-		_held.position.y = -0.30 + sin(_t * 2.0) * 0.006
-		_held.rotation.y += delta * 0.5
+		_held.position.y = -0.33 + sin(_t * 2.4) * 0.008
+		_held.rotation.z = 0.30 + sin(_t * 3.1) * 0.06
 		if _held_t <= 0.0:
 			_held.visible = false
 	if _jump_t > 0.0:

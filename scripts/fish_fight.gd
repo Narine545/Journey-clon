@@ -43,7 +43,8 @@ var fish: Dictionary = {}
 var tension := 0.0
 var progress := 0.0
 var t := 0.0
-var fish_point := Vector3.ZERO
+var fish_point := Vector3.ZERO # xz + относительная просадка по y
+var fish_world_pos := Vector3.ZERO # где рыба в мире прямо сейчас
 var landing_pos := Vector3.ZERO
 
 var rng := RandomNumberGenerator.new()
@@ -114,7 +115,7 @@ func is_tired() -> bool:
 
 ## Основной шаг боя. land_target — куда рыба прилетит в руки (камера).
 func update(delta: float, reeling: bool, stats: Dictionary,
-		land_target: Vector3) -> void:
+		land_target: Vector3, water_y: float) -> void:
 	if not active:
 		return
 	_stats = stats
@@ -182,6 +183,7 @@ func update(delta: float, reeling: bool, stats: Dictionary,
 	)
 	var dive := -0.14 if surging else -0.02
 	fish_point.y = dive # относительная поправка; мировую высоту даёт вода
+	fish_world_pos = Vector3(fish_point.x, water_y + dive, fish_point.z)
 
 
 ## Позиция рыбы для вида (мировая высота подставляется водой).
@@ -218,14 +220,14 @@ func _try_jump() -> void:
 	var size_cm: float = float(fish.get("size_cm", 30.0))
 	if size_cm < 30.0 or rng.randf() > 0.75:
 		return
-	jumped.emit(fish_point)
+	jumped.emit(fish_world_pos)
 
 
 func _begin_landing(land_target: Vector3) -> void:
 	phase = "landing"
 	_land_t = 0.0
 	tension = 0.0
-	_land_from = fish_point
+	_land_from = fish_world_pos
 	_land_to = land_target
 	_land_mid = (_land_from + _land_to) * 0.5 + Vector3.UP * 3.4
 	landing_pos = _land_from
