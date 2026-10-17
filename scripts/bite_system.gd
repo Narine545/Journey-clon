@@ -33,6 +33,7 @@ var _nibble_end := 0.0
 var _dip := 0.0
 var _wind := 1.0
 var _stats: Dictionary = {}
+var forced_id := "" # тест: конкретный вид вместо случайного
 
 
 func _init() -> void:
@@ -126,7 +127,14 @@ func debug_force_bite() -> void:
 
 
 func _start_bite() -> void:
-	fish = FishCatalog.roll_fish(zone, segment, rng)
+	if forced_id != "":
+		var sp := FishCatalog.find_species(forced_id)
+		if not sp.is_empty():
+			fish = FishCatalog.make_fish(sp, rng)
+		else:
+			fish = FishCatalog.roll_fish(zone, segment, rng)
+	else:
+		fish = FishCatalog.roll_fish(zone, segment, rng)
 	_window = float(fish.get("hook_window", HOOK_WINDOW_BASE))
 	_nibbles.clear()
 	_dip = 0.34

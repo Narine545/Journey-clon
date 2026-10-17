@@ -559,6 +559,18 @@ func bobber_position() -> Vector3:
 	return _bobber.global_position
 
 
+## Тест/скриншоты: оборвать бой (сценарий не должен зависнуть в вываживании).
+func debug_cancel_fight() -> void:
+	if state == S.FIGHT:
+		fight.stop()
+		_catch.visible = false
+		_bobber.visible = false
+		_tension = 0.0
+		state = S.RESTING
+		stowed = false
+		tension_changed.emit(0.0)
+
+
 ## Тест/скриншоты: мгновенная настоящая поклёвка.
 func debug_fast_lure() -> void:
 	if state == S.FLOAT and not on_land:

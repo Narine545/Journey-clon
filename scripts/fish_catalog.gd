@@ -196,10 +196,21 @@ static func roll_species(zone: String, segment: String,
 	return SPECIES[0]
 
 
+## Вид по id (для тестов/сценариев); пустой словарь, если такого нет.
+static func find_species(id: String) -> Dictionary:
+	for sp: Dictionary in SPECIES:
+		if str(sp["id"]) == id:
+			return sp
+	return {}
+
+
 ## Полноценный экземпляр: размер, вес, цена, характер борьбы, окно подсечки.
 static func roll_fish(zone: String, segment: String,
 		rng: RandomNumberGenerator) -> Dictionary:
-	var sp: Dictionary = roll_species(zone, segment, rng)
+	return make_fish(roll_species(zone, segment, rng), rng)
+
+
+static func make_fish(sp: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
 	var rar_id: String = sp["rarity"]
 	var rar: Dictionary = RARITY[rar_id]
 	var sizes: Array = sp["size_cm"]

@@ -28,7 +28,9 @@ func setup(main_ref: MainScene) -> void:
 	process_priority = -100
 	main.rod.fish_landed.connect(func(sz: float) -> void: _caught = sz)
 	main.fish.set_sdf_enabled(false) # экономим программный рендер
-	main.rod.stats["line"] = 1.6 # хорошая леска: кадр не должен зависеть от баланса
+	main.rod.stats["line"] = 2.0 # хорошая леска: кадр не должен зависеть от баланса
+	# конкретный вид: кадр должен быть быстрым и предсказуемым (не 40-секундный бой)
+	main.rod.bite.forced_id = "perch"
 	# ставим путника ближе к урезу: отсюда заброс гарантированно уходит
 	# в воду, а в кадр попадают море, пирс и дюны за спиной
 	var px := main.coast.shore_x(Coast.SPAWN_Z) + 9.0
@@ -100,16 +102,20 @@ func _process(delta: float) -> void:
 				_go(6)
 			elif t > 4.0:
 				_finish("подсечка не удалась, state=%d" % rod.state)
-		6: # вываживание: мотаем в затишье
+		6: # вываживание: мотаем в затишье; 2× — чтобы уложиться в кадры рендера
+			Engine.time_scale = 2.0
 			if rod.is_pulling() or rod.fight_tension() > 62.0:
 				Input.action_release("rod_cast")
 			else:
 				Input.action_press("rod_cast")
-			if _caught > 0.0 or rod.state == RodCast.S.RESTING or t > 60.0:
+			if _caught > 0.0 or rod.state == RodCast.S.RESTING or t > 16.0:
 				Input.action_release("rod_cast")
 				_go(7)
 		7: # пирс: геройский вид с моря на берег
 			if _fs == 1:
+				Engine.time_scale = 1.0
+				if rod.state == RodCast.S.FIGHT:
+					rod.debug_cancel_fight()
 				var pier: Pier = main.pier
 				var deck := pier.deck_height(pier.x_end + 2.0, pier.pz)
 				main.player.global_position = Vector3(pier.x_end + 2.0, deck, pier.pz)
