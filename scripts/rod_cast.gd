@@ -213,7 +213,10 @@ func _st_resting(_delta: float) -> void:
 	if Input.is_action_just_pressed("rod_toggle"):
 		stowed = true
 		return
-	if water != null and Input.is_action_just_pressed("rod_cast"):
+	# is_action_pressed, а не just_pressed: клик, пришедший в «глухие»
+	# полсекунды после поимки, больше не теряется — заряд начнётся,
+	# как только рука снова готова
+	if water != null and Input.is_action_pressed("rod_cast"):
 		state = S.CHARGE
 		_power_t = 0.0
 
