@@ -76,7 +76,10 @@ func _process(delta: float) -> void:
 				Engine.time_scale = 1.0
 				Input.action_press("rod_cast") # подсечка
 				_go(5)
-			elif t > 40.0:
+			elif t > 10.0 and _fs % 120 == 0:
+				print("[SHOT] ждём поклёвку: state=%d, lure=%d, on_land=%s" % [
+					rod.state, rod._lure_idx, str(rod.on_land)])
+			if t > 40.0:
 				_finish("поклёвки не было, state=%d" % rod.state)
 		5: # подсекли — вываживаем
 			if t > 0.15:

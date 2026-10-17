@@ -481,6 +481,35 @@ func set_sdf_enabled(on: bool) -> void:
 		_quad.visible = on
 
 
+## Диагностика/скриншоты: приманить рыбу принудительно — без проверки
+## дистанции и без «на приманке уже кто-то сидит». Возвращает индекс.
+## Нужен головному тесту и CI-кадрам: там поплавок может упасть далеко
+## от стаи, и ждать случайного подхода нельзя.
+func force_lure(pos: Vector3) -> int:
+	var best := -1
+	var bd := 1.0e20
+	for i in range(fish_count):
+		if _fsize[i] < 0.001:
+			continue
+		var d := Vector2(_fpos[i].x - pos.x, _fpos[i].z - pos.z).length_squared()
+		if d < bd:
+			bd = d
+			best = i
+	if best == -1:
+		if fish_count <= 0:
+			return -1
+		_spawn_fish(0, Vector2(pos.x, pos.z))
+		best = 0
+	_hooked_idx = -1
+	_lure_idx = best
+	_lure_pos = pos
+	_lure_phase = 1
+	_fscare[best] = 0.0
+	_fpos[best] = Vector3(pos.x + 6.5, water_level - 0.5, pos.z)
+	_fy[best] = water_level - 0.5
+	return best
+
+
 ## Диагностика/скриншоты: мгновенно подвести приманку-рыбу к поплавку.
 func debug_snap_to_lure(dist := 6.0) -> void:
 	if _lure_idx == -1:

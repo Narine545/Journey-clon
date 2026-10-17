@@ -755,8 +755,7 @@ func bobber_position() -> Vector3:
 ## Ускорить приманивание (скриншоты/автотесты).
 func debug_fast_lure() -> void:
 	if state == S.FLOAT and not on_land and fish != null:
-		if _lure_idx == -1:
-			_lure_idx = fish.lure_to(_bobber.global_position, -1, 1.0e9) # тест: любая
-		fish.debug_snap_to_lure(6.5)
+		# головному тесту нельзя зависеть от того, где случайно всплыла стая
+		_lure_idx = fish.force_lure(_bobber.global_position)
 		_bite_t = 0.1
 		_relure_t = 0.0
