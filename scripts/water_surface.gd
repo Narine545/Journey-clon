@@ -1,6 +1,6 @@
 class_name WaterSurface
 extends MeshInstance3D
-## Песчаное море: меш + материал + поле колец, в одном узле.
+## Море: меш + материал + поле колец, в одном узле.
 ##
 ## Поверхность плоская (уровень воды), «дыхание» и кольца считаются
 ## аналитически — и в шейдере, и в CPU-зеркале WaterField, поэтому поплавок
@@ -8,10 +8,10 @@ extends MeshInstance3D
 ##
 ## Сетка НЕОДНОРОДНАЯ: у берега ячейка ~1.2 м (волны «дыхания» ~9 м читаются
 ## гладко), дальше шаг геометрически растёт до километров — море уходит за
-## горизонт, оставаясь дешёвым (никакого 4-километрового однородного полотна).
+## горизонт, оставаясь дешёвым.
 ##
-## Кромка берега не рисуется: там, где песок выше уровня воды, обычный
-## depth-тест прячет море. Берег и море срастаются сами.
+## Урез: шейдер получает карту берега (shore_lut) и сам гасит волну,
+## растворяет альфу и добавляет пену — жёсткой линии пересечения нет.
 
 const SHADER_PATH := "res://shaders/water.gdshader"
 
@@ -22,7 +22,7 @@ const FAR_GROWTH := 1.16 # рост шага вдали
 
 var field: WaterField
 var level_y := 0.0
-var size := 240.0
+var mesh_size := 240.0
 
 var game: GameState # автозагрузка Game (ветер — общий с песком)
 var _mat: ShaderMaterial
@@ -40,6 +40,8 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 	if game != null:
 		_mat.set_shader_parameter("sun_dir", game.sun_dir)
 		_mat.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
+	# уклон пляжа нужен шейдеру, чтобы переводить высоту наката в сдвиг кромки
+	_mat.set_shader_parameter("beach_slope", Coast.BEACH_SLOPE)
 	material_override = _mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# море прозрачное (мягкий урез), но по-прежнему рисуется ПЕРВЫМ:
@@ -53,7 +55,7 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 	field = WaterField.new()
 	field.name = "WaterField"
 	add_child(field)
-	field.material = _mat
+	field.mat = _mat
 	field._push_uniforms() # сразу нулевые кольца, чтобы шейдер не ждал 1/30 с
 
 
@@ -84,15 +86,27 @@ func apply_sun(dir: Vector3) -> void:
 	set_param("sun_dir", dir)
 
 
-## Ночь: та же палитра, что у песка (шейдеры родные).
+## Палитра моря: день — бирюза/индиго, ночь — почти чёрная глубина.
+## Песок сюда НЕ подмешивается: у суши и воды разные материалы.
+const DAY_SHALLOW := Color(0.16, 0.46, 0.44)
+const DAY_MID := Color(0.045, 0.24, 0.33)
+const DAY_DEEP := Color(0.012, 0.070, 0.140)
+const DAY_FOAM := Color(0.95, 0.92, 0.86)
+const NIGHT_SHALLOW := Color(0.028, 0.085, 0.095)
+const NIGHT_MID := Color(0.008, 0.032, 0.050)
+const NIGHT_DEEP := Color(0.002, 0.008, 0.018)
+const NIGHT_FOAM := Color(0.28, 0.34, 0.40)
+
+
 func apply_night01(v: float) -> void:
-	set_param("sand_sunny", Coast.DAY_SUNNY.lerp(Coast.NIGHT_SUNNY, v))
-	set_param("sand_hot", Coast.DAY_HOT.lerp(Coast.NIGHT_HOT, v))
-	set_param("sand_shade", Coast.DAY_SHADE.lerp(Coast.NIGHT_SHADE, v))
+	set_param("water_shallow", DAY_SHALLOW.lerp(NIGHT_SHALLOW, v))
+	set_param("water_mid", DAY_MID.lerp(NIGHT_MID, v))
+	set_param("water_deep", DAY_DEEP.lerp(NIGHT_DEEP, v))
+	set_param("foam_col", DAY_FOAM.lerp(NIGHT_FOAM, v))
 	set_param("horizon_col", Coast.DAY_HORIZON.lerp(Coast.NIGHT_HORIZON, v))
 	set_param("sky_col", Coast.DAY_SKY.lerp(Coast.NIGHT_SKY, v))
 	set_param("fog_distance", lerpf(340.0, 130.0, v))
-	set_param("glitter_amount", lerpf(0.20, 0.06, v))
+	set_param("glitter_amount", lerpf(0.16, 0.05, v))
 
 
 func _process(_delta: float) -> void:

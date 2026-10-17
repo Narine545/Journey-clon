@@ -132,10 +132,10 @@ func _build() -> void:
 		_eyes.append(eye)
 
 
-func _add_fin(pos: Vector3, size: Vector3, yaw: float) -> void:
+func _add_fin(pos: Vector3, dims: Vector3, yaw: float) -> void:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
-	bm.size = size
+	bm.size = dims
 	mi.mesh = bm
 	mi.material_override = _mat_fin
 	mi.position = pos

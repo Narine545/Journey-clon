@@ -6,11 +6,11 @@ extends RefCounted
 
 
 ## Мягкий белый круг (альфа падает от центра к краю).
-static func radial(size: int = 48, falloff: float = 1.6) -> ImageTexture:
-	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
-	var c := float(size - 1) * 0.5
-	for y in range(size):
-		for x in range(size):
+static func radial(px: int = 48, falloff: float = 1.6) -> ImageTexture:
+	var img := Image.create(px, px, false, Image.FORMAT_RGBA8)
+	var c := float(px - 1) * 0.5
+	for y in range(px):
+		for x in range(px):
 			var d := Vector2(float(x) - c, float(y) - c).length() / c
 			var a := pow(clampf(1.0 - d, 0.0, 1.0), falloff)
 			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
@@ -26,11 +26,11 @@ static func black_pixel() -> ImageTexture:
 
 ## Виньетка: мягкое затемнение углов кадра (пост-эффект без поста).
 ## Alpha растёт от 0.62 радиуса до края, максимум strength.
-static func vignette(size: int = 512, strength := 0.34) -> ImageTexture:
-	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
-	var c := float(size - 1) * 0.5
-	for y in range(size):
-		for x in range(size):
+static func vignette(px: int = 512, strength := 0.34) -> ImageTexture:
+	var img := Image.create(px, px, false, Image.FORMAT_RGBA8)
+	var c := float(px - 1) * 0.5
+	for y in range(px):
+		for x in range(px):
 			var d := Vector2(float(x) - c, float(y) - c).length() / c
 			var a := pow(clampf((d - 0.62) / 0.55, 0.0, 1.0), 1.6) * strength
 			img.set_pixel(x, y, Color(0.0, 0.0, 0.0, a))

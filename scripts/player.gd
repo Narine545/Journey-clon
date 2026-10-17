@@ -12,16 +12,16 @@ extends Node3D
 ## читается телом, а не невидимой стеной.
 
 const GRAVITY := 26.0
-const WALK_MAX := 3.0 # спокойный шаг по песку
-const SPRINT_MAX := 5.6 # бег по Shift
-const ACCEL := 24.0
-const SPRINT_ACCEL := 16.0
-const FRICTION := 12.0
-const AIR_ACCEL := 4.0
+const WALK_MAX := 3.4 # спокойный шаг по песку
+const SPRINT_MAX := 6.4 # бег по Shift
+const ACCEL := 32.0
+const SPRINT_ACCEL := 22.0
+const FRICTION := 15.0
+const AIR_ACCEL := 5.0
 const JUMP_V := 6.4
 
 const WADE_LIMIT := 0.78 # глубже — не пускает (по колено)
-const WADE_SPEED := 0.52 # доля скорости в воде
+const WADE_SPEED := 0.62 # доля скорости в воде
 
 const BOUND_X_MIN := -70.0
 const BOUND_X_MAX := 196.0
@@ -150,8 +150,10 @@ func _wish_dir() -> Vector3:
 func _step_grounded(delta: float, wish: Vector3) -> void:
 	var pos := global_position
 	var depth := maxf(0.0, Coast.SEA_LEVEL - coast.ground_height(pos.x, pos.z))
-	var in_water := depth > 0.02 and (pier == null or not pier.is_on(pos.x, pos.z))
-	wet01 = clampf(depth / 0.7, 0.0, 1.0) if in_water else 0.0
+	# «мокрые ноги» не замедляют: вода чувствуется только от щиколотки,
+	# иначе кромка читается как вязкий песок
+	var in_water := depth > 0.12 and (pier == null or not pier.is_on(pos.x, pos.z))
+	wet01 = clampf((depth - 0.12) / 0.66, 0.0, 1.0) if in_water else 0.0
 
 	var sprinting := Input.is_action_pressed("sprint") and not in_water
 	var max_speed := SPRINT_MAX if sprinting else WALK_MAX
@@ -173,17 +175,17 @@ func _step_grounded(delta: float, wish: Vector3) -> void:
 	var target_depth := Coast.SEA_LEVEL - coast.ground_height(target.x, target.z)
 	var target_on_pier := pier != null and pier.is_on(target.x, target.z)
 	if target_depth > WADE_LIMIT and not target_on_pier:
-		# мягкий отказ: убираем составляющую «в море», остальное скользит
-		# вдоль берега — край воды читается как край
+		# край воды — край: гасим только шаг в море, без «скольжения»
 		var ld := coast.land_dir(pos.x, pos.z)
 		var vn := hv.dot(ld)
 		if vn < 0.0:
 			hv -= ld * vn
-		hv *= 0.65
 		vel.x = hv.x
 		vel.z = hv.z
 		target = pos + hv * delta
 		if Coast.SEA_LEVEL - coast.ground_height(target.x, target.z) > WADE_LIMIT:
+			vel.x = 0.0
+			vel.z = 0.0
 			target = pos
 
 	global_position.x = target.x
@@ -274,7 +276,7 @@ func _update_gait(delta: float) -> void:
 
 	var on_pier := pier != null and pier.is_on(pos.x, pos.y)
 	var depth := Coast.SEA_LEVEL - coast.ground_height(pos.x, pos.y)
-	var cadence: float = clampf(0.90 * hspd, 0.8, 3.4) # шагов/с ≈ 0.9 на метр
+	var cadence: float = clampf(0.78 * hspd, 0.7, 3.1) # шагов/с ≈ 0.8 на метр
 	_gait_phase += cadence * PI * delta
 	var step_idx := int(_gait_phase / PI)
 	if step_idx > _last_step_idx:
@@ -323,4 +325,4 @@ func _plant_foot(pos: Vector2, fwd: Vector2, hspd: float, depth: float, on_pier:
 func gait_bob() -> float:
 	var hv := Vector3(vel.x, 0.0, vel.z)
 	var spd01 := clampf(hv.length() / 3.0, 0.0, 1.0)
-	return sin(_gait_phase) * 0.028 * spd01
+	return sin(_gait_phase) * 0.018 * spd01

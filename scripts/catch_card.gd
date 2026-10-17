@@ -25,9 +25,9 @@ func setup() -> void:
 	_panel.anchor_right = 0.0
 	_panel.anchor_bottom = 1.0
 	_panel.offset_left = 28.0
-	_panel.offset_top = -196.0
+	_panel.offset_top = -286.0
 	_panel.offset_right = 452.0
-	_panel.offset_bottom = -28.0
+	_panel.offset_bottom = -118.0
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_style = StyleBoxFlat.new()
 	_style.bg_color = Color(0.06, 0.05, 0.05, 0.72)
@@ -67,9 +67,9 @@ func setup() -> void:
 	_panel.visible = false
 
 
-func _label(size: int) -> Label:
+func _label(fs: int) -> Label:
 	var l := Label.new()
-	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_font_size_override("font_size", fs)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
 

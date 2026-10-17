@@ -29,7 +29,7 @@ const RING_AMP := 0.055
 const PUSH_HZ := 30.0 # частота пуша uniform-ов
 
 var t := 0.0 # время поля — ЕДИНОЕ с шейдерным u_time
-var material: ShaderMaterial # куда пушим кольца (назначает WaterSurface)
+var mat: ShaderMaterial # куда пушим кольца (назначает WaterSurface)
 
 # Живой ветер: WaterSurface обновляет каждый кадр из game (как у песка),
 # чтобы физика поплавка качалась ровно на том «одеяле», что рисует шейдер.
@@ -126,7 +126,7 @@ func _process(delta: float) -> void:
 			_amp[i] = 0.0
 	# пуш в материал на PUSH_HZ (как карта песка на 30 Гц у SandField)
 	_push_clock += delta
-	if material != null and _push_clock >= 1.0 / PUSH_HZ:
+	if mat != null and _push_clock >= 1.0 / PUSH_HZ:
 		_push_uniforms()
 		_push_clock = 0.0
 
@@ -136,8 +136,8 @@ func _push_uniforms() -> void:
 	data.resize(MAX_RINGS)
 	for i in range(MAX_RINGS):
 		data[i] = Vector4(_pos[i].x, _pos[i].y, _t0[i], _amp[i])
-	material.set_shader_parameter("u_rings", data)
-	material.set_shader_parameter("u_time", t)
+	mat.set_shader_parameter("u_rings", data)
+	mat.set_shader_parameter("u_time", t)
 
 
 # ---------------------------------------------------------------------------

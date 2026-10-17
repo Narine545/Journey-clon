@@ -51,7 +51,7 @@ var water_level := 0.0
 var water_field: WaterField = null # кольца от всплесков (опционально)
 var game: GameState = null # автозагрузка Game — общее солнце и туман с водой/песком
 var coast: Coast = null # берег (class_name Coast) — рыбы держатся воды, а не суши
-var material: ShaderMaterial
+var mat: ShaderMaterial
 var t := 0.0 # время поля — единое с шейдерным u_time
 
 var _quad: MeshInstance3D
@@ -97,11 +97,11 @@ func _ready() -> void:
 
 
 func _build_material() -> void:
-	material = ShaderMaterial.new()
-	material.shader = load(SHADER_PATH)
+	mat = ShaderMaterial.new()
+	mat.shader = load(SHADER_PATH)
 	if game != null:
-		material.set_shader_parameter("sun_dir", game.sun_dir)
-		material.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
+		mat.set_shader_parameter("sun_dir", game.sun_dir)
+		mat.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
 
 
 func _build_quad() -> void:
@@ -114,7 +114,7 @@ func _build_quad() -> void:
 	_quad.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_quad.sorting_offset = 4096.0 # среди прозрачных рисуемся ПЕРВЫМИ,
 	# чтобы частицы и леска ложились поверх существ
-	_quad.material_override = material
+	_quad.material_override = mat
 	add_child(_quad)
 
 
@@ -201,9 +201,9 @@ func setup(game_ref, p_level: float, wf: WaterField = null, coast_ref = null) ->
 	water_level = p_level
 	water_field = wf
 	coast = coast_ref
-	if material != null and game != null:
-		material.set_shader_parameter("sun_dir", game.sun_dir)
-		material.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
+	if mat != null and game != null:
+		mat.set_shader_parameter("sun_dir", game.sun_dir)
+		mat.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
 
 
 ## Публичное событие: брызги-капли в мировой точке (посадка поплавка,
@@ -353,14 +353,14 @@ func _push_uniforms(center: Vector2) -> void:
 		var r := _dr0[k] * (1.0 - 0.35 * clampf(_dage[k] / _dlife[k], 0.0, 1.0))
 		dp[k] = Vector4(_dpos[k].x, _dpos[k].y, _dpos[k].z, r)
 
-	material.set_shader_parameter("u_fish_state", st)
-	material.set_shader_parameter("u_fish_meta", mt)
-	material.set_shader_parameter("u_fish_tint", tn)
-	material.set_shader_parameter("u_drops", dp)
-	material.set_shader_parameter("u_center", center)
-	material.set_shader_parameter("u_bounds_r", bounds_radius)
-	material.set_shader_parameter("u_water_level", water_level)
-	material.set_shader_parameter("u_time", t)
+	mat.set_shader_parameter("u_fish_state", st)
+	mat.set_shader_parameter("u_fish_meta", mt)
+	mat.set_shader_parameter("u_fish_tint", tn)
+	mat.set_shader_parameter("u_drops", dp)
+	mat.set_shader_parameter("u_center", center)
+	mat.set_shader_parameter("u_bounds_r", bounds_radius)
+	mat.set_shader_parameter("u_water_level", water_level)
+	mat.set_shader_parameter("u_time", t)
 
 
 # ---------------------------------------------------------------------------
@@ -451,19 +451,19 @@ func claim_catch(idx: int) -> float:
 
 ## Ночь: существа берут ту же палитру, что песок и море.
 func apply_night01(v: float) -> void:
-	if material == null:
+	if mat == null:
 		return
-	material.set_shader_parameter("sand_sunny", Coast.DAY_SUNNY.lerp(Coast.NIGHT_SUNNY, v))
-	material.set_shader_parameter("sand_hot", Coast.DAY_HOT.lerp(Coast.NIGHT_HOT, v))
-	material.set_shader_parameter("sand_shade", Coast.DAY_SHADE.lerp(Coast.NIGHT_SHADE, v))
-	material.set_shader_parameter("horizon_col", Coast.DAY_HORIZON.lerp(Coast.NIGHT_HORIZON, v))
-	material.set_shader_parameter("sky_col", Coast.DAY_SKY.lerp(Coast.NIGHT_SKY, v))
-	material.set_shader_parameter("fog_distance", lerpf(340.0, 130.0, v))
+	mat.set_shader_parameter("sand_sunny", Coast.DAY_SUNNY.lerp(Coast.NIGHT_SUNNY, v))
+	mat.set_shader_parameter("sand_hot", Coast.DAY_HOT.lerp(Coast.NIGHT_HOT, v))
+	mat.set_shader_parameter("sand_shade", Coast.DAY_SHADE.lerp(Coast.NIGHT_SHADE, v))
+	mat.set_shader_parameter("horizon_col", Coast.DAY_HORIZON.lerp(Coast.NIGHT_HORIZON, v))
+	mat.set_shader_parameter("sky_col", Coast.DAY_SKY.lerp(Coast.NIGHT_SKY, v))
+	mat.set_shader_parameter("fog_distance", lerpf(340.0, 130.0, v))
 
 
 func apply_sun(dir: Vector3) -> void:
-	if material != null:
-		material.set_shader_parameter("sun_dir", dir)
+	if mat != null:
+		mat.set_shader_parameter("sun_dir", dir)
 
 
 ## Ближайшее живое существо к точке (диагностика/квесты). -1 — никого.

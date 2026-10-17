@@ -19,10 +19,10 @@ var player: Player
 var cam_rig: CameraRig
 var rod: RodCast
 var audio
-var wind: WindField
 var color_grade: ColorGrader
 var debug_panel: DebugPanel
 var catch_card: CatchCard
+var hud: FishingHud
 
 var night01 := 0.0
 
@@ -86,11 +86,6 @@ func _ready() -> void:
 	audio.setup(game, player)
 	player.audio = audio
 
-	# ветер: лёгкая песчаная взвесь у берега
-	wind = WindField.new()
-	add_child(wind)
-	wind.setup(game, player, coast)
-
 	cam_rig = CameraRig.new()
 	add_child(cam_rig)
 	cam_rig.setup(self)
@@ -113,6 +108,11 @@ func _ready() -> void:
 	# солнце: небо + свет + шейдеры песка/моря/существ (без этого они
 	# остались бы на дефолтном uniform-е «низкое солнце»)
 	apply_sun(game.sun_dir)
+
+	# HUD рыбалки: что нажать, сила заброса, окно подсечки, натяг/прогресс
+	hud = FishingHud.new()
+	add_child(hud)
+	hud.setup(self)
 
 	# карточка улова: всплывает на несколько секунд после поимки и гаснет
 	catch_card = CatchCard.new()

@@ -285,8 +285,8 @@ func _phase_extra() -> void:
 				Input.action_press("rod_toggle")
 				_extra_state = 2
 				frames = 0
-			elif frames > 500:
-				_check(false, "снасть: не вернулась за 500 кадров (state %d)" % rod.state)
+			elif frames > 1100:
+				_check(false, "снасть: не вернулась за 1100 кадров (state %d)" % rod.state)
 				_extra_state = 9
 				frames = 0
 		2: # Q — убрать удочку

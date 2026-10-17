@@ -28,6 +28,7 @@ var rng := RandomNumberGenerator.new()
 var _wait := 0.0
 var _t := 0.0
 var _window := 0.0
+var _window_total := 1.0
 var _nibbles: Array[float] = []
 var _nibble_end := 0.0
 var _dip := 0.0
@@ -79,6 +80,17 @@ func dip() -> float:
 
 func window_left() -> float:
 	return _window
+
+
+## Остаток окна подсечки 0..1 — для индикатора в HUD.
+func window01() -> float:
+	if not in_window():
+		return 0.0
+	return clampf(_window / maxf(_window_total, 0.001), 0.0, 1.0)
+
+
+func in_window() -> bool:
+	return state == B.WINDOW
 
 
 func update(delta: float) -> void:
@@ -136,6 +148,7 @@ func _start_bite() -> void:
 	else:
 		fish = FishCatalog.roll_fish(zone, segment, rng)
 	_window = float(fish.get("hook_window", HOOK_WINDOW_BASE))
+	_window_total = _window
 	_nibbles.clear()
 	_dip = 0.34
 	state = B.WINDOW

@@ -136,29 +136,29 @@ func _setup_sky_plus_material() -> void:
 	_sky_mat.set_shader_parameter("dim_stars_at_day", true)
 
 
-func _noise_3d(size: int, seed_value: int, frequency: float, noise_type: int) -> NoiseTexture3D:
+func _noise_3d(px: int, seed_value: int, frequency: float, noise_type: int) -> NoiseTexture3D:
 	var noise := FastNoiseLite.new()
 	noise.seed = seed_value
 	noise.frequency = frequency
 	noise.noise_type = noise_type as FastNoiseLite.NoiseType
 	noise.fractal_octaves = 3
 	var texture := NoiseTexture3D.new()
-	texture.width = size
-	texture.height = size
-	texture.depth = size
+	texture.width = px
+	texture.height = px
+	texture.depth = px
 	texture.seamless = true
 	texture.noise = noise
 	return texture
 
 
-func _noise_2d(size: int, seed_value: int, frequency: float, octaves: int) -> NoiseTexture2D:
+func _noise_2d(px: int, seed_value: int, frequency: float, octaves: int) -> NoiseTexture2D:
 	var noise := FastNoiseLite.new()
 	noise.seed = seed_value
 	noise.frequency = frequency
 	noise.fractal_octaves = octaves
 	var texture := NoiseTexture2D.new()
-	texture.width = size
-	texture.height = size
+	texture.width = px
+	texture.height = px
 	texture.seamless = true
 	texture.noise = noise
 	return texture

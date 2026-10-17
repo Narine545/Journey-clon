@@ -23,14 +23,12 @@ var _step_streams: Array[AudioStreamWAV] = []
 var _water_step_streams: Array[AudioStreamWAV] = []
 var _step_players: Array[AudioStreamPlayer3D] = []
 var _step_rr := 0
-var _surf: AudioStreamPlayer3D
 var _wade_loop: AudioStreamPlayer3D
 var _land: AudioStreamPlayer3D
 var _wind: AudioStreamPlayer
 var _pad: AudioStreamPlayer
 var _shimmer: AudioStreamPlayer
 var _wind_filter: AudioEffectLowPassFilter
-var _surf_gain := 0.0
 var _wade_gain := 0.0
 var _wind_gain := 0.0
 var _shimmer_gain := 0.0
@@ -94,16 +92,6 @@ func _make_sounds() -> void:
 		player.add_child(p)
 		_step_players.append(p)
 
-	# шелест разгона по сухому песку
-	_surf = AudioStreamPlayer3D.new()
-	_surf.bus = "Sand"
-	_surf.stream = _gen_slide()
-	_surf.unit_size = 7.0
-	_surf.position = Vector3(0.0, 0.12, 0.0)
-	player.add_child(_surf)
-	_surf.volume_db = linear_to_db(0.0001)
-	_surf.play()
-
 	# брод: вода переливается у ног
 	_wade_loop = AudioStreamPlayer3D.new()
 	_wade_loop.bus = "Sand"
@@ -166,14 +154,6 @@ func _process(delta: float) -> void:
 	var spd := hv.length()
 	var spd01 := clampf(spd / Player.SPRINT_MAX, 0.0, 1.0)
 
-	# --- разгон по песку: шорох, только когда не в воде ---
-	var surf_target := 0.0
-	if player.grounded and spd > 3.4 and player.wet01 < 0.05:
-		surf_target = clampf((spd - 3.4) / 2.0, 0.0, 1.0) * 0.22
-	_surf_gain = _damp(_surf_gain, surf_target, 6.0, delta)
-	_surf.volume_db = linear_to_db(maxf(_surf_gain, 0.0001))
-	_surf.pitch_scale = 0.80 + spd01 * 0.35
-
 	# --- брод: переливы у ног, тем громче, чем глубже и быстрее ---
 	var wade_target := 0.0
 	if player.grounded and player.wet01 > 0.02:
@@ -195,7 +175,7 @@ func _process(delta: float) -> void:
 	_pad_fade = minf(_pad_fade + delta / 7.0, 1.0)
 	_pad.volume_db = linear_to_db(0.26 * _pad_fade + 0.0001)
 	var shine := pow(clampf(game.sprint01, 0.0, 1.0), 1.2)
-	_shimmer_gain = _damp(_shimmer_gain, shine * 0.20, 1.6, delta)
+	_shimmer_gain = _damp(_shimmer_gain, shine * 0.12, 1.6, delta)
 	_shimmer.volume_db = linear_to_db(maxf(_shimmer_gain, 0.0001))
 
 
@@ -209,8 +189,8 @@ func on_step(spd01: float, hardness := 1.0) -> void:
 	var p := _step_players[_step_rr]
 	_step_rr = (_step_rr + 1) % _step_players.size()
 	p.stream = _step_streams[randi() % _step_streams.size()]
-	p.pitch_scale = (0.80 + randf() * 0.35) * (0.94 + 0.10 * hardness)
-	p.volume_db = linear_to_db((0.10 + 0.26 * spd01) * hardness)
+	p.pitch_scale = (0.72 + randf() * 0.22) * (0.96 + 0.06 * hardness)
+	p.volume_db = linear_to_db((0.035 + 0.11 * spd01) * hardness)
 	p.play()
 
 
@@ -222,13 +202,13 @@ func on_water_step(spd01: float, impact01 := 0.0) -> void:
 	_step_rr = (_step_rr + 1) % _step_players.size()
 	p.stream = _water_step_streams[randi() % _water_step_streams.size()]
 	p.pitch_scale = 0.85 + randf() * 0.30
-	p.volume_db = linear_to_db(0.16 + 0.28 * spd01 + 0.30 * impact01)
+	p.volume_db = linear_to_db(0.06 + 0.13 * spd01 + 0.16 * impact01)
 	p.play()
 
 
 func on_land(impact01: float) -> void:
 	_land.pitch_scale = 0.72 + randf() * 0.16
-	_land.volume_db = linear_to_db(0.18 + 0.34 * impact01)
+	_land.volume_db = linear_to_db(0.10 + 0.22 * impact01)
 	_land.play()
 
 
@@ -274,8 +254,8 @@ func on_escape() -> void:
 	_splash_sfx.play()
 
 
-func on_catch(size: float) -> void:
-	_catch_sfx.pitch_scale = clampf(0.92 + size * 0.22, 0.8, 1.3)
+func on_catch(fish_size: float) -> void:
+	_catch_sfx.pitch_scale = clampf(0.92 + fish_size * 0.22, 0.8, 1.3)
 	_catch_sfx.volume_db = linear_to_db(0.40)
 	_catch_sfx.play()
 	_splash_sfx.pitch_scale = 0.85
@@ -310,9 +290,9 @@ func _gen_footstep(p_seed: int) -> AudioStreamWAV:
 		var cut := lerpf(0.32, 0.09, t / 0.16)
 		lp1 += (w - lp1) * cut
 		lp2 += (lp1 - lp2) * cut
-		var env := minf(t / 0.009, 1.0) * exp(-t * 19.0)
-		var soft := 1.0 + 0.10 * sin(TAU * sway * t + cph)
-		s[i] = lp2 * env * soft * 0.55
+		var env := minf(t / 0.016, 1.0) * exp(-t * 16.0)
+		var soft := 1.0 + 0.08 * sin(TAU * sway * t + cph)
+		s[i] = lp2 * env * soft * 0.34
 	return _stream(s, RATE_SFX, false)
 
 
@@ -335,36 +315,6 @@ func _gen_water_step(p_seed: int) -> AudioStreamWAV:
 
 
 ## Шелест разгона: бесшовная петля розового шума с дыханием.
-func _gen_slide() -> AudioStreamWAV:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 5501
-	var n := int(1.8 * RATE_SFX)
-	var fade := int(0.06 * RATE_SFX)
-	var m := n + fade
-	var buf := PackedFloat32Array()
-	buf.resize(m)
-	var lp1 := 0.0
-	var lp2 := 0.0
-	var lp3 := 0.0
-	for i in m:
-		var w := rng.randf_range(-1.0, 1.0)
-		lp1 += (w - lp1) * 0.22
-		lp2 += (lp1 - lp2) * 0.30
-		lp3 += (lp2 - lp3) * 0.04
-		var lfo := 0.78 + 0.22 * sin(TAU * 2.0 * float(i) / float(n))
-		buf[i] = (lp2 - lp3 * 0.7) * lfo
-	var s := PackedFloat32Array()
-	s.resize(n)
-	for i in n:
-		if i < fade:
-			var k := float(i) / float(fade)
-			s[i] = buf[i] * k + buf[n + i] * (1.0 - k)
-		else:
-			s[i] = buf[i]
-	return _stream(s, RATE_SFX, true)
-
-
-## Брод: тихая петля воды, у ног что-то постоянно переливается.
 func _gen_water_loop() -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 8123

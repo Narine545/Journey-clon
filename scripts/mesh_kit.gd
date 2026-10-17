@@ -39,9 +39,9 @@ static func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector
 
 
 ## Коробка с произвольным базисом (планка, перила, ящик).
-static func add_box(st: SurfaceTool, center: Vector3, size: Vector3,
-		basis: Basis, col: Color) -> void:
-	var h := size * 0.5
+static func add_box(st: SurfaceTool, center: Vector3, dims: Vector3,
+		bx: Basis, col: Color) -> void:
+	var h := dims * 0.5
 	var p: Array[Vector3] = []
 	for i in range(8):
 		var s := Vector3(
@@ -49,20 +49,20 @@ static func add_box(st: SurfaceTool, center: Vector3, size: Vector3,
 			h.y if (i & 2) != 0 else -h.y,
 			h.z if (i & 4) != 0 else -h.z
 		)
-		p.append(center + basis * s)
+		p.append(center + bx * s)
 	# грани: порядок вершин проверен по правилу cross(e1,e2) = −n
-	_quad(st, p[1], p[5], p[7], p[3], basis * Vector3.RIGHT, col) # +X
-	_quad(st, p[0], p[2], p[6], p[4], basis * Vector3.LEFT, col) # −X
-	_quad(st, p[2], p[3], p[7], p[6], basis * Vector3.UP, col) # +Y
-	_quad(st, p[0], p[4], p[5], p[1], basis * Vector3.DOWN, col) # −Y
-	_quad(st, p[4], p[6], p[7], p[5], basis * Vector3.BACK, col) # +Z
-	_quad(st, p[0], p[1], p[3], p[2], basis * Vector3.FORWARD, col) # −Z
+	_quad(st, p[1], p[5], p[7], p[3], bx * Vector3.RIGHT, col) # +X
+	_quad(st, p[0], p[2], p[6], p[4], bx * Vector3.LEFT, col) # −X
+	_quad(st, p[2], p[3], p[7], p[6], bx * Vector3.UP, col) # +Y
+	_quad(st, p[0], p[4], p[5], p[1], bx * Vector3.DOWN, col) # −Y
+	_quad(st, p[4], p[6], p[7], p[5], bx * Vector3.BACK, col) # +Z
+	_quad(st, p[0], p[1], p[3], p[2], bx * Vector3.FORWARD, col) # −Z
 
 
 ## Цилиндр вдоль оси Y с сужением и (опционально) торцами.
 static func add_cylinder(st: SurfaceTool, center: Vector3, r_bottom: float,
 		r_top: float, height: float, segs: int, col: Color,
-		cap_top := true, cap_bottom := true, basis := Basis.IDENTITY) -> void:
+		cap_top := true, cap_bottom := true, bx := Basis.IDENTITY) -> void:
 	var hh := height * 0.5
 	var col_top := col
 	for i in range(segs):
@@ -70,12 +70,12 @@ static func add_cylinder(st: SurfaceTool, center: Vector3, r_bottom: float,
 		var a1 := TAU * float(i + 1) / float(segs)
 		var c0 := Vector3(cos(a0), 0.0, sin(a0))
 		var c1 := Vector3(cos(a1), 0.0, sin(a1))
-		var b0 := center + basis * (c0 * r_bottom + Vector3(0.0, -hh, 0.0))
-		var b1 := center + basis * (c1 * r_bottom + Vector3(0.0, -hh, 0.0))
-		var t0 := center + basis * (c0 * r_top + Vector3(0.0, hh, 0.0))
-		var t1 := center + basis * (c1 * r_top + Vector3(0.0, hh, 0.0))
-		var n0 := (basis * Vector3(c0.x, 0.0, c0.z)).normalized()
-		var n1 := (basis * Vector3(c1.x, 0.0, c1.z)).normalized()
+		var b0 := center + bx * (c0 * r_bottom + Vector3(0.0, -hh, 0.0))
+		var b1 := center + bx * (c1 * r_bottom + Vector3(0.0, -hh, 0.0))
+		var t0 := center + bx * (c0 * r_top + Vector3(0.0, hh, 0.0))
+		var t1 := center + bx * (c1 * r_top + Vector3(0.0, hh, 0.0))
+		var n0 := (bx * Vector3(c0.x, 0.0, c0.z)).normalized()
+		var n1 := (bx * Vector3(c1.x, 0.0, c1.z)).normalized()
 		st.set_color(col)
 		st.set_normal(n0)
 		st.add_vertex(b0)
@@ -95,11 +95,11 @@ static func add_cylinder(st: SurfaceTool, center: Vector3, r_bottom: float,
 		st.set_normal(n0)
 		st.add_vertex(t0)
 		if cap_top:
-			_tri(st, center + basis * Vector3(0.0, hh, 0.0), t0, t1,
-				basis * Vector3.UP, col_top)
+			_tri(st, center + bx * Vector3(0.0, hh, 0.0), t0, t1,
+				bx * Vector3.UP, col_top)
 		if cap_bottom:
-			_tri(st, center + basis * Vector3(0.0, -hh, 0.0), b1, b0,
-				basis * Vector3.DOWN, col)
+			_tri(st, center + bx * Vector3(0.0, -hh, 0.0), b1, b0,
+				bx * Vector3.DOWN, col)
 
 
 ## Каменный столб: кольца с шумным радиусом, тёмный низ (мокрый),
@@ -173,8 +173,8 @@ static func add_log(st: SurfaceTool, a: Vector3, b: Vector3,
 		x = y.cross(Vector3.RIGHT)
 	x = x.normalized()
 	var z := x.cross(y).normalized()
-	var basis := Basis(x, y, z)
-	add_cylinder(st, (a + b) * 0.5, r_a, r_b, seg_len, segs, col, true, true, basis)
+	var b := Basis(x, y, z)
+	add_cylinder(st, (a + b) * 0.5, r_a, r_b, seg_len, segs, col, true, true, b)
 
 
 static func smoothf01(t: float) -> float:
