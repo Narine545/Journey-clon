@@ -159,7 +159,8 @@ void fragment() {
 	// аналитический градиент волны по осям (v, u) -> возмущение нормали
 	float dv = (c1 * ripple_freq + c2 * ripple_freq * 2.63) * ripple_strength * wind_power;
 	float du = (c1 * 0.22 + c2 * 0.55) * ripple_strength * wind_power * 2.0;
-	vec2 grad = (wperp * dv + wdir * du) * detail;
+	// у самого уреза рябь мельче и слабее: там мелководье, вода приглажена
+	vec2 grad = (wperp * dv + wdir * du) * detail * (1.0 - 0.55 * shallow);
 	N = normalize(N - vec3(grad.x, 0.0, grad.y) * 0.5);
 
 	// ---------- кольца событий: расходящиеся пакеты ----------
