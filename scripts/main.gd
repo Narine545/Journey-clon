@@ -22,6 +22,7 @@ var audio
 var wind: WindField
 var color_grade: ColorGrader
 var debug_panel: DebugPanel
+var catch_card: CatchCard
 
 var night01 := 0.0
 
@@ -112,6 +113,11 @@ func _ready() -> void:
 	# остались бы на дефолтном uniform-е «низкое солнце»)
 	apply_sun(game.sun_dir)
 
+	# карточка улова: всплывает на несколько секунд после поимки и гаснет
+	catch_card = CatchCard.new()
+	add_child(catch_card)
+	catch_card.setup()
+
 	# DEV-панель крутилок: F3 (по умолчанию скрыта, в игре текста нет)
 	debug_panel = DebugPanel.new()
 	add_child(debug_panel)
@@ -135,6 +141,25 @@ func _connect_fishing() -> void:
 	rod.fish_escaped.connect(func() -> void: audio.on_escape())
 	rod.line_retrieved.connect(func() -> void: audio.on_reel_tick())
 	rod.reel_tick.connect(func() -> void: audio.on_reel_tick())
+	rod.bite_missed.connect(func() -> void: audio.on_reel_tick())
+	rod.line_snap.connect(func() -> void: audio.on_escape())
+	rod.surge_telegraph.connect(func() -> void: audio.on_splash(0.5))
+	rod.fish_caught.connect(_on_fish_caught)
+
+
+var seen_species: Dictionary = {}
+
+
+## Пойманная рыба: карточка улова и «новый вид» (журнал — на будущее).
+func _on_fish_caught(info: Dictionary) -> void:
+	var id := str(info.get("id", ""))
+	var is_new := not seen_species.has(id)
+	seen_species[id] = true
+	if catch_card != null:
+		catch_card.show_fish(info, is_new)
+	print("[FISH] %s (%.0f см, %.2f кг) — %s" % [
+		info.get("name", "?"), float(info.get("size_cm", 0.0)),
+		float(info.get("weight_kg", 0.0)), "новый вид" if is_new else "уже в журнале"])
 
 
 ## Время суток одним числом: 0 — золотой час, 1 — ночь.

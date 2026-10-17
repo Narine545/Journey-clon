@@ -164,10 +164,10 @@ static func add_rock_stack(st: SurfaceTool, base: Vector3, height: float,
 static func add_log(st: SurfaceTool, a: Vector3, b: Vector3,
 		r_a: float, r_b: float, col: Color, segs := 8) -> void:
 	var y := (b - a)
-	var len := y.length()
-	if len < 0.01:
+	var seg_len := y.length()
+	if seg_len < 0.01:
 		return
-	y = y / len
+	y = y / seg_len
 	var x := y.cross(Vector3.UP)
 	if x.length_squared() < 0.0001:
 		x = y.cross(Vector3.RIGHT)

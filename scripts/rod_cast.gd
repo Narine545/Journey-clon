@@ -1,29 +1,31 @@
 class_name RodCast
 extends Node3D
 ## Удочка от первого лица: «достать» → заряд → заброс (Безье, нормировка
-## длиной дуги, всё на delta) → поплавок на воде → поклёвка → подсечка →
-## вываживание → рыба в руках.
+## длиной дуги, всё на delta) → поплавок на воде → ожидание и поклёвка
+## (BiteSystem, порт tideline) → подсечка → вываживание (FishFight: натяг,
+## прогресс, рывки, усталость) → рыба в руках (CatchFish + CatchCard).
 ##
-## Вешается НА КАМЕРУ (вью-модель — отдельный слой, мир не задевает):
-##   var rod := RodCast.new()
-##   cam_rig.cam.add_child(rod)
-##   rod.setup(game, water, fish, coast, sand)
+## Удилище — не одна палка, а ЦЕПОЧКА из 12 сегментов: изгиб распределяется
+## по «костям» с нарастающим весом к вершинке, поэтому гнётся дугой в заброс,
+## в поклёвку и в рывок рыбы. Кончик всегда смотрит в сторону лески, а поза
+## удилища опущена ниже и уходит вправо — кадр не перекрыт.
 ##
 ## Управление:
 ##   ЛКМ (удочка опущена) — достать удочку
-##   ЛКМ зажать     — заряд силы (ходит туда-обратно, видно по позе удилища)
+##   ЛКМ зажать     — заряд силы (видно по позе удилища)
 ##   ЛКМ отпустить  — заброс туда, куда смотрит камера (6–48 м от силы)
 ##   ЛКМ в окно поклёвки (поплавок нырнул) — подсечка
 ##   ЛКМ держать в вываживании — мотать; в рывок рыбы нельзя: натяг растёт
 ##   ПКМ / R        — вернуть снасть / отменить заряд
 ##   Q              — убрать удочку
 ##
-## HUD нет (конвенция проекта): сила читается по изгибу удилища, поклёвка —
-## по нырку поплавка и кольцам на воде.
+## HUD нет: сила читается по изгибу удилища, поклёвка — по нырку поплавка,
+## рывок — по предупреждению (всплеск/прыжок/толчок) и натяжению.
 ##
 ## Сигналы: cast_started(power), bobber_landed(pos), cast_landed_on_sand(pos),
 ## bite_window_started(), fish_hooked(), fish_landed(size), fish_escaped(),
-## line_retrieved(), reel_tick().
+## line_retrieved(), reel_tick(), fish_caught(info), bite_missed(),
+## line_snap(), tension_changed(t01), surge_telegraph().
 
 signal cast_started(power: float)
 signal bobber_landed(pos: Vector3)
@@ -34,58 +36,75 @@ signal fish_landed(size: float)
 signal fish_escaped()
 signal line_retrieved()
 signal reel_tick()
+signal fish_caught(info: Dictionary)
+signal bite_missed()
+signal line_snap()
+signal tension_changed(t01: float)
+signal surge_telegraph()
 
 enum S { RESTING, CHARGE, FLY, FLOAT, BITE, FIGHT, REEL_IN }
 
 # --- заброс ---
-const MIN_CAST := 6.0 # м, ближе не плюнет
-const CAST_RANGE := 42.0 # м поверх минимума при полной силе
-const CAST_SPEED := 26.0 # м/с полёта поплавка (путь нормирован длиной дуги)
-const CHARGE_PERIOD := 1.7 # с на полный ход силы туда-обратно
+const MIN_CAST := 6.0
+const CAST_RANGE := 42.0
+const CAST_SPEED := 26.0
+const CHARGE_PERIOD := 1.7
 
-# --- рыбалка ---
-const BITE_WINDOW := 0.55 # с, окно подсечки (рыба держит 0.85 — с запасом)
-const REEL_SPEED := 6.5 # м/с подмотки с зажатой ЛКМ
-const REEL_ASSIST := 1.1 # м/с ленивая подмотка без ЛКМ — чтобы не зависало
-const FIGHT_MAX_DIST := 34.0 # м, дальше рыба вырывает леску (но не рвёт)
-const TENSION_RATE := 1.9 # натяг растёт, если мотать в момент рывка
-const LAND_DIST := 3.2 # м — рыба у игрока
-const REEL_TICK := 0.11 # с между щелчками катушки
+# --- удилище ---
+const ROD_SEGMENTS := 12
+const BLANK_LEN := 1.02
+const BLANK_Y0 := 0.12
+const HANDLE_LEN := 0.27
+const GRIP_POS := Vector3(0.33, -0.46, -0.56)
+const STOW_POS := Vector3(0.31, -0.60, -0.50)
+const ROD_YAW := 0.22 # удилище уходит вправо, кадр остаётся свободным
+const MAX_BEND := 1.30
+const LAND_DIST := 3.0
 
-# --- поза удилища (в пространстве камеры) ---
-const GRIP_POS := Vector3(0.26, -0.23, -0.50)
-const GRIP_ROT := Vector3(-0.46, 0.12, -0.16) # вперёд-вверх, чуть вправо
-const STOW_POS := Vector3(0.34, -0.16, -0.54)
-const STOW_ROT := Vector3(-2.25, 0.40, -0.46) # удилище вниз-вперёд, «в руке»
-const TIP_LOCAL := Vector3(0.0, 0.56, 0.0) # кончик вершинки в шарнире _tip
+var game: GameState
+var water: WaterSurface
+var fish: SandFish # оставлен для совместимости; бой рыб теперь в FishFight
+var coast: Coast
+var sand: SandField
 
-var game: GameState # автозагрузка Game — только ветер для дрейфа поплавка
-var water: WaterSurface # WaterSurface — уровень/высота воды
-var fish: SandFish # SandFish — всплески, приманивание, подсечка
-var coast: Coast # Coast — чтобы не забрасывать «в песок» вслепую
-var sand: SandField # SandField — вмятины от поплавка на песке
+var stats: Dictionary = FishCatalog.default_stats()
+var bite: BiteSystem
+var fight: FishFight
+var last_fish: Dictionary = {}
+
 var state: int = S.RESTING
-var stowed := true # удочка опущена (в руке, но не наготове)
-var on_land := false # поплавок лежит на песке
+var stowed := true
+var on_land := false
+var zone := "shallow"
 
 var _cam: Camera3D
 var _t := 0.0
-var _suppress := 0.35 # с тишины после старта (клик захвата курсора)
+var _suppress := 0.4
 
 # удилище
-var _root: Node3D # рукоять + комель
-var _tip: Node3D # шарнир вершинки (изгиб)
-var _bend := 0.03
-var _bend_tgt := 0.03
-var _pose01 := 0.0 # 0 — опущена, 1 — наготове
+var _rod: Node3D
+var _segs: Array[MeshInstance3D] = []
+var _seg_len := BLANK_LEN / float(ROD_SEGMENTS)
+var _root_pos := STOW_POS
+var _root_q := Quaternion.IDENTITY
+var _stow_q := Quaternion.IDENTITY
+var _bend := 0.05
+var _bend_axis := Vector3.RIGHT
+var _tip_local := Vector3.ZERO
+var _tip_dir := Vector3.UP
 
-# мир (top_level: дети живут в мировых координатах)
+# мир
 var _world: Node3D
 var _bobber: Node3D
 var _line_mi: MeshInstance3D
 var _line_mesh: ImmediateMesh
+var _catch: CatchFish
+var _held: CatchFish
+var _jump_t := 0.0
+var _jump_from := Vector3.ZERO
+var _held_t := 0.0
 
-# заряд/заброс
+# заброс
 var _power_t := 0.0
 var _bez_a := Vector3.ZERO
 var _bez_b := Vector3.ZERO
@@ -94,18 +113,9 @@ var _lut := PackedFloat32Array()
 var _bez_len := 1.0
 var _fly_s := 0.0
 
-# рыбалка
-var _bite_t := 0.0
-var _relure_t := 0.0
-var _window_t := 0.0
-var _lure_idx := -1
-var _dive := 0.0
-var _dive_tgt := 0.0
-var _jiggle := 0.0
-var _pulling := false
-var _pull_t := 0.0
+# вываживание
 var _tension := 0.0
-var _tick_t := 0.0
+var _reel_tick_t := 0.0
 
 
 func _ready() -> void:
@@ -113,22 +123,27 @@ func _ready() -> void:
 	_cam = get_parent() as Camera3D
 	if _cam == null:
 		push_error("ROD: RodCast должен висеть на Camera3D")
+		return
+	bite = BiteSystem.new()
+	fight = FishFight.new()
+	bite.nibble.connect(_on_bite_nibble)
+	bite.bite_started.connect(_on_bite_started)
+	bite.bite_missed.connect(_on_bite_missed)
+	fight.surge_telegraph.connect(_on_surge_telegraph)
+	fight.jumped.connect(_on_fight_jump)
+	fight.finished.connect(_on_fight_finished)
 	_build_rod()
 	_build_world()
 
 
-## Подключение к игре. water: WaterSurface, fish: SandFish (можно null —
-## тогда удочка работает, но рыбы клевать не будут).
+## Подключение к игре: water — WaterSurface, coast — берег, sand — следы.
+## fish оставлен в подписи ради совместимости вызова из main.gd.
 func setup(game_ref, water_ref, fish_ref, coast_ref = null, sand_ref = null) -> void:
 	game = game_ref
 	water = water_ref
 	fish = fish_ref
 	coast = coast_ref
 	sand = sand_ref
-	if fish != null and not fish.nibbled.is_connected(_on_fish_nibbled):
-		fish.nibbled.connect(_on_fish_nibbled)
-		fish.biting.connect(_on_fish_biting)
-		fish.fish_freed.connect(_on_fish_freed)
 
 
 func _ensure_actions() -> void:
@@ -141,7 +156,7 @@ func _ensure_actions() -> void:
 	_add_key_action("rod_toggle", KEY_Q)
 
 
-func _add_mouse_action(action: String, button: int) -> void:
+func _add_mouse_action(action: String, button: MouseButton) -> void:
 	if InputMap.has_action(action):
 		return
 	InputMap.add_action(action)
@@ -150,7 +165,7 @@ func _add_mouse_action(action: String, button: int) -> void:
 	InputMap.action_add_event(action, ev)
 
 
-func _add_key_action(action: String, key: int) -> void:
+func _add_key_action(action: String, key: Key) -> void:
 	if InputMap.has_action(action):
 		return
 	InputMap.add_action(action)
@@ -178,8 +193,8 @@ func _process(delta: float) -> void:
 			_st_fight(delta)
 		S.REEL_IN:
 			_st_reel(delta)
-	_update_pose(delta)
-	_animate_rod(delta)
+	_update_rod(delta)
+	_update_visual_fish(delta)
 	_draw_line()
 
 
@@ -188,9 +203,6 @@ func _process(delta: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _st_resting(_delta: float) -> void:
-	_bend_tgt = 0.03 + 0.015 * sin(_t * 1.3)
-	if _suppress > 0.0:
-		return
 	if stowed:
 		# первый клик — достаём удочку (не забрасываем той же кнопкой)
 		if Input.is_action_just_pressed("rod_cast") and water != null:
@@ -212,12 +224,11 @@ func charge_power() -> float:
 
 func _st_charge(delta: float) -> void:
 	_power_t += delta
-	var p := charge_power()
-	_bend_tgt = 0.06 + 0.34 * p # удилище откидывается назад
 	if Input.is_action_just_released("rod_cast"):
-		_cast(p)
+		_cast(charge_power())
 	elif Input.is_action_just_pressed("rod_recall"):
-		state = S.RESTING
+		# отмена заряда: если поплавок уже на воде — возвращаемся к ожиданию
+		state = S.FLOAT if _bobber.visible else S.RESTING
 
 
 ## Целимся: сначала вода, но если по лучу раньше встречается песок —
@@ -232,7 +243,7 @@ func _cast(power: float) -> void:
 		hd = Vector2(0.0, -1.0)
 	hd = hd.normalized()
 
-	var max_d := MIN_CAST + power * CAST_RANGE
+	var max_d := MIN_CAST + power * CAST_RANGE * float(stats.get("cast_mult", 1.0))
 	var water_d := INF
 	if fdir.y < -0.02:
 		var wd: float = (water.level_y - origin.y) / fdir.y
@@ -261,10 +272,10 @@ func _cast(power: float) -> void:
 		dist = maxf(land_point.distance_to(origin), 0.5)
 		target = Vector3(target.x, coast.ground_height(target.x, target.z) + 0.06, target.z)
 	if on_land:
-		var gh := coast.ground_height(land_point.x, land_point.z)
+		var gh: float = coast.ground_height(land_point.x, land_point.z)
 		target = Vector3(land_point.x, gh + 0.06, land_point.z)
 
-	_bez_a = _tip.to_global(TIP_LOCAL)
+	_bez_a = _tip_world()
 	_bez_c = target
 	_bez_b = (_bez_a + _bez_c) * 0.5 + Vector3.UP * (1.5 + 0.28 * dist)
 	_build_lut()
@@ -279,7 +290,6 @@ func _st_fly(delta: float) -> void:
 	_fly_s += delta * CAST_SPEED # путь нормирован длиной дуги — скорость честная
 	var u := _lut_u(_fly_s)
 	_bobber.global_position = _bez(_bez_a, _bez_b, _bez_c, u)
-	_bend_tgt = -0.26 # хлыст вперёд
 	if _fly_s >= _bez_len:
 		_bobber.global_position = _bez_c
 		if on_land:
@@ -289,114 +299,90 @@ func _st_fly(delta: float) -> void:
 					Vector2(_bez_c.x, _bez_c.z), Vector2(0.0, -1.0),
 					0.16, 0.20, 0.022, 0.012
 				)
-			_bite_t = 999.0
-			_lure_idx = -1
 			cast_landed_on_sand.emit(_bez_c)
 			state = S.FLOAT
 		else:
-			if fish != null:
-				fish.splash_burst(_bez_c, 0.8) # капли + кольцо в WaterField
-				_lure_idx = fish.lure_to(_bez_c)
-			else:
-				_lure_idx = -1
 			if water != null and water.field != null:
 				water.field.splash(Vector2(_bez_c.x, _bez_c.z), 0.8)
-			_bite_t = randf_range(4.0, 9.0)
-			_relure_t = 2.0
+			var origin := _cam.global_position
+			var flat := Vector2(_bez_c.x - origin.x, _bez_c.z - origin.z).length()
+			zone = FishCatalog.zone_for_distance(flat)
+			bite.begin(zone, FishCatalog.time_segment(game.night01),
+				game.wind_strength, stats)
 			bobber_landed.emit(_bez_c)
 			state = S.FLOAT
 
 
 func _st_float(delta: float) -> void:
-	_dive_tgt = 0.0
 	_bobber.global_position = _sit(delta)
-	_bend_tgt = 0.10 + 0.02 * sin(_t * 1.1)
-	if not on_land and fish != null:
-		fish.lure_refresh(_bobber.global_position)
-		_bite_t -= delta
-		_relure_t -= delta
-		if _lure_idx == -1 and _bite_t <= 0.0 and _relure_t <= 0.0:
-			_lure_idx = fish.lure_to(_bobber.global_position)
-			_relure_t = 2.0
 	if Input.is_action_just_pressed("rod_recall"):
 		_recall()
+		return
+	if on_land:
+		return
+	bite.update(delta)
+	if state != S.FLOAT:
+		return # поклёвка началась в этом же кадре — не перебиваем её зарядом
+	if Input.is_action_just_pressed("rod_cast") and _suppress <= 0.0:
+		state = S.CHARGE
+		_power_t = 0.0
 
 
 func _st_bite(delta: float) -> void:
-	# рыба тащит поплавок под воду — окно подсечки
-	_window_t -= delta
 	_bobber.global_position = _sit(delta)
-	_bend_tgt = 0.30
-	if _window_t <= 0.0:
-		state = S.FLOAT # прозевал — рыба сама выйдет из игры (fish_freed)
+	bite.update(delta)
+	if state != S.BITE:
 		return
 	if _suppress <= 0.0 and Input.is_action_just_pressed("rod_cast"):
-		if fish != null and _lure_idx != -1 and fish.hook(_lure_idx):
-			state = S.FIGHT
-			_pulling = false
-			_pull_t = 0.8
-			_tension = 0.0
-			fish_hooked.emit()
+		var caught := bite.hook_attempt()
+		if not caught.is_empty():
+			_begin_fight(caught)
+			return
 	if Input.is_action_just_pressed("rod_recall"):
 		_recall()
 
 
+func _begin_fight(f: Dictionary) -> void:
+	last_fish = f
+	_tension = 0.0
+	_reel_tick_t = 0.0
+	var player_flat := Vector3(_cam.global_position.x, 0.0, _cam.global_position.z)
+	fight.start(f, _bobber.global_position, player_flat, stats)
+	state = S.FIGHT
+	_catch.setup(f)
+	_catch.visible = false
+	_jump_t = 0.0
+	_held.visible = false
+	if water != null and water.field != null:
+		var bp := _bobber.global_position
+		water.field.splash(Vector2(bp.x, bp.z), 1.0)
+	fish_hooked.emit()
+
+
 func _st_fight(delta: float) -> void:
-	_pull_t -= delta
-	if _pull_t <= 0.0:
-		_pulling = not _pulling
-		_pull_t = randf_range(0.8, 1.4) if _pulling else randf_range(0.9, 1.7)
-		if _pulling and water != null and water.field != null:
-			var b := _bobber.global_position
-			water.field.splash(Vector2(b.x, b.z), 0.5) # рывок — кольцо
-	var bp := _bobber.global_position
-	var cp := _cam.global_position
-	var to_cam := Vector2(cp.x - bp.x, cp.z - bp.z)
-	var dcam := to_cam.length()
-	var held := Input.is_action_pressed("rod_cast") and _suppress <= 0.0
-	if fish != null:
-		fish.hooked_refresh(bp) # рыба на крючке следует за поплавком
-	_tick_t -= delta
-	if _pulling:
-		# рыба тянет ОТ игрока; мотать в этот момент — накапливать натяг
-		if dcam < FIGHT_MAX_DIST:
-			var away := Vector3(-to_cam.x, 0.0, -to_cam.y).normalized()
-			bp += away * 2.3 * delta
-		if held:
-			_tension += delta * TENSION_RATE
-			if _tick_t <= 0.0:
-				_tick_t = REEL_TICK
-				reel_tick.emit()
-		else:
-			_tension = maxf(0.0, _tension - delta * 1.1)
-		if _tension >= 1.0:
-			_escape()
-			return
-	else:
-		# затишье — мотаем (с ЛКМ быстро, без неё лениво)
-		var spd := REEL_SPEED if held else REEL_ASSIST
-		if held and _tick_t <= 0.0:
-			_tick_t = REEL_TICK
+	var reeling := Input.is_action_pressed("rod_cast") and _suppress <= 0.0
+	fight.update(delta, reeling, stats, _hand_target())
+	if state != S.FIGHT:
+		return # сигнал finished уже перевёл состояние
+	var wy := water.surface_height(fight.fish_point.x, fight.fish_point.z)
+	var fp := fight.fish_world(wy)
+	_bobber.global_position = fp + Vector3.UP * 0.04
+	_tension = fight.tension
+	tension_changed.emit(fight.tension / 100.0)
+	var t01 := fight.tension / 100.0
+	if reeling and not fight.is_surging():
+		_reel_tick_t -= delta
+		if _reel_tick_t <= 0.0:
+			_reel_tick_t = 0.11
 			reel_tick.emit()
-		if dcam > LAND_DIST:
-			var home := Vector3(to_cam.x, 0.0, to_cam.y).normalized()
-			bp += home * spd * delta
-			if water != null and water.field != null:
-				water.field.wake(Vector2(bp.x, bp.z), 0.6)
-		else:
-			_land()
-			return
-	var dive := -0.12 if _pulling else -0.03
-	if water != null:
-		var wy := water.surface_height(bp.x, bp.z)
-		if coast != null:
-			wy = maxf(wy, coast.ground_height(bp.x, bp.z) + 0.03)
-		bp.y = wy + 0.035 + dive
-	_bobber.global_position = bp
-	if _pulling:
-		_bend_tgt = 0.46 + 0.06 * sin(_t * 31.0)
-	else:
-		_bend_tgt = 0.30 + 0.03 * sin(_t * 17.0)
+	if water != null and water.field != null:
+		water.field.wake(Vector2(fp.x, fp.z), 0.45 + 0.6 * t01)
+	if reeling:
+		_bobber.global_position.y -= 0.10 * t01
+	if fight.phase == "landing":
+		_bobber.visible = false
+	elif not fight.is_surging() and _jump_t <= 0.0:
+		_catch.visible = false
 
 
 func _st_reel(delta: float) -> void:
@@ -413,7 +399,6 @@ func _st_reel(delta: float) -> void:
 		_bobber.global_position = bp
 		if water != null and water.field != null and not on_land:
 			water.field.wake(Vector2(bp.x, bp.z), 0.7)
-		_bend_tgt = 0.22
 	else:
 		state = S.RESTING
 		on_land = false
@@ -422,90 +407,173 @@ func _st_reel(delta: float) -> void:
 
 
 # ---------------------------------------------------------------------------
-# События рыб (SandFish)
+# События BiteSystem
 # ---------------------------------------------------------------------------
 
-func _on_fish_nibbled(idx: int) -> void:
-	if state == S.FLOAT and idx == _lure_idx:
-		_jiggle = 1.0
-		_dive_tgt = -0.02
+func _on_bite_nibble() -> void:
+	if state != S.FLOAT:
+		return
+	if water != null and water.field != null:
+		var bp := _bobber.global_position
+		water.field.nibble(Vector2(bp.x, bp.z))
+	if sand != null and on_land:
+		sand.stamp_foot(Vector2(_bobber.global_position.x, _bobber.global_position.z),
+			Vector2(0, -1), 0.10, 0.10, 0.01, 0.005)
 
 
-func _on_fish_biting(idx: int) -> void:
-	if state == S.FLOAT and idx == _lure_idx:
-		state = S.BITE
-		_window_t = BITE_WINDOW
-		_dive_tgt = -0.30
-		bite_window_started.emit()
+func _on_bite_started(f: Dictionary) -> void:
+	if state != S.FLOAT and state != S.BITE:
+		return
+	last_fish = f
+	state = S.BITE
+	if water != null and water.field != null:
+		var bp := _bobber.global_position
+		water.field.splash(Vector2(bp.x, bp.z), 1.1)
+	bite_window_started.emit()
 
 
-func _on_fish_freed(idx: int) -> void:
-	if idx == _lure_idx:
-		_lure_idx = -1
-	if state == S.BITE:
+func _on_bite_missed(_f: Dictionary) -> void:
+	if state != S.BITE:
+		return
+	state = S.FLOAT
+	_suppress = 0.25
+	bite_missed.emit()
+
+
+# ---------------------------------------------------------------------------
+# События FishFight
+# ---------------------------------------------------------------------------
+
+func _on_surge_telegraph() -> void:
+	surge_telegraph.emit()
+	if water != null and water.field != null:
+		var bp := _bobber.global_position
+		water.field.splash(Vector2(bp.x, bp.z), 0.8)
+	_bobber.global_position.y += 0.05
+
+
+func _on_fight_jump(pos: Vector3) -> void:
+	var wy := water.surface_height(pos.x, pos.z)
+	_jump_from = Vector3(pos.x, wy, pos.z)
+	_jump_t = 0.85
+	_catch.setup(last_fish)
+	_catch.visible = true
+	if water != null and water.field != null:
+		water.field.splash(Vector2(pos.x, pos.z), 1.3)
+
+
+func _on_fight_finished(result: String) -> void:
+	if result == "landed":
+		_land_fish()
+	elif result == "snapped":
+		_fail(true)
+	else:
+		_fail(false)
+
+
+func _land_fish() -> void:
+	var size_cm: float = float(last_fish.get("size_cm", 0.0))
+	_catch.visible = false
+	_bobber.visible = false
+	_jump_t = 0.0
+	state = S.RESTING
+	stowed = false
+	_suppress = 0.5
+	tension_changed.emit(0.0)
+	_held.setup(last_fish)
+	_held.scale *= 0.55
+	_held.position = Vector3(0.02, -0.30, -0.56)
+	_held.rotation = Vector3(-0.15, PI * 0.62, 0.35)
+	_held.visible = true
+	_held_t = 3.2
+	fish_landed.emit(size_cm)
+	fish_caught.emit(last_fish)
+
+
+func _fail(snapped: bool) -> void:
+	_catch.visible = false
+	_jump_t = 0.0
+	tension_changed.emit(0.0)
+	fish_escaped.emit()
+	if snapped:
+		# леска лопнула — снасть потеряна, нужен новый заброс
+		_bobber.visible = false
+		state = S.RESTING
+		_suppress = 0.6
+		line_snap.emit()
+	else:
+		# рыба сошла с крючка: поплавок остался, ждём следующую
 		state = S.FLOAT
-		_dive_tgt = 0.0
-		_bite_t = randf_range(5.0, 10.0)
-		_relure_t = 2.5
+		_suppress = 0.4
+		bite.begin(zone, FishCatalog.time_segment(game.night01),
+			game.wind_strength, stats)
 
 
 # ---------------------------------------------------------------------------
-# Переходы
+# Возврат снасти
 # ---------------------------------------------------------------------------
 
 func _recall() -> void:
-	if fish != null and _lure_idx != -1:
-		fish.scare(_lure_idx)
-		_lure_idx = -1
-	_dive_tgt = 0.0
+	bite.cancel()
 	state = S.REEL_IN
+	tension_changed.emit(0.0)
 
 
-func _land() -> void:
-	var sz := 0.0
-	if fish != null and _lure_idx != -1:
-		sz = fish.claim_catch(_lure_idx)
-	_lure_idx = -1
-	_dive_tgt = 0.0
-	state = S.RESTING
-	_bobber.visible = false
-	on_land = false
-	fish_landed.emit(sz)
-
-
-func _escape() -> void:
-	_tension = 0.0
-	if fish != null and _lure_idx != -1:
-		fish.splash_burst(_bobber.global_position, 1.2)
-		fish.scare(_lure_idx)
-	_lure_idx = -1
-	_dive_tgt = 0.0
-	state = S.FLOAT
-	_bite_t = randf_range(6.0, 11.0)
-	_relure_t = 3.0
-	fish_escaped.emit()
+func _sit(delta: float) -> Vector3:
+	var bp := _bobber.global_position
+	if game != null and not on_land:
+		var w2 := game.wind_dir()
+		bp.x += w2.x * 0.12 * delta
+		bp.z += w2.y * 0.12 * delta
+	var dip_m := 0.0
+	if not on_land:
+		dip_m = bite.dip() * 0.62
+		bp.y = water.surface_height(bp.x, bp.z) + 0.035 - dip_m \
+			+ sin(_t * 26.0) * 0.012 * bite.dip()
+	elif coast != null:
+		bp.y = coast.ground_height(bp.x, bp.z) + 0.06
+	return bp
 
 
 # ---------------------------------------------------------------------------
 # Утилиты
 # ---------------------------------------------------------------------------
 
-## Посадка поплавка: дрейф по ветру + высота поверхности + нырок.
-func _sit(delta: float) -> Vector3:
-	var bp := _bobber.global_position
-	if game != null:
-		var w2 := game.wind_dir()
-		bp.x += w2.x * 0.12 * delta
-		bp.z += w2.y * 0.12 * delta
-	_dive = lerpf(_dive, _dive_tgt, 1.0 - exp(-9.0 * delta))
-	_jiggle = maxf(0.0, _jiggle - delta * 2.4)
-	if on_land and coast != null:
-		bp.y = coast.ground_height(bp.x, bp.z) + 0.06 \
-			+ sin(_t * 26.0) * 0.02 * _jiggle
-	elif water != null:
-		bp.y = water.surface_height(bp.x, bp.z) + 0.035 + _dive \
-			+ sin(_t * 26.0) * 0.045 * _jiggle
-	return bp
+func is_pulling() -> bool:
+	return fight != null and fight.is_surging()
+
+
+func is_surging() -> bool:
+	return fight != null and fight.is_surging()
+
+
+func fight_tension() -> float:
+	return fight.tension if fight != null else 0.0
+
+
+func fight_progress() -> float:
+	return fight.progress if fight != null else 0.0
+
+
+func bobber_position() -> Vector3:
+	return _bobber.global_position
+
+
+## Тест/скриншоты: мгновенная настоящая поклёвка.
+func debug_fast_lure() -> void:
+	if state == S.FLOAT and not on_land:
+		_suppress = 0.0
+		bite.debug_force_bite()
+
+
+func _player_pos() -> Vector3:
+	return Vector3(_cam.global_position.x, 0.0, _cam.global_position.z)
+
+
+## Куда рыба прилетит в руки: чуть впереди и ниже глаз.
+func _hand_target() -> Vector3:
+	var fwd := -_cam.global_transform.basis.z
+	return _cam.global_position + fwd * 1.05 - Vector3.UP * 0.30
 
 
 ## Марш луча по берегу: где луч встречает песок (или INF).
@@ -561,92 +629,12 @@ func _lut_u(s: float) -> float:
 	return 1.0
 
 
-# ---------------------------------------------------------------------------
-# Вид: удилище, леска, поплавок
-# ---------------------------------------------------------------------------
-
-func _build_rod() -> void:
-	_root = Node3D.new()
-	_root.scale = Vector3(0.85, 0.85, 0.85)
-	add_child(_root)
-
-	var mat_h := StandardMaterial3D.new()
-	mat_h.albedo_color = Color(0.33, 0.22, 0.13) # тёплое дерево рукояти
-	mat_h.roughness = 0.75
-	var mat_r := StandardMaterial3D.new()
-	mat_r.albedo_color = Color(0.16, 0.13, 0.11) # тёмный углепластик
-	mat_r.roughness = 0.5
-	var mat_metal := StandardMaterial3D.new()
-	mat_metal.albedo_color = Color(0.55, 0.52, 0.46)
-	mat_metal.roughness = 0.35
-	mat_metal.metallic = 0.6
-
-	var handle := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 0.017
-	cm.bottom_radius = 0.020
-	cm.height = 0.26
-	handle.mesh = cm
-	handle.material_override = mat_h
-	handle.position = Vector3(0.0, 0.12, 0.0)
-	_root.add_child(handle)
-
-	var butt := MeshInstance3D.new()
-	var cb := CylinderMesh.new()
-	cb.top_radius = 0.0105
-	cb.bottom_radius = 0.0125
-	cb.height = 0.52
-	butt.mesh = cb
-	butt.material_override = mat_r
-	butt.position = Vector3(0.0, 0.50, 0.0)
-	_root.add_child(butt)
-
-	_tip = Node3D.new()
-	_tip.position = Vector3(0.0, 0.76, 0.0)
-	_root.add_child(_tip)
-	var top := MeshInstance3D.new()
-	var ct := CylinderMesh.new()
-	ct.top_radius = 0.0025
-	ct.bottom_radius = 0.0102
-	ct.height = 0.56
-	top.mesh = ct
-	top.material_override = mat_r
-	top.position = Vector3(0.0, 0.28, 0.0)
-	_tip.add_child(top)
-
-	# катушка — плоское кольцо, повёрнутое к камере
-	var reel := MeshInstance3D.new()
-	var tr := TorusMesh.new()
-	tr.inner_radius = 0.028
-	tr.outer_radius = 0.042
-	reel.mesh = tr
-	reel.material_override = mat_metal
-	reel.position = Vector3(-0.05, 0.14, 0.0)
-	reel.rotation.x = PI * 0.5
-	_root.add_child(reel)
-
-	# «вертлюг» — маленькая серебристая гайка на комле
-	var knot := MeshInstance3D.new()
-	var ck := CylinderMesh.new()
-	ck.top_radius = 0.014
-	ck.bottom_radius = 0.014
-	ck.height = 0.02
-	knot.mesh = ck
-	knot.material_override = mat_metal
-	knot.position = Vector3(0.0, 0.25, 0.0)
-	_root.add_child(knot)
-
-	for mi in [handle, butt, top, knot]:
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.layers = 2 # слой вью-модели: фонарь его не засвечивает
-
-
+## Мир: поплавок, леска, видимая рыба. top_level — мировые координаты.
 func _build_world() -> void:
 	_world = Node3D.new()
-	_world.top_level = true # дети — в мировых координатах, не в пространстве камеры
+	_world.top_level = true
 	add_child(_world)
 
-	# поплавок: коралловый низ + светлый верх (палитра заката)
 	_bobber = Node3D.new()
 	_world.add_child(_bobber)
 	var mat_lo := StandardMaterial3D.new()
@@ -672,7 +660,6 @@ func _build_world() -> void:
 	_bobber.add_child(hi)
 	_bobber.visible = false
 
-	# леска — ImmediateMesh, перестраивается каждый кадр
 	_line_mi = MeshInstance3D.new()
 	_line_mesh = ImmediateMesh.new()
 	_line_mi.mesh = _line_mesh
@@ -683,79 +670,335 @@ func _build_world() -> void:
 	_line_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_world.add_child(_line_mi)
 
+	_catch = CatchFish.new()
+	_catch.visible = false
+	_world.add_child(_catch)
 
-## Поза: плавный переход «опущена → наготове» и обратно.
-func _update_pose(delta: float) -> void:
-	var target := 0.0 if stowed else 1.0
-	_pose01 = lerpf(_pose01, target, 1.0 - exp(-9.0 * delta))
-
-
-func _animate_rod(delta: float) -> void:
-	_bend = lerpf(_bend, _bend_tgt, 1.0 - exp(-8.0 * delta))
-	_tip.rotation.x = _bend
-
-	var k := smoothf01(_pose01)
-	var pos: Vector3 = STOW_POS.lerp(GRIP_POS, k)
-	var rot: Vector3 = STOW_ROT.lerp(GRIP_ROT, k)
-	# дыхание рук
-	pos += Vector3(sin(_t * 0.9) * 0.004, sin(_t * 1.3) * 0.005, 0.0) * k
-	rot.z += sin(_t * 0.7) * 0.008 * k
-	if state == S.CHARGE:
-		var p := charge_power()
-		pos += Vector3(-0.012, 0.035, 0.09) * p # замах на себя
-		rot.x += 0.10 * p
-	elif state == S.FIGHT:
-		var shake := 0.006 * _tension + (0.004 if _pulling else 0.0)
-		pos += Vector3(sin(_t * 37.0), cos(_t * 29.0), 0.0) * shake
-	_root.position = pos
-	_root.rotation = rot
+	_held = CatchFish.new()
+	_held.visible = false
+	if _cam != null:
+		_cam.add_child(_held)
 
 
+# ---------------------------------------------------------------------------
+# Удилище: цепочка сегментов
+# ---------------------------------------------------------------------------
+
+func _build_rod() -> void:
+	_rod = Node3D.new()
+	add_child(_rod)
+	_rod.visible = false # убранная удочка не торчит в кадре
+	_rod.position = STOW_POS
+	var stow_basis := Basis(Vector3.RIGHT, -2.05) * Basis(Vector3.UP, -0.22)
+	_rod.basis = stow_basis
+	_stow_q = Quaternion(stow_basis)
+	_root_q = _stow_q
+	_root_pos = STOW_POS
+
+	var mat_cork := StandardMaterial3D.new()
+	mat_cork.albedo_color = Color(0.42, 0.30, 0.19)
+	mat_cork.roughness = 0.82
+	var mat_carbon := StandardMaterial3D.new()
+	mat_carbon.albedo_color = Color(0.115, 0.105, 0.100)
+	mat_carbon.roughness = 0.34
+	mat_carbon.metallic = 0.35
+	var mat_metal := StandardMaterial3D.new()
+	mat_metal.albedo_color = Color(0.60, 0.57, 0.50)
+	mat_metal.roughness = 0.30
+	mat_metal.metallic = 0.85
+
+	# рукоять
+	var handle := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.017
+	cm.bottom_radius = 0.021
+	cm.height = HANDLE_LEN
+	cm.radial_segments = 10
+	handle.mesh = cm
+	handle.material_override = mat_cork
+	handle.position = Vector3(0.0, BLANK_Y0 - HANDLE_LEN * 0.5, 0.0)
+	_rod.add_child(handle)
+
+	# комель и катушкодержатель
+	var seat := MeshInstance3D.new()
+	var cs := CylinderMesh.new()
+	cs.top_radius = 0.0165
+	cs.bottom_radius = 0.0165
+	cs.height = 0.055
+	cs.radial_segments = 10
+	seat.mesh = cs
+	seat.material_override = mat_metal
+	seat.position = Vector3(0.0, BLANK_Y0 + 0.02, 0.0)
+	_rod.add_child(seat)
+
+	# 12 сегментов бланка: «кости» с нарастающим изгибом
+	_segs.clear()
+	for i in range(ROD_SEGMENTS):
+		var r0 := lerpf(0.0115, 0.0022, float(i) / float(ROD_SEGMENTS - 1))
+		var r1 := lerpf(0.0115, 0.0022, float(i + 1) / float(ROD_SEGMENTS - 1))
+		var mi := MeshInstance3D.new()
+		var cm2 := CylinderMesh.new()
+		cm2.bottom_radius = r0
+		cm2.top_radius = r1
+		cm2.height = _seg_len * 1.04
+		cm2.radial_segments = 6
+		mi.mesh = cm2
+		mi.material_override = mat_carbon
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_rod.add_child(mi)
+		_segs.append(mi)
+
+	# светящийся кончик — по нему видно леску и поклёвку
+	var tip := MeshInstance3D.new()
+	var ts := SphereMesh.new()
+	ts.radius = 0.009
+	ts.height = 0.018
+	ts.radial_segments = 6
+	ts.rings = 4
+	tip.mesh = ts
+	var tm := StandardMaterial3D.new()
+	tm.albedo_color = Color(0.98, 0.62, 0.24)
+	tm.emission_enabled = true
+	tm.emission = Color(1.0, 0.55, 0.18)
+	tm.emission_energy_multiplier = 1.4
+	tip.material_override = tm
+	tip.position = Vector3(0.0, BLANK_Y0 + BLANK_LEN, 0.0)
+	_rod.add_child(tip)
+
+	# катушка — кольцо, повёрнутое к камере (ось Z)
+	var reel := MeshInstance3D.new()
+	var ring_mesh := TorusMesh.new()
+	ring_mesh.inner_radius = 0.026
+	ring_mesh.outer_radius = 0.042
+	reel.mesh = ring_mesh
+	reel.material_override = mat_metal
+	reel.position = Vector3(0.0, 0.055, 0.050)
+	reel.rotation.x = PI * 0.5
+	_rod.add_child(reel)
+
+	# ручка катушки
+	var crank := MeshInstance3D.new()
+	var cc := CylinderMesh.new()
+	cc.top_radius = 0.005
+	cc.bottom_radius = 0.005
+	cc.height = 0.055
+	cc.radial_segments = 6
+	crank.mesh = cc
+	crank.material_override = mat_metal
+	crank.position = Vector3(0.045, 0.055, 0.050)
+	crank.rotation.z = PI * 0.5
+	_rod.add_child(crank)
+
+	_update_spine(0.0)
+
+
+## Базис с +Y вдоль dir (для сегментов удилища).
+func _basis_from_up(dir: Vector3) -> Basis:
+	var ref := Vector3.RIGHT
+	if absf(dir.dot(ref)) > 0.95:
+		ref = Vector3.FORWARD
+	var z := ref.cross(dir).normalized()
+	var x := dir.cross(z).normalized()
+	return Basis(x, dir, z)
+
+
+func _elev_deg() -> float:
+	match state:
+		S.CHARGE:
+			return 46.0 + charge_power() * 10.0
+		S.FLY:
+			return 14.0
+		S.FLOAT:
+			return 26.0
+		S.BITE:
+			return 15.0
+		S.FIGHT:
+			return 24.0 - _fight_t01() * 12.0
+		_:
+			return 30.0
+
+
+func _fight_t01() -> float:
+	if fight == null:
+		return 0.0
+	return clampf(fight.tension / 100.0, 0.0, 1.0)
+
+
+## Куда смотрит удилище: горизонталь к цели + подъём по состоянию.
+func _aim_dir(d: Vector3) -> Vector3:
+	var hd := Vector3(d.x, 0.0, d.z)
+	if hd.length_squared() < 0.0001:
+		hd = Vector3(0.0, 0.0, -1.0)
+	hd = hd.normalized()
+	# вправо от цели: рукоять в правом нижнем углу, кончик не закрывает море
+	hd = hd.rotated(Vector3.UP, -ROD_YAW)
+	var elev := deg_to_rad(_elev_deg())
+	return (hd * cos(elev) + Vector3.UP * sin(elev)).normalized()
+
+
+func _dir_to_target() -> Vector3:
+	var target := _cam.global_position - _cam.global_transform.basis.z * 12.0 - Vector3.UP * 2.0
+	if state in [S.FLY, S.FLOAT, S.BITE, S.FIGHT] and _bobber.visible:
+		target = _bobber.global_position
+	var local := _cam.global_transform.affine_inverse() * target
+	var d := local - GRIP_POS
+	if d.length_squared() < 0.0001:
+		d = Vector3(0.0, -1.0, -3.0)
+	return d.normalized()
+
+
+func _update_rod(delta: float) -> void:
+	_rod.visible = not stowed
+	var target_pos := GRIP_POS
+	var target_q := _root_q
+	var bend_target := 0.03
+	var axis_cam := Vector3.RIGHT
+	if stowed:
+		target_pos = STOW_POS
+		target_q = _stow_q
+		bend_target = 0.015
+	else:
+		var d := _dir_to_target()
+		var aim := _aim_dir(d)
+		var roll := -0.22
+		if state == S.CHARGE:
+			roll = -0.10
+		target_q = Quaternion(_basis_from_up(aim) * Basis(Vector3.UP, roll))
+		axis_cam = aim.cross(d)
+		if axis_cam.length_squared() < 0.003:
+			axis_cam = Vector3.RIGHT
+		else:
+			axis_cam = axis_cam.normalized()
+		var ang := aim.angle_to(d)
+		var t01 := _fight_t01()
+		var scale := 0.35
+		match state:
+			S.RESTING:
+				scale = 0.22
+			S.CHARGE:
+				scale = 0.25
+			S.FLY:
+				scale = 0.55
+			S.FLOAT:
+				scale = 0.38
+			S.BITE:
+				scale = 0.85
+			S.FIGHT:
+				scale = 0.45 + 0.65 * t01
+		bend_target = clampf(ang, 0.0, 1.25) * scale
+		match state:
+			S.CHARGE:
+				bend_target += 0.06 + 0.20 * charge_power()
+			S.FLY:
+				bend_target += 0.22
+			S.BITE:
+				bend_target += 0.10
+			S.FIGHT:
+				bend_target += 0.10 + 0.40 * t01
+		if state == S.FIGHT and fight != null and fight.is_surging():
+			bend_target += 0.08 + 0.05 * sin(_t * 30.0)
+		# дыхание/дрожь рук
+		var bob := Vector3(sin(_t * 0.9) * 0.004, sin(_t * 1.3) * 0.005, 0.0)
+		if state == S.CHARGE:
+			var p := charge_power()
+			bob += Vector3(-0.012, 0.030, 0.075) * p
+		elif state == S.FIGHT:
+			var shake := 0.004 + 0.010 * t01
+			bob += Vector3(sin(_t * 37.0), cos(_t * 29.0), 0.0) * shake
+		target_pos = GRIP_POS + bob
+
+	var k := 1.0 - exp(-10.0 * delta)
+	_root_pos = _root_pos.lerp(target_pos, k)
+	_root_q = _root_q.slerp(target_q, k)
+	# ось изгиба — в системе координат удилища
+	var axis_local := _root_q.inverse() * axis_cam
+	if axis_local.length_squared() < 0.01:
+		axis_local = Vector3.RIGHT
+	else:
+		axis_local = axis_local.normalized()
+	_bend = lerpf(_bend, clampf(bend_target, 0.0, MAX_BEND), 1.0 - exp(-8.0 * delta))
+	_bend_axis = _bend_axis.slerp(axis_local, 1.0 - exp(-8.0 * delta))
+	if _bend_axis.length_squared() < 0.01:
+		_bend_axis = Vector3.RIGHT
+	else:
+		_bend_axis = _bend_axis.normalized()
+	_update_spine(_bend)
+
+
+## Разложить изгиб по 12 сегментам (вес растёт к вершинке) и запомнить кончик.
+func _update_spine(bend: float) -> void:
+	if _segs.is_empty():
+		return
+	var dir := Vector3.UP
+	var p := Vector3(0.0, BLANK_Y0, 0.0)
+	var wsum := float(ROD_SEGMENTS * (ROD_SEGMENTS + 1)) * 0.5
+	for i in range(ROD_SEGMENTS):
+		var w := float(i + 1) / wsum
+		dir = dir.rotated(_bend_axis, bend * w)
+		var mi := _segs[i]
+		mi.transform = Transform3D(_basis_from_up(dir), p + dir * _seg_len * 0.5)
+		p += dir * _seg_len
+	_tip_local = p
+	_tip_dir = dir
+
+
+func _tip_world() -> Vector3:
+	return _rod.to_global(_tip_local)
+
+
+## Видимая рыба: прыжки в рывок и полёт в руки при вываживании.
+func _update_visual_fish(delta: float) -> void:
+	if _held.visible:
+		_held_t -= delta
+		_held.position.y = -0.30 + sin(_t * 2.0) * 0.006
+		_held.rotation.y += delta * 0.5
+		if _held_t <= 0.0:
+			_held.visible = false
+	if _jump_t > 0.0:
+		_jump_t -= delta
+		var k := clampf(1.0 - _jump_t / 0.85, 0.0, 1.0)
+		var h := clampf(float(last_fish.get("size_cm", 40.0)) / 110.0, 0.5, 2.2)
+		var arc := sin(k * PI) * h
+		var yaw := atan2(_cam.global_position.x - _jump_from.x,
+			_cam.global_position.z - _jump_from.z)
+		_catch.pose_world(_jump_from + Vector3.UP * arc, yaw, lerpf(0.9, -1.2, k))
+		if _jump_t <= 0.0:
+			_catch.visible = false
+	if fight == null or not fight.active:
+		return
+	if fight.phase == "landing":
+		var fp := fight.landing_pos
+		var yaw2 := atan2(fp.x - _cam.global_position.x, fp.z - _cam.global_position.z)
+		_catch.pose_world(fp, yaw2, -0.4)
+
+
+## Леска: от настоящего кончика удилища к поплавку, с провисом.
 func _draw_line() -> void:
 	_line_mesh.clear_surfaces()
-	var show := state in [S.FLY, S.FLOAT, S.BITE, S.FIGHT, S.REEL_IN]
-	if not show or _cam == null or not _bobber.visible:
+	var line_on := state in [S.FLY, S.FLOAT, S.BITE, S.FIGHT]
+	if not line_on or _cam == null or not _bobber.visible:
 		return
-	var tip := _tip.to_global(TIP_LOCAL)
+	var tip := _tip_world()
 	var end := _bobber.global_position + Vector3.UP * 0.10
-	var sag := 0.06
+	var sag := 0.08
+	var t01 := _fight_t01()
 	match state:
 		S.FLOAT:
 			sag = 0.10 + 0.03 * sin(_t * 1.7)
-		S.BITE, S.FIGHT:
-			sag = 0.02
-			if state == S.FIGHT and _pulling:
-				sag += sin(_t * 47.0) * 0.03 # вибрация натянутой лески
-		S.REEL_IN:
-			sag = 0.04
-	var mid := (tip + end) * 0.5 - Vector3.UP * sag
+		S.BITE:
+			sag = 0.035
+		S.FIGHT:
+			sag = 0.02 + 0.16 * (1.0 - t01)
+	_render_line(tip, end, sag)
+
+
+func _render_line(a: Vector3, b: Vector3, sag: float) -> void:
+	var mid := (a + b) * 0.5 + Vector3.DOWN * sag
 	_line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
-	for i in range(15):
-		_line_mesh.surface_add_vertex(_bez(tip, mid, end, float(i) / 14.0))
+	var steps := 12
+	for i in range(steps + 1):
+		var u := float(i) / float(steps)
+		var w := 1.0 - u
+		var p := a * (w * w) + mid * (2.0 * w * u) + b * (u * u)
+		_line_mesh.surface_add_vertex(p)
 	_line_mesh.surface_end()
-
-
-func smoothf01(t: float) -> float:
-	var c := clampf(t, 0.0, 1.0)
-	return c * c * (3.0 - 2.0 * c)
-
-
-# ---------------------------------------------------------------------------
-# Для тестов и скриншотов
-# ---------------------------------------------------------------------------
-
-func is_pulling() -> bool:
-	return _pulling
-
-
-func bobber_position() -> Vector3:
-	return _bobber.global_position
-
-
-## Ускорить приманивание (скриншоты/автотесты).
-func debug_fast_lure() -> void:
-	if state == S.FLOAT and not on_land and fish != null:
-		# головному тесту нельзя зависеть от того, где случайно всплыла стая
-		_lure_idx = fish.force_lure(_bobber.global_position)
-		_bite_t = 0.1
-		_relure_t = 0.0

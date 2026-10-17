@@ -28,6 +28,7 @@ func setup(main_ref: MainScene) -> void:
 	process_priority = -100
 	main.rod.fish_landed.connect(func(sz: float) -> void: _caught = sz)
 	main.fish.set_sdf_enabled(false) # экономим программный рендер
+	main.rod.stats["line"] = 1.6 # хорошая леска: кадр не должен зависеть от баланса
 	# ставим путника ближе к урезу: отсюда заброс гарантированно уходит
 	# в воду, а в кадр попадают море, пирс и дюны за спиной
 	var px := main.coast.shore_x(Coast.SPAWN_Z) + 9.0
@@ -87,8 +88,8 @@ func _process(delta: float) -> void:
 				Input.action_press("rod_cast") # подсечка
 				_go(5)
 			elif t > 10.0 and _fs % 120 == 0:
-				print("[SHOT] ждём поклёвку: state=%d, lure=%d, on_land=%s" % [
-					rod.state, rod._lure_idx, str(rod.on_land)])
+				print("[SHOT] ждём поклёвку: state=%d, зона=%s, on_land=%s, натяг=%.0f, прогресс=%.0f" % [
+					rod.state, rod.zone, str(rod.on_land), rod.fight_tension(), rod.fight_progress()])
 			if t > 22.0:
 				_finish("поклёвки не было, state=%d" % rod.state)
 		5: # подсекли — вываживаем
@@ -100,11 +101,11 @@ func _process(delta: float) -> void:
 			elif t > 4.0:
 				_finish("подсечка не удалась, state=%d" % rod.state)
 		6: # вываживание: мотаем в затишье
-			if rod.is_pulling():
+			if rod.is_pulling() or rod.fight_tension() > 62.0:
 				Input.action_release("rod_cast")
 			else:
 				Input.action_press("rod_cast")
-			if _caught > 0.0 or rod.state == RodCast.S.RESTING or t > 40.0:
+			if _caught > 0.0 or rod.state == RodCast.S.RESTING or t > 60.0:
 				Input.action_release("rod_cast")
 				_go(7)
 		7: # пирс: геройский вид с моря на берег

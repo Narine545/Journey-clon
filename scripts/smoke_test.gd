@@ -211,6 +211,9 @@ func _phase_fish() -> void:
 	var rod: RodCast = main.rod
 	if frames == 1:
 		Engine.time_scale = 3.0
+		# проверяем механику, а не баланс: берём хорошую леску, как у игрока
+		# с прокачкой, иначе редкая сильная рыба может не влезть в лимит кадров
+		rod.stats["line"] = 2.0
 		rod.debug_fast_lure()
 	if rod.state == RodCast.S.BITE and not _hooked:
 		# окно подсечки: жмём ЛКМ, как игрок
@@ -221,16 +224,17 @@ func _phase_fish() -> void:
 			_fight_seen = true
 			Input.action_release("rod_cast")
 			Engine.time_scale = 1.0 # вываживание ведём в реальном времени
-		# мотать в затишье, отпускать в рывок
-		if rod.is_pulling():
+		# мотать, пока натяг не подошёл к красной черте; в рывок — отпускать
+		var t01 := rod.fight_tension() / 100.0
+		if rod.is_pulling() or t01 > 0.62:
 			Input.action_release("rod_cast")
 		else:
 			Input.action_press("rod_cast")
 	elif frames > 20:
 		Input.action_release("rod_cast")
 	if _hooked and frames % 180 == 0 and rod.state == RodCast.S.FIGHT:
-		print("[SMOKE] вываживание: кадр %d, рывок=%s, натяг=%.2f" % [
-			frames, str(rod.is_pulling()), rod._tension])
+		print("[SMOKE] вываживание: кадр %d, рывок=%s, натяг=%.0f, прогресс=%.0f" % [
+			frames, str(rod.is_pulling()), rod.fight_tension(), rod.fight_progress()])
 	if _escaped:
 		_check(false, "рыба сошла (натяг) — этого быть не должно")
 		Engine.time_scale = 1.0
@@ -244,15 +248,15 @@ func _phase_fish() -> void:
 		_check(main.fish.nearest_distance(main.player.global_position) >= 0.0,
 			"рыба: в море остались существа")
 		_next()
-	if frames > 2600 and not _fail:
-		_check(false, "рыба: не поймана за 2600 кадров (state %d, hooked=%s)" % [
+	if frames > 4200 and not _fail:
+		_check(false, "рыба: не поймана за 4200 кадров (state %d, hooked=%s)" % [
 			rod.state, str(_hooked)])
 		Engine.time_scale = 1.0
 		_next()
 	elif frames > 900 and not _state_logged:
 		_state_logged = true
 		print("[SMOKE] рыба: долго, state=%d, on_land=%s, lure=%s" % [
-			rod.state, str(rod.on_land), str(rod._lure_idx)])
+			rod.state, str(rod.on_land), rod.zone])
 
 
 # ---------------------------------------------------------------------------

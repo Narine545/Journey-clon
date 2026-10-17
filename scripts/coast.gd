@@ -140,9 +140,12 @@ func height_at(x: float, z: float) -> float:
 		var d := -t
 		h = -d * SEABED_SLOPE
 		h -= smoothf(d, 26.0, 120.0) * d * (SEABED_DEEP - SEABED_SLOPE)
-		h += _bars.get_noise_2d(x * 0.02, z * 0.02) * 0.55
+		# у самого уреза песок чистый: шум просыпается только на глубине,
+		# иначе дно то выныривает, то прячется — урез рвётся лоскутами
+		var calm := smoothf(d, 0.0, 7.0)
+		h += _bars.get_noise_2d(x * 0.02, z * 0.02) * 0.55 * calm
 		# у самого уреза — песчаная «коса» под водой, мягко
-		h += _fine.get_noise_2d(x * 0.09, z * 0.09) * 0.10
+		h += _fine.get_noise_2d(x * 0.09, z * 0.09) * 0.10 * calm
 
 	# залив закрыт по краям: дюны поднимаются в том числе из воды
 	var ez := smoothf(absf(z), 245.0, 430.0)
@@ -386,8 +389,8 @@ func _build_mesh() -> void:
 	mat.set_shader_parameter("sand_texel", SandField.TEXEL)
 	# мокрая полоса у уреза и подводный песок — красит шейдер
 	mat.set_shader_parameter("sea_level", SEA_LEVEL)
-	mat.set_shader_parameter("wet_band", 7.0)
-	mat.set_shader_parameter("wet_darken", 0.55)
+	mat.set_shader_parameter("wet_band", 2.6)
+	mat.set_shader_parameter("wet_darken", 0.42)
 
 	mesh = coast_mesh
 	material_override = mat

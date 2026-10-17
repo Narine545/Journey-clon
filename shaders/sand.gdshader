@@ -27,19 +27,20 @@ uniform float fog_distance = 340.0;
 uniform vec2 wind_dir = vec2(0.32, -0.95); // нормализуется внутри
 uniform float wind_power = 1.0;
 
-uniform float ripple_freq = 2.2;      // плотность гребней поперёк ветра
+uniform float ripple_freq = 4.0;      // плотность гребней поперёк ветра
 uniform float ripple_speed = 1.5;     // скорость бега ряби по ветру
-uniform float ripple_strength = 0.50; // глубина ряби (влияние на нормаль)
+uniform float ripple_strength = 0.16; // глубина ряби (влияние на нормаль)
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
-uniform float mega_amp = 0.055; // амплитуда мега-ряби (слой 2)
+uniform float mega_amp = 0.018; // амплитуда мега-ряби (слой 2, суша)
+uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
 // ---- Урез воды: мокрая полоса и подводный песок ----
 // Море лежит плоско на sea_level; там, где песок выше — вода спрятана
 // depth-тестом. Мокрую полосу и подводный песок красит этот же шейдер:
 // у уреза песок темнее, холоднее и глянцевее, искры гаснут.
 uniform float sea_level = 0.0;   // мировой Y уровня моря
-uniform float wet_band = 7.0;    // сколько метров над водой сохнет
-uniform float wet_darken = 0.60; // сила мокрого затемнения
+uniform float wet_band = 2.6;    // сколько метров над водой сохнет
+uniform float wet_darken = 0.42; // сила мокрого затемнения
 
 // ---- Настоящий песок: карта смещений ----
 uniform sampler2D sand_map : filter_linear, repeat_enable;
@@ -144,7 +145,7 @@ void fragment() {
 	float ms3 = sin(mph * 0.47 + 0.8);
 	float mdv = (-0.62 * 0.70 * ms1 - 0.30 * 2.63 * 0.70 * ms2 - 0.22 * 0.47 * 0.70 * ms3) * mega_amp;
 	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2 - 0.22 * 0.47 * 0.16 * ms3) * mega_amp;
-	vec2 mgrad = (wperp * mdv + wdir * mdu) * wind_power * (1.0 - 0.6 * churn);
+	vec2 mgrad = (wperp * mdv + wdir * mdu) * wind_power * (1.0 - 0.6 * churn) * 0.55;
 	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y));
 
 	// ---------- 1. Рябь от ветра ----------
@@ -199,17 +200,24 @@ void fragment() {
 	// крупный тональный шум: дюны не одинаковые
 	base *= mix(0.92, 1.07, vnoise(wp * 0.013 + vec2(3.1, 7.7)));
 	// рябь самозатеняется, песчинки дают видимое зерно
-	base *= 1.0 - 0.06 * (1.0 - rshade) * detail * (1.0 - 0.5 * churn);
+	base *= 1.0 - 0.025 * (1.0 - rshade) * detail * (1.0 - 0.5 * churn);
 	base *= 1.0 + (vnoise(wp * 2.7) - 0.5) * 0.08 * detail;
 
-	// ---------- 2a. Урез: мокрая полоса и подводный песок ----------
-	// Ширина «сохнущей» зоны гуляет шумом — граница мокрого не линейка.
-	float above_sea = w_pos.y - sea_level;
-	float wet = 1.0 - smoothstep(0.12, wet_band, above_sea);
-	wet *= 0.72 + 0.28 * vnoise(wp * 0.33 + vec2(4.1, 8.3));
+	// ---------- 2a. Урез: прибой ----------
+	// Высота воды в точке — ТА ЖЕ формула, что в vertex water.gdshader:
+	// море дышит, и мокрая кайма ползёт по пляжу вместе с ним.
+	float swash = (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
+		+ cos(mph * 0.47 + 0.8) * 0.22) * sea_swell * wind_power;
+	float above_sea = w_pos.y - (sea_level + swash);
+	float wob = vnoise(wp * 0.35 + vec2(4.1, 8.3));
+	// мокрая полоса: узкая, с рваным волокнистым краем
+	float wet = 1.0 - smoothstep(-0.02, wet_band * (0.65 + 0.7 * wob), above_sea);
+	wet *= 0.72 + 0.28 * wob;
 	float sub = 1.0 - smoothstep(-1.6, 0.0, above_sea);
-	// потревоженный прибоем песок глаже: рябь там приглажена
-	// (нормаль уже посчитана выше — гасим её добавкой к гладкости ниже)
+	// пена: узкая светлая кайма на самой кромке, вспенивается пятнами
+	float fw = 0.05 + 0.06 * vnoise(wp * 1.9 + vec2(2.0, 5.0));
+	float foam = 1.0 - smoothstep(0.0, fw, abs(above_sea - 0.02));
+	foam *= wet * (0.45 + 0.55 * vnoise(wp * 3.1 + vec2(TIME * 0.6, 0.0)));
 
 	// ---------- 2b. След: настоящий рельеф красится как настоящий ----------
 	float press = clamp(-h * 12.0, 0.0, 1.0); // дно следа
@@ -222,6 +230,8 @@ void fragment() {
 	// мокрый песок: темнее и холоднее, подводный — глуше и синее
 	base = mix(base, base * vec3(0.56, 0.57, 0.66), wet * wet_darken);
 	base = mix(base, base * vec3(0.40, 0.46, 0.56), sub * 0.55);
+	// прибойная пена — тёплый свет, не белая краска
+	base = mix(base, vec3(0.97, 0.91, 0.79), clamp(foam * 0.55, 0.0, 0.55));
 
 	// ---------- 3. Глиттер (микрофасеты, по мотивам Zucconi) ----------
 	// «Песчинки» размером с пиксель (LOD по дистанции). ДВА лба:
@@ -267,10 +277,10 @@ void fragment() {
 	float fres = 0.35 + 0.65 * pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
 	float sheen = pow(clamp(dot(N, H), 0.0, 1.0), 16.0) * 0.7
 		+ pow(clamp(dot(N, H), 0.0, 1.0), 48.0) * 0.3;
-	base += vec3(1.0, 0.72, 0.45) * sheen * fres * 0.16 * near_gloss
-		* smoothstep(0.0, 0.5, wrap) * (1.0 - churn * 0.5) * (1.0 + 1.6 * wet);
+	base += vec3(1.0, 0.72, 0.45) * sheen * fres * 0.045 * near_gloss
+		* smoothstep(0.0, 0.5, wrap) * (1.0 - churn * 0.5) * (1.0 + 0.6 * wet);
 	// скользящий ракурс: ближний песок у кромки дюны слегка рдеет
-	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.22 * ao * near_gloss;
+	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.10 * ao * near_gloss;
 
 	// ---------- 4. Дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
@@ -281,8 +291,8 @@ void fragment() {
 	// Аналитическая нормаль следов и ряби теперь питает реальный BRDF,
 	// поэтому фонарь скользит по гребням, а впадины получают контактную тень.
 	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0)).xyz);
-	ROUGHNESS = mix(0.88, 0.62, clamp(fres, 0.0, 1.0)) + churn * 0.08
-		- wet * 0.22;
-	SPECULAR = 0.28;
+	ROUGHNESS = mix(0.95, 0.80, clamp(fres, 0.0, 1.0)) + churn * 0.05
+		- wet * 0.16;
+	SPECULAR = 0.16;
 	METALLIC = 0.0;
 }

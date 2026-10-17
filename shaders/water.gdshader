@@ -18,7 +18,7 @@ shader_type spatial;
 // render_mode — ровно как у песка: diffuse_burley + specular_schlick_ggx,
 // шероховатость песочная (0.88..0.62). Солнце рисует шёлк само.
 
-render_mode diffuse_burley, specular_schlick_ggx;
+render_mode diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_never;
 
 // ---- Палитра — ТО ЖЕ, что у песка (оригинал без изменений) ----
 uniform vec3 sun_dir = vec3(0.10, 0.26, -0.96); // к солнцу (как у песка)
@@ -52,6 +52,10 @@ uniform float ring_wg = 0.18;    // м/с, расползание ширины
 uniform float ring_boost = 1.4;  // крутизна нормалей колец (художественный)
 
 uniform float u_time = 0.0;
+// Мягкий урез: вода растворяется над песком по разнице глубин сцены.
+// Это убирает жёсткую (и рваную на треугольниках) линию пересечения.
+uniform float shore_fade = 0.30; // м глубины, на которых вода прозрачна
+uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform vec4 u_rings[24]; // x, z, t0, amp; amp <= 0.0005 — слот пуст
 
 varying vec3 w_pos;
@@ -226,10 +230,12 @@ void fragment() {
 	float fres = 0.35 + 0.65 * pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
 	float sheen = pow(clamp(dot(N, H), 0.0, 1.0), 16.0) * 0.7
 		+ pow(clamp(dot(N, H), 0.0, 1.0), 48.0) * 0.3;
-	base += vec3(1.0, 0.72, 0.45) * sheen * fres * 0.16 * near_gloss
+	base += vec3(1.0, 0.72, 0.45) * sheen * fres * 0.22 * near_gloss
 		* smoothstep(0.0, 0.5, wrap);
 	// скользящий ракурс: ближняя кромка слегка рдеет
 	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.22 * near_gloss;
+	// прохладная наплыв: море всё-таки вода, а не песок — иначе урез не читается
+	base = mix(base, base * vec3(0.74, 0.86, 1.02) + vec3(0.02, 0.05, 0.09), 0.35);
 
 	// ---------- Дымка к горизонту — та же, что у песка ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
@@ -238,7 +244,19 @@ void fragment() {
 
 	ALBEDO = mix(base, fcol, fog);
 	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0)).xyz);
-	ROUGHNESS = mix(0.88, 0.62, clamp(fres, 0.0, 1.0));
-	SPECULAR = 0.28;
+	// вода глаже песка: длинная солнечная дорожка читается как жидкость
+	ROUGHNESS = mix(0.60, 0.32, clamp(fres, 0.0, 1.0));
+	SPECULAR = 0.50;
 	METALLIC = 0.0;
+
+	// ---- Мягкий урез: alpha по разнице глубины сцены и воды ----
+	// Вдали (над открытой водой) разница огромна — alpha 1; над пологим
+	// песком у кромки вода плавно гаснет, шва и «лоскутов» нет.
+	float sd = texture(depth_tex, SCREEN_UV).r;
+	vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, sd, 1.0);
+	vec4 vp = INV_PROJECTION_MATRIX * ndc;
+	vp.xyz /= vp.w;
+	float scene_z = -vp.z;
+	float water_z = -VERTEX.z;
+	ALPHA = smoothstep(0.0, shore_fade, scene_z - water_z);
 }
