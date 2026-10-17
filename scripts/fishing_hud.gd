@@ -146,7 +146,7 @@ func _on_draw() -> void:
 	var fs := 21
 	var col := hint_col
 	col.a *= alpha
-	draw_string(_font, Vector2(px, cy + 20.0), hint,
+	_root.draw_string(_font, Vector2(px, cy + 20.0), hint,
 		HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, fs, col)
 	cy += 30.0
 
@@ -154,18 +154,18 @@ func _on_draw() -> void:
 	if bar_a >= 0.0:
 		_draw_bar(px + 22.0, cy, BAR_W, BAR_H, bar_a, bar_a_col, alpha,
 			rod.state == RodCast.S.FIGHT)
-		draw_string(_font, Vector2(px + 22.0 + BAR_W + 10.0, cy + BAR_H + 1.0),
+		_root.draw_string(_font, Vector2(px + 22.0 + BAR_W + 10.0, cy + BAR_H + 1.0),
 			label_a, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, C_DIM)
 		cy += 13.0
 	if bar_b >= 0.0:
 		_draw_bar(px + 22.0, cy, BAR_W, BAR_H - 1.0, bar_b, C_SAND, alpha)
-		draw_string(_font, Vector2(px + 22.0 + BAR_W + 10.0, cy + BAR_H + 0.5),
+		_root.draw_string(_font, Vector2(px + 22.0 + BAR_W + 10.0, cy + BAR_H + 0.5),
 			label_b, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, C_DIM)
 		cy += 13.0
 
 	# подсказка-статус, если панель пустая
 	if bar_a < 0.0 and bar_b < 0.0:
-		draw_string(_font, Vector2(px, cy + 14.0), "рыбалка на песке: заброс → поклёвка → подсечка → вываживание",
+		_root.draw_string(_font, Vector2(px, cy + 14.0), "рыбалка на песке: заброс → поклёвка → подсечка → вываживание",
 			HORIZONTAL_ALIGNMENT_CENTER, PANEL_W, 12, C_DIM)
 
 	# ---- чип зоны/времени/journal в правом верхнем углу ----
@@ -179,7 +179,7 @@ func _on_draw() -> void:
 		tcol.a = ta
 		_round_rect(Rect2(cx - tw * 0.5, py - 44.0, tw, 32.0),
 			Color(0.03, 0.03, 0.04, 0.55 * ta), 10.0)
-		draw_string(_font, Vector2(cx - tw * 0.5, py - 44.0 + 21.0), _toast,
+		_root.draw_string(_font, Vector2(cx - tw * 0.5, py - 44.0 + 21.0), _toast,
 			HORIZONTAL_ALIGNMENT_CENTER, tw, 17, tcol)
 
 
@@ -195,7 +195,7 @@ func _draw_bar(x: float, y: float, w: float, h: float, v: float, col: Color,
 	# красная зона натяга: после 72 % — леска на грани
 	if red_zone:
 		var rx := x + w * 0.72
-		draw_line(Vector2(rx, y - 2.0), Vector2(rx, y + h + 2.0),
+		_root.draw_line(Vector2(rx, y - 2.0), Vector2(rx, y + h + 2.0),
 			Color(0.95, 0.34, 0.28, 0.45 * alpha), 1.0)
 
 
@@ -219,7 +219,7 @@ func _draw_chip(vp: Vector2, alpha: float) -> void:
 	_round_rect(Rect2(x, y, w, 26.0), Color(0.03, 0.03, 0.04, 0.42 * alpha), 9.0)
 	var c := C_DIM
 	c.a *= alpha
-	draw_string(_font, Vector2(x, y + 18.0), text, HORIZONTAL_ALIGNMENT_CENTER, w, 13, c)
+	_root.draw_string(_font, Vector2(x, y + 18.0), text, HORIZONTAL_ALIGNMENT_CENTER, w, 13, c)
 
 
 func _round_rect(r: Rect2, col: Color, radius: float) -> void:
@@ -230,4 +230,4 @@ func _round_rect(r: Rect2, col: Color, radius: float) -> void:
 	sb.corner_radius_bottom_left = int(radius)
 	sb.corner_radius_bottom_right = int(radius)
 	sb.anti_aliasing = true
-	draw_style_box(sb, r)
+	_root.draw_style_box(sb, r)

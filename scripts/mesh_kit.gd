@@ -173,8 +173,8 @@ static func add_log(st: SurfaceTool, a: Vector3, b: Vector3,
 		x = y.cross(Vector3.RIGHT)
 	x = x.normalized()
 	var z := x.cross(y).normalized()
-	var b := Basis(x, y, z)
-	add_cylinder(st, (a + b) * 0.5, r_a, r_b, seg_len, segs, col, true, true, b)
+	var bs := Basis(x, y, z)
+	add_cylinder(st, (a + b) * 0.5, r_a, r_b, seg_len, segs, col, true, true, bs)
 
 
 static func smoothf01(t: float) -> float:
