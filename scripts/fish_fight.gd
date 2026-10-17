@@ -92,7 +92,6 @@ func start(p_fish: Dictionary, start_pos: Vector3, player_pos: Vector3,
 	_surge_state = "calm"
 	_surge_timer = rng.randf_range(_surge_every[0], _surge_every[1]) * 0.7
 	_surge_t = 0.0
-	_splash_t = 0.0
 	_zero_t = 0.0
 
 
