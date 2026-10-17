@@ -55,7 +55,7 @@ const ROD_SEGMENTS := 12
 const BLANK_LEN := 1.02
 const BLANK_Y0 := 0.12
 const HANDLE_LEN := 0.27
-const GRIP_POS := Vector3(0.30, -0.44, -0.55)
+const GRIP_POS := Vector3(0.34, -0.50, -0.60)
 const STOW_POS := Vector3(0.30, -0.58, -0.50)
 const ROD_YAW := 0.38 # удилище уходит вправо, кадр остаётся свободным
 const MAX_BEND := 1.30
@@ -781,12 +781,13 @@ func _build_rod() -> void:
 	# катушка — кольцо, повёрнутое к камере (ось Z)
 	var reel := MeshInstance3D.new()
 	var ring_mesh := TorusMesh.new()
-	ring_mesh.inner_radius = 0.026
-	ring_mesh.outer_radius = 0.042
+	ring_mesh.inner_radius = 0.024
+	ring_mesh.outer_radius = 0.036
 	reel.mesh = ring_mesh
 	reel.material_override = mat_metal
-	reel.position = Vector3(0.0, 0.055, 0.050)
-	reel.rotation.x = PI * 0.5
+	reel.position = Vector3(0.0, 0.055, 0.040)
+	# плоскость катушки вдоль бланка (ось Z), как у настоящей безынерционки
+	reel.rotation = Vector3(PI * 0.5, 0.0, 0.0)
 	_rod.add_child(reel)
 
 	# ручка катушки
