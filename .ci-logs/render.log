@@ -33,39 +33,12 @@ ERROR: Shader compilation failed.
        [0] _build_mesh (res://scripts/coast.gd:376)
        [1] setup (res://scripts/coast.gd:99)
        [2] _ready (res://scripts/main.gd:46)
-WARNING: Godot 3.x SpatialMaterial remapped parameter not found: specular
-     at: _set (scene/resources/material.cpp:4096)
-     GDScript backtrace (most recent call first):
-         [0] _build (res://scripts/pier.gd:171)
-         [1] setup (res://scripts/pier.gd:38)
-         [2] _ready (res://scripts/main.gd:51)
-WARNING: Godot 3.x SpatialMaterial remapped parameter not found: specular
-     at: _set (scene/resources/material.cpp:4096)
-     GDScript backtrace (most recent call first):
-         [0] _rock_material (res://scripts/props.gd:28)
-         [1] _build_stacks (res://scripts/props.gd:74)
-         [2] setup (res://scripts/props.gd:18)
-         [3] _ready (res://scripts/main.gd:56)
-WARNING: Godot 3.x SpatialMaterial remapped parameter not found: specular
-     at: _set (scene/resources/material.cpp:4096)
-     GDScript backtrace (most recent call first):
-         [0] _wood_material (res://scripts/props.gd:37)
-         [1] _build_driftwood (res://scripts/props.gd:110)
-         [2] setup (res://scripts/props.gd:19)
-         [3] _ready (res://scripts/main.gd:56)
-WARNING: Godot 3.x SpatialMaterial remapped parameter not found: specular
-     at: _set (scene/resources/material.cpp:4096)
-     GDScript backtrace (most recent call first):
-         [0] _rock_material (res://scripts/props.gd:28)
-         [1] _build_stones (res://scripts/props.gd:132)
-         [2] setup (res://scripts/props.gd:20)
-         [3] _ready (res://scripts/main.gd:56)
 [SHOT] кадры в /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_a_coast.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_b_rod.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_c_charge.png -> 0
-[SHOT] стоп: заброс не удался, state=0
-[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_j_final.png -> 0
+[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_d_bobber.png -> 0
+[SHOT] стоп: поклёвки не было, state=3
 [SHOT] готово
 WARNING: 1 RID of type "CanvasItem" was leaked.
    at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2733)
