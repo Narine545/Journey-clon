@@ -252,7 +252,7 @@ void fragment() {
 	// прохладная наплыв: море всё-таки вода, а не песок — иначе урез не читается
 	base = mix(base, base * vec3(0.74, 0.86, 1.02) + vec3(0.02, 0.05, 0.09), 0.35);
 	// мелководье: тонкая вода на песке — темнее, матовее, без бликов
-	base = mix(base, base * vec3(0.52, 0.44, 0.36), shallow * 0.85);
+	base = mix(base, base * vec3(0.40, 0.33, 0.27), shallow * 0.92);
 
 	// ---------- Дымка к горизонту — та же, что у песка ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
@@ -272,7 +272,7 @@ void fragment() {
 		+ cos(mph * 0.47 + 0.8) * 0.22) * mega_amp * wind_power;
 	float lift = swash_h / 0.062; // насколько накат сдвинул кромку по пляжу
 	float dx = shore_dx - lift; // >0 — суша, <0 — море
-	float shore_a = 1.0 - smoothstep(-1.8, 0.15, dx);
+	float shore_a = (1.0 - smoothstep(-1.5, 0.12, dx)) * (0.55 + 0.45 * (1.0 - shallow));
 	// 2) мягкое пересечение с любыми предметами (depth-буфер сцены)
 	float sd = texture(depth_tex, SCREEN_UV).r;
 	vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, sd, 1.0);
