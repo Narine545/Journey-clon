@@ -208,6 +208,8 @@ func _st_resting(_delta: float) -> void:
 		if Input.is_action_just_pressed("rod_cast") and water != null:
 			stowed = false
 		return
+	if _suppress > 0.0:
+		return
 	if Input.is_action_just_pressed("rod_toggle"):
 		stowed = true
 		return
@@ -666,9 +668,26 @@ func _build_world() -> void:
 	lo.mesh = sl
 	lo.material_override = mat_lo
 	_bobber.add_child(lo)
+	# тёмная юбка: на светлой глади поплавок держит силуэт
+	var skirt := MeshInstance3D.new()
+	var sk := CylinderMesh.new()
+	sk.top_radius = 0.10
+	sk.bottom_radius = 0.013
+	sk.height = 0.16
+	sk.radial_segments = 10
+	skirt.mesh = sk
+	var sm := StandardMaterial3D.new()
+	sm.albedo_color = Color(0.18, 0.10, 0.07)
+	sm.roughness = 0.8
+	skirt.material_override = sm
+	skirt.position = Vector3(0.0, -0.20, 0.0)
+	_bobber.add_child(skirt)
 	var mat_hi := StandardMaterial3D.new()
-	mat_hi.albedo_color = Color(0.97, 0.91, 0.80)
-	mat_hi.roughness = 0.5
+	mat_hi.albedo_color = Color(1.0, 0.96, 0.88)
+	mat_hi.roughness = 0.45
+	mat_hi.emission_enabled = true
+	mat_hi.emission = Color(0.55, 0.42, 0.24)
+	mat_hi.emission_energy_multiplier = 0.55
 	var hi := MeshInstance3D.new()
 	var sh := SphereMesh.new()
 	sh.radius = 0.120
@@ -770,8 +789,8 @@ func _build_rod() -> void:
 	# светящийся кончик — по нему видно леску и поклёвку
 	var tip := MeshInstance3D.new()
 	var ts := SphereMesh.new()
-	ts.radius = 0.009
-	ts.height = 0.018
+	ts.radius = 0.006
+	ts.height = 0.012
 	ts.radial_segments = 6
 	ts.rings = 4
 	tip.mesh = ts
@@ -779,33 +798,44 @@ func _build_rod() -> void:
 	tm.albedo_color = Color(0.98, 0.62, 0.24)
 	tm.emission_enabled = true
 	tm.emission = Color(1.0, 0.55, 0.18)
-	tm.emission_energy_multiplier = 1.4
+	tm.emission_energy_multiplier = 0.9
 	tip.material_override = tm
 	tip.position = Vector3(0.0, BLANK_Y0 + BLANK_LEN, 0.0)
 	_rod.add_child(tip)
 
-	# катушка — кольцо, повёрнутое к камере (ось Z)
-	var reel := MeshInstance3D.new()
-	var ring_mesh := TorusMesh.new()
-	ring_mesh.inner_radius = 0.024
-	ring_mesh.outer_radius = 0.036
-	reel.mesh = ring_mesh
-	reel.material_override = mat_metal
-	reel.position = Vector3(0.0, 0.055, 0.040)
-	# плоскость катушки вдоль бланка (ось Z), как у настоящей безынерционки
-	reel.rotation = Vector3(PI * 0.5, 0.0, 0.0)
-	_rod.add_child(reel)
+	# катушка: барабан с осью поперёк бланка + дужка лесоукладывателя
+	var drum := MeshInstance3D.new()
+	var dm := CylinderMesh.new()
+	dm.top_radius = 0.030
+	dm.bottom_radius = 0.030
+	dm.height = 0.036
+	dm.radial_segments = 14
+	drum.mesh = dm
+	drum.material_override = mat_metal
+	drum.position = Vector3(0.0, 0.058, 0.046)
+	drum.rotation.z = PI * 0.5
+	_rod.add_child(drum)
+	var bail := MeshInstance3D.new()
+	var bm := TorusMesh.new()
+	bm.inner_radius = 0.038
+	bm.outer_radius = 0.044
+	bm.ring_segments = 12
+	bail.mesh = bm
+	bail.material_override = mat_metal
+	bail.position = Vector3(0.012, 0.058, 0.046)
+	bail.rotation.y = PI * 0.5
+	_rod.add_child(bail)
 
-	# ручка катушки
+	# ручка катушки сбоку
 	var crank := MeshInstance3D.new()
 	var cc := CylinderMesh.new()
 	cc.top_radius = 0.005
 	cc.bottom_radius = 0.005
-	cc.height = 0.055
+	cc.height = 0.050
 	cc.radial_segments = 6
 	crank.mesh = cc
 	crank.material_override = mat_metal
-	crank.position = Vector3(0.045, 0.055, 0.050)
+	crank.position = Vector3(0.048, 0.058, 0.046)
 	crank.rotation.z = PI * 0.5
 	_rod.add_child(crank)
 
