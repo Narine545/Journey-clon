@@ -14,7 +14,7 @@ const HALF_W := 1.35 # полширины настила, м
 const PLANK := 0.24 # шаг досок, м
 const POST_STEP := 4.2 # шаг свай, м
 
-var game
+var game: GameState
 var coast: Coast
 var pz := -36.0 # z оси пирса
 var x_start := 0.0 # береговой конец
@@ -79,7 +79,7 @@ func _build() -> void:
 			HALF_W * 2.0 - 0.04), b, c)
 
 	# --- продольные балки под настилом ---
-	for side in [-1.0, 1.0]:
+	for side: float in [-1.0, 1.0]:
 		var xm := (x_start + x_end) * 0.5
 		var span := (x_start - x_end)
 		var slope := (deck_y0 - deck_y1) / maxf(span, 0.01)
@@ -92,7 +92,7 @@ func _build() -> void:
 	var px := x_end
 	while px <= x_start + 0.01:
 		var top := _deck_y(px) - 0.09
-		for side in [-1.0, 1.0]:
+		for side: float in [-1.0, 1.0]:
 			var z := pz + side * (HALF_W - 0.10)
 			var bottom := coast.sample_height(px, z) - 0.6
 			var h := top - bottom
@@ -107,7 +107,7 @@ func _build() -> void:
 		px += POST_STEP
 
 	# --- перила: стойки и две перекладины по обеим сторонам ---
-	for side in [-1.0, 1.0]:
+	for side: float in [-1.0, 1.0]:
 		var z := pz + side * (HALF_W - 0.06)
 		var x := x_end + 0.4
 		while x <= x_start - 0.2:
@@ -116,7 +116,7 @@ func _build() -> void:
 				Vector3(0.075, 1.0, 0.075), Basis.IDENTITY, wood_dark)
 			x += 2.5
 		# перекладины — сегменты по 2.5 м вдоль уклона
-		for hgt in [0.55, 0.97]:
+		for hgt: float in [0.55, 0.97]:
 			x = x_end + 0.2
 			while x < x_start - 0.2:
 				var x2 := minf(x + 2.5, x_start)

@@ -4,7 +4,7 @@ extends Node3D
 ## Всё строится кодом в setup(). Горизонт закрыт настоящими дальними
 ## дюнами — карта террейна расширена (см. Coast), никаких подставок.
 
-var game # автозагрузка Game
+var game: GameState # автозагрузка Game
 
 var _sky_mat: ShaderMaterial
 var _sun: DirectionalLight3D

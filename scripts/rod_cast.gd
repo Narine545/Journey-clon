@@ -59,11 +59,11 @@ const STOW_POS := Vector3(0.30, -0.08, -0.40)
 const STOW_ROT := Vector3(-2.25, 0.34, -0.42) # удилище вниз-вперёд, «в руке»
 const TIP_LOCAL := Vector3(0.0, 0.56, 0.0) # кончик вершинки в шарнире _tip
 
-var game # автозагрузка Game — только ветер для дрейфа поплавка
-var water # WaterSurface — уровень/высота воды
-var fish # SandFish — всплески, приманивание, подсечка
-var coast # Coast — чтобы не забрасывать «в песок» вслепую
-var sand # SandField — вмятины от поплавка на песке
+var game: GameState # автозагрузка Game — только ветер для дрейфа поплавка
+var water: WaterSurface # WaterSurface — уровень/высота воды
+var fish: SandFish # SandFish — всплески, приманивание, подсечка
+var coast: Coast # Coast — чтобы не забрасывать «в песок» вслепую
+var sand: SandField # SandField — вмятины от поплавка на песке
 var state: int = S.RESTING
 var stowed := true # удочка опущена (в руке, но не наготове)
 var on_land := false # поплавок лежит на песке

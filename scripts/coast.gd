@@ -37,7 +37,7 @@ const AO_STEP := 4
 const AO_DIRS := 8
 const AO_RAYS := [2.5, 6.0, 12.0]
 
-var game # автозагрузка Game
+var game: GameState # автозагрузка Game
 var sand: SandField # поле настоящего песка (может не быть)
 
 var _coast := FastNoiseLite.new() # изгиб линии уреза

@@ -9,7 +9,7 @@ extends Node3D
 ## берега: camены стоят в воде, коряги — на песке.
 
 var coast: Coast
-var game
+var game: GameState
 
 
 func setup(coast_ref, game_ref) -> void:

@@ -155,7 +155,7 @@ func _hash12(p: Vector2) -> float:
 func _vnoise(p: Vector2) -> float:
 	var i := p.floor()
 	var f := p - i
-	f = f * f * (3.0 - 2.0 * f) # smoothstep-вес 3f²-2f³
+	f = Vector2(f.x * f.x * (3.0 - 2.0 * f.x), f.y * f.y * (3.0 - 2.0 * f.y)) # smoothstep 3f²-2f³
 	var a := _hash12(i)
 	var b := _hash12(i + Vector2(1.0, 0.0))
 	var c := _hash12(i + Vector2(0.0, 1.0))

@@ -15,7 +15,7 @@ const HIST_DT := 0.055 # шаг записи истории, сек
 const SPAWN_R := 26.0
 const KILL_R := 34.0
 
-var game
+var game: GameState
 var player: Player
 var terrain: Coast
 

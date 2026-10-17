@@ -9,7 +9,7 @@ extends Node
 ## функциями, что и камера, ждёт реальные сигналы удочки. Никаких
 ## «тестовых телепортов» в логике рыбалки — только в подготовке фаз.
 
-var main: Node3D
+var main: MainScene
 var phase := 0
 var frames := 0
 var results: Array[String] = []
@@ -29,7 +29,7 @@ var _state_logged := false
 var _extra_state := 0
 
 
-func setup(main_ref: Node3D) -> void:
+func setup(main_ref: MainScene) -> void:
 	main = main_ref
 	# головной прогон без графики: главный цикл не должен обгонять физику
 	Engine.max_fps = 60

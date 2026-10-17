@@ -1,3 +1,4 @@
+class_name MainScene
 extends Node3D
 ## Точка входа: берег, песчаное море, существа, пирс и удочка.
 ## Вся сцена собирается программно, чтобы ошибки всплывали при запуске.
@@ -6,7 +7,7 @@ extends Node3D
 ##   небо → берег → пирс/декор → песок → море → рыбы → путник → камера →
 ##   удочка (на камере) → звук → ветер → день/ночь.
 
-var game
+var game: GameState
 var world: GameWorld
 var coast: Coast
 var pier: Pier
@@ -26,7 +27,7 @@ var night01 := 0.0
 
 
 func _ready() -> void:
-	game = get_node("/root/Game")
+	game = get_node("/root/Game") as GameState
 	game.main = self
 
 	world = GameWorld.new()

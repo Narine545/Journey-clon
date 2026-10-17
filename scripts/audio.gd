@@ -16,7 +16,7 @@ const PAD_BASE_AMP := [1.0, 0.75, 0.5, 0.42]
 const PAD_SHIMMER := [220.0, 293.66, 329.63]
 const PAD_SHIMMER_AMP := [0.85, 0.6, 0.5]
 
-var game
+var game: GameState
 var player: Player
 
 var _step_streams: Array[AudioStreamWAV] = []

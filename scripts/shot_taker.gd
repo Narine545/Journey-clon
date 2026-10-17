@@ -11,7 +11,7 @@ extends Node
 ## Условия перехода учитывают и время, и число кадров: в софт-рендере
 ## один кадр может длиться секунду, а в игре — 16 мс.
 
-var main
+var main: MainScene
 var _dir := ""
 var _state := 0
 var _t := 0.0 # время сценария (сек игрового времени, не стенного)
@@ -19,7 +19,7 @@ var _fs := 0
 var _caught := 0.0
 
 
-func setup(main_ref) -> void:
+func setup(main_ref: MainScene) -> void:
 	main = main_ref
 	_dir = OS.get_environment("SHOT_DIR")
 	if _dir.is_empty():

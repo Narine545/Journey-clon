@@ -32,7 +32,7 @@ var grounded := true
 var heading := -PI * 0.5 # курс камеры (пишет CameraRig каждый кадр)
 var sprint01 := 0.0 # 0..1 — насколько разогнались (камера, музыка, эффекты)
 var wet01 := 0.0 # 0..1 — насколько глубоко стоим в воде
-var game
+var game: GameState
 var coast: Coast
 var sand: SandField
 var pier: Pier

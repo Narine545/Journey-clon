@@ -42,7 +42,7 @@ const SPOT_CAP := 420 # максимум точек (потом новые иг�
 
 var stamp_count := 0 # диагностика / smoke-тест
 
-var game # автозагрузка Game (сила ветра для заноса)
+var game: GameState # автозагрузка Game (сила ветра для заноса)
 var player: Player # за кем скользит окно
 
 var _grid := PackedFloat32Array() # тор: [sj * N + si], мировые смещения (м)

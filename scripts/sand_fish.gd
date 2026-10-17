@@ -49,8 +49,8 @@ const PALETTE: Array[Color] = [
 
 var water_level := 0.0
 var water_field: WaterField = null # кольца от всплесков (опционально)
-var game = null # автозагрузка Game — общее солнце и туман с водой/песком
-var coast = null # берег (class_name Coast) — рыбы держатся воды, а не суши
+var game: GameState = null # автозагрузка Game — общее солнце и туман с водой/песком
+var coast: Coast = null # берег (class_name Coast) — рыбы держатся воды, а не суши
 var material: ShaderMaterial
 var t := 0.0 # время поля — единое с шейдерным u_time
 

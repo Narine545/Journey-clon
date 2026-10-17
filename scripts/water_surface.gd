@@ -24,7 +24,7 @@ var field: WaterField
 var level_y := 0.0
 var size := 240.0
 
-var game # автозагрузка Game (ветер — общий с песком)
+var game: GameState # автозагрузка Game (ветер — общий с песком)
 var _mat: ShaderMaterial
 
 
