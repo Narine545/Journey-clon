@@ -261,9 +261,9 @@ void fragment() {
 	// дальше. Контур живой, потому что сама поверхность дышит накатом.
 	float fn = vnoise(vec2(wp.x * 0.85 + u_time * 0.10, wp.y * 1.55));
 	float fn2 = vnoise(vec2(wp.x * 3.2 - u_time * 0.38, wp.y * 2.35));
-	float edge = exp(-pow((depth_m - 0.012 - 0.012 * sin(wp.x * 0.9 + u_time * 1.3)) / 0.05, 2.0));
-	float edge2 = exp(-pow((depth_m - 0.16 - 0.03 * sin(wp.y * 0.21 + u_time * 1.15)) / 0.07, 2.0));
-	float foam = edge * smoothstep(0.10, 0.55, fn) * (0.72 + 0.28 * fn2);
+	float edge = exp(-pow((depth_m - 0.014 - 0.014 * sin(wp.x * 0.9 + u_time * 1.3)) / 0.075, 2.0));
+	float edge2 = exp(-pow((depth_m - 0.17 - 0.03 * sin(wp.y * 0.21 + u_time * 1.15)) / 0.08, 2.0));
+	float foam = edge * smoothstep(0.06, 0.48, fn) * (0.72 + 0.28 * fn2);
 	foam += edge2 * smoothstep(0.45, 0.85, fn2) * 0.55;
 	foam = clamp(foam, 0.0, 1.0);
 	base = mix(base, foam_col * (0.78 + 0.22 * ndl), foam * 0.92);
