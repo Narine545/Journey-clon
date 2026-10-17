@@ -56,6 +56,12 @@ uniform float u_time = 0.0;
 // Это убирает жёсткую (и рваную на треугольниках) линию пересечения.
 uniform float shore_fade = 0.30; // м глубины, на которых вода прозрачна
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
+// Карта уреза (shore_x(z)), строится в Coast: вода гаснет по РАССТОЯНИЮ
+// до линии песка, а не по глубине сцены — на скользящем ракурсе depth
+// не даёт мягкой кромки, а эта карта даёт.
+uniform sampler2D shore_lut : filter_linear, repeat_disable;
+uniform float shore_z0 = -460.0;
+uniform float shore_z1 = 460.0;
 uniform vec4 u_rings[24]; // x, z, t0, amp; amp <= 0.0005 — слот пуст
 
 varying vec3 w_pos;
@@ -249,14 +255,23 @@ void fragment() {
 	SPECULAR = 0.50;
 	METALLIC = 0.0;
 
-	// ---- Мягкий урез: alpha по разнице глубины сцены и воды ----
-	// Вдали (над открытой водой) разница огромна — alpha 1; над пологим
-	// песком у кромки вода плавно гаснет, шва и «лоскутов» нет.
+	// ---- Мягкий урез ----
+	// 1) расстояние до реальной линии уреза из карты Coast (с поправкой
+	//    на дыхание моря: накат двигает кромку);
+	float zt = clamp((w_pos.z - shore_z0) / (shore_z1 - shore_z0), 0.0, 1.0);
+	float sx = texture(shore_lut, vec2(zt, 0.5)).r;
+	float swash_h = (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
+		+ cos(mph * 0.47 + 0.8) * 0.22) * mega_amp * wind_power;
+	float lift = swash_h / 0.062; // насколько накат сдвинул кромку по пляжу
+	float dx = w_pos.x - sx - lift; // >0 — суша, <0 — море
+	float shore_a = 1.0 - smoothstep(-2.4, 0.12, dx);
+	// 2) мягкое пересечение с любыми предметами (depth-буфер сцены)
 	float sd = texture(depth_tex, SCREEN_UV).r;
 	vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, sd, 1.0);
 	vec4 vp = INV_PROJECTION_MATRIX * ndc;
 	vp.xyz /= vp.w;
 	float scene_z = -vp.z;
 	float water_z = -VERTEX.z;
-	ALPHA = smoothstep(0.0, shore_fade, scene_z - water_z);
+	float obj_a = smoothstep(0.0, shore_fade, scene_z - water_z);
+	ALPHA = min(shore_a, obj_a);
 }

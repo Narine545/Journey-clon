@@ -33,6 +33,10 @@ const SEABED_SLOPE := 0.085 # уклон дна у берега
 const SEABED_DEEP := 0.17 # уклон дна дальше от берега
 
 # --- ambient occlusion (запекается по карте высот) ---
+const SHORE_LUT_Z0 := -460.0
+const SHORE_LUT_Z1 := 460.0
+const SHORE_LUT_N := 1024
+
 const AO_STEP := 4
 const AO_DIRS := 8
 const AO_RAYS := [2.5, 6.0, 12.0]
@@ -50,6 +54,9 @@ var _bars := FastNoiseLite.new() # песчаные отмели под водо
 var _grid := PackedFloat32Array()
 var _dgrid := PackedFloat32Array() # 0 — пляж, 1 — дюны (для шейдера)
 var _ao_grid := PackedFloat32Array()
+## Одномерная «карта уреза»: shore_x(z). Её читает море, чтобы плавно
+## растворяться у песка (иначе линия пересечения рвётся треугольниками).
+var shore_lut: ImageTexture
 
 var _x0 := 0.0
 var _z0 := 0.0
@@ -94,9 +101,22 @@ func setup(game_ref) -> void:
 	_bars.frequency = 1.0
 	_bars.fractal_octaves = 2
 
+	_build_shore_lut() # после настройки шума: та же линия, что у геометрии
 	_build_grid()
 	_build_ao()
 	_build_mesh()
+
+
+# ---------------------------------------------------------------------------
+# Карта уреза для шейдера моря
+# ---------------------------------------------------------------------------
+
+func _build_shore_lut() -> void:
+	var img := Image.create(SHORE_LUT_N, 1, false, Image.FORMAT_RF)
+	for i in range(SHORE_LUT_N):
+		var z := lerpf(SHORE_LUT_Z0, SHORE_LUT_Z1, (float(i) + 0.5) / float(SHORE_LUT_N))
+		img.set_pixel(i, 0, Color(shore_x(z), 0.0, 0.0))
+	shore_lut = ImageTexture.create_from_image(img)
 
 
 # ---------------------------------------------------------------------------
@@ -389,8 +409,11 @@ func _build_mesh() -> void:
 	mat.set_shader_parameter("sand_texel", SandField.TEXEL)
 	# мокрая полоса у уреза и подводный песок — красит шейдер
 	mat.set_shader_parameter("sea_level", SEA_LEVEL)
-	mat.set_shader_parameter("wet_band", 2.6)
-	mat.set_shader_parameter("wet_darken", 0.42)
+	# wet_band — ВЫСОТА над морем (м), а не метры по пляжу: 0.4 м
+	# при уклоне 6% дают мокрую полосу ~6 м. Большие значения красили
+	# весь пляж «мокрым» — он и читался как вода.
+	mat.set_shader_parameter("wet_band", 0.40)
+	mat.set_shader_parameter("wet_darken", 0.38)
 
 	mesh = coast_mesh
 	material_override = mat

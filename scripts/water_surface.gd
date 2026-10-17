@@ -66,6 +66,13 @@ func set_param(param: String, value) -> void:
 		_mat.set_shader_parameter(param, value)
 
 
+## Карта уреза из Coast: море знает, где песок, и плавно гаснет у кромки.
+func set_shore(lut: Texture2D, z0: float, z1: float) -> void:
+	set_param("shore_lut", lut)
+	set_param("shore_z0", z0)
+	set_param("shore_z1", z1)
+
+
 func apply_sun(dir: Vector3) -> void:
 	set_param("sun_dir", dir)
 

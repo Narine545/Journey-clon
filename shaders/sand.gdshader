@@ -39,8 +39,8 @@ uniform float sea_swell = 0.055; // дыхание моря — как в water.
 // depth-тестом. Мокрую полосу и подводный песок красит этот же шейдер:
 // у уреза песок темнее, холоднее и глянцевее, искры гаснут.
 uniform float sea_level = 0.0;   // мировой Y уровня моря
-uniform float wet_band = 2.6;    // сколько метров над водой сохнет
-uniform float wet_darken = 0.42; // сила мокрого затемнения
+uniform float wet_band = 0.40;   // ВЫСОТА над водой (м), где песок ещё мокрый
+uniform float wet_darken = 0.38; // сила мокрого затемнения
 
 // ---- Настоящий песок: карта смещений ----
 uniform sampler2D sand_map : filter_linear, repeat_enable;
