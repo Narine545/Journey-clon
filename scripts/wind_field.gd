@@ -8,7 +8,7 @@ extends Node3D
 ## При сёрфе проявляется плотный золотой поток вдоль трейсы.
 
 
-const AMBIENT_N := 0 # амбиентные ленты убраны по фидбеку — остался поток на сёрфе
+const AMBIENT_N := 26 # лёгкая песчаная взвесь у берега
 const GUST_N := 104
 const HIST := 8 # точек истории на ленту (7 сегментов)
 const HIST_DT := 0.055 # шаг записи истории, сек
@@ -17,7 +17,7 @@ const KILL_R := 34.0
 
 var game
 var player: Player
-var terrain: Terrain
+var terrain: Coast
 
 var _ambient: Array[Wisp] = []
 var _gust: Array[Wisp] = []
@@ -45,7 +45,7 @@ class Wisp:
 	var hist_t := 0.0
 
 
-func setup(game_ref, player_ref: Player, terrain_ref: Terrain) -> void:
+func setup(game_ref, player_ref: Player, terrain_ref: Coast) -> void:
 	game = game_ref
 	player = player_ref
 	terrain = terrain_ref
@@ -71,7 +71,9 @@ func _physics_process(delta: float) -> void:
 	_parity = 1 - _parity
 	if _parity == 0:
 		_amb_mi.mesh = _build_ribbons(_ambient, 1.0)
-		_gust_mi.mesh = _build_ribbons(_gust, smoothstep(0.15, 0.55, game.surf01))
+		var spd := Vector2(player.vel.x, player.vel.z).length()
+		var gust_vis := clampf((spd - 3.4) / 2.2, 0.0, 1.0) * 0.85
+		_gust_mi.mesh = _build_ribbons(_gust, gust_vis)
 
 
 func _step_set(wisps: Array[Wisp], gusty: bool, delta: float) -> void:

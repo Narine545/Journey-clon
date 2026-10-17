@@ -1,30 +1,37 @@
 extends Node
-## Автозагрузка «Game»: глобальное состояние — ветер, солнце, прогресс главы.
-## Единственный источник истины о ветре: его читают шейдер песка и частицы.
-## Никакого HUD и текста не предусмотрено.
+## Автозагрузка «Game»: глобальное состояние — ветер, солнце, время суток.
+## Единственный источник истины о ветре: его читают шейдер песка, моря,
+## существ и частицы. Ссылки water/main — для событий (круги на воде).
+##
+## Никакого HUD и текста не предусмотрено: сила заброса читается по
+## удилищу, поклёвка — по поплавку, день/ночь — крутилкой F3.
 
-# --- Светила и палитра (FPS-хоррор: ночь, луна над коридором дюн) ---
-# Направление К луне/солнцу — вар (меняется DEV-панелью F3)
-var night01 := 1.0 # 0=день … 1=ночь: красит свет, песок, небо, туман, грейдинг
-var sun_dir := Vector3(0.34, 0.20, -0.92) # низкая луна над «маяком»
+# --- Светила и палитра (по умолчанию — золотой час над морем) ---
+# Направление К солнцу — вар (меняется DEV-панелью F3)
+var night01 := 0.0 # 0=день … 1=ночь: красит свет, песок, небо, море, туман
+var sun_dir := Vector3(-0.55, 0.185, -0.30).normalized()
 
-const SAND_SUNNY := Color(0.98, 0.62, 0.30) # ярко-золотой песок
-const SAND_HOT := Color(1.00, 0.78, 0.42) # раскалённые гребни
-const SAND_SHADE := Color(0.47, 0.40, 0.56) # мягкая пыльная сирень (не мрак)
+const SAND_SUNNY := Color(0.98, 0.62, 0.30)
+const SAND_HOT := Color(1.00, 0.78, 0.42)
+const SAND_SHADE := Color(0.47, 0.40, 0.56)
 const HORIZON_COL := Color(1.00, 0.70, 0.48)
 const SKY_COL := Color(0.27, 0.24, 0.44)
 
 const FOG_DISTANCE := 340.0
 
 # --- Ветер ---
-var wind_base := -1.26 # базовое направление: почти к маяку (−Z), чуть вправо
-var wind_angle := -1.26 # текущее (гуляет вокруг базы)
+var wind_base := 0.18 # дует с моря на берег (почти +X), чуть вдоль берега
+var wind_angle := 0.18 # текущее (гуляет вокруг базы)
 var wind_strength := 1.0
 var elapsed := 0.0
 
-# --- Состояние игрока (читают: камера, музыка позже) ---
-var surf01 := 0.0 # 0..1 — насколько игрок «сёрфит» по крутому склону
+# --- Состояние игрока (читают: камера, музыка, звук) ---
+var sprint01 := 0.0 # 0..1 — насколько путник разогнался
 var player_altitude := 0.0
+
+# --- Ссылки на узлы (ставит main.gd) ---
+var main = null
+var water = null # WaterSurface — круги от шагов в воде
 
 
 func _ready() -> void:
@@ -33,13 +40,12 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
-	# Ветер живёт: медленно гуляет направление и сила (сумма синусов — органично и дёшево).
-	wind_angle = wind_base + 0.38 * sin(elapsed * 0.021) + 0.16 * sin(elapsed * 0.047 + 1.7)
+	# Ветер живёт: медленно гуляет направление и сила (сумма синусов).
+	wind_angle = wind_base + 0.28 * sin(elapsed * 0.021) + 0.12 * sin(elapsed * 0.047 + 1.7)
 	wind_strength = 1.0 + 0.22 * sin(elapsed * 0.033 + 4.0) + 0.10 * sin(elapsed * 0.081)
 
 
 func wind_dir() -> Vector2:
-	# Единичный вектор ветра в мировой плоскости XZ.
 	return Vector2(cos(wind_angle), sin(wind_angle))
 
 
@@ -54,14 +60,22 @@ func _ensure_input() -> void:
 	_add_key_action("move_left", [KEY_A, KEY_LEFT])
 	_add_key_action("move_right", [KEY_D, KEY_RIGHT])
 	_add_key_action("jump", [KEY_SPACE])
-	_add_key_action("slide_mod", [KEY_SHIFT])
-	_add_key_action("reload", [KEY_R])
+	_add_key_action("sprint", [KEY_SHIFT])
+	_add_key_action("rod_toggle", [KEY_Q])
 	_add_key_action("flashlight", [KEY_F])
-	if not InputMap.has_action("shoot"):
-		InputMap.add_action("shoot")
+	if not InputMap.has_action("rod_cast"):
+		InputMap.add_action("rod_cast")
 		var mouse := InputEventMouseButton.new()
 		mouse.button_index = MOUSE_BUTTON_LEFT
-		InputMap.action_add_event("shoot", mouse)
+		InputMap.action_add_event("rod_cast", mouse)
+	if not InputMap.has_action("rod_recall"):
+		InputMap.add_action("rod_recall")
+		var mb := InputEventMouseButton.new()
+		mb.button_index = MOUSE_BUTTON_RIGHT
+		InputMap.action_add_event("rod_recall", mb)
+		var k := InputEventKey.new()
+		k.physical_keycode = KEY_R
+		InputMap.action_add_event("rod_recall", k)
 
 
 func _add_key_action(action: String, keys: Array) -> void:

@@ -1,67 +1,143 @@
 class_name ShotTaker
 extends Node
-## Служебный скрипт для CI-рендера (JOURNEY_SHOT=1): прогоняет игрока
-## вперёд и снимает скриншоты — ходьба с руками, выстрел со вспышкой,
-## сёрф, луч фонаря в тумане, огонёк маяка, следы сверху.
-## Скриншоты кладутся в $SHOT_DIR и коммитятся CI — можно проверять
-## визуал без локального Godot.
+## CI-кадры (JOURNEY_SHOT=1): берег, удочка, заброс, поклёвка, вываживание,
+## пирс и прыжок песчаного кита. Сценарий ведёт себя как игрок и снимает
+## кадр в момент события (а не по номеру кадра — рендер в CI медленный).
+##
+## Скриншоты кладутся в $SHOT_DIR и коммитятся CI: это единственный способ
+## увидеть визуал без локального Godot. SDF-слой существ включается только
+## на кадр с прыжком — программный рендер lavapipe не тянет его постоянно.
+##
+## Условия перехода учитывают и время, и число кадров: в софт-рендере
+## один кадр может длиться секунду, а в игре — 16 мс.
 
 var main
-var _frames := 0
-var _shot_dir := ""
+var _dir := ""
+var _state := 0
+var _t := 0.0 # время сценария (сек игрового времени, не стенного)
+var _fs := 0
+var _caught := 0.0
 
 
 func setup(main_ref) -> void:
 	main = main_ref
-	_shot_dir = OS.get_environment("SHOT_DIR")
-	if _shot_dir.is_empty():
-		_shot_dir = "."
-	# первый отрезок — В ГОРКУ от спавна: чистая ходьба, руки в кадре.
-	if main.cam_rig != null:
-		main.cam_rig.set_view(0.0, -0.12)
-	Input.action_press("move_forward")
+	_dir = OS.get_environment("SHOT_DIR")
+	if _dir.is_empty():
+		_dir = "."
+	main.rod.fish_landed.connect(func(sz: float) -> void: _caught = sz)
+	main.fish.set_sdf_enabled(false) # экономим программный рендер
+	main.cam_rig.set_view(-PI * 0.5 + 0.34, -0.02)
+	print("[SHOT] кадры в ", _dir)
+	_go(0)
 
 
-func _physics_process(_delta: float) -> void:
-	_frames += 1
-	match _frames:
-		150:
-			_capture("shot_a_walk.png") # ходьба в гору: руки, дюны, туман
-		168:
-			Input.action_press("shoot")
-		169:
-			Input.action_release("shoot")
-		171:
-			_capture("shot_b_shoot.png") # вспышка выстрела в тумане
-		200:
-			Input.action_release("move_forward")
-		220:
-			# разворот к «маяку» и спуск: сёрф — только осознанный (Shift)
-			if main.cam_rig != null:
-				main.cam_rig.set_view(PI, -0.12)
-			Input.action_press("move_forward")
-			Input.action_press("slide_mod")
-		268:
-			_capture("shot_c_surf.png") # сёрф: FOV, борозда, туман
-		300:
-			Input.action_release("move_forward")
-			Input.action_release("slide_mod")
-		310:
-			if main.cam_rig != null:
-				main.cam_rig.set_view(PI, -0.55) # взгляд вниз по склону
-		330:
-			_capture("shot_d_flash.png") # луч фонарика в волюметрическом тумане
-		360:
-			if main.cam_rig != null:
-				main.cam_rig.set_view(PI, 0.06) # взгляд вдоль коридора
-		385:
-			_capture("shot_e_beacon.png") # огонёк маяка сквозь туман
-		430:
-			_top_camera() # камера над тропой, взгляд на следы
-		465:
-			_capture("shot_f_trail.png") # следы сверху (шаги + борозда + кратеры)
-		490:
-			get_tree().quit(0)
+func _go(s: int) -> void:
+	_state = s
+	_t = 0.0
+	_fs = 0
+
+
+func _process(delta: float) -> void:
+	_t += delta
+	_fs += 1
+	var rod: RodCast = main.rod
+	var t := _t
+	match _state:
+		0: # стартовый вид: берег, пирс, море, удочка в руке
+			if t > 0.8 and _fs > 2:
+				_capture("shot_a_coast.png")
+				Input.action_press("rod_cast")
+				_go(1)
+		1: # удочка достаётся
+			if t > 0.25:
+				Input.action_release("rod_cast")
+			if t > 0.7 and _fs > 4:
+				_capture("shot_b_rod.png")
+				Input.action_press("rod_cast") # заряд
+				_go(2)
+		2:
+			if t > 1.0 and _fs > 10:
+				_capture("shot_c_charge.png")
+				Input.action_release("rod_cast") # заброс
+				_go(3)
+		3: # ждём, пока поплавок ляжет на воду
+			if rod.state == RodCast.S.FLOAT and _fs > 2:
+				_capture("shot_d_bobber.png")
+				Engine.time_scale = 2.0
+				rod.debug_fast_lure()
+				_go(4)
+			elif t > 10.0:
+				_finish("заброс не удался, state=%d" % rod.state)
+		4: # ждём поклёвки
+			if rod.state == RodCast.S.BITE and _fs > 1:
+				_capture("shot_e_bite.png")
+				Engine.time_scale = 1.0
+				Input.action_press("rod_cast") # подсечка
+				_go(5)
+			elif t > 40.0:
+				_finish("поклёвки не было, state=%d" % rod.state)
+		5: # подсекли — вываживаем
+			if t > 0.15:
+				Input.action_release("rod_cast")
+			if rod.state == RodCast.S.FIGHT and t > 0.6 and _fs > 3:
+				_capture("shot_f_fight.png")
+				_go(6)
+			elif t > 3.0:
+				_finish("подсечка не удалась, state=%d" % rod.state)
+		6: # вываживание: мотаем в затишье
+			if rod.is_pulling():
+				Input.action_release("rod_cast")
+			else:
+				Input.action_press("rod_cast")
+			if t > 2.0 and _fs > 8:
+				_capture("shot_g_reel.png")
+				_go(7)
+		7:
+			if rod.is_pulling():
+				Input.action_release("rod_cast")
+			else:
+				Input.action_press("rod_cast")
+			if _caught > 0.0 or rod.state == RodCast.S.RESTING or t > 30.0:
+				Input.action_release("rod_cast")
+				_go(8)
+		8: # пирс: геройский вид с моря на берег
+			if t > 0.3 and _fs > 1:
+				var pier: Pier = main.pier
+				var deck := pier.deck_height(pier.x_end + 2.0, pier.pz)
+				main.player.global_position = Vector3(pier.x_end + 2.0, deck, pier.pz)
+				main.player.vel = Vector3.ZERO
+				main.player.grounded = true
+				main.cam_rig.set_view(PI * 0.5, -0.06)
+			if t > 0.8 and _fs > 5:
+				_capture("shot_h_pier.png")
+				_go(9)
+		9: # прыжок песчаного кита у пирса (SDF включаем на пару кадров)
+			var target := _breach_target()
+			main.fish.set_sdf_enabled(true)
+			main.fish.debug_breach_near(target)
+			if _fs == 2:
+				var d: Vector3 = target - main.cam_rig.cam.global_position
+				main.cam_rig.set_view(atan2(d.x, d.z), -0.12)
+			if t > 0.6 and _fs > 5:
+				_capture("shot_i_breach.png")
+				main.fish.set_sdf_enabled(false)
+				_go(10)
+		10:
+			if t > 0.1 and _fs > 3:
+				_finish("")
+
+
+func _breach_target() -> Vector3:
+	var pier: Pier = main.pier
+	return Vector3(pier.x_end + 6.0, Coast.SEA_LEVEL, pier.pz - 10.0)
+
+
+func _finish(reason: String) -> void:
+	if reason != "":
+		print("[SHOT] стоп: ", reason)
+	_capture("shot_j_final.png")
+	print("[SHOT] готово")
+	get_tree().quit(0)
 
 
 func _capture(fname: String) -> void:
@@ -69,22 +145,6 @@ func _capture(fname: String) -> void:
 	if img == null:
 		push_warning("SHOT: viewport image недоступен")
 		return
-	var path := _shot_dir.path_join(fname)
+	var path := _dir.path_join(fname)
 	var err := img.save_png(path)
 	print("[SHOT] ", path, " -> ", err)
-
-
-## Камера позади и выше игрока, смотрит на тропу следов за спиной.
-func _top_camera() -> void:
-	var p: Player = main.player
-	var fwd := Vector3(sin(main.cam_rig.yaw), 0.0, cos(main.cam_rig.yaw))
-	var pos: Vector3 = p.global_position - fwd * 11.0 + Vector3.UP * 8.0
-	var look: Vector3 = p.global_position - fwd * 3.0
-	var cam := Camera3D.new()
-	main.add_child(cam)
-	cam.global_position = pos
-	cam.look_at(look, Vector3.UP)
-	cam.fov = 70.0
-	cam.far = 1800.0
-	cam.near = 0.02
-	cam.make_current()

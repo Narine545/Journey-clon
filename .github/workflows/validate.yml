@@ -67,18 +67,9 @@ jobs:
             exit 1
           fi
 
-      - name: Аудит материалов персонажа (GL; диагностика SSS-предупреждения)
-        run: |
-          mkdir -p .ci-logs
-          xvfb-run -a -s "-screen 0 1600x900x24" \
-            godot_bin/godot --path . -s res://scripts/mat_audit.gd \
-            > mat_audit.log 2>&1 || true
-          cat mat_audit.log
-          cp -f mat_audit.log .ci-logs/ 2>/dev/null || true
-
       - name: Smoke run (автотест геймплея)
         run: |
-          JOURNEY_SMOKE=1 godot_bin/godot --headless --path . --quit-after 4000 > smoke.log 2>&1
+          JOURNEY_SMOKE=1 godot_bin/godot --headless --path . --quit-after 12000 > smoke.log 2>&1
           code=$?
           cat smoke.log
           if ! grep -q "SMOKE] итог" smoke.log; then
@@ -114,7 +105,7 @@ jobs:
           SHOT_DIR="$PWD/.ci-logs/shots" JOURNEY_SHOT=1 \
             xvfb-run -a -s "-screen 0 1600x900x24" \
             godot_bin/godot --path . --rendering-method forward_plus \
-            --resolution 1600x900 --quit-after 900 \
+            --resolution 1600x900 --fixed-fps 30 --quit-after 1400 \
             > render.log 2>&1 || true
           cat render.log
           ls -la .ci-logs/shots || true
@@ -131,7 +122,7 @@ jobs:
           else
             echo "::warning::Vulkan-контекст не найден в логе — проверка могла не состояться"
           fi
-          if [ ! -f .ci-logs/shots/shot_f_trail.png ]; then
+          if [ ! -f .ci-logs/shots/shot_a_coast.png ]; then
             echo "::error::Скриншоты не сохранились — что-то не так с рендером"
             exit 1
           fi
@@ -144,11 +135,10 @@ jobs:
           mkdir -p .ci-logs
           # чистим логи из чекаута: шаг мог быть пропущен, и старый лог
           # с прошлого прогона выглядел бы как свежий
-          rm -f .ci-logs/import.log .ci-logs/smoke.log .ci-logs/render.log .ci-logs/mat_audit.log
+          rm -f .ci-logs/import.log .ci-logs/smoke.log .ci-logs/render.log
           cp -f import.log .ci-logs/ 2>/dev/null || echo "import: пропущен" > .ci-logs/import.log
           cp -f smoke.log .ci-logs/ 2>/dev/null || echo "smoke: пропущен" > .ci-logs/smoke.log
           cp -f render.log .ci-logs/ 2>/dev/null || echo "render: пропущен" > .ci-logs/render.log
-          cp -f mat_audit.log .ci-logs/ 2>/dev/null || echo "mat_audit: пропущен" > .ci-logs/mat_audit.log
-          git add .ci-logs
+                    git add .ci-logs
           git commit -m "ci: артефакты прогона ${GITHUB_SHA::7}" || true
           git push origin HEAD:${GITHUB_REF#refs/heads/} || true

@@ -22,6 +22,7 @@ extends Node3D
 ## Капли заодно роняют кольцо в WaterField — событие видно и как рябь.
 
 const MAX_FISH := 6
+const LURE_SEARCH := 55.0 # м: дальше рыба не замечает поплавок
 const MAX_DROPS := 12
 const SHADER_PATH := "res://shaders/sand_sea_sdf.gdshader"
 const GRAVITY := 9.8
@@ -41,7 +42,7 @@ const PALETTE: Array[Color] = [
 	Color(0.80, 0.66, 0.46), # песок
 ]
 
-@export_range(0, MAX_FISH) var fish_count := 4 ## сколько существ живёт сейчас
+@export_range(0, MAX_FISH) var fish_count := 5 ## сколько существ живёт сейчас
 @export var bounds_radius := 130.0 ## радиус сферы обитания, м (центр — камера)
 @export_range(0.4, 2.0) var size_mul := 1.0 ## множитель размера существ
 @export_range(0.4, 2.4) var jump_mul := 1.0 ## множитель высоты прыжка
@@ -49,6 +50,7 @@ const PALETTE: Array[Color] = [
 var water_level := 0.0
 var water_field: WaterField = null # кольца от всплесков (опционально)
 var game = null # автозагрузка Game — общее солнце и туман с водой/песком
+var coast = null # берег (class_name Coast) — рыбы держатся воды, а не суши
 var material: ShaderMaterial
 var t := 0.0 # время поля — единое с шейдерным u_time
 
@@ -84,13 +86,14 @@ var _lure_timer := 0.0
 var _nibbles_left := 0
 var _hooked_idx := -1 # рыба на крючке (вываживание)
 var _fscare := PackedFloat32Array() # > 0 — рыба убегает от поплавка
+var _respawn := PackedFloat32Array() # > 0 — таймер возвращения пойманной рыбы
+var _spawned := false # стая расселена (ждём камеру)
 
 
 func _ready() -> void:
 	_build_material()
 	_build_quad()
-	_init_fish()
-	_init_drops()
+	_init_drops() # рыбы появятся, как только в кадре будет камера
 
 
 func _build_material() -> void:
@@ -129,30 +132,59 @@ func _init_fish() -> void:
 	_fy.resize(MAX_FISH)
 	_ftint.resize(MAX_FISH)
 	_fscare.resize(MAX_FISH)
+	_respawn.resize(MAX_FISH)
+	_respawn.fill(0.0)
 
-	var center := Vector2.ZERO
-	var cam := get_viewport().get_camera_3d()
-	if cam != null:
-		center = Vector2(cam.global_position.x, cam.global_position.z)
+	var center := _camera_xz()
 	for i in range(MAX_FISH):
-		var active := i < fish_count
-		var ang := randf() * TAU
-		var rad := randf_range(10.0, bounds_radius * 0.5)
-		_fpos[i] = Vector3(center.x + cos(ang) * rad,
-			water_level - randf_range(0.5, 1.2),
-			center.y + sin(ang) * rad)
-		_fheading[i] = randf() * TAU
-		_fturn[i] = 0.0
-		_fspeed[i] = randf_range(1.3, 2.2)
-		_fsize[i] = (randf_range(0.55, 0.95) * size_mul) if active else 0.0
-		_fphase[i] = randf() * TAU
-		_fperiod[i] = randf_range(8.0, 14.0)
-		_foffset[i] = randf() * _fperiod[i]
-		_fcruise[i] = randf_range(0.5, 1.2)
-		_fjump[i] = _fsize[i] * randf_range(0.9, 1.4) * jump_mul
-		_fy[i] = _fpos[i].y
-		_ftint[i] = PALETTE[i % PALETTE.size()] if active else Color(0, 0, 0)
-		_fscare[i] = 0.0
+		if i < fish_count:
+			_spawn_fish(i, center)
+		else:
+			_fsize[i] = 0.0
+			_fscare[i] = 0.0
+			_ftint[i] = Color(0, 0, 0)
+
+
+func _camera_xz() -> Vector2:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return Vector2.ZERO
+	return Vector2(cam.global_position.x, cam.global_position.z)
+
+
+## Новое существо в слоте: где-то в водах в радиусе обитания.
+func _spawn_fish(i: int, center: Vector2) -> void:
+	var pos := Vector3.ZERO
+	if coast != null:
+		# всегда в воде, мористее уреза и не дальше видимости с берега
+		var z := center.y + randf_range(-70.0, 70.0)
+		pos = Vector3(coast.shore_x(z) - randf_range(8.0, 55.0), 0.0, z)
+	else:
+		var ok := false
+		for _try in range(10):
+			var ang := randf() * TAU
+			var rad := randf_range(10.0, bounds_radius * 0.55)
+			pos = Vector3(center.x + cos(ang) * rad, 0.0, center.y + sin(ang) * rad)
+			if coast == null or coast.is_water(pos.x, pos.z):
+				ok = true
+				break
+		if not ok:
+			pos = Vector3(center.x - bounds_radius * 0.35, 0.0, center.y)
+	pos.y = water_level - randf_range(0.5, 1.2)
+	_fpos[i] = pos
+	_fheading[i] = randf() * TAU
+	_fturn[i] = 0.0
+	_fspeed[i] = randf_range(1.3, 2.2)
+	_fsize[i] = randf_range(0.55, 0.95) * size_mul
+	_fphase[i] = randf() * TAU
+	_fperiod[i] = randf_range(8.0, 14.0)
+	_foffset[i] = randf() * _fperiod[i]
+	_fcruise[i] = randf_range(0.5, 1.2)
+	_fjump[i] = _fsize[i] * randf_range(0.9, 1.4) * jump_mul
+	_fy[i] = pos.y
+	_ftint[i] = PALETTE[i % PALETTE.size()]
+	_fscare[i] = 0.0
+	_respawn[i] = 0.0
 
 
 func _init_drops() -> void:
@@ -164,10 +196,11 @@ func _init_drops() -> void:
 	_dr0.fill(0.0) # все слоты пусты
 
 
-func setup(game_ref, p_level: float, wf: WaterField = null) -> void:
+func setup(game_ref, p_level: float, wf: WaterField = null, coast_ref = null) -> void:
 	game = game_ref
 	water_level = p_level
 	water_field = wf
+	coast = coast_ref
 	if material != null and game != null:
 		material.set_shader_parameter("sun_dir", game.sun_dir)
 		material.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
@@ -181,12 +214,23 @@ func splash_burst(world_pos: Vector3, strength := 1.0) -> void:
 
 func _process(delta: float) -> void:
 	t += delta
-	var center := Vector2.ZERO
 	var cam := get_viewport().get_camera_3d()
+	if not _spawned:
+		# main добавляет рыб ДО камеры: ждём кадр, когда она есть,
+		# и расселяем стаю вокруг неё (а не вокруг мирового нуля)
+		if cam == null:
+			return
+		_spawned = true
+		_init_fish()
+	var center := _camera_xz()
 	if cam != null:
-		center = Vector2(cam.global_position.x, cam.global_position.z)
 		_quad.global_position = cam.global_position # страховка от фрустума
 	for i in range(fish_count):
+		# пойманная рыба возвращается в море через полминуты
+		if _fsize[i] < 0.001 and _respawn[i] > 0.0:
+			_respawn[i] -= delta
+			if _respawn[i] <= 0.0:
+				_spawn_fish(i, center)
 		_sim_fish(i, delta, center)
 	_sim_drops(delta)
 	_push_uniforms(center)
@@ -227,6 +271,11 @@ func _sim_fish(i: int, delta: float, center: Vector2) -> void:
 	_fturn[i] = clampf(_fturn[i], -0.7, 0.7)
 	_fheading[i] += _fturn[i] * delta
 	_fpos[i] += Vector3(cos(_fheading[i]), 0.0, sin(_fheading[i])) * _fspeed[i] * boost * delta
+	if coast != null:
+		# существо живёт в море: у самого уреза разворачиваем обратно
+		var lim: float = coast.shore_x(_fpos[i].z) - 1.2
+		if _fpos[i].x > lim:
+			_fpos[i].x = lim
 
 	# волна тела бежит к хвосту
 	_fphase[i] += delta * (5.0 + _fspeed[i] * 2.2)
@@ -330,6 +379,8 @@ func lure_to(pos: Vector3, idx := -1) -> int:
 			if _fsize[i] < 0.001 or _fscare[i] > 0.0 or i == _hooked_idx:
 				continue
 			var d := Vector2(_fpos[i].x - pos.x, _fpos[i].z - pos.z).length_squared()
+			if d > LURE_SEARCH * LURE_SEARCH:
+				continue
 			if d < bd:
 				bd = d
 				best = i
@@ -391,10 +442,71 @@ func claim_catch(idx: int) -> float:
 		at.y = water_level # капли из-под воды умерли бы сразу
 		_burst(at, 1.5)
 	_fsize[idx] = 0.0
+	_respawn[idx] = randf_range(18.0, 34.0)
 	if _hooked_idx == idx:
 		_hooked_idx = -1
 	fish_removed.emit(idx)
 	return sz
+
+
+## Ночь: существа берут ту же палитру, что песок и море.
+func apply_night01(v: float) -> void:
+	if material == null:
+		return
+	material.set_shader_parameter("sand_sunny", Coast.DAY_SUNNY.lerp(Coast.NIGHT_SUNNY, v))
+	material.set_shader_parameter("sand_hot", Coast.DAY_HOT.lerp(Coast.NIGHT_HOT, v))
+	material.set_shader_parameter("sand_shade", Coast.DAY_SHADE.lerp(Coast.NIGHT_SHADE, v))
+	material.set_shader_parameter("horizon_col", Coast.DAY_HORIZON.lerp(Coast.NIGHT_HORIZON, v))
+	material.set_shader_parameter("sky_col", Coast.DAY_SKY.lerp(Coast.NIGHT_SKY, v))
+	material.set_shader_parameter("fog_distance", lerpf(340.0, 130.0, v))
+
+
+func apply_sun(dir: Vector3) -> void:
+	if material != null:
+		material.set_shader_parameter("sun_dir", dir)
+
+
+## Ближайшее живое существо к точке (диагностика/квесты). -1 — никого.
+func nearest_distance(p: Vector3) -> float:
+	var best := INF
+	for i in range(fish_count):
+		if _fsize[i] > 0.001:
+			best = minf(best, Vector2(_fpos[i].x - p.x, _fpos[i].z - p.z).length())
+	return best if best < INF else -1.0
+
+
+## Включить/выключить SDF-слой (для автотестов и лёгкого режима).
+func set_sdf_enabled(on: bool) -> void:
+	if _quad != null:
+		_quad.visible = on
+
+
+## Диагностика/скриншоты: мгновенно подвести приманку-рыбу к поплавку.
+func debug_snap_to_lure(dist := 6.0) -> void:
+	if _lure_idx == -1:
+		return
+	var a := randf() * TAU
+	_fpos[_lure_idx] = Vector3(_lure_pos.x + cos(a) * dist,
+		water_level - 0.5, _lure_pos.z + sin(a) * dist)
+	_fy[_lure_idx] = water_level - 0.5
+	_lure_phase = 1
+
+
+## Диагностика/скриншоты: заставить существо выпрыгнуть в заданной точке.
+func debug_breach_near(pos: Vector3) -> void:
+	if fish_count <= 0:
+		return
+	var i := 0
+	_fsize[i] = 0.9
+	_fpos[i] = Vector3(pos.x, water_level - 0.55, pos.z)
+	_fy[i] = water_level - 0.4
+	_fheading[i] = 0.0
+	_fturn[i] = 0.0
+	_fperiod[i] = 3.2
+	_foffset[i] = fposmod(0.55 * _fperiod[i] - t, _fperiod[i])
+	_fcruise[i] = 0.45
+	_fjump[i] = 1.7
+	_respawn[i] = 0.0
 
 
 ## Жизнь рыбы на приманке: подход -> пробы («буль-буль») -> поклёвка.

@@ -1,40 +1,48 @@
 class_name SoundScape
 extends Node
-## Звуковой мир: шаги по песку, шелест скольжения, ветер и два слоя
-## «музыки» (амбиент-пад + сияние на сёрфе). Всё синтезируется кодом
+## Звуковой мир берега: шаги по песку, брод по воде, ветер, катушка,
+## всплески, поклёвка и тихая музыка. Всё синтезируется кодом
 ## в AudioStreamWAV при запуске — бинарных ассетов в проекте нет.
 ##
-## Реактивность: громкость скольжения следует скорости по песку,
-## ветер — высоте и силе ветра, сияние — сёрфу (game.surf01).
-## Шаги, посадка и пыль вызываются из Player в момент постановки стопы.
+## Реактивность: шаги — из Player в момент постановки стопы; вода —
+## из wet01; ветер — из силы ветра и высоты; сияние — из разгона.
+## События рыбалки приходят сигналами RodCast (см. main.gd).
 
-const RATE_SFX := 22050 # Гц — шагам нужен хруст
-const RATE_MUSIC := 5512 # Гц — пады низкочастотные, синтез дешевле
+const RATE_SFX := 22050
+const RATE_MUSIC := 5512
 
 const PAD_BASE := [146.83, 220.0, 293.66, 329.63] # D3 A3 D4 E4 — открытая кварта
 const PAD_BASE_AMP := [1.0, 0.75, 0.5, 0.42]
-const PAD_SHIMMER := [220.0, 293.66, 329.63] # A3 D4 E4 — тёплое сияние (без «звона»)
+const PAD_SHIMMER := [220.0, 293.66, 329.63]
 const PAD_SHIMMER_AMP := [0.85, 0.6, 0.5]
 
 var game
 var player: Player
 
 var _step_streams: Array[AudioStreamWAV] = []
+var _water_step_streams: Array[AudioStreamWAV] = []
 var _step_players: Array[AudioStreamPlayer3D] = []
 var _step_rr := 0
-var _slide: AudioStreamPlayer3D
+var _surf: AudioStreamPlayer3D
+var _wade_loop: AudioStreamPlayer3D
 var _land: AudioStreamPlayer3D
 var _wind: AudioStreamPlayer
 var _pad: AudioStreamPlayer
 var _shimmer: AudioStreamPlayer
 var _wind_filter: AudioEffectLowPassFilter
-var _slide_gain := 0.0
+var _surf_gain := 0.0
+var _wade_gain := 0.0
 var _wind_gain := 0.0
 var _shimmer_gain := 0.0
 var _pad_fade := 0.0
-var _shot: AudioStreamPlayer
-var _gun_empty: AudioStreamPlayer
-var _reload_sfx: AudioStreamPlayer
+
+var _cast_sfx: AudioStreamPlayer
+var _splash_sfx: AudioStreamPlayer
+var _plop_sfx: AudioStreamPlayer
+var _bite_sfx: AudioStreamPlayer
+var _reel_sfx: AudioStreamPlayer
+var _catch_sfx: AudioStreamPlayer
+var _sand_sfx: AudioStreamPlayer
 
 
 func setup(game_ref, player_ref: Player) -> void:
@@ -49,12 +57,10 @@ func _make_buses() -> void:
 	_ensure_bus("Wind")
 	_ensure_bus("Music")
 
-	# ветер глохнет через фильтр — частота среза дышит от погоды и скорости
 	_wind_filter = AudioEffectLowPassFilter.new()
 	_wind_filter.cutoff_hz = 1800.0
 	AudioServer.add_bus_effect(AudioServer.get_bus_index("Wind"), _wind_filter, 0)
 
-	# музыке — мягкость (срезаем «звон» сверху) и немного пространства
 	var music_lp := AudioEffectLowPassFilter.new()
 	music_lp.cutoff_hz = 2600.0
 	AudioServer.add_bus_effect(AudioServer.get_bus_index("Music"), music_lp, 0)
@@ -75,9 +81,11 @@ func _ensure_bus(bus_name: String) -> void:
 
 
 func _make_sounds() -> void:
-	# шаги: 6 вариаций мягкого «пшш» по песку
+	# шаги: вариации мягкого «пшш» по песку
 	for k in range(6):
 		_step_streams.append(_gen_footstep(917 + k * 131))
+	for k in range(4):
+		_water_step_streams.append(_gen_water_step(331 + k * 97))
 	for k in range(4):
 		var p := AudioStreamPlayer3D.new()
 		p.bus = "Sand"
@@ -86,15 +94,25 @@ func _make_sounds() -> void:
 		player.add_child(p)
 		_step_players.append(p)
 
-	# шелест скольжения — петля, громкость следует скорости
-	_slide = AudioStreamPlayer3D.new()
-	_slide.bus = "Sand"
-	_slide.stream = _gen_slide()
-	_slide.unit_size = 7.0
-	_slide.position = Vector3(0.0, 0.12, 0.0)
-	player.add_child(_slide)
-	_slide.volume_db = linear_to_db(0.0001)
-	_slide.play()
+	# шелест разгона по сухому песку
+	_surf = AudioStreamPlayer3D.new()
+	_surf.bus = "Sand"
+	_surf.stream = _gen_slide()
+	_surf.unit_size = 7.0
+	_surf.position = Vector3(0.0, 0.12, 0.0)
+	player.add_child(_surf)
+	_surf.volume_db = linear_to_db(0.0001)
+	_surf.play()
+
+	# брод: вода переливается у ног
+	_wade_loop = AudioStreamPlayer3D.new()
+	_wade_loop.bus = "Sand"
+	_wade_loop.stream = _gen_water_loop()
+	_wade_loop.unit_size = 6.0
+	_wade_loop.position = Vector3(0.0, 0.05, 0.0)
+	player.add_child(_wade_loop)
+	_wade_loop.volume_db = linear_to_db(0.0001)
+	_wade_loop.play()
 
 	# глухой удар посадки
 	_land = AudioStreamPlayer3D.new()
@@ -104,7 +122,6 @@ func _make_sounds() -> void:
 	_land.position = Vector3(0.0, 0.1, 0.0)
 	player.add_child(_land)
 
-	# ветер — глобальный
 	_wind = AudioStreamPlayer.new()
 	_wind.bus = "Wind"
 	_wind.stream = _gen_wind()
@@ -112,7 +129,6 @@ func _make_sounds() -> void:
 	_wind.volume_db = linear_to_db(0.0001)
 	_wind.play()
 
-	# музыка: тихий амбиент-пад с медленным появлением + сияние на сёрфе
 	_pad = AudioStreamPlayer.new()
 	_pad.bus = "Music"
 	_pad.stream = _gen_pad(PAD_BASE, PAD_BASE_AMP, 9.0)
@@ -127,65 +143,86 @@ func _make_sounds() -> void:
 	_shimmer.volume_db = linear_to_db(0.0001)
 	_shimmer.play()
 
-	# оружие: выстрел, сухой щелчок пустого магазина, перезарядка
-	_shot = AudioStreamPlayer.new()
-	_shot.stream = _gen_shot()
-	add_child(_shot)
+	# рыбалка: заброс, всплески, катушка, поимка
+	_cast_sfx = _player(_gen_cast(), "Master")
+	_splash_sfx = _player(_gen_splash(), "Sand")
+	_plop_sfx = _player(_gen_plop(), "Sand")
+	_bite_sfx = _player(_gen_bite(), "Sand")
+	_reel_sfx = _player(_gen_reel_click(), "Master")
+	_catch_sfx = _player(_gen_chime(), "Music")
+	_sand_sfx = _player(_gen_sand_plop(), "Sand")
 
-	_gun_empty = AudioStreamPlayer.new()
-	_gun_empty.stream = _gen_empty_click()
-	add_child(_gun_empty)
 
-	_reload_sfx = AudioStreamPlayer.new()
-	_reload_sfx.stream = _gen_reload()
-	add_child(_reload_sfx)
+func _player(stream: AudioStreamWAV, bus: String) -> AudioStreamPlayer:
+	var p := AudioStreamPlayer.new()
+	p.stream = stream
+	p.bus = bus
+	add_child(p)
+	return p
 
 
 func _process(delta: float) -> void:
 	var hv := Vector3(player.vel.x, 0.0, player.vel.z)
 	var spd := hv.length()
-	var spd01 := clampf(spd / 17.5, 0.0, 1.0)
+	var spd01 := clampf(spd / Player.SPRINT_MAX, 0.0, 1.0)
 
-	# --- скольжение по песку ---
-	var slide_target := 0.0
-	if player.grounded and spd > 3.2:
-		slide_target = clampf((spd - 3.2) / 8.0, 0.0, 1.0) * (0.28 + 0.42 * game.surf01)
-	_slide_gain = _damp(_slide_gain, slide_target, 6.0, delta)
-	_slide.volume_db = linear_to_db(maxf(_slide_gain, 0.0001))
-	_slide.pitch_scale = 0.75 + spd01 * 0.45
+	# --- разгон по песку: шорох, только когда не в воде ---
+	var surf_target := 0.0
+	if player.grounded and spd > 3.4 and player.wet01 < 0.05:
+		surf_target = clampf((spd - 3.4) / 2.0, 0.0, 1.0) * 0.22
+	_surf_gain = _damp(_surf_gain, surf_target, 6.0, delta)
+	_surf.volume_db = linear_to_db(maxf(_surf_gain, 0.0001))
+	_surf.pitch_scale = 0.80 + spd01 * 0.35
 
-	# --- ветер: сильнее на высоте, в полёте и в порывах ---
-	var alt01 := clampf((player.global_position.y - 6.0) / 26.0, 0.0, 1.0)
+	# --- брод: переливы у ног, тем громче, чем глубже и быстрее ---
+	var wade_target := 0.0
+	if player.grounded and player.wet01 > 0.02:
+		wade_target = (0.05 + 0.16 * player.wet01) * (0.55 + 0.45 * spd01)
+	_wade_gain = _damp(_wade_gain, wade_target, 5.0, delta)
+	_wade_loop.volume_db = linear_to_db(maxf(_wade_gain, 0.0001))
+
+	# --- ветер: сильнее на высоте и в порывах ---
+	var alt01 := clampf((player.global_position.y - 2.0) / 26.0, 0.0, 1.0)
 	var gust := clampf(game.wind_strength - 0.9, 0.0, 0.45) / 0.45
-	var wind_target := 0.15 + 0.14 * gust + 0.20 * alt01
-	if player.gliding:
-		wind_target += 0.20
-	elif not player.grounded:
-		wind_target += 0.10
+	var wind_target := 0.14 + 0.14 * gust + 0.16 * alt01
+	if not player.grounded:
+		wind_target += 0.08
 	_wind_gain = _damp(_wind_gain, wind_target, 3.0, delta)
 	_wind.volume_db = linear_to_db(maxf(_wind_gain, 0.0001))
 	_wind_filter.cutoff_hz = lerpf(650.0, 2500.0, clampf(gust + spd01 * 0.5, 0.0, 1.0))
 
-	# --- музыка: фон тихий, сияние на сёрфе — деликатное дыхание, не звон ---
-	_pad_fade = minf(_pad_fade + delta / 7.0, 1.0) # мир входит тихо
+	# --- музыка: фон тихий, сияние — на разгоне ---
+	_pad_fade = minf(_pad_fade + delta / 7.0, 1.0)
 	_pad.volume_db = linear_to_db(0.26 * _pad_fade + 0.0001)
-	var shine := pow(clampf(game.surf01, 0.0, 1.0), 1.2)
-	_shimmer_gain = _damp(_shimmer_gain, shine * 0.22, 1.6, delta)
+	var shine := pow(clampf(game.sprint01, 0.0, 1.0), 1.2)
+	_shimmer_gain = _damp(_shimmer_gain, shine * 0.20, 1.6, delta)
 	_shimmer.volume_db = linear_to_db(maxf(_shimmer_gain, 0.0001))
 
 
 # ---------------------------------------------------------------------------
-# События (вызывает Player)
+# События (Player)
 # ---------------------------------------------------------------------------
 
-func on_step(spd01: float) -> void:
+func on_step(spd01: float, hardness := 1.0) -> void:
 	if _step_players.is_empty():
 		return
 	var p := _step_players[_step_rr]
 	_step_rr = (_step_rr + 1) % _step_players.size()
 	p.stream = _step_streams[randi() % _step_streams.size()]
-	p.pitch_scale = 0.80 + randf() * 0.35
-	p.volume_db = linear_to_db(0.10 + 0.26 * spd01)
+	p.pitch_scale = (0.80 + randf() * 0.35) * (0.94 + 0.10 * hardness)
+	p.volume_db = linear_to_db((0.10 + 0.26 * spd01) * hardness)
+	p.play()
+
+
+## Шаг в воде: отдельная «мокрая» вариация.
+func on_water_step(spd01: float, impact01 := 0.0) -> void:
+	if _water_step_streams.is_empty():
+		return
+	var p := _step_players[_step_rr]
+	_step_rr = (_step_rr + 1) % _step_players.size()
+	p.stream = _water_step_streams[randi() % _water_step_streams.size()]
+	p.pitch_scale = 0.85 + randf() * 0.30
+	p.volume_db = linear_to_db(0.16 + 0.28 * spd01 + 0.30 * impact01)
 	p.play()
 
 
@@ -195,18 +232,61 @@ func on_land(impact01: float) -> void:
 	_land.play()
 
 
-func on_shot() -> void:
-	_shot.pitch_scale = 0.94 + randf() * 0.10
-	_shot.play()
+# ---------------------------------------------------------------------------
+# События рыбалки (RodCast → main.gd)
+# ---------------------------------------------------------------------------
+
+func on_cast(power: float) -> void:
+	_cast_sfx.pitch_scale = 0.92 + 0.20 * power
+	_cast_sfx.volume_db = linear_to_db(0.22 + 0.30 * power)
+	_cast_sfx.play()
 
 
-func on_gun_empty() -> void:
-	_gun_empty.play()
+func on_splash(strength: float) -> void:
+	_splash_sfx.pitch_scale = 0.90 + randf() * 0.22
+	_splash_sfx.volume_db = linear_to_db(clampf(0.28 * strength, 0.05, 0.9))
+	_splash_sfx.play()
 
 
-func on_reload() -> void:
-	_reload_sfx.pitch_scale = 0.95 + randf() * 0.08
-	_reload_sfx.play()
+func on_sand_plop() -> void:
+	_sand_sfx.pitch_scale = 0.85 + randf() * 0.25
+	_sand_sfx.volume_db = linear_to_db(0.42)
+	_sand_sfx.play()
+
+
+func on_bite() -> void:
+	_bite_sfx.stop()
+	_bite_sfx.play()
+	_plop_sfx.pitch_scale = 1.25
+	_plop_sfx.volume_db = linear_to_db(0.22)
+	_plop_sfx.play()
+
+
+func on_hooked() -> void:
+	_splash_sfx.pitch_scale = 1.06
+	_splash_sfx.volume_db = linear_to_db(0.75)
+	_splash_sfx.play()
+
+
+func on_escape() -> void:
+	_splash_sfx.pitch_scale = 0.78
+	_splash_sfx.volume_db = linear_to_db(0.55)
+	_splash_sfx.play()
+
+
+func on_catch(size: float) -> void:
+	_catch_sfx.pitch_scale = clampf(0.92 + size * 0.22, 0.8, 1.3)
+	_catch_sfx.volume_db = linear_to_db(0.40)
+	_catch_sfx.play()
+	_splash_sfx.pitch_scale = 0.85
+	_splash_sfx.volume_db = linear_to_db(0.5)
+	_splash_sfx.play()
+
+
+func on_reel_tick() -> void:
+	_reel_sfx.pitch_scale = 0.94 + randf() * 0.16
+	_reel_sfx.volume_db = linear_to_db(0.10 + randf() * 0.05)
+	_reel_sfx.play()
 
 
 # ---------------------------------------------------------------------------
@@ -214,8 +294,6 @@ func on_reload() -> void:
 # ---------------------------------------------------------------------------
 
 ## Шаг по песку: глухой мягкий «пшш» — песок шуршит, а не трещит.
-## Спектр глушится двумя полюсами, «зернистость» — лёгкое переваливание
-## на низкой частоте, атака не мгновенная.
 func _gen_footstep(p_seed: int) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p_seed
@@ -238,7 +316,25 @@ func _gen_footstep(p_seed: int) -> AudioStreamWAV:
 	return _stream(s, RATE_SFX, false)
 
 
-## Шелест скольжения: бесшовная петля розового шума с дыханием.
+## Шаг в воде: ярче и «мокрее», с коротким шлепком.
+func _gen_water_step(p_seed: int) -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = p_seed
+	var n := int(0.22 * RATE_SFX)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE_SFX
+		var w := rng.randf_range(-1.0, 1.0)
+		lp += (w - lp) * 0.38
+		var env := minf(t / 0.004, 1.0) * exp(-t * 22.0)
+		var plop := sin(TAU * (170.0 - 340.0 * t) * t) * exp(-t * 26.0) * 0.35
+		s[i] = (lp * 0.8 + w * 0.15 + plop) * env
+	return _stream(s, RATE_SFX, false)
+
+
+## Шелест разгона: бесшовная петля розового шума с дыханием.
 func _gen_slide() -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5501
@@ -257,6 +353,35 @@ func _gen_slide() -> AudioStreamWAV:
 		lp3 += (lp2 - lp3) * 0.04
 		var lfo := 0.78 + 0.22 * sin(TAU * 2.0 * float(i) / float(n))
 		buf[i] = (lp2 - lp3 * 0.7) * lfo
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for i in n:
+		if i < fade:
+			var k := float(i) / float(fade)
+			s[i] = buf[i] * k + buf[n + i] * (1.0 - k)
+		else:
+			s[i] = buf[i]
+	return _stream(s, RATE_SFX, true)
+
+
+## Брод: тихая петля воды, у ног что-то постоянно переливается.
+func _gen_water_loop() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 8123
+	var n := int(1.6 * RATE_SFX)
+	var fade := int(0.08 * RATE_SFX)
+	var m := n + fade
+	var buf := PackedFloat32Array()
+	buf.resize(m)
+	var lp1 := 0.0
+	var lp2 := 0.0
+	for i in m:
+		var t := float(i) / RATE_SFX
+		var w := rng.randf_range(-1.0, 1.0)
+		lp1 += (w - lp1) * 0.30
+		lp2 += (lp1 - lp2) * 0.12
+		var lfo := 0.70 + 0.30 * sin(TAU * 1.7 * t + sin(TAU * 0.7 * t) * 1.2)
+		buf[i] = lp2 * lfo
 	var s := PackedFloat32Array()
 	s.resize(n)
 	for i in n:
@@ -317,71 +442,145 @@ func _gen_land() -> AudioStreamWAV:
 	return _stream(s, RATE_SFX, false)
 
 
-## Выстрел: мгновенная атака, тело — быстро глохнущий шум
-## плюс низкий удар (дульный тон).
-func _gen_shot() -> AudioStreamWAV:
+## Заброс: шумовой хлыст с уходящим вниз свистом.
+func _gen_cast() -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 4242
-	var n := int(0.30 * RATE_SFX)
+	rng.seed = 6061
+	var n := int(0.42 * RATE_SFX)
 	var s := PackedFloat32Array()
 	s.resize(n)
-	var lp1 := 0.0
+	var lp := 0.0
 	var lp2 := 0.0
 	for i in n:
 		var t := float(i) / RATE_SFX
 		var w := rng.randf_range(-1.0, 1.0)
-		var cut := lerpf(0.85, 0.05, pow(t / 0.30, 0.6))
-		lp1 += (w - lp1) * cut
-		lp2 += (lp1 - lp2) * cut
-		var env := minf(t / 0.0025, 1.0) * exp(-t * 13.0)
-		var thump := sin(TAU * 95.0 * t) * exp(-t * 26.0) * 0.6
-		s[i] = (lp2 * 1.4 + thump) * env
+		var cut := lerpf(0.10, 0.55, minf(t / 0.16, 1.0)) * lerpf(1.0, 0.25, t / 0.42)
+		lp += (w - lp) * cut
+		lp2 += (lp - lp2) * cut
+		var env := minf(t / 0.02, 1.0) * pow(1.0 - t / 0.42, 1.6)
+		s[i] = lp2 * env * 0.9
+	return _stream(s, RATE_SFX, false)
+
+
+## Всплеск поплавка: шлепок + низкий «буль».
+func _gen_splash() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2024
+	var n := int(0.50 * RATE_SFX)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	for i in n:
+		var t := float(i) / RATE_SFX
+		var w := rng.randf_range(-1.0, 1.0)
+		lp += (w - lp) * lerpf(0.45, 0.06, t / 0.5)
+		var env := minf(t / 0.004, 1.0) * exp(-t * 13.0)
+		var bloop := sin(TAU * (240.0 - 210.0 * t) * t) * exp(-t * 9.0) * 0.5
+		s[i] = (lp * 1.1 + bloop) * env
 	var peak := 0.0001
 	for i in n:
 		peak = maxf(peak, absf(s[i]))
 	for i in n:
-		s[i] = s[i] / peak * 0.9
+		s[i] = s[i] / peak * 0.85
 	return _stream(s, RATE_SFX, false)
 
 
-## Пустой магазин: сухой короткий щелчок.
-func _gen_empty_click() -> AudioStreamWAV:
+## Мелкий «буль» — тычок рыбы носом.
+func _gen_plop() -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 931
-	var n := int(0.05 * RATE_SFX)
+	rng.seed = 7109
+	var n := int(0.16 * RATE_SFX)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for i in n:
+		var t := float(i) / RATE_SFX
+		var env := minf(t / 0.003, 1.0) * exp(-t * 26.0)
+		var bloop := sin(TAU * (320.0 - 260.0 * t) * t) * 0.8
+		var w := rng.randf_range(-1.0, 1.0) * 0.18
+		s[i] = (bloop + w) * env
+	return _stream(s, RATE_SFX, false)
+
+
+## Поклёвка: низкий, «тяжёлый» буль — рыба тянет под воду.
+func _gen_bite() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4441
+	var n := int(0.34 * RATE_SFX)
 	var s := PackedFloat32Array()
 	s.resize(n)
 	var lp := 0.0
 	for i in n:
 		var t := float(i) / RATE_SFX
 		var w := rng.randf_range(-1.0, 1.0)
-		lp += (w - lp) * 0.45
-		var env := minf(t / 0.001, 1.0) * exp(-t * 90.0)
-		s[i] = lp * env * 0.6
+		lp += (w - lp) * 0.20
+		var env := minf(t / 0.006, 1.0) * exp(-t * 14.0)
+		var bloop := sin(TAU * (150.0 - 120.0 * t) * t) * 0.9
+		s[i] = (bloop + lp * 0.55) * env
 	return _stream(s, RATE_SFX, false)
 
 
-## Перезарядка: два механических щелчка — магазин вышел, магазин вошёл.
-func _gen_reload() -> AudioStreamWAV:
+## Щелчок катушки.
+func _gen_reel_click() -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 1157
-	var n := int(0.55 * RATE_SFX)
+	rng.seed = 1777
+	var n := int(0.035 * RATE_SFX)
 	var s := PackedFloat32Array()
 	s.resize(n)
-	var lp := 0.0
+	var hp := 0.0
+	var prev := 0.0
 	for i in n:
 		var t := float(i) / RATE_SFX
 		var w := rng.randf_range(-1.0, 1.0)
-		lp += (w - lp) * 0.30
-		var click1 := exp(-absf(t - 0.08) * 70.0)
-		var click2 := exp(-absf(t - 0.38) * 70.0)
-		s[i] = lp * (click1 + click2) * 0.85
+		hp = w - prev
+		prev = w
+		var env := minf(t / 0.001, 1.0) * exp(-t * 130.0)
+		s[i] = hp * env * 0.5
 	return _stream(s, RATE_SFX, false)
 
 
-## Пад: аккорд из синусов. Каждая частота округляется до целого числа
-## периодов в петле — луп идеально бесшовный. Голоса «дышат» медленными
-## LFO (тоже целое число циклов на петлю).
+## Поплавок шлёпнулся на песок.
+func _gen_sand_plop() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 8811
+	var n := int(0.22 * RATE_SFX)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp := 0.0
+	var lp2 := 0.0
+	for i in n:
+		var t := float(i) / RATE_SFX
+		var w := rng.randf_range(-1.0, 1.0)
+		lp += (w - lp) * 0.22
+		lp2 += (lp - lp2) * 0.14
+		var env := minf(t / 0.003, 1.0) * exp(-t * 30.0)
+		s[i] = lp2 * env * 1.1
+	return _stream(s, RATE_SFX, false)
+
+
+## Поимка: тёплый аккорд-«сияние» — награда без фанфар.
+func _gen_chime() -> AudioStreamWAV:
+	var n := int(1.5 * RATE_SFX)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var freqs := [329.63, 493.88, 659.25, 987.77] # E4 B4 E5 B5
+	var amps := [0.9, 0.55, 0.40, 0.22]
+	for i in n:
+		var t := float(i) / RATE_SFX
+		var v := 0.0
+		for k in freqs.size():
+			var f: float = freqs[k]
+			var a: float = amps[k]
+			var delay: float = 0.06 * float(k)
+			if t < delay:
+				continue
+			var lt := t - delay
+			var env := minf(lt / 0.02, 1.0) * exp(-lt * (2.2 + 0.5 * float(k)))
+			v += sin(TAU * f * lt) * a * env
+		s[i] = v * 0.35
+	return _stream(s, RATE_SFX, false)
+
+
+## Пад: аккорд из синусов, бесшовная петля (частоты кратны числу циклов).
 func _gen_pad(freqs: Array, amps: Array, length_s: float) -> AudioStreamWAV:
 	var n := int(length_s * RATE_MUSIC)
 	var voices: Array = []
@@ -393,7 +592,7 @@ func _gen_pad(freqs: Array, amps: Array, length_s: float) -> AudioStreamWAV:
 	s.resize(n)
 	for i in n:
 		var t := float(i) / RATE_MUSIC
-		var ph := t / length_s # 0..1 за петлю
+		var ph := t / length_s
 		var v := 0.0
 		for p in voices:
 			var f: float = p[0]
@@ -411,7 +610,6 @@ func _gen_pad(freqs: Array, amps: Array, length_s: float) -> AudioStreamWAV:
 	return _stream(s, RATE_MUSIC, true)
 
 
-## PackedFloat32Array -> AudioStreamWAV (16 бит).
 func _stream(s: PackedFloat32Array, rate: int, loop: bool) -> AudioStreamWAV:
 	var data := PackedByteArray()
 	data.resize(s.size() * 2)

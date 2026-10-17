@@ -1,15 +1,19 @@
 class_name DebugPanel
 extends CanvasLayer
-## DEV-панель крутилок (F3): небо, песок, пост-обработка, ветер.
+## DEV-панель крутилок (F3): время суток, небо, песок, море, пост, ветер.
 ## По умолчанию скрыта — в игре игрока никакого текста нет.
 ## Живые значения применяются к материалам сразу же.
+##
+## Панель — инструмент разработки, поэтому говорит на языке материалов:
+## песок — sand.gdshader, море — water.gdshader, оба смотрят на одни
+## и те же uniform-ы палитры (их двигает главный ползунок «Время суток»).
 
 var main
 
 var _box: VBoxContainer
 var _fps_label: Label
-var _sun_elev := 26.1 # градусы
-var _sun_azim := 10.3
+var _sun_elev := 16.4 # градусы
+var _sun_azim := -61.4
 
 
 func setup(main_ref) -> void:
@@ -37,32 +41,34 @@ func _process(_delta: float) -> void:
 func _build_ui() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	panel.offset_left = -460.0
+	panel.offset_left = -470.0
 	panel.offset_top = 12.0
 	panel.offset_right = -12.0
-	panel.offset_bottom = 960.0
+	panel.offset_bottom = 1030.0
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(panel)
 
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_child(scroll)
+
 	_box = VBoxContainer.new()
 	_box.add_theme_constant_override("separation", 4)
-	panel.add_child(_box)
+	_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_box)
 
 	_fps_label = _label("FPS: —")
 	_box.add_child(_fps_label)
 
 	var world: GameWorld = main.world
-	var terrain: Terrain = main.terrain
+	var coast: Coast = main.coast
 
-	_section("НОЧЬ / ДЕНЬ")
-	_slider("Ночь (0=день, 1=ночь)", 0.0, 1.0, main.game.night01, 0.01,
-		func(v):
-			world.apply_night01(v)
-			main.terrain.set_night01(v)
-			main.color_grade.set_param("night", 0.85 * v))
+	_section("ВРЕМЯ СУТОК")
+	_slider("Время (0=день, 1=ночь)", 0.0, 1.0, main.game.night01, 0.01,
+		func(v): main.set_time(v))
 
 	_section("НЕБО")
-	_slider("Солнце: высота°", 5.0, 85.0, _sun_elev, 0.5,
+	_slider("Солнце: высота°", 2.0, 85.0, _sun_elev, 0.5,
 		func(v): _on_sun_changed(v, null))
 	_slider("Солнце: азимут°", -180.0, 180.0, _sun_azim, 1.0,
 		func(v): _on_sun_changed(null, v))
@@ -81,20 +87,34 @@ func _build_ui() -> void:
 	_slider("Облака: дрейф, м/с", 0.0, 25.0, 7.0, 0.5,
 		func(v): world.set_sky("cloud_drift", v))
 
-	_section("ПЕСОК")
+	_section("ПЕСОК / БЕРЕГ")
 	_slider("Блёстки (доля)", 0.0, 0.5, 0.20, 0.01,
-		func(v): terrain.set_sand("glitter_amount", v))
+		func(v): coast.set_sand("glitter_amount", v))
 	_slider("Рябь (сила)", 0.0, 1.0, 0.50, 0.02,
-		func(v): terrain.set_sand("ripple_strength", v))
+		func(v): coast.set_sand("ripple_strength", v))
 	_slider("Мега-рябь (амплитуда)", 0.0, 0.12, 0.055, 0.005,
-		func(v): terrain.set_sand("mega_amp", v))
+		func(v): coast.set_sand("mega_amp", v))
 	_slider("Дымка песка (м)", 100.0, 900.0, 340.0, 10.0,
-		func(v): terrain.set_sand("fog_distance", v))
+		func(v):
+			coast.set_sand("fog_distance", v)
+			main.water.set_param("fog_distance", v))
+
+	_section("МОРЕ")
+	_slider("Дыхание моря", 0.0, 0.12, 0.055, 0.005,
+		func(v): main.water.set_param("mega_amp", v))
+	_slider("Кольца (сила)", 0.0, 0.15, 0.055, 0.005,
+		func(v): main.water.set_param("ring_amp", v))
+	_slider("Кольца (крутизна)", 0.0, 3.0, 1.4, 0.05,
+		func(v): main.water.set_param("ring_boost", v))
+	_slider("Глиттер моря", 0.0, 0.5, 0.20, 0.01,
+		func(v): main.water.set_param("glitter_amount", v))
+	_slider("Рябь моря (сила)", 0.0, 1.0, 0.50, 0.02,
+		func(v): main.water.set_param("ripple_strength", v))
 
 	_section("ПОСТ")
 	_slider("Экспозиция", 0.5, 2.0, world.get_exposure(), 0.02,
 		func(v): world.set_exposure(v))
-	_slider("Порог glow", 0.5, 1.5, world.get_glow_threshold(), 0.02,
+	_slider("Порог glow", 0.5, 2.0, world.get_glow_threshold(), 0.02,
 		func(v): world.set_glow_threshold(v))
 
 	_section("ЦВЕТ (ГРЕЙДИНГ)")
@@ -107,11 +127,11 @@ func _build_ui() -> void:
 		func(v): main.color_grade.set_param("contrast", v))
 	_slider("Вибранс", -0.6, 0.6, 0.12, 0.01,
 		func(v): main.color_grade.set_param("vibrance", v))
-	_slider("Ночь (Пуркинье)", 0.0, 1.0, 0.8, 0.01,
+	_slider("Ночь (Пуркинье)", 0.0, 1.0, 0.0, 0.01,
 		func(v): main.color_grade.set_param("night", v))
 
 	_section("ВОЛЮМЕТРИК (ТУМАН)")
-	_slider("Плотность", 0.005, 0.12, 0.026, 0.001,
+	_slider("Плотность", 0.002, 0.12, 0.008, 0.001,
 		func(v): world.set_vol_fog("volumetric_fog_density", v))
 	_slider("Дальность, м", 48.0, 256.0, 160.0, 4.0,
 		func(v): world.set_vol_fog("volumetric_fog_length", v))
@@ -129,7 +149,6 @@ func _build_ui() -> void:
 	_label("F3 — скрыть панель")
 
 
-## Строка выбора пресета грейдинга (целые шаги + имя пресета).
 func _preset_slider() -> void:
 	var grade: ColorGrader = main.color_grade
 	var row := HBoxContainer.new()
@@ -188,10 +207,10 @@ func _slider(text: String, min_v: float, max_v: float, val: float, step: float, 
 	s.value_changed.connect(cb)
 	row.add_child(s)
 
-	var vlabel := _label("%.2f" % val)
-	vlabel.custom_minimum_size = Vector2(52.0, 0)
+	var vlabel := _label("%.3f" % val)
+	vlabel.custom_minimum_size = Vector2(58.0, 0)
 	row.add_child(vlabel)
-	s.value_changed.connect(func(v): vlabel.text = "%.2f" % v)
+	s.value_changed.connect(func(v): vlabel.text = "%.3f" % v)
 
 
 # ---------------------------------------------------------------------------
@@ -206,6 +225,4 @@ func _on_sun_changed(elev: Variant, azim: Variant) -> void:
 	var el := deg_to_rad(_sun_elev)
 	var az := deg_to_rad(_sun_azim)
 	var dir := Vector3(sin(az) * cos(el), sin(el), -cos(az) * cos(el)).normalized()
-	main.game.sun_dir = dir
-	main.world.apply_sun(dir)
-	main.terrain.apply_sun(dir)
+	main.apply_sun(dir)

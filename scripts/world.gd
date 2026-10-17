@@ -2,14 +2,13 @@ class_name GameWorld
 extends Node3D
 ## Небо, луна, волюметрический туман (Forward+/Vulkan), виньетка.
 ## Всё строится кодом в setup(). Горизонт закрыт настоящими дальними
-## дюнами — карта террейна расширена (см. Terrain), никаких подставок.
+## дюнами — карта террейна расширена (см. Coast), никаких подставок.
 
 var game # автозагрузка Game
 
 var _sky_mat: ShaderMaterial
 var _sun: DirectionalLight3D
 var _env: Environment
-var _beacon_light: OmniLight3D
 var _using_sky_plus := false
 var _cloud_drift := 7.0
 var compat_fallback := false # Vulkan не поднялся → Godot ушёл в Compatibility
@@ -186,38 +185,7 @@ func _build_sun() -> void:
 			"волюметрический туман заменён плотной дымкой")
 
 
-## Тестовый «маяк» в тумане: тёплый пульсирующий огонёк в коридоре дюн —
-## видно, как точечный свет играет в волюметрике (удаляется одним движением).
-func build_beacon(terrain: Terrain) -> void:
-	var x := 0.0
-	var z := -150.0
-	var y := terrain.sample_height(x, z)
-	var pole := MeshInstance3D.new()
-	add_child(pole)
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.35
-	cyl.bottom_radius = 0.6
-	cyl.height = 7.0
-	pole.mesh = cyl
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.10, 0.08, 0.08)
-	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.42, 0.20)
-	mat.emission_energy_multiplier = 2.6
-	pole.material_override = mat
-	pole.global_position = Vector3(x, y + 3.5, z)
-	_beacon_light = OmniLight3D.new()
-	add_child(_beacon_light)
-	_beacon_light.light_color = Color(1.0, 0.45, 0.22)
-	_beacon_light.light_energy = 5.0
-	_beacon_light.omni_range = 60.0
-	_beacon_light.shadow_enabled = false
-	_beacon_light.global_position = Vector3(x, y + 7.6, z)
-
-
 func _process(_delta: float) -> void:
-	if _beacon_light != null:
-		_beacon_light.light_energy = 4.2 + 1.8 * sin(game.elapsed * 2.1)
 	if _using_sky_plus and _sky_mat != null:
 		# Два масштаба дрейфуют неодинаково — форма облаков эволюционирует,
 		# а не ездит цельной маской по небу.
@@ -296,15 +264,15 @@ func apply_night01(v: float) -> void:
 	_env.fog_light_color = Game.HORIZON_COL.lerp(Color(0.15, 0.20, 0.34), n)
 	_env.fog_density = lerpf(0.0034, 0.0048, n) if not compat_fallback \
 		else lerpf(0.0034, 0.011, n)
-	_env.volumetric_fog_density = lerpf(0.012, 0.026, n)
+	_env.volumetric_fog_density = lerpf(0.008, 0.026, n)
 	_env.volumetric_fog_albedo = Color(0.72, 0.72, 0.72).lerp(Color(0.46, 0.52, 0.64), n)
 	if _using_sky_plus:
-		_sky_mat.set_shader_parameter("exposure", lerpf(12.5, 8.5, n))
-		_sky_mat.set_shader_parameter("sundisc_intensity", lerpf(28.0, 10.0, n))
-		_sky_mat.set_shader_parameter("coverage", lerpf(0.32, 0.48, n))
+		_sky_mat.set_shader_parameter("exposure", lerpf(13.5, 8.5, n))
+		_sky_mat.set_shader_parameter("sundisc_intensity", lerpf(32.0, 10.0, n))
+		_sky_mat.set_shader_parameter("coverage", lerpf(0.34, 0.48, n))
 	else:
 		_sky_mat.set_shader_parameter("sun_intensity", lerpf(50.0, 8.0, n))
-	_sun.light_energy = lerpf(1.15, 0.30, n)
+	_sun.light_energy = lerpf(1.35, 0.30, n)
 	_sun.light_color = Color(1.0, 0.83, 0.66).lerp(Color(0.72, 0.78, 0.95), n)
 
 
