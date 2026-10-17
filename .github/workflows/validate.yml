@@ -19,7 +19,7 @@ permissions:
 jobs:
   headless:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -103,9 +103,9 @@ jobs:
           mkdir -p .ci-logs/shots
           rm -f .ci-logs/shots/*.png # чистим кадры прошлого прогона
           SHOT_DIR="$PWD/.ci-logs/shots" JOURNEY_SHOT=1 \
-            xvfb-run -a -s "-screen 0 1600x900x24" \
+            xvfb-run -a -s "-screen 0 1280x720x24" \
             godot_bin/godot --path . --rendering-method forward_plus \
-            --resolution 1600x900 --fixed-fps 30 --quit-after 1400 \
+            --resolution 1280x720 --fixed-fps 30 --quit-after 700 \
             > render.log 2>&1 || true
           cat render.log
           ls -la .ci-logs/shots || true

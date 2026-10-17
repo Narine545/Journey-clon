@@ -28,7 +28,13 @@ func setup(main_ref: MainScene) -> void:
 	process_priority = -100
 	main.rod.fish_landed.connect(func(sz: float) -> void: _caught = sz)
 	main.fish.set_sdf_enabled(false) # экономим программный рендер
-	main.cam_rig.set_view(-PI * 0.5 + 0.55, -0.07) # море + пирс справа
+	# ставим путника ближе к урезу: отсюда заброс гарантированно уходит
+	# в воду, а в кадр попадают море, пирс и дюны за спиной
+	var px := main.coast.shore_x(Coast.SPAWN_Z) + 9.0
+	main.player.global_position = Vector3(px, main.coast.ground_height(px, Coast.SPAWN_Z), Coast.SPAWN_Z)
+	main.player.vel = Vector3.ZERO
+	main.player.grounded = true
+	main.cam_rig.set_view(-PI * 0.5 + 0.42, -0.04)
 	print("[SHOT] кадры в ", _dir)
 	_go(0)
 
@@ -55,6 +61,7 @@ func _process(delta: float) -> void:
 				Input.action_release("rod_cast")
 			if t > 0.7 and _fs > 4:
 				_capture("shot_b_rod.png")
+				main.cam_rig.set_view(-PI * 0.5 + 0.06, -0.10) # прямо в море
 				Input.action_press("rod_cast") # заряд
 				_go(2)
 		2:
@@ -64,6 +71,9 @@ func _process(delta: float) -> void:
 				_go(3)
 		3: # ждём, пока поплавок ляжет на воду
 			if rod.state == RodCast.S.FLOAT and _fs > 2:
+				if rod.on_land:
+					_finish("поплавок лёг на песок вместо воды — прицел в скрипте")
+					return
 				_capture("shot_d_bobber.png")
 				Engine.time_scale = 2.0
 				rod.debug_fast_lure()
@@ -79,7 +89,7 @@ func _process(delta: float) -> void:
 			elif t > 10.0 and _fs % 120 == 0:
 				print("[SHOT] ждём поклёвку: state=%d, lure=%d, on_land=%s" % [
 					rod.state, rod._lure_idx, str(rod.on_land)])
-			if t > 40.0:
+			if t > 22.0:
 				_finish("поклёвки не было, state=%d" % rod.state)
 		5: # подсекли — вываживаем
 			if t > 0.15:
