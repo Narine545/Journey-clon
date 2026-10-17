@@ -256,7 +256,7 @@ void fragment() {
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);
 	ALBEDO = mix(base, fcol, fog);
 
-	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0, 0.0)).xyz);
+	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0)).xyz);
 	float rough = mix(0.30, 0.72, near_shore);
 	ROUGHNESS = mix(rough, 0.86, foam);
 	SPECULAR = mix(0.48, 0.10, near_shore);
