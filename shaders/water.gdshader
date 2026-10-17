@@ -272,7 +272,8 @@ void fragment() {
 		+ cos(mph * 0.47 + 0.8) * 0.22) * mega_amp * wind_power;
 	float lift = swash_h / 0.062; // насколько накат сдвинул кромку по пляжу
 	float dx = shore_dx - lift; // >0 — суша, <0 — море
-	float shore_a = (1.0 - smoothstep(-1.5, 0.12, dx)) * (0.55 + 0.45 * (1.0 - shallow));
+	// в открытом море alpha 1; у самой кромки — полупрозрачная тёмная вода
+	float shore_a = (1.0 - smoothstep(-1.5, 0.12, dx)) * (1.0 - 0.45 * shallow);
 	// 2) мягкое пересечение с любыми предметами (depth-буфер сцены)
 	float sd = texture(depth_tex, SCREEN_UV).r;
 	vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, sd, 1.0);
