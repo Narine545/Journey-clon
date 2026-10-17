@@ -22,9 +22,9 @@ shader_type spatial;
 render_mode diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_always;
 
 // ---- Вода: своя палитра, не песок ----
-uniform vec3 water_shallow : source_color = vec3(0.18, 0.48, 0.46);
-uniform vec3 water_mid : source_color = vec3(0.05, 0.26, 0.35);
-uniform vec3 water_deep : source_color = vec3(0.015, 0.085, 0.16);
+uniform vec3 water_shallow : source_color = vec3(0.26, 0.60, 0.56);
+uniform vec3 water_mid : source_color = vec3(0.10, 0.36, 0.46);
+uniform vec3 water_deep : source_color = vec3(0.030, 0.140, 0.280);
 uniform vec3 foam_col : source_color = vec3(0.95, 0.92, 0.86);
 uniform vec3 sun_col : source_color = vec3(1.0, 0.80, 0.52);
 uniform vec3 sun_dir = vec3(0.10, 0.26, -0.96); // к солнцу (как у песка)
@@ -44,7 +44,7 @@ uniform float mega_amp = 0.055;
 // ---- Мелкая рябь (только нормали) ----
 uniform float ripple_freq = 2.2;
 uniform float ripple_speed = 1.5;
-uniform float ripple_strength = 0.50;
+uniform float ripple_strength = 0.34;
 uniform float glitter_amount = 0.16;
 
 // ---- Кольца событий ----
@@ -63,7 +63,7 @@ uniform sampler2D shore_lut : filter_linear, repeat_disable;
 uniform float shore_z0 = -460.0;
 uniform float shore_z1 = 460.0;
 uniform float beach_slope = 0.062; // уклон пляжа: высота волны → сдвиг кромки
-uniform float shore_fade = 0.35;  // м, мягкость стыка с предметами по depth
+uniform float shore_fade = 0.06;  // м, мягкость стыка с предметами по depth
 
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform vec4 u_rings[24]; // x, z, t0, amp; amp <= 0.0005 — слот пуст
@@ -161,7 +161,7 @@ void fragment() {
 	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2
 		- 0.22 * 0.47 * 0.16 * ms3) * mega_amp;
 	vec2 mgrad = (wperp * mdv + wdir * mdu) * wind_power;
-	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y) * (1.0 - 0.75 * near_shore));
+	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y) * 0.72 * (1.0 - 0.70 * near_shore));
 
 	// ---------- слой 1: мелкая рябь ----------
 	float n1 = vnoise(wp * 0.33);
@@ -173,8 +173,11 @@ void fragment() {
 	float rshade = clamp(0.5 + 0.45 * (c1 + c2), 0.0, 1.0);
 	float dv = (c1 * ripple_freq + c2 * ripple_freq * 2.63) * ripple_strength * wind_power;
 	float du = (c1 * 0.22 + c2 * 0.55) * ripple_strength * wind_power * 2.0;
-	vec2 grad = (wperp * dv + wdir * du) * detail * (1.0 - 0.65 * near_shore);
-	N = normalize(N - vec3(grad.x, 0.0, grad.y) * 0.5);
+	// рваный ветровой рисунок: амплитуда ряби гуляет по крупному шуму,
+	// иначе полосы читаются «кордуроем»
+	float amp = 0.45 + 0.55 * vnoise(wp * 0.11 + vec2(3.7, 1.3));
+	vec2 grad = (wperp * dv + wdir * du) * detail * amp * (1.0 - 0.65 * near_shore);
+	N = normalize(N - vec3(grad.x, 0.0, grad.y) * 0.42);
 
 	// ---------- кольца событий ----------
 	float rk = PI_2 / ring_len;
@@ -207,6 +210,8 @@ void fragment() {
 	// граница суши и воды должна читаться даже на скриншоте.
 	vec3 base = mix(water_shallow, water_mid, smoothstep(0.0, 4.0, depth_m));
 	base = mix(base, water_deep, smoothstep(1.0, 12.0, depth_m));
+	// тонкая вода у самой кромки светлее: мокрый песок просвечивает
+	base = mix(base, water_shallow * 1.30, near_shore * 0.40);
 	float ndl = clamp(dot(N, L) * 0.5 + 0.5, 0.0, 1.0);
 	base *= 0.72 + 0.42 * ndl;
 	base *= 0.92 + 0.16 * rshade * detail;
@@ -236,7 +241,7 @@ void fragment() {
 	base = mix(base, refl, 0.10 + 0.55 * fres);
 	// широкая солнечная дорожка
 	float path = pow(clamp(dot(N, H), 0.0, 1.0), 220.0);
-	base += sun_col * path * 0.75 * (1.0 - 0.85 * near_shore);
+	base += sun_col * path * 0.50 * (1.0 - 0.85 * near_shore);
 
 	// ---------- пена прибоя ----------
 	// Две полосы: тонкая у самой кромки и вторая — накат чуть мористее.
@@ -274,6 +279,8 @@ void fragment() {
 	vp.xyz /= vp.w;
 	float scene_z = -vp.z;
 	float water_z = -VERTEX.z;
+	// важно: гасим воду только ПЕРЕД предметом (пирс/камень). Мелкий
+	// песок лежит ниже плоскости воды — он не должен делать воду прозрачной.
 	float obj_a = smoothstep(0.0, shore_fade, scene_z - water_z);
 	ALPHA = clamp(min(a, obj_a), 0.0, 1.0);
 }

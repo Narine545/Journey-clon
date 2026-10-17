@@ -9,9 +9,9 @@ extends CanvasLayer
 ## Принцип: одна главная строка «что нажать» + полоска, если сейчас есть
 ## что показывать. Никакой сетки из панелей.
 
-const PANEL_W := 470.0
+const PANEL_W := 560.0
 const PANEL_H := 96.0
-const BAR_W := 300.0
+const BAR_W := 330.0
 const BAR_H := 7.0
 
 const C_BG := Color(0.035, 0.035, 0.045, 0.62)
@@ -143,7 +143,7 @@ func _on_draw() -> void:
 
 	var cy := py + 10.0
 	# главная строка
-	var fs := 21
+	var fs := 20
 	var col := hint_col
 	col.a *= alpha
 	_root.draw_string(_font, Vector2(px, cy + 20.0), hint,

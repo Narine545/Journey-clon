@@ -58,7 +58,7 @@ const BLANK_Y0 := 0.12
 const HANDLE_LEN := 0.27
 const GRIP_POS := Vector3(0.36, -0.62, -0.56)
 const STOW_POS := Vector3(0.32, -0.66, -0.50)
-const ROD_YAW := 0.46 # удилище уходит вправо, кадр остаётся свободным
+const HOLD_DIR := Vector3(0.42, 0.46, -0.78) # поза в камере: вправо-вверх-вперёд
 const MAX_BEND := 1.30
 const LAND_DIST := 3.0
 const REEL_SPEED := 5.8   # м/с — леску видно, она не «телепортируется»
@@ -733,8 +733,8 @@ func _build_world() -> void:
 	# маркер поклёвки: тёплое кольцо над поплавком, видно и на дальней воде
 	_bite_mark = MeshInstance3D.new()
 	var ring := TorusMesh.new()
-	ring.inner_radius = 0.26
-	ring.outer_radius = 0.30
+	ring.inner_radius = 0.34
+	ring.outer_radius = 0.42
 	ring.ring_segments = 20
 	_bite_mark.mesh = ring
 	var rm := StandardMaterial3D.new()
@@ -787,9 +787,11 @@ func _build_rod() -> void:
 	mat_cork.albedo_color = Color(0.42, 0.30, 0.19)
 	mat_cork.roughness = 0.82
 	var mat_carbon := StandardMaterial3D.new()
-	mat_carbon.albedo_color = Color(0.115, 0.105, 0.100)
-	mat_carbon.roughness = 0.34
-	mat_carbon.metallic = 0.35
+	# бланк светлее «чёрного карбона»: на светлом песке чёрное удилище
+	# пропадает, и остаётся только леска
+	mat_carbon.albedo_color = Color(0.24, 0.19, 0.16)
+	mat_carbon.roughness = 0.42
+	mat_carbon.metallic = 0.22
 	var mat_metal := StandardMaterial3D.new()
 	mat_metal.albedo_color = Color(0.60, 0.57, 0.50)
 	mat_metal.roughness = 0.30
@@ -822,8 +824,8 @@ func _build_rod() -> void:
 	# 12 сегментов бланка: «кости» с нарастающим изгибом
 	_segs.clear()
 	for i in range(ROD_SEGMENTS):
-		var r0 := lerpf(0.0115, 0.0022, float(i) / float(ROD_SEGMENTS - 1))
-		var r1 := lerpf(0.0115, 0.0022, float(i + 1) / float(ROD_SEGMENTS - 1))
+		var r0 := lerpf(0.0175, 0.0040, float(i) / float(ROD_SEGMENTS - 1))
+		var r1 := lerpf(0.0175, 0.0040, float(i + 1) / float(ROD_SEGMENTS - 1))
 		var mi := MeshInstance3D.new()
 		var cm2 := CylinderMesh.new()
 		cm2.bottom_radius = r0
@@ -902,24 +904,6 @@ func _basis_from_up(dir: Vector3) -> Basis:
 	return Basis(x, dir, z)
 
 
-func _elev_deg() -> float:
-	# удилище держим НИЗКО: кончик не торчит над горизонтом, а смотрит
-	# на воду — кадр свободен, море видно
-	match state:
-		S.CHARGE:
-			return 38.0 + charge_power() * 12.0
-		S.FLY:
-			return 8.0
-		S.FLOAT:
-			return 11.0
-		S.BITE:
-			return 5.0
-		S.FIGHT:
-			return 12.0 - _fight_t01() * 7.0
-		_:
-			return 12.0
-
-
 func _fight_t01() -> float:
 	if fight == null:
 		return 0.0
@@ -928,14 +912,28 @@ func _fight_t01() -> float:
 
 ## Куда смотрит удилище: горизонталь к цели + подъём по состоянию.
 func _aim_dir(d: Vector3) -> Vector3:
-	var hd := Vector3(d.x, 0.0, d.z)
-	if hd.length_squared() < 0.0001:
-		hd = Vector3(0.0, 0.0, -1.0)
-	hd = hd.normalized()
-	# вправо от цели: рукоять в правом нижнем углу, кончик не закрывает море
-	hd = hd.rotated(Vector3.UP, -ROD_YAW)
-	var elev := deg_to_rad(_elev_deg())
-	return (hd * cos(elev) + Vector3.UP * sin(elev)).normalized()
+	var to := d.normalized() if d.length_squared() > 0.0001 else HOLD_DIR
+	# Удочка стоит ДИАГОНАЛЬЮ через кадр (вправо-вверх), а не смотрит торцом
+	# в поплавок: бланк видно целиком, кончик не лезет в середину кадра.
+	# В вываживании доля «позы» падает — удилище тянется к рыбе.
+	var w := 0.80
+	match state:
+		S.CHARGE:
+			w = 0.86
+		S.FLY:
+			w = 0.72
+		S.BITE:
+			w = 0.66
+		S.FIGHT:
+			w = 0.62 - 0.22 * _fight_t01()
+	var aim := (HOLD_DIR.normalized() * w + to * (1.0 - w)).normalized()
+	if state == S.CHARGE:
+		# замах: удилище уходит назад-вверх
+		aim = (aim + Vector3(0.0, 0.55, 0.60) * charge_power()).normalized()
+	elif state == S.BITE and bite != null:
+		# поклёвка: кончик клюёт вниз
+		aim = (aim + Vector3(0.0, -0.30, 0.0) * bite.dip()).normalized()
+	return aim
 
 
 func _dir_to_target() -> Vector3:
