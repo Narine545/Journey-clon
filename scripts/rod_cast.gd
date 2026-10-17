@@ -98,7 +98,7 @@ var _whip_phase := 0.0
 var _bend_axis := Vector3.RIGHT
 var _tip_local := Vector3.ZERO
 var _tip_dir := Vector3.UP
-var _bite_mark: MeshInstance3D
+var _bite_mark: Node3D
 
 # мир
 var _world: Node3D
@@ -730,21 +730,27 @@ func _build_world() -> void:
 	_bobber.add_child(hi)
 	_bobber.visible = false
 
-	# маркер поклёвки: тёплое кольцо над поплавком, видно и на дальней воде
-	_bite_mark = MeshInstance3D.new()
-	var ring := TorusMesh.new()
-	ring.inner_radius = 0.34
-	ring.outer_radius = 0.42
-	ring.ring_segments = 20
-	_bite_mark.mesh = ring
+	# маркер поклёвки: два вертикальных кольца крестом над поплавком.
+	# Горизонтальное кольцо вдали читается полоской, а крест видно с любого
+	# ракурса — на 40 м поплавок сам по себе всего пара пикселей.
+	_bite_mark = Node3D.new()
 	var rm := StandardMaterial3D.new()
 	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	rm.albedo_color = Color(1.0, 0.78, 0.36)
 	rm.emission_enabled = true
 	rm.emission = Color(1.0, 0.62, 0.22)
-	rm.emission_energy_multiplier = 2.2
-	_bite_mark.material_override = rm
-	_bite_mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	rm.emission_energy_multiplier = 2.4
+	for i in 2:
+		var ring := MeshInstance3D.new()
+		var tor := TorusMesh.new()
+		tor.inner_radius = 0.38
+		tor.outer_radius = 0.47
+		tor.ring_segments = 24
+		ring.mesh = tor
+		ring.material_override = rm
+		ring.rotation = Vector3(PI * 0.5, PI * 0.5 * float(i), 0.0)
+		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_bite_mark.add_child(ring)
 	_bite_mark.visible = false
 	_world.add_child(_bite_mark)
 
@@ -789,7 +795,7 @@ func _build_rod() -> void:
 	var mat_carbon := StandardMaterial3D.new()
 	# бланк светлее «чёрного карбона»: на светлом песке чёрное удилище
 	# пропадает, и остаётся только леска
-	mat_carbon.albedo_color = Color(0.31, 0.25, 0.20)
+	mat_carbon.albedo_color = Color(0.37, 0.30, 0.24)
 	mat_carbon.roughness = 0.46
 	mat_carbon.metallic = 0.18
 	var mat_metal := StandardMaterial3D.new()
@@ -824,8 +830,8 @@ func _build_rod() -> void:
 	# 12 сегментов бланка: «кости» с нарастающим изгибом
 	_segs.clear()
 	for i in range(ROD_SEGMENTS):
-		var r0 := lerpf(0.0210, 0.0050, float(i) / float(ROD_SEGMENTS - 1))
-		var r1 := lerpf(0.0210, 0.0050, float(i + 1) / float(ROD_SEGMENTS - 1))
+		var r0 := lerpf(0.0210, 0.0065, float(i) / float(ROD_SEGMENTS - 1))
+		var r1 := lerpf(0.0210, 0.0065, float(i + 1) / float(ROD_SEGMENTS - 1))
 		var mi := MeshInstance3D.new()
 		var cm2 := CylinderMesh.new()
 		cm2.bottom_radius = r0
@@ -1065,10 +1071,10 @@ func _update_bite_mark(delta: float) -> void:
 	if not show:
 		return
 	var bp := _bobber.global_position
-	_bite_mark.global_position = bp + Vector3.UP * 0.62
+	_bite_mark.global_position = bp + Vector3.UP * 0.68
 	_bite_mark.rotation.y += delta * 2.6
 	var pulse := 1.0 + 0.12 * sin(_t * 14.0)
-	_bite_mark.scale = Vector3(pulse, 1.0, pulse)
+	_bite_mark.scale = Vector3(pulse, pulse, pulse)
 
 
 ## Дистанция лески (для HUD и подсказок): от глаз до поплавка.

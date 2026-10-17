@@ -25,9 +25,9 @@ func setup() -> void:
 	_panel.anchor_right = 0.0
 	_panel.anchor_bottom = 1.0
 	_panel.offset_left = 28.0
-	_panel.offset_top = -286.0
+	_panel.offset_top = -300.0
 	_panel.offset_right = 452.0
-	_panel.offset_bottom = -118.0
+	_panel.offset_bottom = -132.0
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_style = StyleBoxFlat.new()
 	_style.bg_color = Color(0.06, 0.05, 0.05, 0.72)
