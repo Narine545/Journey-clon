@@ -42,9 +42,13 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 		_mat.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
 	material_override = _mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# море прозрачное (мягкий урез) и должно рисоваться ПОСЛЕ всех
-	# прозрачных слоёв, включая SDF-квад существ (у него sorting_offset 4096)
-	sorting_offset = 8192.0
+	# море прозрачное (мягкий урез), но по-прежнему рисуется ПЕРВЫМ:
+	# SDF-квад существ читает u_screen с уже нарисованной водой (по ней
+	# считается «вуаль» подводных китов) и рисуется поверх (у него 4096).
+	# transparency = 0 выключает сортировку по глубине — порядок задаёт
+	# sorting_offset, иначе море уплывало за SDF-слой.
+	transparency = 0.0
+	sorting_offset = -4096.0
 
 	field = WaterField.new()
 	field.name = "WaterField"

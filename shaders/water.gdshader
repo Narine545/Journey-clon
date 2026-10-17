@@ -18,7 +18,7 @@ shader_type spatial;
 // render_mode — ровно как у песка: diffuse_burley + specular_schlick_ggx,
 // шероховатость песочная (0.88..0.62). Солнце рисует шёлк само.
 
-render_mode diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_never;
+render_mode diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_always;
 
 // ---- Палитра — ТО ЖЕ, что у песка (оригинал без изменений) ----
 uniform vec3 sun_dir = vec3(0.10, 0.26, -0.96); // к солнцу (как у песка)

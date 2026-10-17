@@ -116,6 +116,7 @@ func _process(delta: float) -> void:
 				Engine.time_scale = 1.0
 				if rod.state == RodCast.S.FIGHT:
 					rod.debug_cancel_fight()
+				rod.clear_held() # путник телепортировался — рыбы в руках уже нет
 				var pier: Pier = main.pier
 				var deck := pier.deck_height(pier.x_end + 2.0, pier.pz)
 				main.player.global_position = Vector3(pier.x_end + 2.0, deck, pier.pz)
@@ -132,7 +133,7 @@ func _process(delta: float) -> void:
 			if _fs == 2:
 				var d: Vector3 = target - main.cam_rig.cam.global_position
 				main.cam_rig.set_view(atan2(d.x, d.z), -0.16)
-			if t > 0.7 and _fs > 4:
+			if t > 0.45 and _fs > 4:
 				_capture("shot_h_breach.png")
 				_go(9)
 		9:

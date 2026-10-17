@@ -483,10 +483,10 @@ func _land_fish() -> void:
 	tension_changed.emit(0.0)
 	_held.setup(last_fish)
 	_held.scale *= 0.46
-	_held.position = Vector3(0.17, -0.33, -0.60)
+	_held.position = Vector3(0.20, -0.40, -0.62)
 	_held.rotation = Vector3(-0.10, PI * 0.42, 0.30)
 	_held.visible = true
-	_held_t = 3.2
+	_held_t = 2.4
 	fish_landed.emit(size_cm)
 	fish_caught.emit(last_fish)
 
@@ -558,6 +558,12 @@ func fight_progress() -> float:
 
 func bobber_position() -> Vector3:
 	return _bobber.global_position
+
+
+## Убрать рыбу из рук (телепорт/переход сцены — руки не должны «нести» её).
+func clear_held() -> void:
+	_held.visible = false
+	_held_t = 0.0
 
 
 ## Тест/скриншоты: оборвать бой (сценарий не должен зависнуть в вываживании).
@@ -965,7 +971,7 @@ func _tip_world() -> Vector3:
 func _update_visual_fish(delta: float) -> void:
 	if _held.visible:
 		_held_t -= delta
-		_held.position.y = -0.33 + sin(_t * 2.4) * 0.008
+		_held.position.y = -0.40 + sin(_t * 2.4) * 0.008
 		_held.rotation.z = 0.30 + sin(_t * 3.1) * 0.06
 		if _held_t <= 0.0:
 			_held.visible = false
