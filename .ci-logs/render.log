@@ -20,4 +20,13 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_b_rod.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_c_charge.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_d_bobber.png -> 0
-[SHOT] ждём поклёвку: state=3, lure=-1, on_land=true
+[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_e_bite.png -> 0
+[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_f_fight.png -> 0
+[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_g_pier.png -> 0
+[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_h_breach.png -> 0
+[SHOT] готово
+WARNING: 1 RID of type "CanvasItem" was leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2733)
+WARNING: 16 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
+ERROR: 1 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
