@@ -39,7 +39,7 @@ uniform float sea_swell = 0.055; // дыхание моря — как в water.
 // depth-тестом. Мокрую полосу и подводный песок красит этот же шейдер:
 // у уреза песок темнее, холоднее и глянцевее, искры гаснут.
 uniform float sea_level = 0.0;   // мировой Y уровня моря
-uniform float wet_band = 0.40;   // ВЫСОТА над водой (м), где песок ещё мокрый
+uniform float wet_band = 0.30;   // ВЫСОТА над водой (м), где песок ещё мокрый
 uniform float wet_darken = 0.38; // сила мокрого затемнения
 
 // ---- Настоящий песок: карта смещений ----
@@ -214,10 +214,12 @@ void fragment() {
 	float wet = 1.0 - smoothstep(-0.02, wet_band * (0.65 + 0.7 * wob), above_sea);
 	wet *= 0.72 + 0.28 * wob;
 	float sub = 1.0 - smoothstep(-1.6, 0.0, above_sea);
-	// пена: узкая светлая кайма на самой кромке, вспенивается пятнами
-	float fw = 0.05 + 0.06 * vnoise(wp * 1.9 + vec2(2.0, 5.0));
-	float foam = 1.0 - smoothstep(0.0, fw, abs(above_sea - 0.02));
-	foam *= wet * (0.45 + 0.55 * vnoise(wp * 3.1 + vec2(TIME * 0.6, 0.0)));
+	// пена: узкая светлая кайма на самой кромке, вспенивается пятнами.
+	// Полоса не должна читаться «лентой»: пятна рвут её на куски.
+	float fw = 0.025 + 0.045 * vnoise(wp * 1.9 + vec2(2.0, 5.0));
+	float foam = 1.0 - smoothstep(0.0, fw, abs(above_sea - 0.01));
+	foam *= smoothstep(0.25, 0.75, vnoise(wp * 2.6 + vec2(TIME * 0.5, 0.0)));
+	foam *= wet * (0.30 + 0.35 * vnoise(wp * 3.1 + vec2(TIME * 0.6, 0.0)));
 
 	// ---------- 2b. След: настоящий рельеф красится как настоящий ----------
 	float press = clamp(-h * 12.0, 0.0, 1.0); // дно следа
@@ -231,7 +233,7 @@ void fragment() {
 	base = mix(base, base * vec3(0.56, 0.57, 0.66), wet * wet_darken);
 	base = mix(base, base * vec3(0.40, 0.46, 0.56), sub * 0.55);
 	// прибойная пена — тёплый свет, не белая краска
-	base = mix(base, vec3(0.97, 0.91, 0.79), clamp(foam * 0.55, 0.0, 0.55));
+	base = mix(base, vec3(0.94, 0.88, 0.77), clamp(foam * 0.42, 0.0, 0.35));
 
 	// ---------- 3. Глиттер (микрофасеты, по мотивам Zucconi) ----------
 	// «Песчинки» размером с пиксель (LOD по дистанции). ДВА лба:
@@ -278,7 +280,7 @@ void fragment() {
 	float sheen = pow(clamp(dot(N, H), 0.0, 1.0), 16.0) * 0.7
 		+ pow(clamp(dot(N, H), 0.0, 1.0), 48.0) * 0.3;
 	base += vec3(1.0, 0.72, 0.45) * sheen * fres * 0.045 * near_gloss
-		* smoothstep(0.0, 0.5, wrap) * (1.0 - churn * 0.5) * (1.0 + 0.6 * wet);
+		* smoothstep(0.0, 0.5, wrap) * (1.0 - churn * 0.5);
 	// скользящий ракурс: ближний песок у кромки дюны слегка рдеет
 	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.10 * ao * near_gloss;
 

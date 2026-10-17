@@ -54,7 +54,7 @@ uniform float ring_boost = 1.4;  // крутизна нормалей колец
 uniform float u_time = 0.0;
 // Мягкий урез: вода растворяется над песком по разнице глубин сцены.
 // Это убирает жёсткую (и рваную на треугольниках) линию пересечения.
-uniform float shore_fade = 0.30; // м глубины, на которых вода прозрачна
+uniform float shore_fade = 0.45; // м глубины, на которых вода прозрачна
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 // Карта уреза (shore_x(z)), строится в Coast: вода гаснет по РАССТОЯНИЮ
 // до линии песка, а не по глубине сцены — на скользящем ракурсе depth
@@ -264,7 +264,7 @@ void fragment() {
 		+ cos(mph * 0.47 + 0.8) * 0.22) * mega_amp * wind_power;
 	float lift = swash_h / 0.062; // насколько накат сдвинул кромку по пляжу
 	float dx = w_pos.x - sx - lift; // >0 — суша, <0 — море
-	float shore_a = 1.0 - smoothstep(-2.4, 0.12, dx);
+	float shore_a = 1.0 - smoothstep(-3.2, 0.20, dx);
 	// 2) мягкое пересечение с любыми предметами (depth-буфер сцены)
 	float sd = texture(depth_tex, SCREEN_UV).r;
 	vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, sd, 1.0);
