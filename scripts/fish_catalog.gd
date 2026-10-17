@@ -151,7 +151,8 @@ static func time_label(segment: String) -> String:
 
 
 static func rarity_of(id: String) -> Dictionary:
-	return RARITY.get(id, RARITY["common"])
+	var r: Dictionary = RARITY.get(id, RARITY["common"])
+	return r
 
 
 ## Стартовые снасти (в будущем — магазин/прогрессия из tideline).
