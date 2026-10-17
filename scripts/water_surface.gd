@@ -40,11 +40,11 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 	if game != null:
 		_mat.set_shader_parameter("sun_dir", game.sun_dir)
 		_mat.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
-	# уровень моря: по карте высот берега шейдер считает глубину и плёнку прибоя
+	# уровень моря: шейдер вычисляет глубину у кромки берега
 	_mat.set_shader_parameter("sea_level", level_y)
 	material_override = _mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# море прозрачное (мягкий урез), но по-прежнему рисуется ПЕРВЫМ:
+	# море непрозрачное в глубине, alpha используется только у мягкого уреза; рисуем ПЕРВЫМ:
 	# SDF-квад существ читает u_screen с уже нарисованной водой (по ней
 	# считается «вуаль» подводных китов) и рисуется поверх (у него 4096).
 	# transparency = 0 выключает сортировку по глубине — порядок задаёт

@@ -9,7 +9,7 @@ extends Node3D
 ## ползущие под песком («вуаль»).
 ##
 ## Скрипт живёт жизнью существ на CPU и пушит uniform-ы каждый кадр
-## (6 рыб + 12 капель — копейки): курс/скорость/фаза волны, гауссов «бугор
+## (6 рыб + слот улова + 12 капель — копейки): курс/скорость/фаза волны, гауссов «бугор
 ## прыжка» в цикле, парбол капель. Все рыбьи места — в пределах сферы
 ## обитания, центр которой идёт за камерой: существа всегда рядом с кадром.
 ##
@@ -21,7 +21,8 @@ extends Node3D
 ##   fish.splash_burst(global_pos, 1.0)
 ## Капли заодно роняют кольцо в WaterField — событие видно и как рябь.
 
-const MAX_FISH := 6
+const MAX_FISH := 7
+const CATCH_SLOT := 6
 const LURE_SEARCH := 55.0 # м: дальше рыба не замечает поплавок
 const MAX_DROPS := 12
 const SHADER_PATH := "res://shaders/sand_sea_sdf.gdshader"
@@ -42,7 +43,7 @@ const PALETTE: Array[Color] = [
 	Color(0.80, 0.66, 0.46), # песок
 ]
 
-@export_range(0, MAX_FISH) var fish_count := 5 ## сколько существ живёт сейчас
+@export_range(0, CATCH_SLOT) var fish_count := 5 ## сколько существ живёт сейчас
 @export var bounds_radius := 130.0 ## радиус сферы обитания, м (центр — камера)
 @export_range(0.4, 2.0) var size_mul := 1.0 ## множитель размера существ
 @export_range(0.4, 2.4) var jump_mul := 1.0 ## множитель высоты прыжка
@@ -88,6 +89,16 @@ var _hooked_idx := -1 # рыба на крючке (вываживание)
 var _fscare := PackedFloat32Array() # > 0 — рыба убегает от поплавка
 var _respawn := PackedFloat32Array() # > 0 — таймер возвращения пойманной рыбы
 var _spawned := false # стая расселена (ждём камеру)
+
+# Отдельный SDF-слот для рыбы на вываживании/в руках. Ни один видимый
+# экземпляр рыбы не строится MeshInstance-ами.
+var _catch_active := false
+var _catch_owner: Node
+var _catch_pos := Vector3.ZERO
+var _catch_size := 0.0
+var _catch_heading := 0.0
+var _catch_phase := 0.0
+var _catch_tint := Color.WHITE
 
 
 func _ready() -> void:
@@ -328,7 +339,7 @@ func _sim_drops(delta: float) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Пуш uniform-ов (каждый кадр: 6 рыб + 12 капель — копейки)
+# Пуш uniform-ов (6 живых рыб + один SDF-слот улова + 12 капель).
 # ---------------------------------------------------------------------------
 
 func _push_uniforms(center: Vector2) -> void:
@@ -339,6 +350,12 @@ func _push_uniforms(center: Vector2) -> void:
 	var tn := PackedVector3Array()
 	tn.resize(MAX_FISH)
 	for i in range(MAX_FISH):
+		if i == CATCH_SLOT:
+			if _catch_active:
+				st[i] = Vector4(_catch_pos.x, _catch_pos.y, _catch_pos.z, _catch_heading)
+				mt[i] = Vector2(_catch_size, _catch_phase)
+				tn[i] = Vector3(_catch_tint.r, _catch_tint.g, _catch_tint.b)
+			continue
 		if i >= fish_count:
 			continue
 		st[i] = Vector4(_fpos[i].x, _fpos[i].y, _fpos[i].z, _fheading[i])
@@ -479,6 +496,24 @@ func nearest_distance(p: Vector3) -> float:
 func set_sdf_enabled(on: bool) -> void:
 	if _quad != null:
 		_quad.visible = on
+
+
+## Показать пойманную рыбу через тот же SDF raymarcher, что и живую стаю.
+func set_catch_visual(owner: Node, pos: Vector3, size: float, heading: float,
+		phase: float, tint: Color) -> void:
+	_catch_owner = owner
+	_catch_active = true
+	_catch_pos = pos
+	_catch_size = clampf(size, 0.08, 1.2)
+	_catch_heading = heading
+	_catch_phase = phase
+	_catch_tint = tint
+
+
+func clear_catch_visual(owner: Node) -> void:
+	if _catch_owner == owner:
+		_catch_owner = null
+		_catch_active = false
 
 
 ## Диагностика/скриншоты: приманить рыбу принудительно — без проверки

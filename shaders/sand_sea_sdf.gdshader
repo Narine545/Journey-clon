@@ -55,10 +55,10 @@ uniform float u_time = 0.0;
 uniform vec2 u_center = vec2(0.0, 0.0); // центр обитания (идёт за камерой)
 uniform float u_bounds_r = 130.0;       // радиус обитания, м
 
-// Рыбы: 6 слотов; meta.x <= 0.001 — слот пуст
-uniform vec4 u_fish_state[6]; // xyz — центр тела, w — курс (рад)
-uniform vec2 u_fish_meta[6];  // x — размер (м), y — фаза волны тела
-uniform vec3 u_fish_tint[6];  // базовый цвет существа
+// Рыбы: 6 слотов стаи + 1 слот пойманной рыбы; meta.x <= 0.001 — пусто
+uniform vec4 u_fish_state[7]; // xyz — центр тела, w — курс (рад)
+uniform vec2 u_fish_meta[7];  // x — размер (м), y — фаза волны тела
+uniform vec3 u_fish_tint[7];  // базовый цвет существа
 
 // Брызги: 12 слотов; w <= 0.004 — слот пуст (анимация целиком на CPU)
 uniform vec4 u_drops[12]; // xyz — центр, w — радиус
@@ -164,7 +164,7 @@ vec4 map(vec3 p) {
         vec4 acc = vec4(0.0, 0.0, 0.0, 1e9);
         float dskips = 1e9;
 
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 7; i++) {
                 float s = u_fish_meta[i].x;
                 if (s < 0.001) {
                         continue;
@@ -343,7 +343,7 @@ void fragment() {
                                         if (fz < 0.97) {
                                                 float m = 0.0;
                                                 vec3 tw = vec3(0.0);
-                                                for (int i = 0; i < 6; i++) {
+                                                for (int i = 0; i < 7; i++) {
                                                         float s = u_fish_meta[i].x;
                                                         if (s < 0.001) {
                                                                 continue;

@@ -153,6 +153,10 @@ func setup(game_ref, water_ref, fish_ref, coast_ref = null, sand_ref = null) -> 
 	fish = fish_ref
 	coast = coast_ref
 	sand = sand_ref
+	if _catch != null:
+		_catch.bind_sdf(fish)
+	if _held != null:
+		_held.bind_sdf(fish)
 
 
 func _ensure_actions() -> void:
