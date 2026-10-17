@@ -127,6 +127,14 @@ void fragment() {
 	float dist = length(CAMERA_POSITION_WORLD - w_pos);
 	float detail = exp(-dist * 0.030);
 
+	// Расстояние до настоящей линии уреза (карта берега из Coast).
+	// shallow: 1 — на суше, 0 — в открытом море. У кромки вода обязана
+	// гаснуть и «песочнеть», иначе над песком висит светлая лента.
+	float zt = clamp((w_pos.z - shore_z0) / (shore_z1 - shore_z0), 0.0, 1.0);
+	float shore_xw = texture(shore_lut, vec2(zt, 0.5)).r;
+	float shore_dx = w_pos.x - shore_xw;
+	float shallow = 1.0 - smoothstep(-2.6, 0.4, shore_dx);
+
 	// ---------- слой 2: мега-рябь («дыхание»-одеяло) ----------
 	// Нормаль геометрической мега-ряби — та же фаза, что в vertex.
 	float mph = mega_phase(wp, wdir, wperp);
@@ -228,6 +236,7 @@ void fragment() {
 	float rate = mix(2.0, 8.0, cellb);
 	glint *= 0.40 + 0.60 * (0.5 + 0.5 * sin(u_time * rate + cellid * 71.0));
 	float glit_fade = exp(-dist * 0.004); // искры живут до горизонта
+	glit_fade *= 1.0 - shallow; // у берега искр нет: там мелководье, а не гладь
 	base += vec3(1.0, 0.92, 0.70) * (sun_lobe * 2.0 + sky_lobe * 2.2)
 		* glint * glit_fade;
 	// шёлковый отблеск с ФРЕНЕЛЕМ: под скользящим взглядом поверхность
@@ -237,11 +246,13 @@ void fragment() {
 	float sheen = pow(clamp(dot(N, H), 0.0, 1.0), 16.0) * 0.7
 		+ pow(clamp(dot(N, H), 0.0, 1.0), 48.0) * 0.3;
 	base += vec3(1.0, 0.72, 0.45) * sheen * fres * 0.22 * near_gloss
-		* smoothstep(0.0, 0.5, wrap);
+		* smoothstep(0.0, 0.5, wrap) * (1.0 - shallow);
 	// скользящий ракурс: ближняя кромка слегка рдеет
-	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.22 * near_gloss;
+	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.22 * near_gloss * (1.0 - shallow);
 	// прохладная наплыв: море всё-таки вода, а не песок — иначе урез не читается
 	base = mix(base, base * vec3(0.74, 0.86, 1.02) + vec3(0.02, 0.05, 0.09), 0.35);
+	// мелководье: тонкая вода на песке — темнее, матовее, без бликов
+	base = mix(base, base * vec3(0.52, 0.44, 0.36), shallow * 0.85);
 
 	// ---------- Дымка к горизонту — та же, что у песка ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
@@ -251,20 +262,17 @@ void fragment() {
 	ALBEDO = mix(base, fcol, fog);
 	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0)).xyz);
 	// вода глаже песка: длинная солнечная дорожка читается как жидкость
-	ROUGHNESS = mix(0.68, 0.40, clamp(fres, 0.0, 1.0));
-	SPECULAR = 0.42;
+	ROUGHNESS = mix(mix(0.68, 0.40, clamp(fres, 0.0, 1.0)), 0.94, shallow);
+	SPECULAR = mix(0.42, 0.06, shallow);
 	METALLIC = 0.0;
 
 	// ---- Мягкий урез ----
-	// 1) расстояние до реальной линии уреза из карты Coast (с поправкой
-	//    на дыхание моря: накат двигает кромку);
-	float zt = clamp((w_pos.z - shore_z0) / (shore_z1 - shore_z0), 0.0, 1.0);
-	float sx = texture(shore_lut, vec2(zt, 0.5)).r;
+	// 1) та же линия уреза, с поправкой на накат: кромка ползёт по пляжу
 	float swash_h = (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
 		+ cos(mph * 0.47 + 0.8) * 0.22) * mega_amp * wind_power;
 	float lift = swash_h / 0.062; // насколько накат сдвинул кромку по пляжу
-	float dx = w_pos.x - sx - lift; // >0 — суша, <0 — море
-	float shore_a = 1.0 - smoothstep(-3.2, 0.20, dx);
+	float dx = shore_dx - lift; // >0 — суша, <0 — море
+	float shore_a = 1.0 - smoothstep(-1.8, 0.15, dx);
 	// 2) мягкое пересечение с любыми предметами (depth-буфер сцены)
 	float sd = texture(depth_tex, SCREEN_UV).r;
 	vec4 ndc = vec4(SCREEN_UV * 2.0 - 1.0, sd, 1.0);
