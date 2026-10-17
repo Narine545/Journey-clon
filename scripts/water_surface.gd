@@ -42,6 +42,9 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 		_mat.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
 	material_override = _mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# море прозрачное (мягкий урез) и должно рисоваться ПОСЛЕ всех
+	# прозрачных слоёв, включая SDF-квад существ (у него sorting_offset 4096)
+	sorting_offset = 8192.0
 
 	field = WaterField.new()
 	field.name = "WaterField"
