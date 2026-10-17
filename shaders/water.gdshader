@@ -232,9 +232,14 @@ void fragment() {
 	vec3 R = reflect(-V, N);
 	float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.2);
 	vec3 sky_ref = mix(horizon_col, sky_col, smoothstep(0.02, 0.42, R.y));
+	// вода подкрашивает отражение в холод: тёплый закат не должен делать
+	// море песочного цвета — иначе суша и вода сливаются на скользящем
+	// ракурсе, где зеркало доминирует.
+	sky_ref = mix(sky_ref, sky_ref * vec3(0.60, 0.80, 1.02), 0.62);
 	// на скользящих ракурсах вода почти зеркалит небо — поэтому горизонт
 	// светлый, а не тёмная полоса
-	float mirror = clamp(0.05 + 0.92 * fres, 0.0, 0.90);
+	float mirror = clamp(0.05 + 0.92 * fres, 0.0, 0.88);
+	mirror *= 1.0 - 0.18 * near_shore;
 	base = mix(base, sky_ref, mirror);
 
 	// солнечные искры — тёплые, как отблеск заката на воде
@@ -263,10 +268,10 @@ void fragment() {
 	float fn2 = vnoise(vec2(wp.x * 3.2 - u_time * 0.38, wp.y * 2.35));
 	float edge = exp(-pow((depth_m - 0.014 - 0.014 * sin(wp.x * 0.9 + u_time * 1.3)) / 0.075, 2.0));
 	float edge2 = exp(-pow((depth_m - 0.17 - 0.03 * sin(wp.y * 0.21 + u_time * 1.15)) / 0.08, 2.0));
-	float foam = edge * smoothstep(0.06, 0.48, fn) * (0.72 + 0.28 * fn2);
+	float foam = edge * smoothstep(0.02, 0.40, fn) * (0.72 + 0.28 * fn2);
 	foam += edge2 * smoothstep(0.45, 0.85, fn2) * 0.55;
 	foam = clamp(foam, 0.0, 1.0);
-	base = mix(base, foam_col * (0.78 + 0.22 * ndl), foam * 0.92);
+	base = mix(base, foam_col * (0.80 + 0.20 * ndl), foam * 0.95);
 
 	// ---------- дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
