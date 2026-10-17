@@ -274,7 +274,7 @@ func _update_gait(delta: float) -> void:
 
 	var on_pier := pier != null and pier.is_on(pos.x, pos.y)
 	var depth := Coast.SEA_LEVEL - coast.ground_height(pos.x, pos.y)
-	var cadence: float = clampf(1.55 * hspd, 0.9, 4.8)
+	var cadence: float = clampf(0.90 * hspd, 0.8, 3.4) # шагов/с ≈ 0.9 на метр
 	_gait_phase += cadence * PI * delta
 	var step_idx := int(_gait_phase / PI)
 	if step_idx > _last_step_idx:

@@ -6,7 +6,7 @@ extends Node3D
 ## Всё — процедурная геометрия (MeshKit), две-три draw-call-группы:
 ## камень, мокрое дерево, сухое дерево. Никаких ассетов.
 ## Позиции привязаны к линии уреза, поэтому работают при любой кривизне
-## берега: camены стоят в воде, коряги — на песке.
+## берега: камни стоят в воде, коряги — на песке.
 
 var coast: Coast
 var game: GameState
@@ -25,7 +25,7 @@ func _rock_material() -> StandardMaterial3D:
 	m.vertex_color_use_as_albedo = true
 	m.albedo_color = Color.WHITE
 	m.roughness = 0.92
-	m.specular = 0.18
+	m.metallic_specular = 0.30
 	return m
 
 
@@ -34,7 +34,7 @@ func _wood_material(wet: bool) -> StandardMaterial3D:
 	m.vertex_color_use_as_albedo = true
 	m.albedo_color = Color.WHITE
 	m.roughness = 0.95 if not wet else 0.72
-	m.specular = 0.15
+	m.metallic_specular = 0.28
 	return m
 
 

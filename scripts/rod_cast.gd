@@ -53,10 +53,10 @@ const LAND_DIST := 3.2 # м — рыба у игрока
 const REEL_TICK := 0.11 # с между щелчками катушки
 
 # --- поза удилища (в пространстве камеры) ---
-const GRIP_POS := Vector3(0.18, -0.17, -0.32)
-const GRIP_ROT := Vector3(-0.42, 0.10, -0.14) # вперёд-вверх, чуть вправо
-const STOW_POS := Vector3(0.30, -0.08, -0.40)
-const STOW_ROT := Vector3(-2.25, 0.34, -0.42) # удилище вниз-вперёд, «в руке»
+const GRIP_POS := Vector3(0.26, -0.23, -0.50)
+const GRIP_ROT := Vector3(-0.46, 0.12, -0.16) # вперёд-вверх, чуть вправо
+const STOW_POS := Vector3(0.34, -0.16, -0.54)
+const STOW_ROT := Vector3(-2.25, 0.40, -0.46) # удилище вниз-вперёд, «в руке»
 const TIP_LOCAL := Vector3(0.0, 0.56, 0.0) # кончик вершинки в шарнире _tip
 
 var game: GameState # автозагрузка Game — только ветер для дрейфа поплавка
@@ -567,6 +567,7 @@ func _lut_u(s: float) -> float:
 
 func _build_rod() -> void:
 	_root = Node3D.new()
+	_root.scale = Vector3(0.85, 0.85, 0.85)
 	add_child(_root)
 
 	var mat_h := StandardMaterial3D.new()
@@ -755,7 +756,7 @@ func bobber_position() -> Vector3:
 func debug_fast_lure() -> void:
 	if state == S.FLOAT and not on_land and fish != null:
 		if _lure_idx == -1:
-			_lure_idx = fish.lure_to(_bobber.global_position)
+			_lure_idx = fish.lure_to(_bobber.global_position, -1, 1.0e9) # тест: любая
 		fish.debug_snap_to_lure(6.5)
 		_bite_t = 0.1
 		_relure_t = 0.0

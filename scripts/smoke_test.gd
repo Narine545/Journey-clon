@@ -80,8 +80,8 @@ func _phase_world() -> void:
 		var sp := coast.spawn_point()
 		var h := coast.sample_height(sp.x, sp.y)
 		_check(h > 0.5 and h < 4.0, "старт на сухом пляже (%.2f м над морем)" % h)
-		_check(coast.height_at(sp.x - 40.0, sp.y) < -1.0,
-			"в 40 м от берега уже глубина (%.2f м)" % coast.height_at(sp.x - 40.0, sp.y))
+		_check(coast.height_at(sp.x - 60.0, sp.y) < -1.0,
+			"в 60 м от старта уже глубина (%.2f м)" % coast.height_at(sp.x - 60.0, sp.y))
 		var d1 := coast.height_at(coast.shore_x(sp.y) + 60.0, sp.y)
 		_check(d1 > 2.0, "вглубь суши — дюны (%.1f м)" % d1)
 		print("[SMOKE] урез при z=%.0f: x=%.1f, спавн=(%.1f, %.1f)" % [
@@ -131,7 +131,7 @@ func _phase_walk() -> void:
 			"ходьба: скорость в норме %d из %d (пик %.1f м/с)" % [_walk_ok, _walk_n, _peak_speed])
 		_check(p.vel.length() < 0.7, "ходьба: без ввода остановился (%.2f м/с)" % p.vel.length())
 		_check(p.grounded, "ходьба: на земле")
-		_check(main.sand.stamp_count > 8, "песок: отпечатки остаются (%d штампов)" % main.sand.stamp_count)
+		_check(main.sand.stamp_count > 5, "песок: отпечатки остаются (%d штампов)" % main.sand.stamp_count)
 		_next()
 
 

@@ -259,12 +259,16 @@ func set_vol_fog(param: String, value) -> void:
 func apply_night01(v: float) -> void:
 	game.night01 = clampf(v, 0.0, 1.0)
 	var n: float = game.night01
-	_env.ambient_light_energy = lerpf(1.0, 0.42, n)
-	_env.tonemap_exposure = lerpf(1.08, 1.24, n)
+	# песок/вода сами пекут свет в ALBEDO, поэтому сцена даёт только
+	# «добавку»: днём солнце и небо слабее, иначе всё уходит в белое
+	_env.ambient_light_energy = lerpf(0.72, 0.42, n)
+	_env.tonemap_exposure = lerpf(0.95, 1.15, n)
 	_env.fog_light_color = Game.HORIZON_COL.lerp(Color(0.15, 0.20, 0.34), n)
-	_env.fog_density = lerpf(0.0034, 0.0048, n) if not compat_fallback \
-		else lerpf(0.0034, 0.011, n)
-	_env.volumetric_fog_density = lerpf(0.008, 0.026, n)
+	# днём дымка лёгкая (0.008 volumetric = белая пелена на полкадра),
+	# к ночи туман сгущается — это и есть ночной хоррор-воздух
+	_env.fog_density = lerpf(0.0011, 0.0042, n) if not compat_fallback \
+		else lerpf(0.0011, 0.011, n)
+	_env.volumetric_fog_density = lerpf(0.0016, 0.019, n)
 	_env.volumetric_fog_albedo = Color(0.72, 0.72, 0.72).lerp(Color(0.46, 0.52, 0.64), n)
 	if _using_sky_plus:
 		_sky_mat.set_shader_parameter("exposure", lerpf(13.5, 8.5, n))
@@ -272,7 +276,7 @@ func apply_night01(v: float) -> void:
 		_sky_mat.set_shader_parameter("coverage", lerpf(0.34, 0.48, n))
 	else:
 		_sky_mat.set_shader_parameter("sun_intensity", lerpf(50.0, 8.0, n))
-	_sun.light_energy = lerpf(1.35, 0.30, n)
+	_sun.light_energy = lerpf(0.85, 0.30, n)
 	_sun.light_color = Color(1.0, 0.83, 0.66).lerp(Color(0.72, 0.78, 0.95), n)
 
 

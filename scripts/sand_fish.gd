@@ -369,7 +369,7 @@ func _push_uniforms(center: Vector2) -> void:
 
 ## Приманить рыбу к точке (поплавок). idx = -1 — ближайшая активная.
 ## Возвращает индекс или -1. Одна рыба на приманке за раз.
-func lure_to(pos: Vector3, idx := -1) -> int:
+func lure_to(pos: Vector3, idx := -1, max_dist := LURE_SEARCH) -> int:
 	if idx == -1:
 		if _lure_idx != -1:
 			return -1
@@ -379,7 +379,7 @@ func lure_to(pos: Vector3, idx := -1) -> int:
 			if _fsize[i] < 0.001 or _fscare[i] > 0.0 or i == _hooked_idx:
 				continue
 			var d := Vector2(_fpos[i].x - pos.x, _fpos[i].z - pos.z).length_squared()
-			if d > LURE_SEARCH * LURE_SEARCH:
+			if d > max_dist * max_dist:
 				continue
 			if d < bd:
 				bd = d

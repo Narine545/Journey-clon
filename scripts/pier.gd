@@ -168,7 +168,7 @@ func _build() -> void:
 	mat.vertex_color_use_as_albedo = true
 	mat.albedo_color = Color.WHITE
 	mat.roughness = 0.88
-	mat.specular = 0.25
+	mat.metallic_specular = 0.30
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	add_child(mi)
