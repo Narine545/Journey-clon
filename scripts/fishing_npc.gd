@@ -35,7 +35,7 @@ func setup(main_ref: MainScene, pier: Pier) -> void:
 	var npc_x := pier.x_start - 1.35
 	var npc_z := pier.pz + 0.62
 	global_position = Vector3(npc_x, pier.deck_height(npc_x, npc_z) + 0.06, npc_z)
-	rotation.y = -PI * 0.5 # facing back toward the shore-side approach
+	rotation.y = PI * 0.5 # face the beach-side approach
 	_build_character()
 	_build_ui()
 	_ensure_actions()
@@ -74,8 +74,13 @@ func _build_character() -> void:
 		if idle.is_empty():
 			idle = _find_animation("Idle_Talking_Loop")
 		if idle.is_empty():
+			idle = _find_animation("Idle_Talking")
+		if idle.is_empty():
 			for clip in _anim.get_animation_list():
-				if "idle" in str(clip).to_lower():
+				var clip_name := str(clip).to_lower()
+				if "idle" in clip_name and not ("crouch" in clip_name
+					or "sitting" in clip_name or "pistol" in clip_name
+					or "torch" in clip_name):
 					idle = str(clip)
 					break
 		if not idle.is_empty():

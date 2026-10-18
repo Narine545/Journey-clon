@@ -75,20 +75,22 @@ func _process(delta: float) -> void:
 				var pier: Pier = main.pier
 				# Move the render camera onto the sand on the beach side of the pier;
 				# aiming at land from the original spawn still framed mostly open water.
-				var camera_x := pier.x_start + 5.0
-				var camera_z := pier.pz + 6.0
+				var target_z := pier.pz + 2.0
+				var shore_x := main.coast.shore_x(target_z)
+				var camera_x := shore_x + 19.0
+				var camera_z := target_z + 5.0
 				var camera_y := main.coast.ground_height(camera_x, camera_z)
 				main.player.global_position = Vector3(camera_x, camera_y, camera_z)
 				main.player.vel = Vector3.ZERO
 				main.player.grounded = true
-				var target_x := pier.x_start + 0.8
-				var target_z := pier.pz + 2.0
+				var target_x := shore_x + 9.0
 				var target := Vector3(target_x,
 					main.coast.ground_height(target_x, target_z), target_z)
 				var camera_pos := main.player.global_position + Vector3(0.0, CameraRig.EYE, 0.0)
 				var to_target := target - camera_pos
-				main.cam_rig.set_view(atan2(to_target.x, to_target.z),
-					clampf(atan2(to_target.y, Vector2(to_target.x, to_target.z).length()), -0.9, 0.2))
+				var yaw := atan2(to_target.x, to_target.z)
+				main.cam_rig.set_view(yaw, -0.52)
+				print("[SHOT] night sand camera=%s target=%s yaw=%.2f" % [camera_pos, target, yaw])
 			if _fs > 4:
 				_capture("shot_k_night_stars.png")
 				main.set_time(0.0)
@@ -200,10 +202,10 @@ func _process(delta: float) -> void:
 		13: # крупный контрольный кадр человека и живого idle-рига у причала
 			if _fs == 1:
 				var npc: FishingNpc = main.fishing_npc
-				var px := npc.global_position.x + 1.4
-				var pz := npc.global_position.z
-				var deck := main.pier.deck_height(px, pz)
-				main.player.global_position = Vector3(px, deck, pz)
+				var px := npc.global_position.x + 2.4
+				var pz := npc.global_position.z + 1.0
+				var beach_y := main.coast.ground_height(px, pz)
+				main.player.global_position = Vector3(px, beach_y, pz)
 				main.player.vel = Vector3.ZERO
 				main.player.grounded = true
 				main.hud.visible = false
