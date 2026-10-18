@@ -29,8 +29,8 @@ uniform float wind_power = 1.0;
 
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
 uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
-uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.25;
-uniform float shadow_star_density : hint_range(0.90, 0.995) = 0.92;
+uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.5;
+uniform float shadow_star_density : hint_range(0.65, 0.98) = 0.74;
 uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
 // Общий переключатель прямого света Proxima + Schlick-GGX (A/B).
@@ -316,22 +316,25 @@ void light() {
 	float nv = clamp(dot(n, v), 1e-3, 1.0);
 	// ATTENUATION содержит настоящую тень от причала/камней. Каждая звезда
 	// остаётся на песке в мировых координатах, а не перемещается с камерой.
-	float cast_shadow = smoothstep(0.76, 0.96, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
+	float cast_shadow = smoothstep(0.28, 0.72, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
 	float night_stars = smoothstep(0.18, 0.85, night_amount);
-	const float star_cell_size = 4.5;
+	const float star_cell_size = 3.4;
 	vec2 star_grid = w_pos.xz / star_cell_size;
 	vec2 star_cell = floor(star_grid);
 	vec2 star_local = fract(star_grid) - 0.5;
 	float star_key = hash12(star_cell + vec2(19.7, 83.1));
 	vec2 star_jitter = vec2(hash12(star_cell + 5.3), hash12(star_cell + 27.1)) - 0.5;
 	vec2 star_delta = (star_local - star_jitter * 0.72) * star_cell_size;
-	float star_core = exp(-length(star_delta) * 14.0);
-	float star_ray_x = exp(-abs(star_delta.x) * 4.0 - abs(star_delta.y) * 18.0);
-	float star_ray_z = exp(-abs(star_delta.y) * 4.0 - abs(star_delta.x) * 18.0);
-	float star_shape = max(star_core, max(star_ray_x, star_ray_z) * 0.55);
+	float star_angle = star_key * PI;
+	vec2 star_axis = vec2(cos(star_angle) * star_delta.x - sin(star_angle) * star_delta.y,
+		sin(star_angle) * star_delta.x + cos(star_angle) * star_delta.y);
+	float star_core = exp(-length(star_axis) * 12.0);
+	float star_ray_x = exp(-abs(star_axis.x) * 4.0 - abs(star_axis.y) * 22.0);
+	float star_ray_z = exp(-abs(star_axis.y) * 4.0 - abs(star_axis.x) * 22.0);
+	float star_shape = max(star_core, max(star_ray_x, star_ray_z) * 0.68);
 	float stars_here = star_shape * step(shadow_star_density, star_key)
-		* (0.55 + 0.45 * sin(star_key * 91.0));
-	DIFFUSE_LIGHT += vec3(1.05, 1.42, 2.10) * stars_here
+		* (0.78 + 0.22 * hash12(star_cell + 41.3));
+	DIFFUSE_LIGHT += vec3(1.65, 1.90, 2.40) * stars_here
 		* cast_shadow * night_stars * shadow_star_intensity;
 	if (nl > 0.0) {
 	vec3 h = normalize(v + l);
