@@ -67,12 +67,24 @@ func _build_character() -> void:
 	_anim = _find_animation_player(character)
 	if _anim != null:
 		_anim.animation_finished.connect(_on_animation_finished)
+		# Imported GLTF clip paths are relative to the instanced scene root.
+		# Explicitly bind there rather than trusting a possibly nested default root.
+		_anim.root_node = _anim.get_path_to(character)
 		var idle := _find_animation("Idle_Loop")
 		if idle.is_empty():
 			idle = _find_animation("Idle_Talking_Loop")
+		if idle.is_empty():
+			for clip in _anim.get_animation_list():
+				if "idle" in str(clip).to_lower():
+					idle = str(clip)
+					break
 		if not idle.is_empty():
+			_anim.active = true
 			_anim.play(idle)
-			print("[NPC] CC0 animation playing: %s" % idle)
+			_anim.advance(0.15)
+			print("[NPC] CC0 animation playing: %s; root=%s" % [idle, _anim.root_node])
+		else:
+			push_warning("Fishing NPC: no idle clip in imported animation player: %s" % str(_anim.get_animation_list()))
 	else:
 		push_warning("Fishing NPC: imported animation player was not found")
 

@@ -73,12 +73,22 @@ func _process(delta: float) -> void:
 		11: # звёзды на песке в настоящих тенях причала и камней
 			if _fs == 1:
 				var pier: Pier = main.pier
-				var target_x := pier.x_start + 1.6
-				var target_z := pier.pz + 2.5
+				# Move the render camera onto the sand on the beach side of the pier;
+				# aiming at land from the original spawn still framed mostly open water.
+				var camera_x := pier.x_start + 5.0
+				var camera_z := pier.pz + 6.0
+				var camera_y := main.coast.ground_height(camera_x, camera_z)
+				main.player.global_position = Vector3(camera_x, camera_y, camera_z)
+				main.player.vel = Vector3.ZERO
+				main.player.grounded = true
+				var target_x := pier.x_start + 0.8
+				var target_z := pier.pz + 2.0
 				var target := Vector3(target_x,
 					main.coast.ground_height(target_x, target_z), target_z)
-				var to_target := target - main.cam_rig.cam.global_position
-				main.cam_rig.set_view(atan2(to_target.x, to_target.z), -0.42)
+				var camera_pos := main.player.global_position + Vector3(0.0, CameraRig.EYE, 0.0)
+				var to_target := target - camera_pos
+				main.cam_rig.set_view(atan2(to_target.x, to_target.z),
+					clampf(atan2(to_target.y, Vector2(to_target.x, to_target.z).length()), -0.9, 0.2))
 			if _fs > 4:
 				_capture("shot_k_night_stars.png")
 				main.set_time(0.0)
@@ -198,9 +208,12 @@ func _process(delta: float) -> void:
 				main.player.grounded = true
 				main.hud.visible = false
 				main.catch_card.visible = false
-				var look := npc.global_position - main.cam_rig.cam.global_position
+				var camera_pos := main.player.global_position + Vector3(0.0, CameraRig.EYE, 0.0)
+				var look := npc.global_position + Vector3(0.0, 0.92, 0.0) - camera_pos
 				main.cam_rig.set_view(atan2(look.x, look.z),
-					clampf(atan2(look.y, Vector2(look.x, look.z).length()), -0.25, 0.25))
+					clampf(atan2(look.y, Vector2(look.x, look.z).length()), -0.9, 0.2))
+				for visual in main.rod.find_children("*", "VisualInstance3D", true, false):
+					(visual as VisualInstance3D).visible = false
 			if t > 0.45 and _fs > 4:
 				_capture("shot_m_fisherman.png")
 				Input.action_press("npc_interact")
