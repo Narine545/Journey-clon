@@ -52,6 +52,7 @@ uniform float solar_glitter_amount = 1.0; // отдельные частицы �
 // Временный A/B-тест прямого света: Proxima diffuse + Schlick-GGX.
 // По умолчанию выключен, солнечный глиттер от него не зависит.
 uniform float proxima_test = 0.0;
+uniform float proxima_specular_strength = 0.55;
 uniform vec3 proxima_diffuse_fresnel_tint = vec3(1.0);
 uniform float proxima_diffuse_fresnel = 1.0;
 uniform float proxima_diffuse_fresnel_falloff = 0.75;
@@ -407,7 +408,7 @@ void light() {
 		float k = pow(ROUGHNESS + 1.0, 2.0) * 0.125;
 		float gl = nl / (nl * (1.0 - k) + k);
 		float gv = nv / (nv * (1.0 - k) + k);
-		vec3 f0 = mix(vec3(0.04 * SPECULAR), ALBEDO, METALLIC);
+		vec3 f0 = mix(vec3(0.04 * proxima_specular_strength), ALBEDO, METALLIC);
 		vec3 f = f0 + (1.0 - f0) * pow(1.0 - hl, 5.0);
 		float fd90 = 0.5 + 2.0 * ROUGHNESS * hl * hl;
 		float burley_l = 1.0 + (fd90 - 1.0) * pow(1.0 - nl, 5.0);
@@ -444,7 +445,7 @@ void light() {
 	float d = alpha2 / (PI * t * t);
 	float gl = 1.0 / (nl + sqrt(alpha2 + (1.0 - alpha2) * nl * nl));
 	float gv = 1.0 / (nv + sqrt(alpha2 + (1.0 - alpha2) * nv * nv));
-	vec3 f0 = mix(vec3(SPECULAR * 0.08), ALBEDO, vec3(METALLIC));
+	vec3 f0 = mix(vec3(proxima_specular_strength * 0.08), ALBEDO, vec3(METALLIC));
 	float fh = pow(clamp(1.0 - hl, 0.0, 1.0),
 		5.0 * proxima_r(proxima_specular_fresnel_falloff));
 	vec3 fresnel = f0 + proxima_t(2.0
