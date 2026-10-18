@@ -71,6 +71,14 @@ func _process(delta: float) -> void:
 				main.set_time(1.0)
 				_go(11)
 		11: # звёзды на песке в настоящих тенях причала и камней
+			if _fs == 1:
+				var pier: Pier = main.pier
+				var target_x := pier.x_start - 2.0
+				var target_z := pier.pz + 2.5
+				var target := Vector3(target_x,
+					main.coast.ground_height(target_x, target_z), target_z)
+				var to_target := target - main.cam_rig.cam.global_position
+				main.cam_rig.set_view(atan2(to_target.x, to_target.z), -0.42)
 			if _fs > 4:
 				_capture("shot_k_night_stars.png")
 				main.set_time(0.0)
@@ -178,6 +186,31 @@ func _process(delta: float) -> void:
 				_go(9)
 		9:
 			if t > 0.1 and _fs > 3:
+				_go(13)
+		13: # крупный контрольный кадр человека и живого idle-рига у причала
+			if _fs == 1:
+				var npc: FishingNpc = main.fishing_npc
+				var px := npc.global_position.x - 2.4
+				var pz := npc.global_position.z + 0.55
+				var deck := main.pier.deck_height(px, pz)
+				main.player.global_position = Vector3(px, deck, pz)
+				main.player.vel = Vector3.ZERO
+				main.player.grounded = true
+				var look := npc.global_position - main.cam_rig.cam.global_position
+				main.cam_rig.set_view(atan2(look.x, look.z),
+					clampf(atan2(look.y, Vector2(look.x, look.z).length()), -0.25, 0.25))
+			if t > 0.45 and _fs > 4:
+				_capture("shot_m_fisherman.png")
+				Input.action_press("npc_interact")
+				_go(14)
+		14: # UI: контракт рыбака должен работать так же, как и модель
+			if _fs == 1:
+				Input.action_release("npc_interact")
+				Input.action_press("npc_quest_1")
+			elif _fs == 2:
+				Input.action_release("npc_quest_1")
+			if t > 0.4 and _fs > 4:
+				_capture("shot_n_quest.png")
 				_finish("")
 
 
