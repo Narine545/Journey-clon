@@ -750,6 +750,41 @@ func _build_world() -> void:
 	hi.material_override = mat_hi
 	hi.position = Vector3(0.0, 0.135, 0.0)
 	_bobber.add_child(hi)
+
+	# Верхняя антенна с контрастным наконечником — поплавок читается в воде,
+	# а леска действительно заканчивается на металлическом крепёжном ушке.
+	var antenna := MeshInstance3D.new()
+	var antenna_mesh := CylinderMesh.new()
+	antenna_mesh.top_radius = 0.014
+	antenna_mesh.bottom_radius = 0.022
+	antenna_mesh.height = 0.17
+	antenna_mesh.radial_segments = 8
+	antenna.mesh = antenna_mesh
+	var antenna_mat := StandardMaterial3D.new()
+	antenna_mat.albedo_color = Color(0.80, 0.15, 0.10)
+	antenna_mat.roughness = 0.5
+	antenna_mat.emission_enabled = true
+	antenna_mat.emission = Color(0.55, 0.06, 0.025)
+	antenna_mat.emission_energy_multiplier = 0.38
+	antenna.material_override = antenna_mat
+	antenna.position = Vector3(0.0, 0.285, 0.0)
+	_bobber.add_child(antenna)
+	var eyelet := MeshInstance3D.new()
+	var eyelet_mesh := TorusMesh.new()
+	eyelet_mesh.inner_radius = 0.026
+	eyelet_mesh.outer_radius = 0.041
+	eyelet_mesh.ring_segments = 8
+	eyelet_mesh.rings = 5
+	eyelet.mesh = eyelet_mesh
+	eyelet.scale = Vector3.ONE * 0.72
+	eyelet.rotation.x = PI * 0.5
+	var eyelet_mat := StandardMaterial3D.new()
+	eyelet_mat.albedo_color = Color(0.20, 0.17, 0.13)
+	eyelet_mat.metallic = 0.72
+	eyelet_mat.roughness = 0.32
+	eyelet.material_override = eyelet_mat
+	eyelet.position = Vector3(0.0, 0.265, 0.0)
+	_bobber.add_child(eyelet)
 	_bobber.visible = false
 
 	# маркер поклёвки: два вертикальных кольца крестом над поплавком.
@@ -1158,7 +1193,7 @@ func _draw_line() -> void:
 	if not line_on or _cam == null or not _bobber.visible:
 		return
 	var tip := _tip_world()
-	var end := _bobber.global_position + Vector3.UP * 0.10
+	var end := _bobber.global_position + Vector3.UP * 0.265
 	var sag := 0.08
 	var t01 := _fight_t01()
 	match state:

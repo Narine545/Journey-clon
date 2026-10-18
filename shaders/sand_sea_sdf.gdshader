@@ -66,6 +66,22 @@ uniform vec3 u_drop_tint : source_color = vec3(0.98, 0.62, 0.38);
 // След подводной рыбы — очень тонкий и малоконтрастный.
 uniform float u_veil_strength = 0.42;
 
+// КИТ ПЕСЧАНЫХ РЫБ (godot_fish): 3 слота × 12 костей, семь видов.
+const int FK_FISH = 3;
+const int FK_BONE = 12;
+uniform vec4 u_fk_bone[36];
+uniform vec4 u_fk_params[3];
+uniform vec4 u_fk_flags[3];
+uniform vec3 u_fk_top[3];
+uniform vec3 u_fk_belly[3];
+uniform vec3 u_fk_acc[3];
+uniform vec3 u_fk_glow_c[3];
+uniform vec4 u_fk_glow[3];
+uniform vec3 u_fk_center[3];
+uniform vec4 u_fk_lure[3];
+uniform vec4 u_fk_lure2[3];
+uniform float u_fk_xray = 0.0;
+
 uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 uniform sampler2D u_screen : hint_screen_texture, filter_linear;
 
@@ -100,6 +116,9 @@ float sd_ell(vec3 p, vec3 r) {
         float k0 = length(p / r);
         return min(r.x, min(r.y, r.z)) * (k0 - 1.0);
 }
+
+// Виды и SDF-скелет FishKit из отдельного SDF include.
+#include "res://shaders/fish_kit_map.gdshaderinc"
 
 // ===== Тело существа i в точке p =====
 // Хребет: 6 сфер от морды к хвосту; волна sin(phase - t*4.2) бежит назад,
@@ -192,6 +211,25 @@ vec4 map(vec3 p) {
                         continue;
                 }
                 acc = sdf_smooth_union(acc, dd, u_drop_tint, 0.07);
+        }
+
+        // Три новых вида FishKit используют ту же сцену и тот же SDF raymarcher.
+        for (int fi = 0; fi < FK_FISH; fi++) {
+                float sF = u_fk_params[fi].x * u_fk_params[fi].w;
+                if (sF < 0.001) {
+                        continue;
+                }
+                float extF = fk_ext(int(u_fk_flags[fi].x + 0.5)) * sF
+                        * (1.0 + 0.9 * u_fk_flags[fi].z) + 0.25;
+                float bdF = length(p - u_fk_center[fi]) - extF;
+                if (bdF > 0.6 * sF + 0.1) {
+                        dskips = min(dskips, bdF);
+                        continue;
+                }
+                vec4 f = fk_fish_sdf(p, fi);
+                if (f.w < 1e8) {
+                        acc = sdf_smooth_union(acc, f.w, f.rgb, 0.30 * sF);
+                }
         }
 
         return vec4(acc.rgb, min(acc.w, dskips));

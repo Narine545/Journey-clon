@@ -173,6 +173,7 @@ const SPECIES: Array[Dictionary] = [
 var water_level := 0.0
 var water_field: WaterField = null # кольца от всплесков/мути (опционально)
 var game = null # автозагрузка Game — общее солнце и туман с водой/песком
+var night_amount := 0.0
 var material: ShaderMaterial
 var t := 0.0 # время поля — единое с шейдерным u_time
 var _quad: MeshInstance3D
@@ -439,6 +440,23 @@ func setup(game_ref, p_level: float, wf: WaterField = null) -> void:
 	if material != null and game != null:
 		material.set_shader_parameter("sun_dir", game.sun_dir)
 		material.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
+
+
+func apply_sun(dir: Vector3) -> void:
+	if material != null:
+		material.set_shader_parameter("sun_dir", dir)
+
+
+func apply_night01(value: float) -> void:
+	night_amount = clampf(value, 0.0, 1.0)
+	if material != null:
+		material.set_shader_parameter("fog_distance", lerpf(340.0, 130.0, night_amount))
+	_push_uniforms()
+
+
+func set_sdf_enabled(on: bool) -> void:
+	if _quad != null:
+		_quad.visible = on
 
 
 func _process(delta: float) -> void:
@@ -913,10 +931,14 @@ func _push_uniforms() -> void:
 		var flap := sin(_wing_ph[i]) * sp.flap.amp
 		params[i] = Vector4(sp.s, _phase[i], flap, _morph[i])
 		flags[i] = Vector4(float(_sp[i]), sp.melt, _inflate[i], float(sp.n))
-		top[i] = Vector3(sp.top.r, sp.top.g, sp.top.b)
-		belly[i] = Vector3(sp.belly.r, sp.belly.g, sp.belly.b)
-		acc[i] = Vector3(sp.acc.r, sp.acc.g, sp.acc.b)
-		glow_c[i] = Vector3(sp.glowc.r, sp.glowc.g, sp.glowc.b)
+		var top_color: Color = sp.top.lerp(Color(0.065, 0.075, 0.13), night_amount * 0.78)
+		var belly_color: Color = sp.belly.lerp(Color(0.12, 0.14, 0.22), night_amount * 0.72)
+		var accent_color: Color = sp.acc.lerp(Color(0.18, 0.24, 0.42), night_amount * 0.62)
+		var glow_color: Color = sp.glowc.lerp(Color(0.30, 0.44, 0.88), night_amount * 0.38)
+		top[i] = Vector3(top_color.r, top_color.g, top_color.b)
+		belly[i] = Vector3(belly_color.r, belly_color.g, belly_color.b)
+		acc[i] = Vector3(accent_color.r, accent_color.g, accent_color.b)
+		glow_c[i] = Vector3(glow_color.r, glow_color.g, glow_color.b)
 		glow[i] = Vector4(_bulb[i].x, _bulb[i].y, _bulb[i].z, _act[i])
 		if _sp[i] == 2:
 			var br_lure := (0.055 + 0.02 * _act[i]) * sp.s * _morph[i]

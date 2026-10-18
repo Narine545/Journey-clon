@@ -14,6 +14,8 @@ var pier: Pier
 var props: CoastProps
 var water: WaterSurface
 var fish: SandFish
+var fish_kit: FishKit
+var fishing_npc: FishingNpc
 var sand: SandField
 var player: Player
 var cam_rig: CameraRig
@@ -21,8 +23,10 @@ var rod: RodCast
 var audio
 var color_grade: ColorGrader
 var solar_blur: SolarGazeBlur
-var shadow_stars: ShadowStars
 var _solar_gaze_dwell := 0.0
+var _fish_kit_cycle := 0.0
+var _fish_kit_slot := 0
+var _fish_kit_species := 0
 var debug_panel: DebugPanel
 var catch_card: CatchCard
 var hud: FishingHud
@@ -43,12 +47,6 @@ func _ready() -> void:
 	add_child(solar_blur)
 	solar_blur.setup()
 
-	# Процедурные звёзды в тёмных участках кадра; слой 9 — над 3D,
-	# но под виньеткой, HUD и общим колор-грейдом.
-	shadow_stars = ShadowStars.new()
-	add_child(shadow_stars)
-	shadow_stars.setup()
-
 	# колор-грейдинг поверх кадра (пресеты и крутилки — DEV-панель F3)
 	color_grade = ColorGrader.new()
 	add_child(color_grade)
@@ -63,7 +61,7 @@ func _ready() -> void:
 	# пирс: настоящий настил над водой, по нему можно ходить
 	pier = Pier.new()
 	add_child(pier)
-	pier.setup(coast, game, -40.0)
+	pier.setup(coast, game, Coast.SPAWN_Z - 8.0)
 
 	# каменные пальцы, коряги и камни — берег не пустой
 	props = CoastProps.new()
@@ -89,10 +87,28 @@ func _ready() -> void:
 	add_child(fish)
 	fish.setup(game, water.level_y, water.field, coast)
 
+	# Новые семь SDF-видов из godot_fish: три вида живут в общем песчаном
+	# море рядом с берегом; SandFish остаётся игровой моделью рыболовного цикла.
+	fish_kit = FishKit.new()
+	fish_kit.bounds_radius = 42.0
+	add_child(fish_kit)
+	fish_kit.setup(game, water.level_y, water.field)
+	var spawn := coast.spawn_point()
+	var sea_x := coast.shore_x(spawn.y) - 10.0
+	fish_kit.add_fish(1, Vector2(sea_x - 5.0, spawn.y - 7.0))
+	fish_kit.add_fish(3, Vector2(sea_x - 9.0, spawn.y + 3.0))
+	fish_kit.add_fish(6, Vector2(sea_x - 2.0, spawn.y + 10.0))
+
 	player = Player.new()
 	add_child(player)
 	player.setup(game, coast, sand, pier)
 	sand.player = player
+
+	# Квестовый рыбак стоит у берегового входа на пирс, в нескольких шагах
+	# от точки старта, а не в отдельном дальнем хабе.
+	fishing_npc = FishingNpc.new()
+	add_child(fishing_npc)
+	fishing_npc.setup(self, pier)
 
 	# звук: шаги, вода, ветер, амбиент-пад — весь синтезируется кодом
 	audio = SoundScape.new()
@@ -170,6 +186,8 @@ func _on_fish_caught(info: Dictionary) -> void:
 	var id := str(info.get("id", ""))
 	var is_new := not seen_species.has(id)
 	seen_species[id] = true
+	if fishing_npc != null:
+		fishing_npc.on_fish_caught(info)
 	if catch_card != null:
 		catch_card.show_fish(info, is_new)
 	print("[FISH] %s (%.0f см, %.2f кг) — %s" % [
@@ -180,6 +198,13 @@ func _on_fish_caught(info: Dictionary) -> void:
 func _process(delta: float) -> void:
 	if cam_rig == null or solar_blur == null or game == null:
 		return
+	if fish_kit != null:
+		_fish_kit_cycle += delta
+		if _fish_kit_cycle >= 28.0:
+			_fish_kit_cycle = 0.0
+			fish_kit.set_species(_fish_kit_slot, _fish_kit_species)
+			_fish_kit_slot = (_fish_kit_slot + 1) % FishKit.MAX_FISH
+			_fish_kit_species = (_fish_kit_species + 1) % FishKit.SPECIES.size()
 	var forward := Vector3(sin(cam_rig.yaw), 0.0, cos(cam_rig.yaw))
 	var sun_horizontal := Vector3(game.sun_dir.x, 0.0, game.sun_dir.z)
 	if sun_horizontal.length_squared() < 0.0001:
@@ -205,10 +230,10 @@ func set_time(v: float) -> void:
 		water.apply_night01(night01)
 	if fish != null:
 		fish.apply_night01(night01)
+	if fish_kit != null:
+		fish_kit.apply_night01(night01)
 	if color_grade != null:
 		color_grade.set_param("night", 0.85 * night01)
-	if shadow_stars != null:
-		shadow_stars.set_night(night01)
 
 
 ## Один A/B-переключатель прямого Proxima + Schlick-GGX на море и песке.
@@ -230,6 +255,8 @@ func apply_sun(dir: Vector3) -> void:
 		water.apply_sun(dir)
 	if fish != null:
 		fish.apply_sun(dir)
+	if fish_kit != null:
+		fish_kit.apply_sun(dir)
 
 
 ## Ближайшая к камере рыба (диагностика/будущие квесты).

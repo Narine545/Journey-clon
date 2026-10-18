@@ -66,10 +66,10 @@ func _build_ui() -> void:
 	_section("ВРЕМЯ СУТОК")
 	_slider("Время (0=день, 1=ночь)", 0.0, 1.0, main.game.night01, 0.01,
 		func(v): main.set_time(v))
-	_slider("Звёзды: яркость", 0.0, 1.5, 0.72, 0.02,
-		func(v): main.shadow_stars.set_param("intensity", v))
-	_slider("Звёзды: маска теней", 0.0, 0.8, 0.38, 0.01,
-		func(v): main.shadow_stars.set_param("start_stars", v))
+	_slider("Искры в тенях: яркость", 0.0, 2.5, 1.25, 0.02,
+		func(v): main.coast.set_sand("shadow_star_intensity", v))
+	_slider("Искры в тенях: редкость", 0.65, 0.98, 0.79, 0.01,
+		func(v): main.coast.set_sand("shadow_star_density", v))
 
 	_section("НЕБО")
 	_slider("Солнце: высота°", 2.0, 85.0, _sun_elev, 0.5,

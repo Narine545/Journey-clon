@@ -28,6 +28,9 @@ uniform vec2 wind_dir = vec2(0.32, -0.95); // нормализуется вну�
 uniform float wind_power = 1.0;
 
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
+uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
+uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 1.25;
+uniform float shadow_star_density : hint_range(0.65, 0.98) = 0.79;
 uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
 // Общий переключатель прямого света Proxima + Schlick-GGX (A/B).
@@ -310,6 +313,26 @@ void light() {
 	vec3 v = normalize(VIEW);
 	float nl = max(dot(n, l), 0.0);
 	float nv = clamp(dot(n, v), 1e-3, 1.0);
+	// ATTENUATION содержит настоящую тень от причала/камней. Каждая звезда
+	// остаётся на песке в мировых координатах, а не перемещается с камерой.
+	float cast_shadow = smoothstep(0.35, 0.90, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
+	float night_stars = smoothstep(0.18, 0.85, night_amount);
+	const float star_cell_size = 2.8;
+	vec2 star_grid = w_pos.xz / star_cell_size;
+	vec2 star_cell = floor(star_grid);
+	vec2 star_local = fract(star_grid) - 0.5;
+	float star_key = hash12(star_cell + vec2(19.7, 83.1));
+	vec2 star_jitter = vec2(hash12(star_cell + 5.3), hash12(star_cell + 27.1)) - 0.5;
+	vec2 star_delta = (star_local - star_jitter * 0.72) * star_cell_size;
+	float star_core = exp(-length(star_delta) * 58.0);
+	float star_ray_x = exp(-abs(star_delta.x) * 72.0 - abs(star_delta.y) * 12.0);
+	float star_ray_z = exp(-abs(star_delta.y) * 72.0 - abs(star_delta.x) * 12.0);
+	float star_shape = max(star_core, max(star_ray_x, star_ray_z) * 0.42);
+	float stars_here = star_shape * step(shadow_star_density, star_key)
+		* (0.55 + 0.45 * sin(star_key * 91.0))
+		* exp(-length(CAMERA_POSITION_WORLD - w_pos) * 0.008);
+	DIFFUSE_LIGHT += vec3(0.30, 0.52, 1.0) * stars_here
+		* cast_shadow * night_stars * shadow_star_intensity;
 	if (nl > 0.0) {
 	vec3 h = normalize(v + l);
 	float nh = clamp(dot(h, n), 0.0, 1.0);

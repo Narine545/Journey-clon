@@ -29,6 +29,7 @@ func setup(main_ref: MainScene) -> void:
 	process_priority = -100
 	main.rod.fish_landed.connect(func(sz: float) -> void: _caught = sz)
 	main.fish.set_sdf_enabled(false) # экономим программный рендер
+	main.fish_kit.set_sdf_enabled(false)
 	main.rod.stats["line"] = 2.0 # хорошая леска: кадр не должен зависеть от баланса
 	# конкретный вид: кадр должен быть быстрым и предсказуемым (не 40-секундный бой)
 	main.rod.bite.forced_id = "perch"
@@ -69,7 +70,7 @@ func _process(delta: float) -> void:
 				main.set_proxima_test(0.0)
 				main.set_time(1.0)
 				_go(11)
-		11: # ночной контроль процедурных звёзд в тёмных областях кадра
+		11: # звёзды на песке в настоящих тенях причала и камней
 			if _fs > 4:
 				_capture("shot_k_night_stars.png")
 				main.set_time(0.0)
@@ -136,12 +137,14 @@ func _process(delta: float) -> void:
 			# гладкость того же SDF-тела после поимки.
 			if _caught > 0.0 and _catch_capture_wait < 0:
 				main.fish.set_sdf_enabled(true)
+				main.fish_kit.set_sdf_enabled(true)
 				_catch_capture_wait = 3
 			if _catch_capture_wait >= 0:
 				_catch_capture_wait -= 1
 				if _catch_capture_wait == 0:
 					_capture("shot_i_caught_fish.png")
 					main.fish.set_sdf_enabled(false)
+					main.fish_kit.set_sdf_enabled(false)
 					Input.action_release("rod_cast")
 					_go(7)
 			elif rod.state == RodCast.S.RESTING or t > 16.0:
@@ -165,6 +168,7 @@ func _process(delta: float) -> void:
 		8: # прыжок песчаного кита у пирса (SDF включаем на пару кадров)
 			var target := _breach_target()
 			main.fish.set_sdf_enabled(true)
+			main.fish_kit.set_sdf_enabled(true)
 			main.fish.debug_breach_near(target)
 			if _fs == 2:
 				var d: Vector3 = target - main.cam_rig.cam.global_position
