@@ -15,24 +15,6 @@ ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
 WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
---res://shaders/sand.gdshader--
-  331 |  float stars_here = star_shape * step(shadow_star_density, star_key)
-  332 |  * (0.55 + 0.45 * sin(star_key * 91.0))
-E 333->  * exp(-length(CAMERA_POSITION_WORLD - w_pos) * 0.008);
-  334 |  DIFFUSE_LIGHT += vec3(0.30, 0.52, 1.0) * stars_here
-  335 |  * cast_shadow * night_stars * shadow_star_intensity;
-SHADER ERROR: Unknown identifier in expression: 'CAMERA_POSITION_WORLD'.
-          at: (null) (res://shaders/sand.gdshader:333)
-          GDScript backtrace (most recent call first):
-              [0] _build_mesh (res://scripts/coast.gd:416)
-              [1] setup (res://scripts/coast.gd:113)
-              [2] _ready (res://scripts/main.gd:59)
-ERROR: Shader compilation failed.
-   at: set_code (servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.cpp:185)
-   GDScript backtrace (most recent call first):
-       [0] _build_mesh (res://scripts/coast.gd:416)
-       [1] setup (res://scripts/coast.gd:113)
-       [2] _ready (res://scripts/main.gd:59)
 [SHOT] кадры в /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_a_coast.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_j_proxima.png -> 0
@@ -43,7 +25,7 @@ ERROR: Shader compilation failed.
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_d_bobber.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_e_bite.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_f_fight.png -> 0
-[FISH] Морской окунь (31 см, 0.72 кг) — новый вид
+[FISH] Морской окунь (36 см, 1.15 кг) — новый вид
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_i_caught_fish.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_g_pier.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_h_breach.png -> 0
