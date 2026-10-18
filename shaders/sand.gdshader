@@ -30,7 +30,7 @@ uniform float wind_power = 1.0;
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
 uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.5;
-uniform float shadow_star_density : hint_range(0.40, 0.98) = 0.45;
+uniform float shadow_star_density : hint_range(0.15, 0.98) = 0.30;
 uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
 // Общий переключатель прямого света Proxima + Schlick-GGX (A/B).
@@ -330,7 +330,7 @@ void light() {
 	float star_zone = 1.0 - smoothstep(shadow_star_radius - 0.6,
 		shadow_star_radius + 0.6, focus_dist);
 	float night_stars = smoothstep(0.18, 0.85, night_amount);
-	const float star_cell_size = 3.4;
+	const float star_cell_size = 1.8;
 	vec2 star_grid = w_pos.xz / star_cell_size;
 	vec2 star_cell = floor(star_grid);
 	vec2 star_local = fract(star_grid) - 0.5;

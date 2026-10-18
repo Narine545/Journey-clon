@@ -62,10 +62,6 @@ func _ready() -> void:
 	pier = Pier.new()
 	add_child(pier)
 	pier.setup(coast, game, Coast.SPAWN_Z - 8.0)
-	# Ночная россыпь существует только в локальной зоне берегового края пирса;
-	# в шейдере она дополнительно проходит тест реальной тени и сухого песка.
-	coast.set_sand("shadow_star_focus", Vector2(pier.x_start + 5.5, pier.pz + 1.9))
-	coast.set_sand("shadow_star_radius", 4.5)
 
 	# каменные пальцы, коряги и камни — берег не пустой
 	props = CoastProps.new()
@@ -255,6 +251,12 @@ func apply_sun(dir: Vector3) -> void:
 	game.sun_dir = dir
 	world.apply_sun(dir)
 	coast.apply_sun(dir)
+	if fishing_npc != null:
+		var shadow_dir := Vector2(-dir.x, -dir.z).normalized()
+		var npc_pos := fishing_npc.global_position
+		coast.set_sand("shadow_star_focus",
+			Vector2(npc_pos.x, npc_pos.z) + shadow_dir * 2.4)
+		coast.set_sand("shadow_star_radius", 3.5)
 	if water != null:
 		water.apply_sun(dir)
 	if fish != null:
