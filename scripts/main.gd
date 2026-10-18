@@ -191,7 +191,7 @@ func _process(delta: float) -> void:
 	if focus > 0.25:
 		_solar_gaze_dwell = minf(_solar_gaze_dwell + delta * focus, 12.0)
 	else:
-		_solar_gaze_dwell = maxf(_solar_gaze_dwell - delta * 0.55, 0.0)
+		_solar_gaze_dwell = maxf(_solar_gaze_dwell - delta * 2.0, 0.0)
 	solar_blur.set_amount(smoothstep(3.0, 11.0, _solar_gaze_dwell))
 
 

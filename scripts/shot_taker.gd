@@ -73,7 +73,14 @@ func _process(delta: float) -> void:
 			if _fs > 4:
 				_capture("shot_k_night_stars.png")
 				main.set_time(0.0)
+				main.cam_rig.set_view(atan2(main.game.sun_dir.x, main.game.sun_dir.z), -0.38)
+				Engine.time_scale = 4.0
+				_go(12)
+		12: # выдержка взгляда на солнечной дорожке до мягкого blur
+			if t > 12.0:
+				_capture("shot_l_solar_gaze_blur.png")
 				Engine.time_scale = 1.0
+				main.cam_rig.set_view(-PI * 0.5 + 0.42, -0.04)
 				Input.action_press("rod_cast")
 				_go(1)
 		1: # удочка достаётся
