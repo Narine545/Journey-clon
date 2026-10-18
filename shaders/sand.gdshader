@@ -54,6 +54,9 @@ uniform float proxima_smooth_terminator_length = 0.5;
 // depth-тестом. Мокрую полосу и подводный песок красит этот же шейдер:
 // у уреза песок темнее, холоднее и глянцевее, искры гаснут.
 uniform float sea_level = 0.0;   // мировой Y уровня моря
+uniform sampler2D shore_lut : filter_linear, repeat_disable;
+uniform float shore_lut_z_min = -460.0;
+uniform float shore_lut_z_max = 460.0;
 uniform float wet_band = 0.16;   // ВЫСОТА над водой (м), где песок ещё мокрый
 uniform float wet_darken = 0.44; // сила мокрого затемнения
 
@@ -316,7 +319,11 @@ void light() {
 	float nv = clamp(dot(n, v), 1e-3, 1.0);
 	// ATTENUATION содержит настоящую тень от причала/камней. Каждая звезда
 	// остаётся на песке в мировых координатах, а не перемещается с камерой.
-	float cast_shadow = smoothstep(0.04, 0.36, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
+	float cast_shadow = smoothstep(0.48, 0.84, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
+	float shore_u = clamp((w_pos.z - shore_lut_z_min)
+		/ (shore_lut_z_max - shore_lut_z_min), 0.0, 1.0);
+	float shore_x = texture(shore_lut, vec2(shore_u, 0.5)).r;
+	float dry_sand = smoothstep(0.0, 1.5, w_pos.x - shore_x);
 	float night_stars = smoothstep(0.18, 0.85, night_amount);
 	const float star_cell_size = 3.4;
 	vec2 star_grid = w_pos.xz / star_cell_size;
@@ -335,7 +342,7 @@ void light() {
 	float stars_here = star_shape * step(shadow_star_density, star_key)
 		* (0.78 + 0.22 * hash12(star_cell + 41.3));
 	DIFFUSE_LIGHT += vec3(1.65, 1.90, 2.40) * stars_here
-		* cast_shadow * night_stars * shadow_star_intensity;
+		* cast_shadow * dry_sand * night_stars * shadow_star_intensity;
 	if (nl > 0.0) {
 	vec3 h = normalize(v + l);
 	float nh = clamp(dot(h, n), 0.0, 1.0);

@@ -426,6 +426,7 @@ func _build_mesh() -> void:
 	mat.set_shader_parameter("sand_texel", SandField.TEXEL)
 	# мокрая полоса у уреза и подводный песок — красит шейдер
 	mat.set_shader_parameter("sea_level", SEA_LEVEL)
+	mat.set_shader_parameter("shore_lut", shore_lut)
 	# Узкая мокрая кайма сохраняет тёплую палитру суши; вода остаётся
 	# отдельным холодным материалом.
 	mat.set_shader_parameter("wet_band", 0.18)
