@@ -2,13 +2,13 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 
 WORLD: Vulkan недоступен — Compatibility-фолбэк, волюметрический туман заменён плотной дымкой
 --Main Shader--
-  394 |  float nv = clamp(dot(n, v), 1e-3, 1.0);
-  395 |  if (nl <= 0.0) {
-E 396->  return;
-  397 |  }
-  398 |  vec3 h = normalize(v + l);
-SHADER ERROR: Using 'return' in the 'light' processor function is incorrect.
-          at: (null) (:396)
+  408 |  float gl = nl / (nl * (1.0 - k) + k);
+  409 |  float gv = nv / (nv * (1.0 - k) + k);
+E 410->  vec3 f0 = mix(vec3(0.04 * SPECULAR), ALBEDO, METALLIC);
+  411 |  vec3 f = f0 + (1.0 - f0) * pow(1.0 - hl, 5.0);
+  412 |  float fd90 = 0.5 + 2.0 * ROUGHNESS * hl * hl;
+SHADER ERROR: Unknown identifier in expression: 'SPECULAR'.
+          at: (null) (:410)
           GDScript backtrace (most recent call first):
               [0] setup (res://scripts/water_surface.gd:41)
               [1] _ready (res://scripts/main.gd:68)
@@ -41,10 +41,8 @@ ERROR: Shader compilation failed.
 [SMOKE] брод: кадр 240 x=-2.4 глубина=0.78 wet01=1.00
 [SMOKE] заброс: поплавок в (-0.7, 0.00, -14.0), сила 14.09
 [SMOKE] поклёвка! подсекаем (кадр 1)
-[SMOKE] вываживание: кадр 180, рывок=false, натяг=57, прогресс=62
-[SMOKE] вываживание: кадр 360, рывок=true, натяг=57, прогресс=75
-[SMOKE] вываживание: кадр 540, рывок=false, натяг=0, прогресс=100
-[FISH] Морской окунь (55 см, 3.74 кг) — новый вид
+[SMOKE] вываживание: кадр 180, рывок=false, натяг=44, прогресс=75
+[FISH] Серебристая макрель (33 см, 0.69 кг) — новый вид
 [SMOKE] PASS мир: берег собран
 [SMOKE] PASS мир: море собрано
 [SMOKE] PASS мир: существа собраны
@@ -62,7 +60,7 @@ ERROR: Shader compilation failed.
 [SMOKE] PASS ходьба: скорость в норме 15 из 15 (пик 3.4 м/с)
 [SMOKE] PASS ходьба: без ввода остановился (0.00 м/с)
 [SMOKE] PASS ходьба: на земле
-[SMOKE] PASS песок: отпечатки остаются (10 штампов)
+[SMOKE] PASS песок: отпечатки остаются (12 штампов)
 [SMOKE] PASS брод: вода под ногами (глубина до 0.78 м)
 [SMOKE] PASS брод: глубже лимита не пускает (макс 0.78 при лимите 0.78)
 [SMOKE] PASS брод: игрок чувствует воду (wet01 до 1.00)
@@ -71,7 +69,7 @@ ERROR: Shader compilation failed.
 [SMOKE] PASS поплавок на уровне моря (y=0.00)
 [SMOKE] PASS заброс: дальность 14.1 м
 [SMOKE] PASS рыба: подсечка удалась
-[SMOKE] PASS рыба: поймана (размер 54.70)
+[SMOKE] PASS рыба: поймана (размер 32.90)
 [SMOKE] PASS рыба: удочка снова наготове
 [SMOKE] PASS рыба: в море остались существа
 [SMOKE] PASS снасть: возвращается в руки (line_retrieved)
@@ -82,8 +80,8 @@ ERROR: Shader compilation failed.
 [SMOKE] итог: ВСЁ ПРОШЛО
 WARNING: 1 RID of type "CanvasItem" was leaked.
    at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2733)
-WARNING: 54 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+WARNING: 51 ObjectDB instances were leaked at exit (run with `--verbose` for details).
    at: cleanup (core/object/object.cpp:2536)
 ERROR: 6 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
-ERROR: 18 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
+ERROR: 17 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
 ERROR: 1 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
