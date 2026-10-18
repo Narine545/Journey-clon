@@ -352,7 +352,7 @@ func _spawn(i: int, species_id: int, at: Vector2) -> void:
 		var rad := 4.0 + 5.0 * float(i)
 		_pos[i] = Vector3(cos(ang) * rad, 0.0, sin(ang) * rad)
 	_heading[i] = randf() * TAU
-	_reset_species(i, _sp[i], false)
+	_reset_species(i, _sp[i])
 
 
 ## Мягкая смена вида слота (тело «переплавляется» через морф).
@@ -697,14 +697,14 @@ func _sim_fish(i: int, delta: float) -> void:
 
 	# волна тела: частота растёт со скоростью (как у живых рыб)
 	_phase[i] += delta * (sp.freq.base + spd * sp.freq.k)
-	var wf := sp.flap.freq
+	var wf: float = float(sp.flap.freq)
 	if sp.has("wingfreq"):
-		wf = sp.wingfreq
+		wf = float(sp.wingfreq)
 	_wing_ph[i] += delta * wf
 
 	# --- глубина: своя глубина + дыхание + видовые нырки + прыжок ---
-	var y_tgt := _pp_y[i] if _pposed[i] \
-			else (-sp.depth * s + sin(t * 0.5) * 0.15 * s)
+	var y_tgt: float = _pp_y[i] if _pposed[i] \
+			else (-float(sp.depth) * s + sin(t * 0.5) * 0.15 * s)
 	if _pposed[i]:
 		if _hop_t[i] > 0.0: # подскок в показе — у всех видов
 			var hk: float = 1.0 - _hop_t[i] / 0.8
@@ -820,9 +820,9 @@ func _solve_bones(i: int, delta: float) -> void:
 		if k == n - 1:
 			break
 		var tk := float(k) / float(n - 1)
-		var yaw := (wv.a0 + (wv.a1 - wv.a0) * tk) * sin(_phase[i] - k * wv.lag)
-		var pit := (wv.v0 + (wv.v1 - wv.v0) * tk) \
-				* sin(_phase[i] * 0.75 + 1.3 - k * wv.lagv)
+		var yaw: float = (float(wv.a0) + (float(wv.a1) - float(wv.a0)) * tk) * sin(_phase[i] - k * float(wv.lag))
+		var pit: float = (float(wv.v0) + (float(wv.v1) - float(wv.v0)) * tk) \
+				* sin(_phase[i] * 0.75 + 1.3 - k * float(wv.lagv))
 		fwd = _rot_axis(fwd, up, yaw)
 		fwd = _rot_axis(fwd, right, pit)
 		fwd = fwd.normalized()
@@ -928,7 +928,7 @@ func _push_uniforms() -> void:
 		var sp: Dictionary = SPECIES[_sp[i]]
 		for k in range(FK_BONE):
 			bones_all[i * FK_BONE + k] = _bones_flat[i * FK_BONE + k]
-		var flap := sin(_wing_ph[i]) * sp.flap.amp
+		var flap: float = sin(_wing_ph[i]) * float(sp.flap.amp)
 		params[i] = Vector4(sp.s, _phase[i], flap, _morph[i])
 		flags[i] = Vector4(float(_sp[i]), sp.melt, _inflate[i], float(sp.n))
 		var top_color: Color = sp.top.lerp(Color(0.065, 0.075, 0.13), night_amount * 0.78)
@@ -941,7 +941,7 @@ func _push_uniforms() -> void:
 		glow_c[i] = Vector3(glow_color.r, glow_color.g, glow_color.b)
 		glow[i] = Vector4(_bulb[i].x, _bulb[i].y, _bulb[i].z, _act[i])
 		if _sp[i] == 2:
-			var br_lure := (0.055 + 0.02 * _act[i]) * sp.s * _morph[i]
+			var br_lure: float = (0.055 + 0.02 * _act[i]) * float(sp.s) * _morph[i]
 			lure[i] = Vector4(_lure_mid[i].x, _lure_mid[i].y,
 				_lure_mid[i].z, br_lure)
 			lure2[i] = Vector4(_lobe_a[i].x, _lobe_a[i].y,
