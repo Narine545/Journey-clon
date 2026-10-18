@@ -265,14 +265,15 @@ void fragment() {
 	base += sun_col * path * 0.55 * (1.0 - 0.85 * near_shore);
 	// Дальняя солнечная дорожка: сравниваем направления к солнцу и камере,
 	// затем мерцаем крупными sub-pixel фасетами, а не гасим блёстки по dist.
-	float far_density = mix(4.0, 0.75, far_glit);
+	float far_density = mix(4.0, 0.10, far_glit);
 	vec2 far_cell = floor(wp * far_density + vec2(u_time * 0.018, -u_time * 0.013));
 	float far_seed = hash12(far_cell);
 	float far_spark = step(1.0 - glitter_amount * 0.72, far_seed);
-	float sun_view_match = pow(clamp(dot(V, L), 0.0, 1.0), 4.0);
+	float sun_view_match = pow(clamp(dot(V, L), 0.0, 1.0), 2.3);
 	float far_twinkle = 0.65 + 0.35 * sin(u_time * 3.1 + far_seed * 71.0);
-	base += sun_col * sun_view_match * far_spark * far_twinkle * far_glit
-		* glitter_amount * 2.4 * (1.0 - 0.70 * near_shore);
+	vec3 distant_glitter = sun_col * sun_view_match * far_spark * far_twinkle * far_glit
+		* glitter_amount * 3.2 * (1.0 - 0.70 * near_shore);
+	base += distant_glitter;
 
 	// ---------- пена прибоя ----------
 	// Обе полосы идут по КОНТУРУ глубины: кромка на песке и вал чуть
@@ -290,7 +291,8 @@ void fragment() {
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
 	float above = smoothstep(-2.0, 16.0, w_pos.y - CAMERA_POSITION_WORLD.y);
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);
-	ALBEDO = mix(base, fcol, fog);
+	// Экранный туман не должен уносить солнечный глиттер с горизонта.
+	ALBEDO = mix(base, fcol, fog) + distant_glitter * fog;
 
 	NORMAL = normalize((VIEW_MATRIX * vec4(N.x, N.y, N.z, 0.0)).xyz);
 	float rough = mix(0.16, 0.55, near_shore);
