@@ -61,12 +61,12 @@ func _process(delta: float) -> void:
 				# Замораживаем игровое время, чтобы A/B сравнивал свет,
 				# а не изменившуюся фазу ряби между двумя кадрами.
 				Engine.time_scale = 0.0
-				main.water.set_param("proxima_test", 1.0)
+				main.set_proxima_test(1.0)
 				_go(10)
 		10: # A/B-кадр той же камеры с моделью Proxima + Schlick-GGX
 			if _fs > 4:
 				_capture("shot_j_proxima.png")
-				main.water.set_param("proxima_test", 0.0)
+				main.set_proxima_test(0.0)
 				Engine.time_scale = 1.0
 				Input.action_press("rod_cast")
 				_go(1)

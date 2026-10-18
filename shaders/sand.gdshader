@@ -30,6 +30,22 @@ uniform float wind_power = 1.0;
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
 uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
+// Общий переключатель прямого света Proxima + Schlick-GGX (A/B).
+uniform float proxima_test = 0.0;
+uniform float proxima_specular_strength = 0.55;
+uniform vec3 proxima_diffuse_fresnel_tint = vec3(1.0);
+uniform float proxima_diffuse_fresnel = 1.0;
+uniform float proxima_diffuse_fresnel_falloff = 0.75;
+uniform float proxima_diffuse_tangent_falloff = 0.75;
+uniform vec3 proxima_retroreflection_tint = vec3(1.0);
+uniform float proxima_retroreflection = 1.0;
+uniform float proxima_retroreflection_falloff = 0.75;
+uniform float proxima_retroreflection_tangent_falloff = 0.75;
+uniform float proxima_specular_fresnel_falloff = 0.5;
+uniform float proxima_smooth_terminator = 0.0;
+uniform float proxima_smooth_terminator_length = 0.5;
+
+
 // ---- Урез воды: мокрая полоса и подводный песок ----
 // Море лежит плоско на sea_level; там, где песок выше — вода спрятана
 // depth-тестом. Мокрую полосу и подводный песок красит этот же шейдер:
@@ -264,4 +280,96 @@ void fragment() {
 		- wet * 0.16;
 	SPECULAR = 0.16;
 	METALLIC = 0.0;
+}
+
+// Адаптация формул Proxima Diffuse + Schlick-GGX для материалов моря и песка (переключатель глобального A/B).
+// Источник: ElSuicio, 2026; MIT, godotshaders.com/shader/
+// proxima-ggx-the-callisto-protocol-light-model/.
+// Copyright (c) 2026 ElSuicio. Permission is hereby granted, free of charge,
+// to any person obtaining a copy of this software and associated files, to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies, subject to inclusion of this copyright and permission notice.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+float proxima_h(float ctheta, float n, float cphi, float m) {
+	return clamp(pow(max(1.0 - ctheta, 0.0), 5.0 * n)
+		* pow(max(cphi, 0.0), 5.0 * m), 0.0, 1.0);
+}
+
+float proxima_r(float x) {
+	return 2.0 * (1.0 - x);
+}
+
+float proxima_t(float x) {
+	return clamp(x, 0.0, 1.0);
+}
+
+void light() {
+	vec3 n = normalize(NORMAL);
+	vec3 l = normalize(LIGHT);
+	vec3 v = normalize(VIEW);
+	float nl = max(dot(n, l), 0.0);
+	float nv = clamp(dot(n, v), 1e-3, 1.0);
+	if (nl > 0.0) {
+	vec3 h = normalize(v + l);
+	float nh = clamp(dot(h, n), 0.0, 1.0);
+	float hl = clamp(dot(h, l), 0.0, 1.0);
+	vec3 radiance = LIGHT_COLOR * ATTENUATION;
+
+	if (proxima_test < 0.5) {
+		// Обычный Schlick-GGX для базового сравнения.
+		float a = max(ROUGHNESS * ROUGHNESS, 0.002);
+		float a2 = a * a;
+		float q = 1.0 + (a2 - 1.0) * nh * nh;
+		float d = a2 / (PI * q * q);
+		float k = pow(ROUGHNESS + 1.0, 2.0) * 0.125;
+		float gl = nl / (nl * (1.0 - k) + k);
+		float gv = nv / (nv * (1.0 - k) + k);
+		vec3 f0 = mix(vec3(0.08 * 0.16), ALBEDO, METALLIC);
+		vec3 f = f0 + (1.0 - f0) * pow(1.0 - hl, 5.0);
+		float fd90 = 0.5 + 2.0 * ROUGHNESS * hl * hl;
+		float burley_l = 1.0 + (fd90 - 1.0) * pow(1.0 - nl, 5.0);
+		float burley_v = 1.0 + (fd90 - 1.0) * pow(1.0 - nv, 5.0);
+		DIFFUSE_LIGHT += radiance * ALBEDO * (1.0 / PI)
+			* burley_l * burley_v * nl;
+		SPECULAR_LIGHT += radiance * d * gl * gv * f / max(4.0 * nl * nv, 1e-3);
+	} else {
+	// Diffuse Proxima: Fresnel tint, retroreflection и smooth terminator.
+	float alpha = ROUGHNESS * ROUGHNESS;
+	float alpha2 = alpha * alpha;
+	float vdl = max(dot(-v, l), 0.0);
+	float theta_h = acos(nh);
+	float theta_d = acos(hl);
+	float alpha_f = proxima_h(hl, proxima_r(proxima_diffuse_fresnel_falloff),
+		nh, proxima_r(proxima_diffuse_tangent_falloff));
+	float alpha_r = proxima_h(nh, proxima_r(proxima_retroreflection_falloff),
+		hl, proxima_r(proxima_retroreflection_tangent_falloff));
+	float alpha_s = (1.0 - pow(1.0 - theta_d, 3.0))
+		* (1.0 - pow(1.0 - theta_h, 3.0));
+	vec3 rho_f = proxima_diffuse_fresnel * proxima_diffuse_fresnel_tint;
+	vec3 rho_r = proxima_retroreflection * proxima_retroreflection_tint;
+	vec3 c1 = mix(vec3(1.0), rho_f, alpha_f)
+		* mix(vec3(1.0), rho_r, alpha_r);
+	float smooth_term = mix(1.0, smoothstep(0.0,
+		max(alpha_s * proxima_smooth_terminator_length, 1e-4), nl),
+		alpha_s * proxima_smooth_terminator);
+	vec3 fd = c1 * (1.0 / PI)
+		* (alpha * (-0.55 + 0.19 / max(nl, 1e-3))
+		* (1.0 - sqrt(vdl)) + 1.0) * smooth_term * nl;
+
+	// Specular Trowbridge-Reitz GGX + Smith + Schlick Fresnel.
+	float t = 1.0 + (alpha2 - 1.0) * nh * nh;
+	float d = alpha2 / (PI * t * t);
+	float gl = 1.0 / (nl + sqrt(alpha2 + (1.0 - alpha2) * nl * nl));
+	float gv = 1.0 / (nv + sqrt(alpha2 + (1.0 - alpha2) * nv * nv));
+	vec3 f0 = mix(vec3(proxima_specular_strength * 0.08), ALBEDO, vec3(METALLIC));
+	float fh = pow(clamp(1.0 - hl, 0.0, 1.0),
+		5.0 * proxima_r(proxima_specular_fresnel_falloff));
+	vec3 fresnel = f0 + proxima_t(2.0
+		- proxima_r(proxima_specular_fresnel_falloff)) * (1.0 - f0) * fh;
+	vec3 fs = d * gl * gv * fresnel * nl;
+	DIFFUSE_LIGHT += radiance * fd;
+	SPECULAR_LIGHT += radiance * fs;
+	}
+	}
 }

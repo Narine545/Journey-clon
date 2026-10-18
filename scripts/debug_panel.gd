@@ -66,6 +66,10 @@ func _build_ui() -> void:
 	_section("ВРЕМЯ СУТОК")
 	_slider("Время (0=день, 1=ночь)", 0.0, 1.0, main.game.night01, 0.01,
 		func(v): main.set_time(v))
+	_slider("Звёзды: яркость", 0.0, 1.5, 0.72, 0.02,
+		func(v): main.shadow_stars.set_param("intensity", v))
+	_slider("Звёзды: маска теней", 0.0, 0.8, 0.38, 0.01,
+		func(v): main.shadow_stars.set_param("start_stars", v))
 
 	_section("НЕБО")
 	_slider("Солнце: высота°", 2.0, 85.0, _sun_elev, 0.5,
@@ -107,10 +111,10 @@ func _build_ui() -> void:
 	_slider("Солнечный глиттер", 0.0, 1.0, 1.0, 0.01,
 		func(v): main.water.set_param("solar_glitter_amount", v))
 	var proxima_check := CheckBox.new()
-	proxima_check.text = "Тест света Proxima + GGX"
-	proxima_check.tooltip_text = "A/B-тест BRDF; на солнечные частицы не влияет"
+	proxima_check.text = "Proxima + GGX: море и песок"
+	proxima_check.tooltip_text = "A/B прямого света на двух главных материалах сцены; не меняет объекты StandardMaterial3D и солнечные частицы"
 	proxima_check.toggled.connect(func(on):
-		main.water.set_param("proxima_test", 1.0 if on else 0.0))
+		main.set_proxima_test(1.0 if on else 0.0))
 	_box.add_child(proxima_check)
 	_slider("Рябь моря (сила)", 0.0, 1.0, 0.50, 0.02,
 		func(v): main.water.set_param("ripple_strength", v))

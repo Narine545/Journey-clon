@@ -356,7 +356,7 @@ void fragment() {
                                                         if (sub < 0.05) {
                                                                 continue; // центр над водой — тело видно само
                                                         }
-                                                        float vis = exp(-sub / max(s * 1.0, 0.25));
+                                                        float vis = exp(-sub / max(s * 2.2, 0.60));
                                                         vec2 e = scene_pos.xz - C.xz;
                                                         vec2 dir2 = vec2(cos(u_fish_state[i].w),
                                                                 sin(u_fish_state[i].w));
@@ -364,7 +364,7 @@ void fragment() {
                                                         // вытянутый бугор вдоль курса
                                                         float d2 = length(vec2(dot(e, dir2),
                                                                 dot(e, prp2) * 1.8));
-                                                        float R = s * 1.5 + sub * 0.6;
+                                                        float R = s * 1.5 + sub * 0.25;
                                                         // 1 - smoothstep с возрастающими краями
                                                         // (edge0 >= edge1 в GLSL — UB)
                                                         float mi = (1.0 - smoothstep(R * 0.25, R, d2))

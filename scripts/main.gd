@@ -20,6 +20,9 @@ var cam_rig: CameraRig
 var rod: RodCast
 var audio
 var color_grade: ColorGrader
+var solar_blur: SolarGazeBlur
+var shadow_stars: ShadowStars
+var _solar_gaze_dwell := 0.0
 var debug_panel: DebugPanel
 var catch_card: CatchCard
 var hud: FishingHud
@@ -34,6 +37,17 @@ func _ready() -> void:
 	world = GameWorld.new()
 	add_child(world)
 	world.setup(game)
+
+	# Накопительный эффект взгляда на солнечную дорожку; слой 8 не размывает HUD.
+	solar_blur = SolarGazeBlur.new()
+	add_child(solar_blur)
+	solar_blur.setup()
+
+	# Процедурные звёзды в тёмных участках кадра; слой 9 — над 3D,
+	# но под виньеткой, HUD и общим колор-грейдом.
+	shadow_stars = ShadowStars.new()
+	add_child(shadow_stars)
+	shadow_stars.setup()
 
 	# колор-грейдинг поверх кадра (пресеты и крутилки — DEV-панель F3)
 	color_grade = ColorGrader.new()
@@ -163,6 +177,24 @@ func _on_fish_caught(info: Dictionary) -> void:
 		float(info.get("weight_kg", 0.0)), "новый вид" if is_new else "уже в журнале"])
 
 
+func _process(delta: float) -> void:
+	if cam_rig == null or solar_blur == null or game == null:
+		return
+	var forward := Vector3(sin(cam_rig.yaw), 0.0, cos(cam_rig.yaw))
+	var sun_horizontal := Vector3(game.sun_dir.x, 0.0, game.sun_dir.z)
+	if sun_horizontal.length_squared() < 0.0001:
+		return
+	var azimuth_match := clampf((forward.dot(sun_horizontal.normalized()) - 0.82) / 0.15, 0.0, 1.0)
+	var looking_down := smoothstep(0.02, 0.45, -cam_rig.pitch)
+	var daylight := smoothstep(-0.15, 0.12, game.sun_dir.y)
+	var focus := azimuth_match * looking_down * daylight
+	if focus > 0.25:
+		_solar_gaze_dwell = minf(_solar_gaze_dwell + delta * focus, 12.0)
+	else:
+		_solar_gaze_dwell = maxf(_solar_gaze_dwell - delta * 0.55, 0.0)
+	solar_blur.set_amount(smoothstep(3.0, 11.0, _solar_gaze_dwell))
+
+
 ## Время суток одним числом: 0 — золотой час, 1 — ночь.
 func set_time(v: float) -> void:
 	night01 = clampf(v, 0.0, 1.0)
@@ -175,6 +207,18 @@ func set_time(v: float) -> void:
 		fish.apply_night01(night01)
 	if color_grade != null:
 		color_grade.set_param("night", 0.85 * night01)
+	if shadow_stars != null:
+		shadow_stars.set_night(night01)
+
+
+## Один A/B-переключатель прямого Proxima + Schlick-GGX на море и песке.
+## Небо, постэффекты и солнечные частицы этим не затрагиваются.
+func set_proxima_test(value: float) -> void:
+	var enabled := 1.0 if value >= 0.5 else 0.0
+	if water != null:
+		water.set_param("proxima_test", enabled)
+	if coast != null:
+		coast.set_sand("proxima_test", enabled)
 
 
 ## Солнце: небо + свет + шейдеры песка/моря/существ.

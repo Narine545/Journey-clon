@@ -168,9 +168,9 @@ func _camera_xz() -> Vector2:
 func _spawn_fish(i: int, center: Vector2) -> void:
 	var pos := Vector3.ZERO
 	if coast != null:
-		# всегда в воде, мористее уреза и не дальше видимости с берега
+		# Всегда в воде: дальше от уреза, но в пределах радиуса обнаружения приманки.
 		var z := center.y + randf_range(-70.0, 70.0)
-		pos = Vector3(coast.shore_x(z) - randf_range(8.0, 55.0), 0.0, z)
+		pos = Vector3(coast.shore_x(z) - randf_range(24.0, 58.0), 0.0, z)
 	else:
 		var ok := false
 		for _try in range(10):
@@ -182,7 +182,7 @@ func _spawn_fish(i: int, center: Vector2) -> void:
 				break
 		if not ok:
 			pos = Vector3(center.x - bounds_radius * 0.35, 0.0, center.y)
-	pos.y = water_level - randf_range(0.5, 1.2)
+	pos.y = water_level - randf_range(2.2, 3.2)
 	_fpos[i] = pos
 	_fheading[i] = randf() * TAU
 	_fturn[i] = 0.0
@@ -191,7 +191,7 @@ func _spawn_fish(i: int, center: Vector2) -> void:
 	_fphase[i] = randf() * TAU
 	_fperiod[i] = randf_range(8.0, 14.0)
 	_foffset[i] = randf() * _fperiod[i]
-	_fcruise[i] = randf_range(0.78, 1.45)
+	_fcruise[i] = randf_range(2.2, 3.2)
 	_fjump[i] = _fsize[i] * randf_range(0.9, 1.4) * jump_mul
 	_fy[i] = pos.y
 	_ftint[i] = PALETTE[i % PALETTE.size()]
@@ -285,7 +285,7 @@ func _sim_fish(i: int, delta: float, center: Vector2) -> void:
 	_fpos[i] += Vector3(cos(_fheading[i]), 0.0, sin(_fheading[i])) * _fspeed[i] * boost * delta
 	if coast != null:
 		# существо живёт в море: у самого уреза разворачиваем обратно
-		var lim: float = coast.shore_x(_fpos[i].z) - 1.2
+		var lim: float = coast.shore_x(_fpos[i].z) - 20.0
 		if _fpos[i].x > lim:
 			_fpos[i].x = lim
 
@@ -630,15 +630,16 @@ func _sim_lure(i: int, delta: float, s: float) -> void:
 	_fheading[i] += _fturn[i] * delta
 	_fpos[i] += Vector3(cos(_fheading[i]), 0.0, sin(_fheading[i])) * spd * delta
 	_fphase[i] += delta * (5.0 + spd * 2.2)
-	# глубина: в пробах и поклёвке — под самой поверхностью (вуаль дышит)
+	# Рыба подходит к приманке из глубины, но остаётся под водой:
+	# проба/поклёвка не должны превращаться в плавание у поверхности.
 	var target_y := water_level - _fcruise[i]
 	if _lure_phase >= 2:
-		target_y = water_level - 0.60 * s
+		target_y = water_level - 1.25 * s
 	_fy[i] = lerpf(_fy[i], target_y, 1.0 - exp(-5.0 * delta))
 	_fpos[i].y = _fy[i]
 
 
-## Рыба на крючке: следует за поплавком (за ведром лески), у поверхности.
+## Рыба на крючке следует за поплавком, оставаясь заметно под поверхностью.
 func _sim_hooked(i: int, delta: float, s: float) -> void:
 	var to := _lure_pos - _fpos[i]
 	var dxz := Vector2(to.x, to.z).length()
@@ -651,6 +652,6 @@ func _sim_hooked(i: int, delta: float, s: float) -> void:
 	_fheading[i] += _fturn[i] * delta
 	_fpos[i] += Vector3(cos(_fheading[i]), 0.0, sin(_fheading[i])) * spd * delta
 	_fphase[i] += delta * (6.0 + spd * 2.0)
-	var target_y := water_level - 0.60 * s
+	var target_y := water_level - 1.25 * s
 	_fy[i] = lerpf(_fy[i], target_y, 1.0 - exp(-6.0 * delta))
 	_fpos[i].y = _fy[i]
