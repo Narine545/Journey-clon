@@ -47,7 +47,7 @@ uniform float mega_amp = 0.055;
 uniform float ripple_freq = 1.35;
 uniform float ripple_speed = 1.1;
 uniform float ripple_strength = 0.34;
-uniform float glitter_amount = 0.50;
+uniform float glitter_amount = 1.0;
 
 // ---- Кольца событий ----
 uniform float ring_amp = 0.055;
