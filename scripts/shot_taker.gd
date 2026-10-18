@@ -73,7 +73,7 @@ func _process(delta: float) -> void:
 		11: # звёзды на песке в настоящих тенях причала и камней
 			if _fs == 1:
 				var pier: Pier = main.pier
-				var target_x := pier.x_start - 2.0
+				var target_x := pier.x_start + 1.6
 				var target_z := pier.pz + 2.5
 				var target := Vector3(target_x,
 					main.coast.ground_height(target_x, target_z), target_z)
@@ -190,12 +190,14 @@ func _process(delta: float) -> void:
 		13: # крупный контрольный кадр человека и живого idle-рига у причала
 			if _fs == 1:
 				var npc: FishingNpc = main.fishing_npc
-				var px := npc.global_position.x + 2.4
-				var pz := npc.global_position.z + 0.55
+				var px := npc.global_position.x + 1.4
+				var pz := npc.global_position.z
 				var deck := main.pier.deck_height(px, pz)
 				main.player.global_position = Vector3(px, deck, pz)
 				main.player.vel = Vector3.ZERO
 				main.player.grounded = true
+				main.hud.visible = false
+				main.catch_card.visible = false
 				var look := npc.global_position - main.cam_rig.cam.global_position
 				main.cam_rig.set_view(atan2(look.x, look.z),
 					clampf(atan2(look.y, Vector2(look.x, look.z).length()), -0.25, 0.25))
