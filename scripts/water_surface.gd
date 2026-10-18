@@ -117,9 +117,10 @@ func apply_night01(v: float) -> void:
 	set_param("horizon_col", Coast.DAY_HORIZON.lerp(Coast.NIGHT_HORIZON, v))
 	set_param("sky_col", Coast.DAY_SKY.lerp(Coast.NIGHT_SKY, v))
 	set_param("fog_distance", lerpf(340.0, 130.0, v))
-	# Максимальный солнечный глиттер сохраняется и ночью: яркость блика
-	# всё равно задаётся направлением солнца и сумеречной палитрой.
+	# Общие блёстки поверхности и частицы солнечной дорожки — независимые
+	# параметры; оба выставлены на максимум и не смешиваются в F3.
 	set_param("glitter_amount", 1.0)
+	set_param("solar_glitter_amount", 1.0)
 
 
 func _process(_delta: float) -> void:

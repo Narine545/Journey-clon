@@ -515,9 +515,13 @@ func _land_fish() -> void:
 	_suppress = 0.5
 	tension_changed.emit(0.0)
 	_held.setup(last_fish)
-	_held.scale *= 0.46
-	_held.position = Vector3(0.0, 0.0, -0.90)
-	_held.rotation = Vector3(-0.10, PI * 0.42, 0.30)
+	# Экранный «осмотр улова»: выводим SDF-рыбу в центр перед камерой,
+	# не прячем её низко в позе у груди. Размер по виду ограничен уже в
+	# CatchFish, поэтому даже крупный марлин не вылезает за кадр.
+	_held.scale = Vector3.ONE * 0.90
+	_held.position = Vector3(0.0, 0.02, -1.65)
+	_held.rotation = Vector3(0.0, PI * 0.5, 0.0)
+	_held.set_wiggle(0.10)
 	_held.visible = true
 	_held_t = 2.4
 	fish_landed.emit(size_cm)

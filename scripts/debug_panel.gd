@@ -102,8 +102,16 @@ func _build_ui() -> void:
 		func(v): main.water.set_param("ring_amp", v))
 	_slider("Кольца (крутизна)", 0.0, 3.0, 1.4, 0.05,
 		func(v): main.water.set_param("ring_boost", v))
-	_slider("Глиттер моря", 0.0, 0.5, 0.50, 0.01,
+	_slider("Глиттер поверхности", 0.0, 1.0, 1.0, 0.01,
 		func(v): main.water.set_param("glitter_amount", v))
+	_slider("Солнечный глиттер", 0.0, 1.0, 1.0, 0.01,
+		func(v): main.water.set_param("solar_glitter_amount", v))
+	var proxima_check := CheckBox.new()
+	proxima_check.text = "Тест света Proxima + GGX"
+	proxima_check.tooltip_text = "A/B-тест BRDF; на солнечные частицы не влияет"
+	proxima_check.toggled.connect(func(on):
+		main.water.set_param("proxima_test", 1.0 if on else 0.0))
+	_box.add_child(proxima_check)
 	_slider("Рябь моря (сила)", 0.0, 1.0, 0.50, 0.02,
 		func(v): main.water.set_param("ripple_strength", v))
 

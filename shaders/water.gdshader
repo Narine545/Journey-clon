@@ -47,7 +47,22 @@ uniform float mega_amp = 0.055;
 uniform float ripple_freq = 1.35;
 uniform float ripple_speed = 1.1;
 uniform float ripple_strength = 0.34;
-uniform float glitter_amount = 1.0;
+uniform float glitter_amount = 1.0; // общий мелкий глиттер поверхности
+uniform float solar_glitter_amount = 1.0; // отдельные частицы солнечной дорожки
+// Временный A/B-тест прямого света: Proxima diffuse + Schlick-GGX.
+// По умолчанию выключен, солнечный глиттер от него не зависит.
+uniform float proxima_test = 0.0;
+uniform vec3 proxima_diffuse_fresnel_tint = vec3(1.0);
+uniform float proxima_diffuse_fresnel = 1.0;
+uniform float proxima_diffuse_fresnel_falloff = 0.75;
+uniform float proxima_diffuse_tangent_falloff = 0.75;
+uniform vec3 proxima_retroreflection_tint = vec3(1.0);
+uniform float proxima_retroreflection = 1.0;
+uniform float proxima_retroreflection_falloff = 0.75;
+uniform float proxima_retroreflection_tangent_falloff = 0.75;
+uniform float proxima_specular_fresnel_falloff = 0.5;
+uniform float proxima_smooth_terminator = 0.0;
+uniform float proxima_smooth_terminator_length = 0.5;
 
 // ---- Кольца событий ----
 uniform float ring_amp = 0.055;
@@ -263,17 +278,43 @@ void fragment() {
 	float path_power = mix(180.0, 34.0, far_glit);
 	float path = pow(clamp(dot(N, H), 0.0, 1.0), path_power);
 	base += sun_col * path * 0.55 * (1.0 - 0.85 * near_shore);
-	// Дальняя солнечная дорожка: сравниваем направления к солнцу и камере,
-	// (V и L смотрят в противоположные стороны) и затем мерцаем крупными
-	// sub-pixel фасетами, а не гасим блёстки по dist.
-	float far_density = mix(4.0, 0.10, far_glit);
-	vec2 far_cell = floor(wp * far_density + vec2(u_time * 0.018, -u_time * 0.013));
-	float far_seed = hash12(far_cell);
-	float far_spark = step(1.0 - glitter_amount * 0.72, far_seed);
-	float sun_view_match = pow(clamp(-dot(V, L), 0.0, 1.0), 2.3);
-	float far_twinkle = 0.65 + 0.35 * sin(u_time * 3.1 + far_seed * 71.0);
-	vec3 distant_glitter = sun_col * sun_view_match * far_spark * far_twinkle * far_glit
-		* glitter_amount * 3.2 * (1.0 - 0.70 * near_shore);
+	// СОЛНЕЧНЫЙ глиттер — не широкая полоса света: редкие отдельные
+	// отражающие «частицы» собираются только в направлении солнечной дорожки.
+	// Ячейки укрупняются вдаль, а размер искры держим в пикселях, чтобы
+	// блики не исчезали на горизонте и не превращались в сплошную заливку.
+	vec2 view_xz = V.xz / max(length(V.xz), 1e-4);
+	vec2 sun_xz = L.xz / max(length(L.xz), 1e-4);
+	float road_alignment = clamp(-dot(view_xz, sun_xz), 0.0, 1.0);
+	float sun_road = pow(road_alignment, 8.0);
+	float spark_cell_size = mix(3.2, 11.0, far_glit);
+	vec2 spark_uv = wp / spark_cell_size;
+	vec2 spark_cell = floor(spark_uv);
+	vec2 spark_local = fract(spark_uv) - vec2(0.5);
+	float spark_seed = hash12(spark_cell);
+	vec2 spark_jitter = vec2(hash12(spark_cell + vec2(5.7, 2.3)),
+		hash12(spark_cell + vec2(1.9, 8.1))) - vec2(0.5);
+	vec2 spark_pos = (spark_local - spark_jitter * 0.54) * spark_cell_size;
+	float pixel_world = max(0.35, dist * 2.0
+		/ max(VIEWPORT_SIZE.y * PROJECTION_MATRIX[1][1], 1.0));
+	float spark_radius = max(0.55, pixel_world * 0.95);
+	float spark_core = 1.0 - smoothstep(spark_radius * 0.30, spark_radius,
+		length(spark_pos));
+	float ray_width = max(0.12, pixel_world * 0.12);
+	float ray_v = (1.0 - smoothstep(ray_width, ray_width * 2.4, abs(spark_pos.x)))
+		* (1.0 - smoothstep(spark_radius, spark_radius * 3.2, abs(spark_pos.y)));
+	float ray_h = (1.0 - smoothstep(ray_width, ray_width * 2.4, abs(spark_pos.y)))
+		* (1.0 - smoothstep(spark_radius, spark_radius * 3.2, abs(spark_pos.x)));
+	float sparkle_shape = max(spark_core, max(ray_v, ray_h) * 0.72);
+	float microfacet_seed = hash12(spark_cell + vec2(11.7, 4.1));
+	vec3 microfacet_n = normalize(vec3((microfacet_seed - 0.5) * 0.38, 1.0,
+		hash12(spark_cell + vec2(3.3, 15.1)) * 0.38 - 0.19));
+	float microfacet_match = 0.45 + 0.55 * pow(
+		clamp(dot(microfacet_n, H), 0.0, 1.0), 10.0);
+	float spark_select = step(1.0 - solar_glitter_amount * 0.24, spark_seed);
+	float spark_twinkle = 0.72 + 0.28 * sin(u_time * 3.4 + spark_seed * 71.0);
+	vec3 distant_glitter = sun_col * sparkle_shape * spark_select * sun_road
+		* microfacet_match * spark_twinkle * far_glit * solar_glitter_amount
+		* 6.0 * (1.0 - 0.70 * near_shore);
 	base += distant_glitter;
 
 	// ---------- пена прибоя ----------
@@ -292,8 +333,10 @@ void fragment() {
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
 	float above = smoothstep(-2.0, 16.0, w_pos.y - CAMERA_POSITION_WORLD.y);
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);
-	// Экранный туман не должен уносить солнечный глиттер с горизонта.
-	ALBEDO = mix(base, fcol, fog) + distant_glitter * fog;
+	// Искры — отдельный HDR-слой: они остаются резкими поверх дымки,
+	// а glow даёт им маленький ореол, не превращая дорожку в сплошную полосу.
+	ALBEDO = mix(base - distant_glitter, fcol, fog);
+	EMISSION = distant_glitter;
 
 	NORMAL = normalize((VIEW_MATRIX * vec4(N.x, N.y, N.z, 0.0)).xyz);
 	float rough = mix(0.16, 0.55, near_shore);
@@ -319,4 +362,98 @@ void fragment() {
 	float water_z = -VERTEX.z;
 	float obj_a = smoothstep(0.0, shore_fade, scene_z - water_z);
 	ALPHA = clamp(min(a, obj_a), 0.0, 1.0);
+}
+
+// Адаптация формул Proxima Diffuse + Schlick-GGX для A/B-теста воды.
+// Источник: ElSuicio, 2026; MIT, godotshaders.com/shader/
+// proxima-ggx-the-callisto-protocol-light-model/.
+// Copyright (c) 2026 ElSuicio. Permission is hereby granted, free of charge,
+// to any person obtaining a copy of this software and associated files, to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies, subject to inclusion of this copyright and permission notice.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+float proxima_h(float ctheta, float n, float cphi, float m) {
+	return clamp(pow(max(1.0 - ctheta, 0.0), 5.0 * n)
+		* pow(max(cphi, 0.0), 5.0 * m), 0.0, 1.0);
+}
+
+float proxima_r(float x) {
+	return 2.0 * (1.0 - x);
+}
+
+float proxima_t(float x) {
+	return clamp(x, 0.0, 1.0);
+}
+
+void light() {
+	vec3 n = normalize(NORMAL);
+	vec3 l = normalize(LIGHT);
+	vec3 v = normalize(VIEW);
+	float nl = max(dot(n, l), 0.0);
+	float nv = clamp(dot(n, v), 1e-3, 1.0);
+	if (nl <= 0.0) {
+		return;
+	}
+	vec3 h = normalize(v + l);
+	float nh = clamp(dot(h, n), 0.0, 1.0);
+	float hl = clamp(dot(h, l), 0.0, 1.0);
+	vec3 radiance = LIGHT_COLOR * ATTENUATION;
+
+	if (proxima_test < 0.5) {
+		// Обычный Schlick-GGX для базового сравнения.
+		float a = max(ROUGHNESS * ROUGHNESS, 0.002);
+		float a2 = a * a;
+		float q = 1.0 + (a2 - 1.0) * nh * nh;
+		float d = a2 / (PI * q * q);
+		float k = pow(ROUGHNESS + 1.0, 2.0) * 0.125;
+		float gl = nl / (nl * (1.0 - k) + k);
+		float gv = nv / (nv * (1.0 - k) + k);
+		vec3 f0 = mix(vec3(0.04 * SPECULAR), ALBEDO, METALLIC);
+		vec3 f = f0 + (1.0 - f0) * pow(1.0 - hl, 5.0);
+		float fd90 = 0.5 + 2.0 * ROUGHNESS * hl * hl;
+		float burley_l = 1.0 + (fd90 - 1.0) * pow(1.0 - nl, 5.0);
+		float burley_v = 1.0 + (fd90 - 1.0) * pow(1.0 - nv, 5.0);
+		DIFFUSE_LIGHT += radiance * ALBEDO * (1.0 / PI)
+			* burley_l * burley_v * nl;
+		SPECULAR_LIGHT += radiance * d * gl * gv * f / max(4.0 * nl * nv, 1e-3);
+		return;
+	}
+
+	// Diffuse Proxima: Fresnel tint, retroreflection и smooth terminator.
+	float alpha = ROUGHNESS * ROUGHNESS;
+	float alpha2 = alpha * alpha;
+	float vdl = max(dot(-v, l), 0.0);
+	float theta_h = acos(nh);
+	float theta_d = acos(hl);
+	float alpha_f = proxima_h(hl, proxima_r(proxima_diffuse_fresnel_falloff),
+		nh, proxima_r(proxima_diffuse_tangent_falloff));
+	float alpha_r = proxima_h(nh, proxima_r(proxima_retroreflection_falloff),
+		hl, proxima_r(proxima_retroreflection_tangent_falloff));
+	float alpha_s = (1.0 - pow(1.0 - theta_d, 3.0))
+		* (1.0 - pow(1.0 - theta_h, 3.0));
+	vec3 rho_f = proxima_diffuse_fresnel * proxima_diffuse_fresnel_tint;
+	vec3 rho_r = proxima_retroreflection * proxima_retroreflection_tint;
+	vec3 c1 = mix(vec3(1.0), rho_f, alpha_f)
+		* mix(vec3(1.0), rho_r, alpha_r);
+	float smooth_term = mix(1.0, smoothstep(0.0,
+		max(alpha_s * proxima_smooth_terminator_length, 1e-4), nl),
+		alpha_s * proxima_smooth_terminator);
+	vec3 fd = c1 * (1.0 / PI)
+		* (alpha * (-0.55 + 0.19 / max(nl, 1e-3))
+		* (1.0 - sqrt(vdl)) + 1.0) * smooth_term * nl;
+
+	// Specular Trowbridge-Reitz GGX + Smith + Schlick Fresnel.
+	float t = 1.0 + (alpha2 - 1.0) * nh * nh;
+	float d = alpha2 / (PI * t * t);
+	float gl = 1.0 / (nl + sqrt(alpha2 + (1.0 - alpha2) * nl * nl));
+	float gv = 1.0 / (nv + sqrt(alpha2 + (1.0 - alpha2) * nv * nv));
+	vec3 f0 = mix(vec3(SPECULAR * 0.08), ALBEDO, vec3(METALLIC));
+	float fh = pow(clamp(1.0 - hl, 0.0, 1.0),
+		5.0 * proxima_r(proxima_specular_fresnel_falloff));
+	vec3 fresnel = f0 + proxima_t(2.0
+		- proxima_r(proxima_specular_fresnel_falloff)) * (1.0 - f0) * fh;
+	vec3 fs = d * gl * gv * fresnel * nl;
+	DIFFUSE_LIGHT += radiance * fd;
+	SPECULAR_LIGHT += radiance * fs;
 }

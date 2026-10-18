@@ -1,7 +1,7 @@
 class_name ShotTaker
 extends Node
-## CI-кадры (JOURNEY_SHOT=1): берег, удочка, заброс, поклёвка, вываживание,
-## пирс и прыжок песчаного кита. Сценарий ведёт себя как игрок и снимает
+## CI-кадры (JOURNEY_SHOT=1): берег, A/B света, удочка, заброс, поклёвка,
+## пойманная рыба, пирс и прыжок песчаного кита. Сценарий ведёт себя как игрок и снимает
 ## кадр в момент события (а не по номеру кадра — рендер в CI медленный).
 ##
 ## Скриншоты кладутся в $SHOT_DIR и коммитятся CI: это единственный способ
@@ -17,6 +17,7 @@ var _state := 0
 var _t := 0.0 # время сценария (сек игрового времени, не стенного)
 var _fs := 0
 var _caught := 0.0
+var _catch_capture_wait := -1
 
 
 func setup(main_ref: MainScene) -> void:
@@ -54,9 +55,15 @@ func _process(delta: float) -> void:
 	var rod: RodCast = main.rod
 	var t := _t
 	match _state:
-		0: # стартовый вид: берег, море, пирс, удочка в руке
+		0: # стартовый вид: эталонный свет воды
 			if t > 0.8 and _fs > 2:
 				_capture("shot_a_coast.png")
+				main.water.set_param("proxima_test", 1.0)
+				_go(10)
+		10: # A/B-кадр той же камеры с моделью Proxima + Schlick-GGX
+			if t > 0.25 and _fs > 4:
+				_capture("shot_j_proxima.png")
+				main.water.set_param("proxima_test", 0.0)
 				Input.action_press("rod_cast")
 				_go(1)
 		1: # удочка достаётся
@@ -108,7 +115,19 @@ func _process(delta: float) -> void:
 				Input.action_release("rod_cast")
 			else:
 				Input.action_press("rod_cast")
-			if _caught > 0.0 or rod.state == RodCast.S.RESTING or t > 16.0:
+			# Отдельный контрольный кадр проверяет и центрирование улова, и
+			# гладкость того же SDF-тела после поимки.
+			if _caught > 0.0 and _catch_capture_wait < 0:
+				main.fish.set_sdf_enabled(true)
+				_catch_capture_wait = 3
+			if _catch_capture_wait >= 0:
+				_catch_capture_wait -= 1
+				if _catch_capture_wait == 0:
+					_capture("shot_i_caught_fish.png")
+					main.fish.set_sdf_enabled(false)
+					Input.action_release("rod_cast")
+					_go(7)
+			elif rod.state == RodCast.S.RESTING or t > 16.0:
 				Input.action_release("rod_cast")
 				_go(7)
 		7: # пирс: геройский вид с моря на берег

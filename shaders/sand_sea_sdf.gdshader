@@ -59,6 +59,7 @@ uniform float u_bounds_r = 130.0;       // радиус обитания, м
 uniform vec4 u_fish_state[7]; // xyz — центр тела, w — курс (рад)
 uniform vec2 u_fish_meta[7];  // x — размер (м), y — фаза волны тела
 uniform vec3 u_fish_tint[7];  // базовый цвет существа
+uniform float u_catch_flex = 1.0; // улов в центре экрана: меньше перегиба тела
 
 // Брызги: 12 слотов; w <= 0.004 — слот пуст (анимация целиком на CPU)
 uniform vec4 u_drops[12]; // xyz — центр, w — радиус
@@ -107,7 +108,8 @@ float sd_ell(vec3 p, vec3 r) {
 // амплитуда растёт к хвосту (0.05s -> 0.43s) — та же пластика, что у
 // «дыхания» моря, только быстрая. Плюс морда, спинной гребень и хвостовая
 // лопасть-«ласта» из двух сплюснутых эллипсоидов.
-vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float phase, vec3 tint) {
+vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float phase, vec3 tint,
+        float body_flex) {
         vec3 dir = vec3(cos(heading), 0.0, sin(heading));
         vec3 side = vec3(-dir.z, 0.0, dir.x);
         vec3 up = vec3(0.0, 1.0, 0.0);
@@ -118,8 +120,8 @@ vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float phase, vec3 tint) {
         // хребет (морда -> хвост)
         for (int k = 0; k < 6; k++) {
                 float t = float(k) / 5.0;
-                float lat = sin(phase - t * 4.2) * s * (0.05 + 0.38 * t);
-                float vert = sin(phase - t * 3.1 + 1.3) * s * 0.10 * t;
+                float lat = sin(phase - t * 4.2) * s * (0.05 + 0.38 * t) * body_flex;
+                float vert = sin(phase - t * 3.1 + 1.3) * s * 0.10 * t * body_flex;
                 vec3 c = C + dir * ((0.5 - t) * L) + side * lat + up * vert;
                 float r = s * (0.40 - 0.18 * t);
                 vec3 col = mix(tint * 1.15, tint * 0.70, t); // спина светлее хвоста
@@ -140,8 +142,8 @@ vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float phase, vec3 tint) {
         // формула при t = 1: lat 0.43s, vert 0.10s) — хвост приклеен к
         // последней сфере хребта и больше не отстаёт на вилях.
         vec3 stem = C - dir * (0.5 * L)
-                + side * (sin(phase - 4.2) * 0.43 * s)
-                + up * (sin(phase - 1.8) * 0.10 * s);
+                + side * (sin(phase - 4.2) * 0.43 * s * body_flex)
+                + up * (sin(phase - 1.8) * 0.10 * s * body_flex);
         vec3 qt = p - stem;
         vec3 ql = vec3(dot(qt, dir), dot(qt, up), dot(qt, side));
         // поворот в (dir, up): +угол валит лопасть назад-вверх,
@@ -175,8 +177,9 @@ vec4 map(vec3 p) {
                         dskips = min(dskips, bd);
                         continue;
                 }
+                float body_flex = (i == 6) ? u_catch_flex : 1.0;
                 vec4 f = fish_sdf(p, C, s, u_fish_state[i].w, u_fish_meta[i].y,
-                        u_fish_tint[i]);
+                        u_fish_tint[i], body_flex);
                 acc = sdf_smooth_union(acc, f.w, f.rgb, 0.42 * s);
         }
 

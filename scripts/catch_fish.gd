@@ -39,7 +39,7 @@ func _process(delta: float) -> void:
 	var scale_vec := global_transform.basis.get_scale()
 	var scale_mul := maxf(scale_vec.x, maxf(scale_vec.y, scale_vec.z))
 	_sdf.set_catch_visual(self, global_position, _size_sdf * scale_mul,
-		heading, _phase, _tint)
+		heading, _phase, _tint, _wiggle)
 
 
 ## Поставить SDF-рыбу в мировую позу (для прыжка/полёта).

@@ -98,6 +98,7 @@ var _catch_pos := Vector3.ZERO
 var _catch_size := 0.0
 var _catch_heading := 0.0
 var _catch_phase := 0.0
+var _catch_flex := 1.0
 var _catch_tint := Color.WHITE
 
 
@@ -373,6 +374,7 @@ func _push_uniforms(center: Vector2) -> void:
 	mat.set_shader_parameter("u_fish_state", st)
 	mat.set_shader_parameter("u_fish_meta", mt)
 	mat.set_shader_parameter("u_fish_tint", tn)
+	mat.set_shader_parameter("u_catch_flex", _catch_flex)
 	mat.set_shader_parameter("u_drops", dp)
 	mat.set_shader_parameter("u_center", center)
 	mat.set_shader_parameter("u_bounds_r", bounds_radius)
@@ -500,13 +502,14 @@ func set_sdf_enabled(on: bool) -> void:
 
 ## Показать пойманную рыбу через тот же SDF raymarcher, что и живую стаю.
 func set_catch_visual(owner: Node, pos: Vector3, size: float, heading: float,
-		phase: float, tint: Color) -> void:
+		phase: float, tint: Color, flex: float) -> void:
 	_catch_owner = owner
 	_catch_active = true
 	_catch_pos = pos
 	_catch_size = clampf(size, 0.08, 1.2)
 	_catch_heading = heading
 	_catch_phase = phase
+	_catch_flex = clampf(flex, 0.0, 1.0)
 	_catch_tint = tint
 
 
@@ -514,6 +517,7 @@ func clear_catch_visual(owner: Node) -> void:
 	if _catch_owner == owner:
 		_catch_owner = null
 		_catch_active = false
+		_catch_flex = 1.0
 
 
 ## Диагностика/скриншоты: приманить рыбу принудительно — без проверки
