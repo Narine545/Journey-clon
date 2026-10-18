@@ -316,10 +316,10 @@ float proxima_t(float x) {
 float shadow_star_shape(vec2 delta, float angle) {
 	vec2 axis = vec2(cos(angle) * delta.x - sin(angle) * delta.y,
 		sin(angle) * delta.x + cos(angle) * delta.y);
-	float core = exp(-length(axis) * 34.0);
-	float ray_x = exp(-abs(axis.x) * 18.0 - abs(axis.y) * 72.0);
-	float ray_z = exp(-abs(axis.y) * 18.0 - abs(axis.x) * 72.0);
-	return max(core, max(ray_x, ray_z) * 0.56);
+	float core = exp(-length(axis) * 28.0);
+	float ray_x = exp(-abs(axis.x) * 13.0 - abs(axis.y) * 52.0);
+	float ray_z = exp(-abs(axis.y) * 13.0 - abs(axis.x) * 52.0);
+	return max(core, max(ray_x, ray_z) * 0.62);
 }
 
 void light() {
@@ -341,10 +341,10 @@ void light() {
 	float night_stars = smoothstep(0.18, 0.85, night_amount);
 	vec2 shadow_dir = normalize(-l.xz);
 	vec2 shadow_side = vec2(-shadow_dir.y, shadow_dir.x);
-	vec2 star_p1 = shadow_star_focus - shadow_side * 0.55 - shadow_dir * 0.25;
-	vec2 star_p2 = shadow_star_focus + shadow_side * 0.50 + shadow_dir * 0.20;
-	vec2 star_p3 = shadow_star_focus - shadow_side * 0.12 + shadow_dir * 0.72;
-	vec2 star_p4 = shadow_star_focus + shadow_side * 0.78 - shadow_dir * 0.62;
+	vec2 star_p1 = shadow_star_focus - shadow_side * 0.55 + shadow_dir * 0.50;
+	vec2 star_p2 = shadow_star_focus + shadow_side * 0.47 + shadow_dir * 0.42;
+	vec2 star_p3 = shadow_star_focus - shadow_side * 0.38 - shadow_dir * 0.38;
+	vec2 star_p4 = shadow_star_focus + shadow_side * 0.61 - shadow_dir * 0.58;
 	float star_1 = shadow_star_shape(w_pos.xz - star_p1, 0.35)
 		* step(shadow_star_density, hash12(vec2(17.1, 2.4)));
 	float star_2 = shadow_star_shape(w_pos.xz - star_p2, 1.20)

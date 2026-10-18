@@ -255,8 +255,8 @@ func apply_sun(dir: Vector3) -> void:
 		var shadow_dir := Vector2(-dir.x, -dir.z).normalized()
 		var npc_pos := fishing_npc.global_position
 		coast.set_sand("shadow_star_focus",
-			Vector2(npc_pos.x, npc_pos.z) + shadow_dir * 2.4)
-		coast.set_sand("shadow_star_radius", 3.5)
+			Vector2(npc_pos.x, npc_pos.z) + shadow_dir * 4.0)
+		coast.set_sand("shadow_star_radius", 4.2)
 	if water != null:
 		water.apply_sun(dir)
 	if fish != null:
