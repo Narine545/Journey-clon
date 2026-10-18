@@ -65,7 +65,7 @@ uniform vec4 u_drops[12]; // xyz — центр, w — радиус
 uniform vec3 u_drop_tint : source_color = vec3(0.98, 0.62, 0.38);
 
 // «Вуаль» — силуэты под поверхностью
-uniform float u_veil_strength = 0.62;
+uniform float u_veil_strength = 0.42;
 
 uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 uniform sampler2D u_screen : hint_screen_texture, filter_linear;
@@ -353,7 +353,7 @@ void fragment() {
                                                         if (sub < 0.05) {
                                                                 continue; // центр над водой — тело видно само
                                                         }
-                                                        float vis = exp(-sub / max(s * 1.8, 0.25));
+                                                        float vis = exp(-sub / max(s * 1.0, 0.25));
                                                         vec2 e = scene_pos.xz - C.xz;
                                                         vec2 dir2 = vec2(cos(u_fish_state[i].w),
                                                                 sin(u_fish_state[i].w));
@@ -373,9 +373,9 @@ void fragment() {
                                                         vec3 avg = tw / max(m, 1e-4);
                                                         vec3 scene_col = texture(u_screen, SCREEN_UV).rgb;
                                                         out_col = scene_col
-                                                                * mix(1.0, 0.40, clamp(m * 1.3, 0.0, 1.0))
-                                                                + avg * 0.32 * m;
-                                                        alpha = clamp(m * u_veil_strength * 1.3, 0.0, 0.88);
+                                                                * mix(1.0, 0.66, clamp(m * 0.9, 0.0, 1.0))
+                                                                + avg * 0.20 * m;
+                                                        alpha = clamp(m * u_veil_strength * 0.85, 0.0, 0.42);
                                                 }
                                         }
                         }

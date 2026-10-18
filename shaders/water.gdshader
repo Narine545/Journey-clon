@@ -47,7 +47,7 @@ uniform float mega_amp = 0.055;
 uniform float ripple_freq = 1.35;
 uniform float ripple_speed = 1.1;
 uniform float ripple_strength = 0.34;
-uniform float glitter_amount = 0.16;
+uniform float glitter_amount = 0.50;
 
 // ---- Кольца событий ----
 uniform float ring_amp = 0.055;
@@ -120,10 +120,14 @@ void vertex() {
 	vec2 wdir_v = normalize(wind_dir);
 	vec2 wperp_v = vec2(-wdir_v.y, wdir_v.x);
 
-	// Гладкая поверхность моря не подрезается по дну на уровне вершин;
-	// линию берега формируют фрагментная глубина и мягкий alpha-переход.
+	// Волна плавно затухает к урезу. Большая амплитуда в открытом море
+	// не раскачивает shoreline-сэмплы и не рвёт кромку на треугольники.
+	float ground = ground_at(w_pos.xz);
+	float shore_depth = max(sea_level - ground, 0.0);
+	float shore_t = clamp(shore_depth / 4.0, 0.0, 1.0);
+	float shore_wave_fade = shore_t * shore_t * (3.0 - 2.0 * shore_t);
 	float hrip = swell_of(mega_phase(w_pos.xz, wdir_v, wperp_v))
-		* mega_amp * wind_power;
+		* mega_amp * wind_power * shore_wave_fade;
 	float y = hrip;
 
 	VERTEX.y += y;
@@ -147,7 +151,6 @@ void fragment() {
 	}
 	float near_shore = 1.0 - smoothstep(-0.08, 0.9, depth_m);
 	float mph = mega_phase(wp, wdir, wperp);
-	float hrip = swell_of(mph) * mega_amp * wind_power;
 
 	vec3 L = normalize(sun_dir);
 	vec3 N = vec3(0.0, 1.0, 0.0);
@@ -168,7 +171,7 @@ void fragment() {
 	// бесконечные параллельные полосы «кордуроем» до горизонта
 	float mega_fade = mix(0.30, 1.0, exp(-dist * 0.010));
 	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y) * 0.42
-		* (1.0 - 0.75 * near_shore) * mega_fade);
+		* (1.0 - 0.92 * near_shore) * mega_fade);
 
 	// ---------- слой 1: ветровая рябь из трёх поездов ----------
 	// Один поезд давал «кордурой» — длинные параллельные полосы. Три
@@ -185,7 +188,7 @@ void fragment() {
 		+ d3 * cos(ph3) * 0.24;
 	float amp = 0.40 + 0.60 * vnoise(wp * 0.11 + vec2(3.7, 1.3));
 	wgrad *= ripple_strength * wind_power * detail * amp
-		* (1.0 - 0.55 * near_shore);
+		* (1.0 - 0.88 * near_shore);
 	N = normalize(N - vec3(wgrad.x, 0.0, wgrad.y) * 0.42);
 
 	// ---------- кольца событий ----------
@@ -236,10 +239,13 @@ void fragment() {
 	mirror *= 1.0 - 0.18 * near_shore;
 	base = mix(base, sky_ref, mirror);
 
-	// солнечные искры — тёплые, как отблеск заката на воде
+	// Солнечный глиттер не обрывается у горизонта: ближние искры остаются
+	// точечными, а вдали переходят в широкую мерцающую дорожку по солнцу.
 	vec3 H = normalize(V + L);
+	float far_glit = smoothstep(120.0, 900.0, dist);
 	float need = 900.0 / max(dist, 0.001);
-	float density = clamp(pow(2.0, floor(log2(need / 3.0))) * 3.0, 6.0, 72.0);
+	float lod_density = pow(2.0, floor(log2(need / 3.0))) * 3.0;
+	float density = clamp(lod_density, mix(6.0, 1.2, far_glit), 72.0);
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));
@@ -248,12 +254,20 @@ void fragment() {
 	vec3 Hg = normalize(H + vec3(cellid - 0.5, cellb - 0.5, cellc - 0.5) * 0.55);
 	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(30.0, 110.0, cellb));
 	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(24.0, 80.0, cellc));
-	float glint = step(1.0 - glitter_amount * exp(-dist * 0.0035), cellid);
-	float glit_fade = exp(-dist * 0.004) * (1.0 - 0.92 * near_shore);
+	float glit_chance = glitter_amount * mix(exp(-dist * 0.002), 0.42, far_glit);
+	float glint = step(1.0 - glit_chance, cellid);
+	float glit_fade = mix(exp(-dist * 0.0025), 0.38, far_glit)
+		* (1.0 - 0.92 * near_shore);
 	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26) * glint * glit_fade;
 
-	float path = pow(clamp(dot(N, H), 0.0, 1.0), 180.0);
+	float path_power = mix(180.0, 34.0, far_glit);
+	float path = pow(clamp(dot(N, H), 0.0, 1.0), path_power);
 	base += sun_col * path * 0.55 * (1.0 - 0.85 * near_shore);
+	float far_noise = smoothstep(0.42, 0.82,
+		vnoise(wp * 0.22 + vec2(u_time * 0.025, -u_time * 0.018)));
+	float far_twinkle = 0.72 + 0.28 * sin(u_time * 2.6 + cellid * 31.0);
+	base += sun_col * path * far_noise * far_twinkle * far_glit
+		* glitter_amount * 1.35 * (1.0 - 0.70 * near_shore);
 
 	// ---------- пена прибоя ----------
 	// Обе полосы идут по КОНТУРУ глубины: кромка на песке и вал чуть

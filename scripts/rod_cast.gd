@@ -516,7 +516,7 @@ func _land_fish() -> void:
 	tension_changed.emit(0.0)
 	_held.setup(last_fish)
 	_held.scale *= 0.46
-	_held.position = Vector3(0.20, -0.40, -0.62)
+	_held.position = Vector3(0.0, 0.0, -0.90)
 	_held.rotation = Vector3(-0.10, PI * 0.42, 0.30)
 	_held.visible = true
 	_held_t = 2.4

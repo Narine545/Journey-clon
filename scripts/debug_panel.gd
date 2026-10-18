@@ -102,7 +102,7 @@ func _build_ui() -> void:
 		func(v): main.water.set_param("ring_amp", v))
 	_slider("Кольца (крутизна)", 0.0, 3.0, 1.4, 0.05,
 		func(v): main.water.set_param("ring_boost", v))
-	_slider("Глиттер моря", 0.0, 0.5, 0.20, 0.01,
+	_slider("Глиттер моря", 0.0, 0.5, 0.50, 0.01,
 		func(v): main.water.set_param("glitter_amount", v))
 	_slider("Рябь моря (сила)", 0.0, 1.0, 0.50, 0.02,
 		func(v): main.water.set_param("ripple_strength", v))

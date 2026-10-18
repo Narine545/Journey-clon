@@ -190,7 +190,7 @@ func _spawn_fish(i: int, center: Vector2) -> void:
 	_fphase[i] = randf() * TAU
 	_fperiod[i] = randf_range(8.0, 14.0)
 	_foffset[i] = randf() * _fperiod[i]
-	_fcruise[i] = randf_range(0.5, 1.2)
+	_fcruise[i] = randf_range(0.78, 1.45)
 	_fjump[i] = _fsize[i] * randf_range(0.9, 1.4) * jump_mul
 	_fy[i] = pos.y
 	_ftint[i] = PALETTE[i % PALETTE.size()]
@@ -629,7 +629,7 @@ func _sim_lure(i: int, delta: float, s: float) -> void:
 	# глубина: в пробах и поклёвке — под самой поверхностью (вуаль дышит)
 	var target_y := water_level - _fcruise[i]
 	if _lure_phase >= 2:
-		target_y = water_level - 0.42 * s
+		target_y = water_level - 0.60 * s
 	_fy[i] = lerpf(_fy[i], target_y, 1.0 - exp(-5.0 * delta))
 	_fpos[i].y = _fy[i]
 
@@ -647,6 +647,6 @@ func _sim_hooked(i: int, delta: float, s: float) -> void:
 	_fheading[i] += _fturn[i] * delta
 	_fpos[i] += Vector3(cos(_fheading[i]), 0.0, sin(_fheading[i])) * spd * delta
 	_fphase[i] += delta * (6.0 + spd * 2.0)
-	var target_y := water_level - 0.35 * s
+	var target_y := water_level - 0.60 * s
 	_fy[i] = lerpf(_fy[i], target_y, 1.0 - exp(-6.0 * delta))
 	_fpos[i].y = _fy[i]

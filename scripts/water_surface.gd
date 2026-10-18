@@ -25,6 +25,8 @@ var level_y := 0.0
 var mesh_size := 240.0
 
 var game: GameState # автозагрузка Game (ветер — общий с песком)
+var coast: Coast
+var _night01 := 0.0
 var _mat: ShaderMaterial
 
 
@@ -63,7 +65,12 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 func surface_height(x: float, z: float) -> float:
 	if field == null:
 		return level_y
-	return level_y + field.height_at(x, z)
+	var shore_fade := 1.0
+	if coast != null:
+		var depth := coast.water_depth(x, z)
+		var t := clampf(depth / 4.0, 0.0, 1.0)
+		shore_fade = t * t * (3.0 - 2.0 * t)
+	return level_y + field.height_at(x, z) * shore_fade
 
 
 func material() -> ShaderMaterial:
@@ -76,7 +83,9 @@ func set_param(param: String, value) -> void:
 
 
 ## Карта высот берега из Coast: по ней море кладёт плёнку прибоя на песок.
-func set_ground(tex: Texture2D, origin: Vector2, cell: float, n: int) -> void:
+func set_ground(tex: Texture2D, origin: Vector2, cell: float, n: int,
+		coast_ref: Coast = null) -> void:
+	coast = coast_ref
 	set_param("ground_tex", tex)
 	set_param("ground_origin", origin)
 	set_param("ground_cell", cell)
@@ -100,6 +109,7 @@ const NIGHT_FOAM := Color(0.30, 0.36, 0.42)
 
 
 func apply_night01(v: float) -> void:
+	_night01 = clampf(v, 0.0, 1.0)
 	set_param("water_shallow", DAY_SHALLOW.lerp(NIGHT_SHALLOW, v))
 	set_param("water_mid", DAY_MID.lerp(NIGHT_MID, v))
 	set_param("water_deep", DAY_DEEP.lerp(NIGHT_DEEP, v))
@@ -107,21 +117,26 @@ func apply_night01(v: float) -> void:
 	set_param("horizon_col", Coast.DAY_HORIZON.lerp(Coast.NIGHT_HORIZON, v))
 	set_param("sky_col", Coast.DAY_SKY.lerp(Coast.NIGHT_SKY, v))
 	set_param("fog_distance", lerpf(340.0, 130.0, v))
-	set_param("glitter_amount", lerpf(0.16, 0.05, v))
+	set_param("glitter_amount", lerpf(0.50, 0.08, v))
 
 
 func _process(_delta: float) -> void:
 	if game == null or _mat == null:
 		return
-	# один ветер на всю игру — как у песка (рябь и дыхание бегут вместе)
+	# Погода усиливает море нелинейно; ночью дыхание чуть спокойнее.
+	# F3 меняет базовый mega_amp, а этот множитель мягко следует ветру.
+	var weather01 := clampf((game.wind_strength - 0.65) / 0.70, 0.0, 1.0)
+	var weather_gain := lerpf(0.72, 1.28, weather01)
+	var night_gain := lerpf(1.0, 0.84, _night01)
+	var sea_power := clampf(game.wind_strength * weather_gain * night_gain, 0.45, 1.65)
 	_mat.set_shader_parameter("wind_dir", game.wind_dir())
-	_mat.set_shader_parameter("wind_power", game.wind_strength)
+	_mat.set_shader_parameter("wind_power", sea_power)
 	if field != null:
 		field.wind_dir = game.wind_dir()
-		field.wind_power = game.wind_strength
+		field.wind_power = sea_power
 		var ma: Variant = _mat.get_shader_parameter("mega_amp")
 		if ma != null:
-			field.mega_amp = ma # если амплитуду тюнили вручную
+			field.mega_amp = ma # CPU-поплавок следует за F3 и морским состоянием
 
 
 # ---------------------------------------------------------------------------
