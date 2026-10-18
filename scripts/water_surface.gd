@@ -117,10 +117,10 @@ func apply_night01(v: float) -> void:
 	set_param("horizon_col", Coast.DAY_HORIZON.lerp(Coast.NIGHT_HORIZON, v))
 	set_param("sky_col", Coast.DAY_SKY.lerp(Coast.NIGHT_SKY, v))
 	set_param("fog_distance", lerpf(340.0, 130.0, v))
-	# Общие блёстки поверхности и частицы солнечной дорожки — независимые
-	# параметры; оба выставлены на максимум и не смешиваются в F3.
-	set_param("glitter_amount", 1.0)
-	set_param("solar_glitter_amount", 1.0)
+	# На ночной воде гасим обычные микроблики и солнечные частицы:
+	# редкие огни остаются, а звёзды на песке не превращаются в сплошную россыпь.
+	set_param("glitter_amount", lerpf(1.0, 0.08, _night01))
+	set_param("solar_glitter_amount", lerpf(1.0, 0.0, _night01))
 
 
 func _process(_delta: float) -> void:

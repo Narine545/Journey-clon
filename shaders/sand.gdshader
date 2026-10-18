@@ -29,8 +29,8 @@ uniform float wind_power = 1.0;
 
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
 uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
-uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.0;
-uniform float shadow_star_density : hint_range(0.90, 0.995) = 0.975;
+uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.25;
+uniform float shadow_star_density : hint_range(0.90, 0.995) = 0.92;
 uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
 // Общий переключатель прямого света Proxima + Schlick-GGX (A/B).
@@ -253,6 +253,7 @@ void fragment() {
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
 	float glit_fade = exp(-dist * 0.004); // искры живут далеко, до горизонта
 	glint *= 1.0 - 0.85 * wet; // мокрый песок не сверкает
+	glint *= 1.0 - smoothstep(0.12, 0.82, night_amount); // ночью оставляем только искры в тенях
 	// искры бьют сильно (2+ единицы) — даже на ярком песке после
 	// Filmic-тонмаппинга они остаются точками, а glow даёт им ореол
 	base += vec3(1.0, 0.92, 0.70) * (sun_lobe * 2.0 + sky_lobe * 2.2)
@@ -317,7 +318,7 @@ void light() {
 	// остаётся на песке в мировых координатах, а не перемещается с камерой.
 	float cast_shadow = smoothstep(0.76, 0.96, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
 	float night_stars = smoothstep(0.18, 0.85, night_amount);
-	const float star_cell_size = 5.5;
+	const float star_cell_size = 4.5;
 	vec2 star_grid = w_pos.xz / star_cell_size;
 	vec2 star_cell = floor(star_grid);
 	vec2 star_local = fract(star_grid) - 0.5;

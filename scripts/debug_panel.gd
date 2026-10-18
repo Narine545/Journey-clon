@@ -66,9 +66,9 @@ func _build_ui() -> void:
 	_section("ВРЕМЯ СУТОК")
 	_slider("Время (0=день, 1=ночь)", 0.0, 1.0, main.game.night01, 0.01,
 		func(v): main.set_time(v))
-	_slider("Искры в тенях: яркость", 0.0, 2.5, 2.0, 0.02,
+	_slider("Искры в тенях: яркость", 0.0, 2.5, 2.25, 0.02,
 		func(v): main.coast.set_sand("shadow_star_intensity", v))
-	_slider("Искры в тенях: редкость", 0.90, 0.995, 0.975, 0.005,
+	_slider("Искры в тенях: редкость", 0.90, 0.995, 0.92, 0.005,
 		func(v): main.coast.set_sand("shadow_star_density", v))
 
 	_section("НЕБО")

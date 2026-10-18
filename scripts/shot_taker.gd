@@ -73,26 +73,29 @@ func _process(delta: float) -> void:
 		11: # звёзды на песке в настоящих тенях причала и камней
 			if _fs == 1:
 				var pier: Pier = main.pier
-				# Move the render camera onto the sand on the beach side of the pier;
-				# aiming at land from the original spawn still framed mostly open water.
-				var target_z := pier.pz + 2.0
+				# Frame a dry, shadowed patch beside the landward end of the pier.
+				var target_z := pier.pz + 2.5
+				var target_x := pier.x_start + 2.0
+				var target := Vector3(target_x,
+					main.coast.ground_height(target_x, target_z), target_z)
 				var shore_x := main.coast.shore_x(target_z)
-				var camera_x := shore_x + 19.0
-				var camera_z := target_z + 5.0
+				var camera_x := shore_x + 14.0
+				var camera_z := target_z + 3.0
 				var camera_y := main.coast.ground_height(camera_x, camera_z)
 				main.player.global_position = Vector3(camera_x, camera_y, camera_z)
 				main.player.vel = Vector3.ZERO
 				main.player.grounded = true
-				var target_x := shore_x + 9.0
-				var target := Vector3(target_x,
-					main.coast.ground_height(target_x, target_z), target_z)
-				var camera_pos := main.player.global_position + Vector3(0.0, CameraRig.EYE, 0.0)
-				var to_target := target - camera_pos
-				var yaw := atan2(to_target.x, to_target.z)
-				main.cam_rig.set_view(yaw, -0.52)
-				print("[SHOT] night sand camera=%s target=%s yaw=%.2f" % [camera_pos, target, yaw])
+				main.hud.visible = false
+				main.cam_rig.set_physics_process(false)
+				main.cam_rig.cam.global_position = main.player.global_position \
+					+ Vector3(0.0, CameraRig.EYE, 0.0)
+				main.cam_rig.cam.look_at(target, Vector3.UP)
+				print("[SHOT] night sand camera=%s target=%s forward=%s" % [
+					main.cam_rig.cam.global_position, target, -main.cam_rig.cam.global_basis.z])
 			if _fs > 4:
 				_capture("shot_k_night_stars.png")
+				main.hud.visible = true
+				main.cam_rig.set_physics_process(true)
 				main.set_time(0.0)
 				main.cam_rig.set_view(atan2(main.game.sun_dir.x, main.game.sun_dir.z), -0.38)
 				Engine.time_scale = 4.0
