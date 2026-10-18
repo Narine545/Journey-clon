@@ -35,7 +35,7 @@ func setup(main_ref: MainScene, pier: Pier) -> void:
 	var npc_x := pier.x_start - 1.35
 	var npc_z := pier.pz + 0.62
 	global_position = Vector3(npc_x, pier.deck_height(npc_x, npc_z) + 0.06, npc_z)
-	rotation.y = PI * 0.5 # facing the sea along the pier
+	rotation.y = -PI * 0.5 # facing back toward the shore-side approach
 	_build_character()
 	_build_ui()
 	_ensure_actions()
@@ -67,15 +67,17 @@ func _build_character() -> void:
 	_anim = _find_animation_player(character)
 	if _anim != null:
 		_anim.animation_finished.connect(_on_animation_finished)
-		var idle := _find_animation("Idle_Talking_Loop")
+		var idle := _find_animation("Idle_Loop")
 		if idle.is_empty():
-			idle = _find_animation("Idle_Loop")
+			idle = _find_animation("Idle_Talking_Loop")
 		if not idle.is_empty():
 			_anim.play(idle)
+			print("[NPC] CC0 animation playing: %s" % idle)
 	else:
 		push_warning("Fishing NPC: imported animation player was not found")
 
 	if skeleton != null:
+		_add_fisherman_gear(skeleton)
 		_add_eyes(skeleton)
 	else:
 		push_warning("Fishing NPC: imported humanoid skeleton was not found")
@@ -118,6 +120,62 @@ func _find_animation(fragment: String) -> String:
 		if str(anim_name).ends_with(fragment):
 			return str(anim_name)
 	return ""
+
+
+func _add_fisherman_gear(skeleton: Skeleton3D) -> void:
+	# Low-poly rain vest rides the torso bone so the imported CC0 rig keeps it
+	# attached while the free locomotion/gesture clips play.
+	var torso_bone := skeleton.find_bone("DEF-spine.002")
+	if torso_bone >= 0:
+		var vest_anchor := BoneAttachment3D.new()
+		vest_anchor.name = "FisherRainVest"
+		vest_anchor.bone_name = "DEF-spine.002"
+		skeleton.add_child(vest_anchor)
+		var vest := MeshInstance3D.new()
+		var vest_mesh := CapsuleMesh.new()
+		vest_mesh.radius = 0.19
+		vest_mesh.height = 0.52
+		vest_mesh.radial_segments = 10
+		vest_mesh.rings = 5
+		vest.mesh = vest_mesh
+		vest.scale = Vector3(1.10, 1.0, 0.78)
+		vest.material_override = _style_material(Color(0.11, 0.31, 0.34))
+		vest_anchor.add_child(vest)
+		var pocket := MeshInstance3D.new()
+		var pocket_mesh := BoxMesh.new()
+		pocket_mesh.size = Vector3(0.105, 0.10, 0.035)
+		pocket.mesh = pocket_mesh
+		pocket.position = Vector3(0.07, 0.015, -0.157)
+		pocket.material_override = _style_material(Color(0.74, 0.46, 0.22))
+		vest_anchor.add_child(pocket)
+
+	# A simple weathered bucket hat makes the silhouette read as a shore fisher.
+	var head_bone := skeleton.find_bone("DEF-head")
+	if head_bone >= 0:
+		var hat_anchor := BoneAttachment3D.new()
+		hat_anchor.name = "FisherHat"
+		hat_anchor.bone_name = "DEF-head"
+		skeleton.add_child(hat_anchor)
+		var brim := MeshInstance3D.new()
+		var brim_mesh := CylinderMesh.new()
+		brim_mesh.top_radius = 0.145
+		brim_mesh.bottom_radius = 0.16
+		brim_mesh.height = 0.035
+		brim_mesh.radial_segments = 12
+		brim.mesh = brim_mesh
+		brim.position = Vector3(0.0, 0.105, 0.0)
+		brim.material_override = _style_material(Color(0.34, 0.24, 0.16))
+		hat_anchor.add_child(brim)
+		var crown := MeshInstance3D.new()
+		var crown_mesh := CylinderMesh.new()
+		crown_mesh.top_radius = 0.088
+		crown_mesh.bottom_radius = 0.12
+		crown_mesh.height = 0.13
+		crown_mesh.radial_segments = 10
+		crown.mesh = crown_mesh
+		crown.position = Vector3(0.0, 0.185, 0.0)
+		crown.material_override = _style_material(Color(0.47, 0.31, 0.18))
+		hat_anchor.add_child(crown)
 
 
 func _add_eyes(skeleton: Skeleton3D) -> void:

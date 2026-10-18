@@ -324,13 +324,13 @@ void light() {
 	float star_key = hash12(star_cell + vec2(19.7, 83.1));
 	vec2 star_jitter = vec2(hash12(star_cell + 5.3), hash12(star_cell + 27.1)) - 0.5;
 	vec2 star_delta = (star_local - star_jitter * 0.72) * star_cell_size;
-	float star_core = exp(-length(star_delta) * 58.0);
-	float star_ray_x = exp(-abs(star_delta.x) * 72.0 - abs(star_delta.y) * 12.0);
-	float star_ray_z = exp(-abs(star_delta.y) * 72.0 - abs(star_delta.x) * 12.0);
+	float star_core = exp(-length(star_delta) * 18.0);
+	float star_ray_x = exp(-abs(star_delta.x) * 7.0 - abs(star_delta.y) * 28.0);
+	float star_ray_z = exp(-abs(star_delta.y) * 7.0 - abs(star_delta.x) * 28.0);
 	float star_shape = max(star_core, max(star_ray_x, star_ray_z) * 0.42);
 	float stars_here = star_shape * step(shadow_star_density, star_key)
 		* (0.55 + 0.45 * sin(star_key * 91.0));
-	DIFFUSE_LIGHT += vec3(0.30, 0.52, 1.0) * stars_here
+	DIFFUSE_LIGHT += vec3(1.05, 1.42, 2.10) * stars_here
 		* cast_shadow * night_stars * shadow_star_intensity;
 	if (nl > 0.0) {
 	vec3 h = normalize(v + l);

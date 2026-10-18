@@ -190,7 +190,7 @@ func _process(delta: float) -> void:
 		13: # крупный контрольный кадр человека и живого idle-рига у причала
 			if _fs == 1:
 				var npc: FishingNpc = main.fishing_npc
-				var px := npc.global_position.x - 2.4
+				var px := npc.global_position.x + 2.4
 				var pz := npc.global_position.z + 0.55
 				var deck := main.pier.deck_height(px, pz)
 				main.player.global_position = Vector3(px, deck, pz)
