@@ -329,8 +329,7 @@ void light() {
 	float star_ray_z = exp(-abs(star_delta.y) * 72.0 - abs(star_delta.x) * 12.0);
 	float star_shape = max(star_core, max(star_ray_x, star_ray_z) * 0.42);
 	float stars_here = star_shape * step(shadow_star_density, star_key)
-		* (0.55 + 0.45 * sin(star_key * 91.0))
-		* exp(-length(CAMERA_POSITION_WORLD - w_pos) * 0.008);
+		* (0.55 + 0.45 * sin(star_key * 91.0));
 	DIFFUSE_LIGHT += vec3(0.30, 0.52, 1.0) * stars_here
 		* cast_shadow * night_stars * shadow_star_intensity;
 	if (nl > 0.0) {
