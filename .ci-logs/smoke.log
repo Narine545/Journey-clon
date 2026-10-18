@@ -26,8 +26,8 @@ WORLD: Vulkan недоступен — Compatibility-фолбэк, волюме�
 [SMOKE] брод: кадр 240 x=-2.4 глубина=0.78 wet01=1.00
 [SMOKE] заброс: поплавок в (-0.7, 0.00, -14.0), сила 14.09
 [SMOKE] поклёвка! подсекаем (кадр 1)
-[SMOKE] вываживание: кадр 180, рывок=false, натяг=44, прогресс=76
-[FISH] Серебристая макрель (32 см, 0.65 кг) — новый вид
+[SMOKE] вываживание: кадр 180, рывок=false, натяг=43, прогресс=80
+[FISH] Пухляк (27 см, 0.48 кг) — новый вид
 [SMOKE] PASS мир: берег собран
 [SMOKE] PASS мир: море собрано
 [SMOKE] PASS мир: существа собраны
@@ -54,7 +54,7 @@ WORLD: Vulkan недоступен — Compatibility-фолбэк, волюме�
 [SMOKE] PASS поплавок на уровне моря (y=0.00)
 [SMOKE] PASS заброс: дальность 14.1 м
 [SMOKE] PASS рыба: подсечка удалась
-[SMOKE] PASS рыба: поймана (размер 32.20)
+[SMOKE] PASS рыба: поймана (размер 27.00)
 [SMOKE] PASS рыба: удочка снова наготове
 [SMOKE] PASS рыба: в море остались существа
 [SMOKE] PASS снасть: возвращается в руки (line_retrieved)
@@ -65,8 +65,8 @@ WORLD: Vulkan недоступен — Compatibility-фолбэк, волюме�
 [SMOKE] итог: ВСЁ ПРОШЛО
 WARNING: 1 RID of type "CanvasItem" was leaked.
    at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2733)
-WARNING: 55 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+WARNING: 50 ObjectDB instances were leaked at exit (run with `--verbose` for details).
    at: cleanup (core/object/object.cpp:2536)
-ERROR: 6 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
-ERROR: 17 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
+ERROR: 5 RID allocations of type 'PN13RendererDummy14TextureStorage12DummyTextureE' were leaked at exit.
+ERROR: 16 RID allocations of type 'PN18TextServerAdvanced22ShapedTextDataAdvancedE' were leaked at exit.
 ERROR: 1 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
