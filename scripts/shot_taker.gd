@@ -58,12 +58,16 @@ func _process(delta: float) -> void:
 		0: # стартовый вид: эталонный свет воды
 			if t > 0.8 and _fs > 2:
 				_capture("shot_a_coast.png")
+				# Замораживаем игровое время, чтобы A/B сравнивал свет,
+				# а не изменившуюся фазу ряби между двумя кадрами.
+				Engine.time_scale = 0.0
 				main.water.set_param("proxima_test", 1.0)
 				_go(10)
 		10: # A/B-кадр той же камеры с моделью Proxima + Schlick-GGX
-			if t > 0.25 and _fs > 4:
+			if _fs > 4:
 				_capture("shot_j_proxima.png")
 				main.water.set_param("proxima_test", 0.0)
+				Engine.time_scale = 1.0
 				Input.action_press("rod_cast")
 				_go(1)
 		1: # удочка достаётся

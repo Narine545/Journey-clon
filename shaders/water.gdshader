@@ -311,11 +311,12 @@ void fragment() {
 		hash12(spark_cell + vec2(3.3, 15.1)) * 0.38 - 0.19));
 	float microfacet_match = 0.45 + 0.55 * pow(
 		clamp(dot(microfacet_n, H), 0.0, 1.0), 10.0);
-	float spark_select = step(1.0 - solar_glitter_amount * 0.24, spark_seed);
+	float spark_select = step(1.0 - solar_glitter_amount * 0.32, spark_seed);
 	float spark_twinkle = 0.72 + 0.28 * sin(u_time * 3.4 + spark_seed * 71.0);
-	vec3 distant_glitter = sun_col * sparkle_shape * spark_select * sun_road
+	vec3 spark_tint = mix(sun_col, vec3(1.0, 0.96, 0.82), spark_core * 0.82);
+	vec3 distant_glitter = spark_tint * sparkle_shape * spark_select * sun_road
 		* microfacet_match * spark_twinkle * far_glit * solar_glitter_amount
-		* 6.0 * (1.0 - 0.70 * near_shore);
+		* 9.0 * (1.0 - 0.70 * near_shore);
 	base += distant_glitter;
 
 	// ---------- пена прибоя ----------
