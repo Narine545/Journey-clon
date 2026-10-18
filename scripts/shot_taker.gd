@@ -74,8 +74,8 @@ func _process(delta: float) -> void:
 			if _fs == 1:
 				var pier: Pier = main.pier
 				# Frame a dry, shadowed patch beside the landward end of the pier.
-				var target_z := pier.pz + 3.5
-				var target_x := pier.x_start + 5.0
+				var target_z := pier.pz + 1.9
+				var target_x := pier.x_start + 6.0
 				var target := Vector3(target_x,
 					main.coast.ground_height(target_x, target_z), target_z)
 				var camera_x := target_x + 5.0

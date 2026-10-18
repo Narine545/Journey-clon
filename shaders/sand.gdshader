@@ -30,7 +30,7 @@ uniform float wind_power = 1.0;
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
 uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.5;
-uniform float shadow_star_density : hint_range(0.55, 0.98) = 0.62;
+uniform float shadow_star_density : hint_range(0.40, 0.98) = 0.45;
 uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
 // Общий переключатель прямого света Proxima + Schlick-GGX (A/B).
