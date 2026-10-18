@@ -313,6 +313,15 @@ float proxima_t(float x) {
 	return clamp(x, 0.0, 1.0);
 }
 
+float shadow_star_shape(vec2 delta, float angle) {
+	vec2 axis = vec2(cos(angle) * delta.x - sin(angle) * delta.y,
+		sin(angle) * delta.x + cos(angle) * delta.y);
+	float core = exp(-length(axis) * 34.0);
+	float ray_x = exp(-abs(axis.x) * 18.0 - abs(axis.y) * 72.0);
+	float ray_z = exp(-abs(axis.y) * 18.0 - abs(axis.x) * 72.0);
+	return max(core, max(ray_x, ray_z) * 0.56);
+}
+
 void light() {
 	vec3 n = normalize(NORMAL);
 	vec3 l = normalize(LIGHT);
@@ -330,22 +339,21 @@ void light() {
 	float star_zone = 1.0 - smoothstep(shadow_star_radius - 0.6,
 		shadow_star_radius + 0.6, focus_dist);
 	float night_stars = smoothstep(0.18, 0.85, night_amount);
-	const float star_cell_size = 1.8;
-	vec2 star_grid = w_pos.xz / star_cell_size;
-	vec2 star_cell = floor(star_grid);
-	vec2 star_local = fract(star_grid) - 0.5;
-	float star_key = hash12(star_cell + vec2(19.7, 83.1));
-	vec2 star_jitter = vec2(hash12(star_cell + 5.3), hash12(star_cell + 27.1)) - 0.5;
-	vec2 star_delta = (star_local - star_jitter * 0.72) * star_cell_size;
-	float star_angle = star_key * PI;
-	vec2 star_axis = vec2(cos(star_angle) * star_delta.x - sin(star_angle) * star_delta.y,
-		sin(star_angle) * star_delta.x + cos(star_angle) * star_delta.y);
-	float star_core = exp(-length(star_axis) * 12.0);
-	float star_ray_x = exp(-abs(star_axis.x) * 4.0 - abs(star_axis.y) * 22.0);
-	float star_ray_z = exp(-abs(star_axis.y) * 4.0 - abs(star_axis.x) * 22.0);
-	float star_shape = max(star_core, max(star_ray_x, star_ray_z) * 0.68);
-	float stars_here = star_shape * step(shadow_star_density, star_key)
-		* (0.78 + 0.22 * hash12(star_cell + 41.3));
+	vec2 shadow_dir = normalize(-l.xz);
+	vec2 shadow_side = vec2(-shadow_dir.y, shadow_dir.x);
+	vec2 star_p1 = shadow_star_focus - shadow_side * 0.55 - shadow_dir * 0.25;
+	vec2 star_p2 = shadow_star_focus + shadow_side * 0.50 + shadow_dir * 0.20;
+	vec2 star_p3 = shadow_star_focus - shadow_side * 0.12 + shadow_dir * 0.72;
+	vec2 star_p4 = shadow_star_focus + shadow_side * 0.78 - shadow_dir * 0.62;
+	float star_1 = shadow_star_shape(w_pos.xz - star_p1, 0.35)
+		* step(shadow_star_density, hash12(vec2(17.1, 2.4)));
+	float star_2 = shadow_star_shape(w_pos.xz - star_p2, 1.20)
+		* step(shadow_star_density, hash12(vec2(31.8, 8.7)));
+	float star_3 = shadow_star_shape(w_pos.xz - star_p3, 2.10)
+		* step(shadow_star_density, hash12(vec2(9.2, 47.3)));
+	float star_4 = shadow_star_shape(w_pos.xz - star_p4, 0.78)
+		* step(shadow_star_density, hash12(vec2(53.7, 16.5)));
+	float stars_here = max(max(star_1, star_2), max(star_3, star_4));
 	DIFFUSE_LIGHT += vec3(1.65, 1.90, 2.40) * stars_here
 		* cast_shadow * dry_sand * star_zone * night_stars * shadow_star_intensity;
 	if (nl > 0.0) {
