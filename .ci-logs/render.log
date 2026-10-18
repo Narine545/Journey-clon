@@ -15,22 +15,6 @@ ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
 WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
---res://shaders/water.gdshader--
-  408 |  float gl = nl / (nl * (1.0 - k) + k);
-  409 |  float gv = nv / (nv * (1.0 - k) + k);
-E 410->  vec3 f0 = mix(vec3(0.04 * SPECULAR), ALBEDO, METALLIC);
-  411 |  vec3 f = f0 + (1.0 - f0) * pow(1.0 - hl, 5.0);
-  412 |  float fd90 = 0.5 + 2.0 * ROUGHNESS * hl * hl;
-SHADER ERROR: Unknown identifier in expression: 'SPECULAR'.
-          at: (null) (res://shaders/water.gdshader:410)
-          GDScript backtrace (most recent call first):
-              [0] setup (res://scripts/water_surface.gd:41)
-              [1] _ready (res://scripts/main.gd:68)
-ERROR: Shader compilation failed.
-   at: set_code (servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.cpp:185)
-   GDScript backtrace (most recent call first):
-       [0] setup (res://scripts/water_surface.gd:41)
-       [1] _ready (res://scripts/main.gd:68)
 [SHOT] кадры в /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_a_coast.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_j_proxima.png -> 0
@@ -39,7 +23,7 @@ ERROR: Shader compilation failed.
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_d_bobber.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_e_bite.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_f_fight.png -> 0
-[FISH] Морской окунь (30 см, 0.66 кг) — новый вид
+[FISH] Морской окунь (41 см, 1.66 кг) — новый вид
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_i_caught_fish.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_g_pier.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_h_breach.png -> 0
