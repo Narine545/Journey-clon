@@ -264,12 +264,13 @@ void fragment() {
 	float path = pow(clamp(dot(N, H), 0.0, 1.0), path_power);
 	base += sun_col * path * 0.55 * (1.0 - 0.85 * near_shore);
 	// Дальняя солнечная дорожка: сравниваем направления к солнцу и камере,
-	// затем мерцаем крупными sub-pixel фасетами, а не гасим блёстки по dist.
+	// (V и L смотрят в противоположные стороны) и затем мерцаем крупными
+	// sub-pixel фасетами, а не гасим блёстки по dist.
 	float far_density = mix(4.0, 0.10, far_glit);
 	vec2 far_cell = floor(wp * far_density + vec2(u_time * 0.018, -u_time * 0.013));
 	float far_seed = hash12(far_cell);
 	float far_spark = step(1.0 - glitter_amount * 0.72, far_seed);
-	float sun_view_match = pow(clamp(dot(V, L), 0.0, 1.0), 2.3);
+	float sun_view_match = pow(clamp(-dot(V, L), 0.0, 1.0), 2.3);
 	float far_twinkle = 0.65 + 0.35 * sin(u_time * 3.1 + far_seed * 71.0);
 	vec3 distant_glitter = sun_col * sun_view_match * far_spark * far_twinkle * far_glit
 		* glitter_amount * 3.2 * (1.0 - 0.70 * near_shore);
