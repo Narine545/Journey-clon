@@ -67,6 +67,12 @@ func _process(delta: float) -> void:
 			if _fs > 4:
 				_capture("shot_j_proxima.png")
 				main.set_proxima_test(0.0)
+				main.set_time(1.0)
+				_go(11)
+		11: # ночной контроль процедурных звёзд в тёмных областях кадра
+			if _fs > 4:
+				_capture("shot_k_night_stars.png")
+				main.set_time(0.0)
 				Engine.time_scale = 1.0
 				Input.action_press("rod_cast")
 				_go(1)
