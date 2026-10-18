@@ -19,7 +19,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 [SHOT] кадры в /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_a_coast.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_j_proxima.png -> 0
-[SHOT] night sand camera=(24.5443, 3.056677, -17.1) target=(19.5443, 0.837594, -20.1) forward=(-0.801419, -0.355683, -0.480851)
+[SHOT] night sand camera=(19.7443, 2.520711, -17.0) target=(14.7443, 0.433502, -20.0) forward=(-0.80733, -0.337013, -0.484398)
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_k_night_stars.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_l_solar_gaze_blur.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_b_rod.png -> 0
@@ -27,7 +27,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_d_bobber.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_e_bite.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_f_fight.png -> 0
-[FISH] Морской окунь (31 см, 0.74 кг) — новый вид
+[FISH] Морской окунь (54 см, 3.70 кг) — новый вид
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_i_caught_fish.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_g_pier.png -> 0
 [SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_h_breach.png -> 0
