@@ -9,7 +9,7 @@ uniform float intensity : hint_range(0.0, 2.0) = 0.72;
 uniform float start_stars : hint_range(0.0, 1.0) = 0.38;
 uniform float brightness_max : hint_range(0.0, 1.0) = 0.72;
 uniform float star_size : hint_range(12.0, 240.0) = 92.0;
-uniform float star_frequency : hint_range(0.01, 0.5) = 0.12;
+uniform float star_frequency : hint_range(0.01, 0.5) = 0.08;
 uniform float drift_speed : hint_range(0.0, 1.0) = 0.035;
 uniform float twinkle_speed : hint_range(0.0, 12.0) = 3.8;
 uniform float seed = 11.7;
@@ -56,14 +56,35 @@ vec3 star_layer(vec2 pixel, float layer_id) {
 	return star_palette(hash21(cell + 31.2)) * shape * pulse * size_weight;
 }
 
+float luminance_at(vec2 uv) {
+	vec3 c = texture(screen_texture, clamp(uv, vec2(0.001), vec2(0.999))).rgb;
+	return dot(c, vec3(0.2126, 0.7152, 0.0722));
+}
+
 void fragment() {
 	vec4 scene = texture(screen_texture, SCREEN_UV);
 	float luminance = dot(scene.rgb, vec3(0.2126, 0.7152, 0.0722));
 	float darkness = 1.0 - luminance;
-	// Smooth version of (darkness-start)/(maximum-start): no hard mask edge.
 	float mask_low = 1.0 - brightness_max;
 	float mask_high = max(1.0 - start_stars, mask_low + 0.001);
-	float shadow_mask = smoothstep(mask_low, mask_high, darkness);
+	float darkness_mask = smoothstep(mask_low, mask_high, darkness);
+
+	// Require a dark pixel to be visibly darker than its local surroundings.
+	// This approximates cast-shadow regions and prevents stars over the whole
+	// night sky / uniformly dark screen like a full-screen HUD overlay.
+	vec2 r = vec2(0.034, 0.025);
+	float bright_neighbour = luminance;
+	bright_neighbour = max(bright_neighbour, luminance_at(SCREEN_UV + vec2(r.x, 0.0)));
+	bright_neighbour = max(bright_neighbour, luminance_at(SCREEN_UV - vec2(r.x, 0.0)));
+	bright_neighbour = max(bright_neighbour, luminance_at(SCREEN_UV + vec2(0.0, r.y)));
+	bright_neighbour = max(bright_neighbour, luminance_at(SCREEN_UV - vec2(0.0, r.y)));
+	bright_neighbour = max(bright_neighbour, luminance_at(SCREEN_UV + vec2(r.x, r.y)));
+	bright_neighbour = max(bright_neighbour, luminance_at(SCREEN_UV + vec2(-r.x, r.y)));
+	bright_neighbour = max(bright_neighbour, luminance_at(SCREEN_UV + vec2(r.x, -r.y)));
+	bright_neighbour = max(bright_neighbour, luminance_at(SCREEN_UV - vec2(r.x, r.y)));
+	float local_shadow = smoothstep(0.07, 0.22, bright_neighbour - luminance);
+	float world_region = smoothstep(0.38, 0.52, SCREEN_UV.y);
+	float shadow_mask = darkness_mask * local_shadow * world_region;
 	float night = smoothstep(0.12, 0.82, night_amount);
 
 	vec3 stars = vec3(0.0);
@@ -75,7 +96,7 @@ void fragment() {
 	vec2 tiny_cell = floor(FRAGCOORD.xy / 3.0);
 	float tiny_key = hash21(tiny_cell + 87.1);
 	float tiny_pulse = 0.45 + 0.55 * (0.5 + 0.5 * sin(TIME * twinkle_speed * 1.7 + tiny_key * 31.0));
-	float pin = step(0.9978, tiny_key) * tiny_pulse;
+	float pin = step(0.9990, tiny_key) * tiny_pulse;
 	stars += vec3(0.62, 0.78, 1.0) * pin;
 
 	float mask = shadow_mask * night * intensity;

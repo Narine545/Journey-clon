@@ -17,11 +17,9 @@ shader_type spatial;
 //     sand_fish.gd;
 //   • БРЫЗГИ: кластеры капель (парбол на CPU), плавящиеся друг с другом
 //     и с телом выпрыгнувшей рыбы — тот самый «metaball melt»;
-//   • «ВУАЛЬ»: рыбы, скользящие ПОД поверхностью моря. Реймарчинг их не
-//     видит (depth-тест моря прячет всё, что ниже), поэтому подповерхност-
-//     ных рыб рисуем отдельным слоем: точка, где луч касается плоскости
-//     моря, затемняется и слегка тонируется — под песком ползёт тёмный
-//     бугор. В момент прыжка SDF-тело и «вуаль» срастаются в одно.
+//   • ПОДВОДНЫЙ СЛЕД: тело ниже воды скрыто глубинным буфером. На поверхности
+//     остаётся только тонкий слабый след за рыбой — не постоянно видимый
+//     силуэт. При прыжке полноценное SDF-тело выходит из воды с брызгами.
 //
 // Окклюзия делает всё остальное: часть тела ниже уровня моря автоматически
 // прячется за морем, часть выше — стоит перед ним и пишет свою глубину
@@ -52,8 +50,8 @@ uniform float fog_distance = 340.0;
 // ===== Сцена =====
 uniform float u_water_level = 0.0;
 uniform float u_time = 0.0;
-uniform vec2 u_center = vec2(0.0, 0.0); // центр обитания (идёт за камерой)
-uniform float u_bounds_r = 130.0;       // радиус обитания, м
+uniform vec2 u_center = vec2(0.0, 0.0); // камера: только ограничивает область raymarch
+uniform float u_bounds_r = 130.0;       // радиус raymarch-culling вокруг камеры, м
 
 // Рыбы: 6 слотов стаи + 1 слот пойманной рыбы; meta.x <= 0.001 — пусто
 uniform vec4 u_fish_state[7]; // xyz — центр тела, w — курс (рад)
@@ -65,7 +63,7 @@ uniform float u_catch_flex = 1.0; // улов в центре экрана: ме
 uniform vec4 u_drops[12]; // xyz — центр, w — радиус
 uniform vec3 u_drop_tint : source_color = vec3(0.98, 0.62, 0.38);
 
-// «Вуаль» — силуэты под поверхностью
+// След подводной рыбы — очень тонкий и малоконтрастный.
 uniform float u_veil_strength = 0.42;
 
 uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
@@ -232,13 +230,30 @@ void fragment() {
         // Окклюзия: геометрия сцены останавливает луч.
         float depth_raw = texture(depth_texture, SCREEN_UV).r;
         float scene_t = -1.0;
-        vec3 scene_pos = vec3(0.0);
         if (depth_raw > 0.0001) {
                 vec4 dview = INV_PROJECTION_MATRIX * vec4(ndc_xy, depth_raw, 1.0);
                 dview.xyz /= dview.w;
                 scene_t = length(dview.xyz);
-                scene_pos = cam_pos + rd * scene_t;
                 max_dist = min(max_dist, scene_t);
+        }
+
+        // Transparent water is absent from the opaque depth texture on many
+        // renderers. Intersect its mean plane explicitly so submerged SDF fish
+        // cannot leak through as a permanent HUD-like silhouette.
+        float water_surface_t = -1.0;
+        vec3 water_surface_pos = vec3(0.0);
+        bool water_surface_visible = false;
+        if (cam_pos.y > u_water_level + 0.05 && rd.y < -0.02) {
+                float candidate_t = (u_water_level - cam_pos.y) / rd.y;
+                bool no_opaque_occluder = depth_raw <= 0.0001
+                        || scene_t + 0.35 >= candidate_t;
+                if (candidate_t > 0.0 && candidate_t < length(far_view.xyz)
+                        && no_opaque_occluder) {
+                        water_surface_t = candidate_t;
+                        water_surface_pos = cam_pos + rd * candidate_t;
+                        water_surface_visible = true;
+                        max_dist = min(max_dist, candidate_t);
+                }
         }
 
         float alpha = 0.0;
@@ -336,13 +351,12 @@ void fragment() {
                                 vec4 clip = PROJECTION_MATRIX * (VIEW_MATRIX * vec4(p, 1.0));
                                 out_depth = clip.z / clip.w;
                         } else {
-                                // ---- «вуаль»: силуэты под поверхностью моря ----
-                                // Морько видно там, где сцена в этой точке — плоскость
-                                // уровня воды (допуск покрывает «дыхание» и кольца).
-                                if (scene_t > 0.0 && cam_pos.y > u_water_level + 0.05
-                                                && rd.y < -0.02
-                                                && abs(scene_pos.y - u_water_level) < 0.45) {
-                                        float fz = 1.0 - exp(-pow(scene_t / fog_distance, 2.1));
+                                // ---- Тонкий след по поверхности моря ----
+                                // Поверхность выбирается ray/plane пересечением, поскольку
+                                // прозрачная вода не всегда попадает в depth-текстуру.
+                                if (water_surface_visible && cam_pos.y > u_water_level + 0.05
+                                                && rd.y < -0.02) {
+                                        float fz = 1.0 - exp(-pow(water_surface_t / fog_distance, 2.1));
                                         if (fz < 0.97) {
                                                 float m = 0.0;
                                                 vec3 tw = vec3(0.0);
@@ -354,31 +368,34 @@ void fragment() {
                                                         vec3 C = u_fish_state[i].xyz;
                                                         float sub = u_water_level - C.y;
                                                         if (sub < 0.05) {
-                                                                continue; // центр над водой — тело видно само
+                                                                continue; // выпрыгнувшее тело рисуется SDF-ом
                                                         }
-                                                        float vis = exp(-sub / max(s * 2.2, 0.60));
-                                                        vec2 e = scene_pos.xz - C.xz;
+                                                        vec2 e = water_surface_pos.xz - C.xz;
                                                         vec2 dir2 = vec2(cos(u_fish_state[i].w),
                                                                 sin(u_fish_state[i].w));
                                                         vec2 prp2 = vec2(-dir2.y, dir2.x);
-                                                        // вытянутый бугор вдоль курса
-                                                        float d2 = length(vec2(dot(e, dir2),
-                                                                dot(e, prp2) * 1.8));
-                                                        float R = s * 1.5 + sub * 0.25;
-                                                        // 1 - smoothstep с возрастающими краями
-                                                        // (edge0 >= edge1 в GLSL — UB)
-                                                        float mi = (1.0 - smoothstep(R * 0.25, R, d2))
-                                                                * vis * (1.0 - fz);
+                                                        float along = dot(e, dir2);
+                                                        float across = abs(dot(e, prp2));
+                                                        // Узкий след за рыбой вместо постоянного пятна-силуэта.
+                                                        float pixel_world = scene_t * pixel_angle;
+                                                        float width = max(s * 0.08, pixel_world * 1.35);
+                                                        float tail_in = smoothstep(-5.0 * s, -4.0 * s, along);
+                                                        float tail_out = 1.0 - smoothstep(-0.75 * s, -0.12 * s, along);
+                                                        float edge = 1.0 - smoothstep(width * 0.45, width, across);
+                                                        float ripple = 0.62 + 0.38 * sin(along * 3.2
+                                                                + u_time * 2.4 + u_fish_meta[i].y);
+                                                        float depth_fade = exp(-sub / max(s * 3.0, 1.0));
+                                                        float mi = tail_in * tail_out * edge * ripple
+                                                                * depth_fade * (1.0 - fz);
                                                         m = max(m, mi);
                                                         tw += u_fish_tint[i] * mi;
                                                 }
                                                 if (m > 0.003) {
                                                         vec3 avg = tw / max(m, 1e-4);
                                                         vec3 scene_col = texture(u_screen, SCREEN_UV).rgb;
-                                                        out_col = scene_col
-                                                                * mix(1.0, 0.66, clamp(m * 0.9, 0.0, 1.0))
-                                                                + avg * 0.20 * m;
-                                                        alpha = clamp(m * u_veil_strength * 0.85, 0.0, 0.42);
+                                                        out_col = scene_col * (1.0 - 0.12 * m)
+                                                                + avg * 0.18 * m;
+                                                        alpha = clamp(m * u_veil_strength * 0.35, 0.0, 0.10);
                                                 }
                                         }
                         }

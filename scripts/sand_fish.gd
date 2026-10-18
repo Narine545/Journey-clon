@@ -10,8 +10,8 @@ extends Node3D
 ##
 ## Скрипт живёт жизнью существ на CPU и пушит uniform-ы каждый кадр
 ## (6 рыб + слот улова + 12 капель — копейки): курс/скорость/фаза волны, гауссов «бугор
-## прыжка» в цикле, парбол капель. Все рыбьи места — в пределах сферы
-## обитания, центр которой идёт за камерой: существа всегда рядом с кадром.
+## прыжка» в цикле, парбол капель. Домашние мировые координаты стаи фиксированы;
+## камера используется только как центр raymarch-culling, не как цель движения.
 ##
 ## Использование (после water.setup):
 ##   var fish := SandFish.new()
@@ -44,7 +44,7 @@ const PALETTE: Array[Color] = [
 ]
 
 @export_range(0, CATCH_SLOT) var fish_count := 5 ## сколько существ живёт сейчас
-@export var bounds_radius := 130.0 ## радиус сферы обитания, м (центр — камера)
+@export var bounds_radius := 130.0 ## радиус области raymarch-culling вокруг камеры, м
 @export_range(0.4, 2.0) var size_mul := 1.0 ## множитель размера существ
 @export_range(0.4, 2.4) var jump_mul := 1.0 ## множитель высоты прыжка
 
@@ -59,6 +59,7 @@ var _quad: MeshInstance3D
 
 # ---- рыбы (параллельные массивы, как у SandField) ----
 var _fpos := PackedVector3Array()
+var _fish_home := PackedVector2Array() # fixed world anchor; never follows camera
 var _fheading := PackedFloat32Array()
 var _fturn := PackedFloat32Array()
 var _fspeed := PackedFloat32Array()
@@ -132,6 +133,7 @@ func _build_quad() -> void:
 
 func _init_fish() -> void:
 	_fpos.resize(MAX_FISH)
+	_fish_home.resize(MAX_FISH)
 	_fheading.resize(MAX_FISH)
 	_fturn.resize(MAX_FISH)
 	_fspeed.resize(MAX_FISH)
@@ -164,26 +166,28 @@ func _camera_xz() -> Vector2:
 	return Vector2(cam.global_position.x, cam.global_position.z)
 
 
-## Новое существо в слоте: где-то в водах в радиусе обитания.
-func _spawn_fish(i: int, center: Vector2) -> void:
+## Новое существо. Первичный спавн привязан к стартовому месту,
+## повторный — к сохранённой мировой точке, никогда не к текущей камере.
+func _spawn_fish(i: int, center: Vector2, respawn_at_home := false) -> void:
 	var pos := Vector3.ZERO
 	if coast != null:
-		# Всегда в воде: дальше от уреза, но в пределах радиуса обнаружения приманки.
-		var z := center.y + randf_range(-70.0, 70.0)
-		pos = Vector3(coast.shore_x(z) - randf_range(24.0, 58.0), 0.0, z)
+		if respawn_at_home:
+			var z := center.y + randf_range(-5.0, 5.0)
+			pos = Vector3(minf(center.x + randf_range(-7.0, 7.0), coast.shore_x(z) - 20.0),
+				0.0, z)
+		else:
+			# Рыбы стоят дальше от берега, но остаются в зоне заброса.
+			var z := center.y + randf_range(-70.0, 70.0)
+			pos = Vector3(coast.shore_x(z) - randf_range(24.0, 58.0), 0.0, z)
 	else:
-		var ok := false
-		for _try in range(10):
-			var ang := randf() * TAU
-			var rad := randf_range(10.0, bounds_radius * 0.55)
-			pos = Vector3(center.x + cos(ang) * rad, 0.0, center.y + sin(ang) * rad)
-			if coast == null or coast.is_water(pos.x, pos.z):
-				ok = true
-				break
-		if not ok:
-			pos = Vector3(center.x - bounds_radius * 0.35, 0.0, center.y)
+		var origin := center if not respawn_at_home else _fish_home[i]
+		var ang := randf() * TAU
+		var rad := randf_range(4.0, 10.0) if respawn_at_home else randf_range(10.0, bounds_radius * 0.55)
+		pos = Vector3(origin.x + cos(ang) * rad, 0.0, origin.y + sin(ang) * rad)
 	pos.y = water_level - randf_range(2.2, 3.2)
 	_fpos[i] = pos
+	if not respawn_at_home:
+		_fish_home[i] = Vector2(pos.x, pos.z)
 	_fheading[i] = randf() * TAU
 	_fturn[i] = 0.0
 	_fspeed[i] = randf_range(1.3, 2.2)
@@ -234,25 +238,23 @@ func _process(delta: float) -> void:
 			return
 		_spawned = true
 		_init_fish()
-	var center := _camera_xz()
-	if cam != null:
-		_quad.global_position = cam.global_position # страховка от фрустума
+	var camera_center := _camera_xz() # только raymarch-culling, не движение стаи
 	for i in range(fish_count):
-		# пойманная рыба возвращается в море через полминуты
+		# Возвращаем рыбу в её прежнюю мировую территорию, не рядом с игроком.
 		if _fsize[i] < 0.001 and _respawn[i] > 0.0:
 			_respawn[i] -= delta
 			if _respawn[i] <= 0.0:
-				_spawn_fish(i, center)
-		_sim_fish(i, delta, center)
+				_spawn_fish(i, _fish_home[i], true)
+		_sim_fish(i, delta)
 	_sim_drops(delta)
-	_push_uniforms(center)
+	_push_uniforms(camera_center)
 
 
 # ---------------------------------------------------------------------------
 # Жизнь существ
 # ---------------------------------------------------------------------------
 
-func _sim_fish(i: int, delta: float, center: Vector2) -> void:
+func _sim_fish(i: int, delta: float) -> void:
 	var s := _fsize[i]
 	if s < 0.001:
 		return
@@ -272,14 +274,14 @@ func _sim_fish(i: int, delta: float, center: Vector2) -> void:
 		var dhs := wrapf(away - _fheading[i], -PI, PI)
 		_fturn[i] += clampf(dhs * 3.0, -0.7, 0.7) * delta * 6.0
 
-	# курс: случайное блуждание + мягкий возврат в границы обитания
+	# Собственное блуждание вокруг неизменной мировой территории — камера не цель.
 	if _fscare[i] <= 0.0:
 		_fturn[i] += (randf() - 0.5) * 2.4 * delta
-	var to_c := center - Vector2(_fpos[i].x, _fpos[i].z)
-	if to_c.length() > bounds_radius * 0.72:
-		var ah := atan2(to_c.y, to_c.x)
-		var dh := wrapf(ah - _fheading[i], -PI, PI)
-		_fturn[i] += dh * 1.6 * delta
+		var to_home := _fish_home[i] - Vector2(_fpos[i].x, _fpos[i].z)
+		if to_home.length() > 34.0:
+			var home_heading := atan2(to_home.y, to_home.x)
+			var home_delta := wrapf(home_heading - _fheading[i], -PI, PI)
+			_fturn[i] += home_delta * 1.4 * delta
 	_fturn[i] = clampf(_fturn[i], -0.7, 0.7)
 	_fheading[i] += _fturn[i] * delta
 	_fpos[i] += Vector3(cos(_fheading[i]), 0.0, sin(_fheading[i])) * _fspeed[i] * boost * delta
