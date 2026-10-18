@@ -392,9 +392,7 @@ void light() {
 	vec3 v = normalize(VIEW);
 	float nl = max(dot(n, l), 0.0);
 	float nv = clamp(dot(n, v), 1e-3, 1.0);
-	if (nl <= 0.0) {
-		return;
-	}
+	if (nl > 0.0) {
 	vec3 h = normalize(v + l);
 	float nh = clamp(dot(h, n), 0.0, 1.0);
 	float hl = clamp(dot(h, l), 0.0, 1.0);
@@ -417,9 +415,7 @@ void light() {
 		DIFFUSE_LIGHT += radiance * ALBEDO * (1.0 / PI)
 			* burley_l * burley_v * nl;
 		SPECULAR_LIGHT += radiance * d * gl * gv * f / max(4.0 * nl * nv, 1e-3);
-		return;
-	}
-
+	} else {
 	// Diffuse Proxima: Fresnel tint, retroreflection и smooth terminator.
 	float alpha = ROUGHNESS * ROUGHNESS;
 	float alpha2 = alpha * alpha;
@@ -456,4 +452,6 @@ void light() {
 	vec3 fs = d * gl * gv * fresnel * nl;
 	DIFFUSE_LIGHT += radiance * fd;
 	SPECULAR_LIGHT += radiance * fs;
+	}
+	}
 }

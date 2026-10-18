@@ -1128,8 +1128,9 @@ func ready_to_cast() -> bool:
 func _update_visual_fish(delta: float) -> void:
 	if _held.visible:
 		_held_t -= delta
-		_held.position.y = -0.40 + sin(_t * 2.4) * 0.008
-		_held.rotation.z = 0.30 + sin(_t * 3.1) * 0.06
+		# Не перезаписываем центрированный preview прежней позой «у груди».
+		_held.position.y = 0.02 + sin(_t * 2.4) * 0.008
+		_held.rotation.z = sin(_t * 3.1) * 0.015
 		if _held_t <= 0.0:
 			_held.visible = false
 	if _jump_t > 0.0:
