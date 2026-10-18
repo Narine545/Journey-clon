@@ -30,7 +30,7 @@ uniform float wind_power = 1.0;
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
 uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.5;
-uniform float shadow_star_density : hint_range(0.65, 0.98) = 0.74;
+uniform float shadow_star_density : hint_range(0.55, 0.98) = 0.62;
 uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
 // Общий переключатель прямого света Proxima + Schlick-GGX (A/B).
@@ -316,7 +316,7 @@ void light() {
 	float nv = clamp(dot(n, v), 1e-3, 1.0);
 	// ATTENUATION содержит настоящую тень от причала/камней. Каждая звезда
 	// остаётся на песке в мировых координатах, а не перемещается с камерой.
-	float cast_shadow = smoothstep(0.28, 0.72, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
+	float cast_shadow = smoothstep(0.04, 0.36, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
 	float night_stars = smoothstep(0.18, 0.85, night_amount);
 	const float star_cell_size = 3.4;
 	vec2 star_grid = w_pos.xz / star_cell_size;
