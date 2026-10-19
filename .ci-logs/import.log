@@ -13,10 +13,10 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [   0% ] [90m[1mupdate_scripts_classes[22m | FishingDemo[39m[0m
 [   2% ] [90m[1mupdate_scripts_classes[22m | FishKit[39m[0m
 [   5% ] [90m[1mupdate_scripts_classes[22m | FishKitDemo[39m[0m
-[   8% ] [90m[1mupdate_scripts_classes[22m | RodCast[39m[0m
-[  11% ] [90m[1mupdate_scripts_classes[22m | SandFish[39m[0m
-[  13% ] [90m[1mupdate_scripts_classes[22m | WaterField[39m[0m
-[  16% ] [90m[1mupdate_scripts_classes[22m | WaterSurface[39m[0m
+[   8% ] [90m[1mupdate_scripts_classes[22m | GodotFishRodCast[39m[0m
+[  11% ] [90m[1mupdate_scripts_classes[22m | GodotFishSandFish[39m[0m
+[  13% ] [90m[1mupdate_scripts_classes[22m | GodotFishWaterField[39m[0m
+[  16% ] [90m[1mupdate_scripts_classes[22m | GodotFishWaterSurface[39m[0m
 [  19% ] [90m[1mupdate_scripts_classes[22m | SoundScape[39m[0m
 [  22% ] [90m[1mupdate_scripts_classes[22m | BiteSystem[39m[0m
 [  25% ] [90m[1mupdate_scripts_classes[22m | CameraRig[39m[0m
