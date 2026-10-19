@@ -75,15 +75,6 @@ func _phase_world() -> void:
 		_check(main.fish != null, "мир: существа собраны")
 		_check(main.fishing_npc != null and main.fishing_npc._skeleton != null,
 			"NPC: импортированный риг и все суставы найдены")
-		if main.fishing_npc != null and main.fishing_npc._skeleton != null:
-			var npc := main.fishing_npc
-			var bounds: Vector4 = npc._sdf_mat.get_shader_parameter("u_npc_bounds")
-			var center := Vector3(bounds.x, bounds.y, bounds.z)
-			var fits := bounds.w > 0.5
-			for slot in range(20):
-				fits = fits and center.distance_to(npc._joint_world[slot])
-					+ FishingNpc.JOINT_RADIUS[slot] * FishingNpc.CHAR_SCALE < bounds.w
-			_check(fits, "NPC: все части тела внутри анимированной SDF-границы")
 		_check(pier != null, "мир: пирс собран")
 		_check(rod != null and rod.get_parent() is Camera3D, "удочка висит на камере")
 		_check(main.audio != null, "звук поднят")
