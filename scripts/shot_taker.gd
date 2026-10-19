@@ -231,6 +231,13 @@ func _process(delta: float) -> void:
 				Input.action_release("npc_quest_1")
 			if t > 0.4 and _fs > 4:
 				_capture("shot_n_quest.png")
+				main.fishing_npc._dialogue.visible = false
+				main.set_time(1.0)
+				_go(15)
+		15: # ночной контрольный кадр того же SDF-рыбака и его материала
+			if _fs > 4:
+				_capture("shot_o_night_fisherman.png")
+				main.set_time(0.0)
 				_finish("")
 
 

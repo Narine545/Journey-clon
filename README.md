@@ -273,7 +273,9 @@ shaders/color_grade.gdshader — полноэкранный грейдинг
 - Проверка: Godot 4.7.2, `godot --headless --path . --import`, затем
   `JOURNEY_SMOKE=1 godot --headless --path . --quit-after 12000`.
   Шейдеры headless-рендерер не компилирует: для визуальной проверки нужен
-  Vulkan/Forward+ (в CI — `JOURNEY_SHOT=1` под xvfb/lavapipe).
+  Vulkan/Forward+ (в CI — `JOURNEY_SHOT=1` под xvfb/lavapipe;
+  `shot_m_fisherman.png` и `shot_o_night_fisherman.png` позволяют сравнить
+  рыбака при дневном и ночном свете).
 
 ## Что дальше
 
