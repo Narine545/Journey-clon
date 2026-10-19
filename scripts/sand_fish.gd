@@ -554,6 +554,7 @@ func apply_night01(v: float) -> void:
 	mat.set_shader_parameter("sand_shade", Coast.DAY_SHADE.lerp(Coast.NIGHT_SHADE, v))
 	mat.set_shader_parameter("horizon_col", Coast.DAY_HORIZON.lerp(Coast.NIGHT_HORIZON, v))
 	mat.set_shader_parameter("sky_col", Coast.DAY_SKY.lerp(Coast.NIGHT_SKY, v))
+	mat.set_shader_parameter("u_night_amount", v)
 	mat.set_shader_parameter("fog_distance", lerpf(340.0, 130.0, v))
 
 

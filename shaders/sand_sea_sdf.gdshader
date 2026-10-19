@@ -46,6 +46,7 @@ uniform vec3 sand_shade : source_color = vec3(0.40, 0.32, 0.52);
 uniform vec3 horizon_col : source_color = vec3(0.96, 0.66, 0.55);
 uniform vec3 sky_col : source_color = vec3(0.28, 0.24, 0.43);
 uniform float fog_distance = 340.0;
+uniform float u_night_amount = 0.0; // холодный рассеянный лунный свет для SDF
 
 // ===== Сцена =====
 uniform float u_water_level = 0.0;
@@ -536,8 +537,12 @@ void fragment() {
 
                                 float ndl = dot(n, l);
                                 float wrap = clamp((ndl + 0.45) / 1.05, 0.0, 1.0);
+                                // Ночью солнечная палитра почти чёрная.
+                                // Небольшой холодный заполняющий свет сохраняет
+                                // цвет/форму рыбака и рыб, не превращая ночь в день.
                                 vec3 col = albedo * (sky_col * 0.55
-                                        + sand_sunny * (0.22 + 0.95 * wrap));
+                                        + sand_sunny * (0.22 + 0.95 * wrap)
+                                        + u_night_amount * vec3(0.16, 0.20, 0.30));
                                 // солнечная кромка — как у моря
                                 col += sand_hot * pow(clamp(ndl, 0.0, 1.0), 2.2) * 0.26;
                                 // тёплый отсвет снизу, отскочивший от дюн
