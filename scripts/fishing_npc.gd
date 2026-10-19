@@ -1,11 +1,32 @@
 class_name FishingNpc
 extends Node3D
-## Причальный рыбак: импортированный CC0 humanoid rig + бесплатные idle/talk-анимации.
-## Даёт короткие рыбацкие контракты и считает улов без отдельного дальнего квест-хаба.
+## Причальный рыбак — песчаное существо из ТОГО ЖЕ SDF-шейдера, что и рыбы.
+## Скрытая CC0-болванка с анимациями Idle/Talking/Interact двигает скелет,
+## а шейдер рисует «плавленое» тело по костям: жилет, кепка, сапоги — и лицо
+## с объёмными глазами, которые следят за игроком и моргают.
+## Даёт короткие рыбацкие контракты и считает улов без отдельного квест-хаба.
 
 const MODEL_PATH := "res://assets/npc/AnimationLibrary_Godot_Standard.glb"
-const STYLE_SHADER_PATH := "res://shaders/npc_sdf_style.gdshader"
-const EYE_SHADER_PATH := "res://shaders/npc_eye.gdshader"
+
+# слот сустава → кость рига (слоты описаны в sand_sea_sdf.gdshader)
+const JOINT_BONES: Array = [
+	[0, "DEF-hips"], [1, "DEF-spine.002"], [2, "DEF-spine.003"],
+	[3, "DEF-neck"], [4, "DEF-head"],
+	[6, "DEF-upper_arm.L"], [7, "DEF-forearm.L"], [8, "DEF-hand.L"],
+	[9, "DEF-upper_arm.R"], [10, "DEF-forearm.R"], [11, "DEF-hand.R"],
+	[12, "DEF-thigh.L"], [13, "DEF-shin.L"], [14, "DEF-foot.L"], [15, "DEF-toe.L"],
+	[16, "DEF-thigh.R"], [17, "DEF-shin.R"], [18, "DEF-foot.R"], [19, "DEF-toe.R"],
+]
+# радиусы капсул по слотам 0..19, м
+const JOINT_RADIUS: Array[float] = [
+	0.150, 0.170, 0.165, 0.085, 0.135, 0.050,
+	0.095, 0.062, 0.052, 0.095, 0.062, 0.052,
+	0.105, 0.078, 0.052, 0.040, 0.105, 0.078, 0.052, 0.040,
+]
+const CHAR_SCALE := 0.92
+const HEAD_R := 0.118
+const EYE_SEP := 0.062
+const EYE_R := 0.048
 
 const QUESTS := [
 	{"title": "Утренний улов", "text": "Поймай любую рыбу × 3", "count": 3},
@@ -15,6 +36,7 @@ const QUESTS := [
 
 var main: MainScene
 var _anim: AnimationPlayer
+var _skeleton: Skeleton3D
 var _talking := false
 var _quest_idx := -1
 var _quest_progress := 0
@@ -25,7 +47,18 @@ var _dialogue: PanelContainer
 var _dialogue_text: Label
 var _progress_text: Label
 var _near_player := false
-var _style_materials: Array[ShaderMaterial] = []
+
+# ---- SDF-существо (тот же материал, что у песчаных рыб) ----
+var _sdf_mat: ShaderMaterial
+var _joint_bones := PackedInt32Array() # индекс кости по слоту (-1 — нет)
+var _joint_world := PackedVector3Array()
+var _head_pos := Vector3.ZERO
+var _face_fwd := Vector3(0.0, 0.0, -1.0)
+var _blink := 0.0
+var _blink_t := -1.0 # >= 0 — идёт моргание
+var _blink_next := 1.8
+var _talk_open := 0.0
+var _t := 0.0
 
 
 func setup(main_ref: MainScene, pier: Pier) -> void:
@@ -36,6 +69,9 @@ func setup(main_ref: MainScene, pier: Pier) -> void:
 	var npc_z := pier.pz + 0.62
 	global_position = Vector3(npc_x, pier.deck_height(npc_x, npc_z) + 0.06, npc_z)
 	rotation.y = PI * 0.5 # face the beach-side approach
+	if main.fish != null:
+		# рыбак живёт в лучшем слое песчаных существ — одном материале
+		_sdf_mat = main.fish.mat
 	_build_character()
 	_build_ui()
 	_ensure_actions()
@@ -49,20 +85,13 @@ func _build_character() -> void:
 	var character := packed.instantiate()
 	character.name = "CC0Humanoid"
 	add_child(character)
-	character.scale = Vector3(0.92, 0.92, 0.92)
-
-	var body_mat := _style_material(Color(0.78, 0.43, 0.25))
-	var cloth_mat := _style_material(Color(0.13, 0.33, 0.35))
-	var skeleton: Skeleton3D
+	character.scale = Vector3(CHAR_SCALE, CHAR_SCALE, CHAR_SCALE)
+	# Меш-болванка скрыта: рыбака рисует SDF-шейдер по костям этого рига.
 	for node in character.find_children("*", "MeshInstance3D", true, false):
 		var mesh_instance := node as MeshInstance3D
-		if mesh_instance.mesh == null:
-			continue
-		for surface in range(mesh_instance.mesh.get_surface_count()):
-			mesh_instance.set_surface_override_material(surface,
-				body_mat if surface == 0 else cloth_mat)
-		if skeleton == null:
-			skeleton = _find_skeleton(mesh_instance.get_parent())
+		mesh_instance.visible = false
+		mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_skeleton = _find_skeleton(character)
 
 	_anim = _find_animation_player(character)
 	if _anim != null:
@@ -93,21 +122,129 @@ func _build_character() -> void:
 	else:
 		push_warning("Fishing NPC: imported animation player was not found")
 
-	if skeleton != null:
-		_add_fisherman_gear(skeleton)
-		_add_eyes(skeleton)
+	if _skeleton != null:
+		_bind_joints()
 	else:
 		push_warning("Fishing NPC: imported humanoid skeleton was not found")
 
 
-func _style_material(base: Color) -> ShaderMaterial:
-	var mat := ShaderMaterial.new()
-	mat.shader = load(STYLE_SHADER_PATH)
-	mat.set_shader_parameter("base_color", base)
-	mat.set_shader_parameter("night_amount", main.game.night01)
-	mat.set_shader_parameter("sun_direction", main.game.sun_dir)
-	_style_materials.append(mat)
-	return mat
+## Привязка слотов суставов к костям рига + первый замер позы.
+func _bind_joints() -> void:
+	_joint_bones.resize(20)
+	_joint_bones.fill(-1)
+	_joint_world.resize(20)
+	for entry in JOINT_BONES:
+		var bone := _skeleton.find_bone(str(entry[1]))
+		if bone < 0:
+			# Нулевые координаты отсутствующей кости порождали огромную
+			# капсулу через весь мир (особенно заметную на спине).
+			push_warning("Fishing NPC: missing rig bone %s; SDF character disabled" % str(entry[1]))
+			_skeleton = null
+			return
+		_joint_bones[int(entry[0])] = bone
+	_update_joints(0.016)
+	_push_sdf()
+
+
+## Мировые позы суставов из скрытого рига + взгляд лица на игрока.
+func _update_joints(delta: float) -> void:
+	var skel_tf := _skeleton.global_transform
+	var head_basis := Basis.IDENTITY
+	for slot in range(20):
+		var bi := _joint_bones[slot]
+		if bi < 0:
+			continue
+		var pose := skel_tf * _skeleton.get_bone_global_pose(bi)
+		_joint_world[slot] = pose.origin
+		if slot == 4:
+			head_basis = pose.basis
+	# макушка — продолжение оси головы: кепка сидит на голове, а не на шее
+	# Ось головы у импортированных ригов бывает направлена вдоль кости,
+	# поперёк неё или даже вниз. Шея → голова остаётся верной при анимации.
+	var head_axis := _joint_world[4] - _joint_world[3]
+	var head_up := head_axis.normalized() if head_axis.length_squared() > 0.0001 else head_basis.y.normalized()
+	_joint_world[5] = _joint_world[4] + head_up * 0.20
+	_head_pos = _joint_world[4] + head_up * 0.105
+
+	# «Вперёд» лица — из ориентации модели (модель смотрит вдоль +Z узла):
+	# у костей рига свои оси, и -Z головы смотрит не туда, куда лицо.
+	var model_fwd := global_transform.basis.z.normalized()
+	var head_fwd := (model_fwd - head_up * model_fwd.dot(head_up)).normalized()
+	# взгляд: игрок рядом — лицо поворачивается к нему (глаза следят)
+	var want := head_fwd
+	if main != null and main.player != null:
+		var target: Vector3 = main.player.global_position + Vector3(0.0, 1.55, 0.0)
+		var to_p := target - _head_pos
+		var dist := to_p.length()
+		if dist < 8.0 and dist > 0.25:
+			want = to_p / dist
+	# лёгкие «отвлечённые» взгляды, когда игрок не в фокусе
+	var glance := head_basis * Vector3(sin(_t * 0.29) * 0.16, sin(_t * 0.21 + 1.7) * 0.11, 0.0)
+	want = (want + glance).normalized()
+	_face_fwd = _face_fwd.slerp(want, 1.0 - exp(-5.0 * delta))
+	if _face_fwd.length_squared() < 0.25:
+		_face_fwd = want
+	else:
+		_face_fwd = _face_fwd.normalized()
+
+	# моргание: короткое закрывание, иногда двойное
+	if _blink_t >= 0.0:
+		_blink_t -= delta
+		if _blink_t < 0.0:
+			_blink = 0.0
+		else:
+			_blink = clampf(1.0 - absf(_blink_t - 0.07) / 0.07, 0.0, 1.0)
+	else:
+		_blink_next -= delta
+		if _blink_next <= 0.0:
+			_blink_t = 0.14
+			_blink_next = 0.24 if randf() < 0.22 else randf_range(2.2, 5.4)
+
+	# рот: болтает, когда разговор открыт или играет жест
+	var want_talk := 0.06
+	if _talking or (_dialogue != null and _dialogue.visible):
+		want_talk = 0.35 + 0.55 * absf(sin(_t * 8.5)) * (0.55 + 0.45 * sin(_t * 3.1))
+	_talk_open = lerpf(_talk_open, clampf(want_talk, 0.0, 1.0), 1.0 - exp(-8.0 * delta))
+
+
+## Пуш позы рыбака в общий SDF-материал песчаных существ.
+func _push_sdf() -> void:
+	if _sdf_mat == null:
+		return
+	var arr := PackedVector4Array()
+	arr.resize(20)
+	for slot in range(20):
+		var j := _joint_world[slot]
+		arr[slot] = Vector4(j.x, j.y, j.z, JOINT_RADIUS[slot] * CHAR_SCALE)
+	var hp := _head_pos
+	_sdf_mat.set_shader_parameter("u_npc_joints", arr)
+	# Граница лучевого отсечения должна следовать за анимацией. Фиксированная
+	# сфера отрезала плечи/спину на крайних позах Idle_Talking/Interact.
+	var center := (_joint_world[0] + hp) * 0.5
+	var radius := center.distance_to(hp) + 0.45 # кепка, глаза и smooth union
+	for slot in range(20):
+		radius = maxf(radius, center.distance_to(_joint_world[slot])
+			+ JOINT_RADIUS[slot] * CHAR_SCALE + 0.25)
+	_sdf_mat.set_shader_parameter("u_npc_bounds", Vector4(center.x, center.y, center.z, radius))
+	_sdf_mat.set_shader_parameter("u_npc_head", Vector4(hp.x, hp.y, hp.z, HEAD_R))
+	_sdf_mat.set_shader_parameter("u_npc_face",
+		Vector4(_face_fwd.x, _face_fwd.y, _face_fwd.z, _talk_open))
+	_sdf_mat.set_shader_parameter("u_npc_eyes", Vector4(_blink, EYE_SEP, EYE_R, 0.0))
+	# ночь чуть синит ткани — та же палитра, что у песка и моря.
+	# Базы яркие: в освещении SDF-существ тёмные цвета тонут в отсвете дюн.
+	var night := 0.0
+	if main != null and main.game != null:
+		night = main.game.night01
+	_sdf_mat.set_shader_parameter("u_npc_skin",
+		Vector3(0.95, 0.58, 0.34).lerp(Vector3(0.55, 0.42, 0.50), night * 0.5))
+	_sdf_mat.set_shader_parameter("u_npc_cloth",
+		Vector3(0.10, 0.85, 0.95).lerp(Vector3(0.14, 0.30, 0.55), night * 0.55))
+	_sdf_mat.set_shader_parameter("u_npc_pants",
+		Vector3(0.62, 0.42, 0.28).lerp(Vector3(0.32, 0.28, 0.38), night * 0.5))
+	_sdf_mat.set_shader_parameter("u_npc_hat",
+		Vector3(0.66, 0.45, 0.26).lerp(Vector3(0.36, 0.30, 0.38), night * 0.5))
+	_sdf_mat.set_shader_parameter("u_npc_boot",
+		Vector3(0.42, 0.28, 0.20).lerp(Vector3(0.24, 0.20, 0.28), night * 0.5))
 
 
 func _find_skeleton(node: Node) -> Skeleton3D:
@@ -137,83 +274,6 @@ func _find_animation(fragment: String) -> String:
 		if str(anim_name).ends_with(fragment):
 			return str(anim_name)
 	return ""
-
-
-func _add_fisherman_gear(skeleton: Skeleton3D) -> void:
-	# Low-poly rain vest rides the torso bone so the imported CC0 rig keeps it
-	# attached while the free locomotion/gesture clips play.
-	var torso_bone := skeleton.find_bone("DEF-spine.002")
-	if torso_bone >= 0:
-		var vest_anchor := BoneAttachment3D.new()
-		vest_anchor.name = "FisherRainVest"
-		vest_anchor.bone_name = "DEF-spine.002"
-		skeleton.add_child(vest_anchor)
-		var vest := MeshInstance3D.new()
-		var vest_mesh := CapsuleMesh.new()
-		vest_mesh.radius = 0.19
-		vest_mesh.height = 0.52
-		vest_mesh.radial_segments = 10
-		vest_mesh.rings = 5
-		vest.mesh = vest_mesh
-		vest.scale = Vector3(1.10, 1.0, 0.78)
-		vest.material_override = _style_material(Color(0.11, 0.31, 0.34))
-		vest_anchor.add_child(vest)
-		var pocket := MeshInstance3D.new()
-		var pocket_mesh := BoxMesh.new()
-		pocket_mesh.size = Vector3(0.105, 0.10, 0.035)
-		pocket.mesh = pocket_mesh
-		pocket.position = Vector3(0.07, 0.015, -0.157)
-		pocket.material_override = _style_material(Color(0.74, 0.46, 0.22))
-		vest_anchor.add_child(pocket)
-
-	# A simple weathered bucket hat makes the silhouette read as a shore fisher.
-	var head_bone := skeleton.find_bone("DEF-head")
-	if head_bone >= 0:
-		var hat_anchor := BoneAttachment3D.new()
-		hat_anchor.name = "FisherHat"
-		hat_anchor.bone_name = "DEF-head"
-		skeleton.add_child(hat_anchor)
-		var brim := MeshInstance3D.new()
-		var brim_mesh := CylinderMesh.new()
-		brim_mesh.top_radius = 0.145
-		brim_mesh.bottom_radius = 0.16
-		brim_mesh.height = 0.035
-		brim_mesh.radial_segments = 12
-		brim.mesh = brim_mesh
-		brim.position = Vector3(0.0, 0.105, 0.0)
-		brim.material_override = _style_material(Color(0.34, 0.24, 0.16))
-		hat_anchor.add_child(brim)
-		var crown := MeshInstance3D.new()
-		var crown_mesh := CylinderMesh.new()
-		crown_mesh.top_radius = 0.088
-		crown_mesh.bottom_radius = 0.12
-		crown_mesh.height = 0.13
-		crown_mesh.radial_segments = 10
-		crown.mesh = crown_mesh
-		crown.position = Vector3(0.0, 0.185, 0.0)
-		crown.material_override = _style_material(Color(0.47, 0.31, 0.18))
-		hat_anchor.add_child(crown)
-
-
-func _add_eyes(skeleton: Skeleton3D) -> void:
-	var bone := skeleton.find_bone("DEF-head")
-	if bone < 0:
-		return
-	var anchor := BoneAttachment3D.new()
-	anchor.name = "FishWorldEyes"
-	anchor.bone_name = "DEF-head"
-	skeleton.add_child(anchor)
-	var eye_mat := ShaderMaterial.new()
-	eye_mat.shader = load(EYE_SHADER_PATH)
-	for side in [-1.0, 1.0]:
-		var eye := MeshInstance3D.new()
-		var quad := QuadMesh.new()
-		quad.size = Vector2(0.082, 0.050)
-		eye.mesh = quad
-		eye.material_override = eye_mat
-		eye.position = Vector3(side * 0.043, 0.010, -0.091)
-		eye.rotation.y = PI # local forward is -Z
-		anchor.add_child(eye)
 
 
 func _build_ui() -> void:
@@ -301,12 +361,13 @@ func _add_key_action(action: String, key: Key) -> void:
 	InputMap.action_add_event(action, event)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_t += delta
+	if _skeleton != null and _sdf_mat != null:
+		_update_joints(delta)
+		_push_sdf()
 	if main == null or main.player == null:
 		return
-	for mat in _style_materials:
-		mat.set_shader_parameter("night_amount", main.game.night01)
-		mat.set_shader_parameter("sun_direction", main.game.sun_dir)
 	var distance := global_position.distance_to(main.player.global_position)
 	_near_player = distance < 5.2
 	_hint.visible = _near_player and not _dialogue.visible

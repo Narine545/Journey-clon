@@ -203,6 +203,7 @@ func _process(delta: float) -> void:
 				_go(13)
 		13: # крупный контрольный кадр человека и живого idle-рига у причала
 			if _fs == 1:
+				main.fish.set_sdf_enabled(true) # рыбак живёт в SDF-слое рыб
 				var npc: FishingNpc = main.fishing_npc
 				var px := npc.global_position.x + 2.4
 				var pz := npc.global_position.z + 1.0

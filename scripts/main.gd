@@ -92,9 +92,9 @@ func _ready() -> void:
 	fish_kit = FishKit.new()
 	fish_kit.bounds_radius = 42.0
 	add_child(fish_kit)
-	fish_kit.setup(game, water.level_y, water.field)
+	fish_kit.setup(game, water.level_y, water.field, coast)
 	var spawn := coast.spawn_point()
-	var sea_x := coast.shore_x(spawn.y) - 10.0
+	var sea_x := coast.shore_x(spawn.y) - 34.0 # глубже: у кромки рыбам тесно
 	fish_kit.add_fish(1, Vector2(sea_x - 5.0, spawn.y - 7.0))
 	fish_kit.add_fish(3, Vector2(sea_x - 9.0, spawn.y + 3.0))
 	fish_kit.add_fish(6, Vector2(sea_x - 2.0, spawn.y + 10.0))

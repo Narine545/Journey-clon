@@ -82,6 +82,25 @@ uniform vec4 u_fk_lure[3];
 uniform vec4 u_fk_lure2[3];
 uniform float u_fk_xray = 0.0;
 
+// ===== РЫБАК-СУЩЕСТВО (квестодатель) — ТОТ ЖЕ SDF-raymarch, что и рыбы =====
+// Тело собрано из «плавленых» капсул по костям CC0-рига (жилет, кепка,
+// сапоги), а лицо — объёмные глаза с радужкой, зрачком, бликами и веками,
+// которые следят за игроком. u_npc_head.w <= 0.001 — рыбака нет в этом
+// материале (FishKit-квад его не дублирует).
+// Суставы: 0 таз, 1 живот, 2 грудь, 3 шея, 4 голова, 5 макушка (ось шляпы),
+// 6/9 плечи, 7/10 локти, 8/11 кисти, 12/16 бёдра, 13/17 колени,
+// 14/18 голеностопы, 15/19 стопы.
+uniform vec4 u_npc_joints[20]; // xyz — сустав, w — радиус капсулы
+uniform vec4 u_npc_head = vec4(0.0, -100.0, 0.0, 0.0); // центр головы + радиус
+uniform vec4 u_npc_bounds = vec4(0.0, -100.0, 0.0, 0.0); // движущаяся граница рига
+uniform vec4 u_npc_face = vec4(0.0, 0.0, -1.0, 0.0); // взгляд xyz + открытость рта
+uniform vec4 u_npc_eyes = vec4(0.0, 0.052, 0.034, 0.0); // морг, разлёт, радиус, —
+uniform vec3 u_npc_skin : source_color = vec3(0.82, 0.47, 0.28);
+uniform vec3 u_npc_cloth : source_color = vec3(0.10, 0.85, 0.95);
+uniform vec3 u_npc_pants : source_color = vec3(0.36, 0.26, 0.20);
+uniform vec3 u_npc_hat : source_color = vec3(0.42, 0.29, 0.18);
+uniform vec3 u_npc_boot : source_color = vec3(0.27, 0.19, 0.14);
+
 uniform sampler2D depth_texture : hint_depth_texture, filter_nearest;
 uniform sampler2D u_screen : hint_screen_texture, filter_linear;
 
@@ -115,6 +134,27 @@ vec2 rot2(vec2 v, float a) {
 float sd_ell(vec3 p, vec3 r) {
         float k0 = length(p / r);
         return min(r.x, min(r.y, r.z)) * (k0 - 1.0);
+}
+
+// Сужающаяся капсула (IQ): радиус плавно меняется от ra к rb.
+float sd_capsule_t(vec3 p, vec3 a, vec3 b, float ra, float rb) {
+        vec3 pa = p - a;
+        vec3 ba = b - a;
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
+        return length(pa - ba * h) - mix(ra, rb, h);
+}
+
+// Эллипсоид с центром c в базисе (side, up, fwd) — для кепки рыбака.
+float sd_ell_f(vec3 p, vec3 c, vec3 side, vec3 up, vec3 fwd, vec3 r) {
+        vec3 q = p - c;
+        return sd_ell(vec3(dot(q, side), dot(q, up), dot(q, fwd)), r);
+}
+
+// Капсула между суставами рыбака ia→ib с плавлением цвета (как у рыб).
+vec4 npc_seg(vec4 acc, vec3 p, int ia, int ib, vec3 col, float k) {
+        vec4 A = u_npc_joints[ia];
+        vec4 B = u_npc_joints[ib];
+        return sdf_smooth_union(acc, sd_capsule_t(p, A.xyz, B.xyz, A.w, B.w), col, k);
 }
 
 // Виды и SDF-скелет FishKit из отдельного SDF include.
@@ -175,6 +215,137 @@ vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float phase, vec3 tint,
         return acc;
 }
 
+// ===== ТЕЛО РЫБАКА: суставы CC0-рига → «плавленые» капсулы =====
+// Тот же smooth-union, что у рыб: формы и цвета перетекают друг в друга.
+vec4 npc_sdf(vec3 p) {
+        vec4 acc = vec4(u_npc_skin, 1e9);
+
+        // торс: таз (штаны) → живот/грудь (жилет) → шея → основа головы
+        acc = npc_seg(acc, p, 0, 1, u_npc_pants, 0.055);
+        acc = npc_seg(acc, p, 1, 2, u_npc_cloth, 0.055);
+        acc = npc_seg(acc, p, 2, 3, u_npc_cloth, 0.040);
+        acc = npc_seg(acc, p, 3, 4, u_npc_skin, 0.040);
+
+        // руки: плечо-локоть в рукаве жилета, предплечье и кисть — кожа
+        acc = npc_seg(acc, p, 2, 6, u_npc_cloth, 0.045);
+        acc = npc_seg(acc, p, 6, 7, u_npc_cloth, 0.035);
+        acc = npc_seg(acc, p, 7, 8, u_npc_skin, 0.030);
+        acc = npc_seg(acc, p, 2, 9, u_npc_cloth, 0.045);
+        acc = npc_seg(acc, p, 9, 10, u_npc_cloth, 0.035);
+        acc = npc_seg(acc, p, 10, 11, u_npc_skin, 0.030);
+
+        // ноги: штаны до голеностопа, стопы — сапоги
+        acc = npc_seg(acc, p, 0, 12, u_npc_pants, 0.050);
+        acc = npc_seg(acc, p, 12, 13, u_npc_pants, 0.040);
+        acc = npc_seg(acc, p, 13, 14, u_npc_pants, 0.035);
+        acc = npc_seg(acc, p, 14, 15, u_npc_boot, 0.030);
+        acc = npc_seg(acc, p, 0, 16, u_npc_pants, 0.050);
+        acc = npc_seg(acc, p, 16, 17, u_npc_pants, 0.040);
+        acc = npc_seg(acc, p, 17, 18, u_npc_pants, 0.035);
+        acc = npc_seg(acc, p, 18, 19, u_npc_boot, 0.030);
+
+        // базис головы: «вверх» — от макушки, взгляд несёт u_npc_face
+        vec3 hup = normalize(u_npc_joints[5].xyz - u_npc_head.xyz);
+        vec3 hfwd = normalize(u_npc_face.xyz - hup * dot(u_npc_face.xyz, hup) + vec3(1e-5));
+        vec3 hside = normalize(cross(hfwd, hup));
+        float hr = u_npc_head.w;
+
+        // голова + нос-кнопка
+        acc = sdf_smooth_union(acc, length(p - u_npc_head.xyz) - hr, u_npc_skin, 0.035);
+        vec3 nc = u_npc_head.xyz + hfwd * (hr * 0.92) - hup * (hr * 0.10);
+        acc = sdf_smooth_union(acc, length(p - nc) - hr * 0.20, u_npc_skin, 0.015);
+
+        // кепка рыбака: поля + тулья, размер — от радиуса головы
+        vec3 hc = u_npc_head.xyz + hup * (hr * 0.66);
+        acc = sdf_smooth_union(acc,
+                sd_ell_f(p, hc, hside, hup, hfwd, vec3(hr * 1.85, hr * 0.20, hr * 1.70)),
+                u_npc_hat * 0.82, 0.02);
+        acc = sdf_smooth_union(acc,
+                sd_ell_f(p, hc + hup * (hr * 0.78), hside, hup, hfwd,
+                        vec3(hr * 1.35, hr * 0.85, hr * 1.28)),
+                u_npc_hat, 0.02);
+
+        // глаза — два объёмных шарика (раскраска — npc_paint)
+        vec3 ec = u_npc_head.xyz + hfwd * (hr * 0.82) + hup * (hr * 0.10);
+        float er = u_npc_eyes.z;
+        acc = sdf_smooth_union(acc, length(p - (ec + hside * u_npc_eyes.y)) - er,
+                vec3(0.96, 0.89, 0.72), 0.012);
+        acc = sdf_smooth_union(acc, length(p - (ec - hside * u_npc_eyes.y)) - er,
+                vec3(0.96, 0.89, 0.72), 0.012);
+        return acc;
+}
+
+// ===== ЛИЦО РЫБАКА: радужка, зрачок, блики, морг, брови, рот =====
+// Глаза живут в базисе головы — они всегда на лице, следят за игроком
+// (зрачок смещён вдоль u_npc_face) и моргают (u_npc_eyes.x).
+vec3 npc_paint(vec3 p, vec3 albedo) {
+        float hr = u_npc_head.w;
+        if (hr <= 0.001 || length(p - u_npc_head.xyz) > hr * 3.0) {
+                // Этот же шейдер красит рыбу и капли: лицевые маски нужны
+                // только у головы рыбака, не на теле рыб рядом с пирсом.
+                return albedo;
+        }
+        vec3 hup = normalize(u_npc_joints[5].xyz - u_npc_head.xyz);
+        vec3 hfwd = normalize(u_npc_face.xyz - hup * dot(u_npc_face.xyz, hup) + vec3(1e-5));
+        vec3 hside = normalize(cross(hfwd, hup));
+        float er = u_npc_eyes.z;
+        float blink = clamp(u_npc_eyes.x, 0.0, 1.0);
+        vec3 ec = u_npc_head.xyz + hfwd * (hr * 0.82) + hup * (hr * 0.10);
+
+        for (int s = 0; s < 2; s++) {
+                vec3 sg = (s == 0) ? hside : -hside;
+                vec3 eye_c = ec + sg * u_npc_eyes.y;
+                vec3 d = p - eye_c;
+                float r = length(d);
+                if (r > er * 1.32) {
+                        continue;
+                }
+                vec3 q = d / max(r, 1e-5);
+                float ang = acos(clamp(dot(q, hfwd), -1.0, 1.0));
+                float iris = 1.0 - smoothstep(0.68, 0.84, ang);
+                float pupil = 1.0 - smoothstep(0.30, 0.40, ang);
+                float iris_grad = 1.0 - smoothstep(0.10, 0.84, ang);
+                vec3 col = vec3(0.98, 0.92, 0.78);
+                col = mix(col, mix(vec3(0.10, 0.48, 0.54), vec3(0.88, 0.66, 0.22), iris_grad), iris);
+                col = mix(col, vec3(0.025, 0.032, 0.038), pupil);
+                // два блика — крупный сверху-сбоку, мелкий снизу
+                vec3 hl1 = normalize(hfwd * 0.72 + hup * 0.60 + sg * 0.34);
+                float shine = 1.0 - smoothstep(0.26, 0.38, acos(clamp(dot(q, hl1), -1.0, 1.0)));
+                vec3 hl2 = normalize(hfwd * 0.88 - hup * 0.38 - sg * 0.28);
+                shine = max(shine, 1.0 - smoothstep(0.13, 0.21, acos(clamp(dot(q, hl2), -1.0, 1.0))));
+                col = mix(col, vec3(1.0, 0.97, 0.88), shine * 0.95);
+                // веко сверху опускается при моргании (кожа выше линии века)
+                float lid = mix(1.35, -1.15, blink);
+                float lidk = smoothstep(lid - 0.14, lid + 0.14, dot(q, hup));
+                col = mix(col, albedo, lidk);
+                // тёплая кайма по краю глаза
+                float rim = smoothstep(er * 1.06, er * 1.22, r);
+                col = mix(col, vec3(0.22, 0.12, 0.09), rim * 0.55);
+                albedo = mix(albedo, col, 1.0 - smoothstep(er * 1.12, er * 1.30, r));
+        }
+
+        // брови — тёплые тёмные «пятнышки» над глазами
+        for (int s = 0; s < 2; s++) {
+                vec3 sg = (s == 0) ? hside : -hside;
+                vec3 bc = ec + sg * u_npc_eyes.y + hup * (er * 1.85) - hfwd * (hr * 0.10);
+                vec3 bq = p - bc;
+                vec3 bl = vec3(dot(bq, hside), dot(bq, hup), dot(bq, hfwd));
+                float brow = 1.0 - smoothstep(0.72, 1.05,
+                        length(bl / vec3(er * 1.55, er * 0.42, er * 0.85)));
+                albedo = mix(albedo, vec3(0.24, 0.13, 0.09), brow * 0.8);
+        }
+
+        // рот: тёмный овал под носом, открывается при разговоре
+        vec3 mc = u_npc_head.xyz + hfwd * (hr * 0.92) - hup * (hr * 0.42);
+        vec3 mq = p - mc;
+        vec3 ml = vec3(dot(mq, hside), dot(mq, hup), dot(mq, hfwd));
+        float open = clamp(u_npc_face.w, 0.0, 1.0);
+        vec3 mr = vec3(hr * (0.36 + 0.22 * open), hr * (0.12 + 0.34 * open), hr * 0.42);
+        float mo = 1.0 - smoothstep(0.72, 1.08, length(ml / mr));
+        albedo = mix(albedo, vec3(0.16, 0.09, 0.08), mo * 0.92);
+        return albedo;
+}
+
 // ===== СЦЕНА — единственная функция, знающая мир =====
 // Возвращает (цвет.rgb, дистанция.w). Дистанция консервативна: пропущенные
 // (далёкие) объекты учитываются через dskips — их сферическая граница,
@@ -229,6 +400,19 @@ vec4 map(vec3 p) {
                 vec4 f = fk_fish_sdf(p, fi);
                 if (f.w < 1e8) {
                         acc = sdf_smooth_union(acc, f.w, f.rgb, 0.30 * sF);
+                }
+        }
+
+        // Рыбак у причала — тот же «плавленый» стиль, что у песчаных рыб.
+        if (u_npc_head.w > 0.001) {
+                // Граница от CPU охватывает и вытянутые руки/головной убор:
+                // иначе sphere tracing перескакивает через часть спины.
+                float bdN = length(p - u_npc_bounds.xyz) - u_npc_bounds.w;
+                if (bdN > 0.35) {
+                        dskips = min(dskips, bdN);
+                } else {
+                        vec4 nf = npc_sdf(p);
+                        acc = sdf_smooth_union(acc, nf.w, nf.rgb, 0.12);
                 }
         }
 
@@ -345,7 +529,7 @@ void fragment() {
                                 }
                                 vec3 p = cam_pos + rd * shade_t;
                                 vec4 sc = map(p);
-                                vec3 albedo = sc.rgb;
+                                vec3 albedo = npc_paint(p, sc.rgb);
                                 vec3 n = estimate_normal(p);
                                 vec3 v = -rd;
                                 vec3 l = normalize(sun_dir);

@@ -173,6 +173,7 @@ const SPECIES: Array[Dictionary] = [
 var water_level := 0.0
 var water_field: WaterField = null # кольца от всплесков/мути (опционально)
 var game = null # автозагрузка Game — общее солнце и туман с водой/песком
+var coast = null # берег (class_name Coast) — зона рыб по глубине, а не по X
 var night_amount := 0.0
 var material: ShaderMaterial
 var t := 0.0 # время поля — единое с шейдерным u_time
@@ -185,6 +186,7 @@ var _pending := PackedInt32Array() # вид на смену (-1 — нет)
 var _morph := PackedFloat32Array()
 var _morph_tgt := PackedFloat32Array()
 var _pos: Array[Vector3] = [] # голова (Array — чтобы менять компоненты на месте)
+var _home := PackedVector2Array() # мировая «домашняя» точка блуждания
 var _heading := PackedFloat32Array()
 var _turn := PackedFloat32Array()
 var _speed := PackedFloat32Array()
@@ -270,6 +272,7 @@ func _init_slots() -> void:
 	_morph.resize(MAX_FISH)
 	_morph_tgt.resize(MAX_FISH)
 	_pos.resize(MAX_FISH)
+	_home.resize(MAX_FISH)
 	_heading.resize(MAX_FISH)
 	_turn.resize(MAX_FISH)
 	_speed.resize(MAX_FISH)
@@ -351,6 +354,8 @@ func _spawn(i: int, species_id: int, at: Vector2) -> void:
 		var ang := randf() * TAU
 		var rad := 4.0 + 5.0 * float(i)
 		_pos[i] = Vector3(cos(ang) * rad, 0.0, sin(ang) * rad)
+	# домашняя точка блуждания — не мировой ноль: рыбы патрулируют свою отмель
+	_home[i] = Vector2(_pos[i].x, _pos[i].z)
 	_heading[i] = randf() * TAU
 	_reset_species(i, _sp[i])
 
@@ -433,10 +438,11 @@ func has_free_slot() -> bool:
 	return false
 
 
-func setup(game_ref, p_level: float, wf: WaterField = null) -> void:
+func setup(game_ref, p_level: float, wf: WaterField = null, coast_ref = null) -> void:
 	game = game_ref
 	water_level = p_level
 	water_field = wf
+	coast = coast_ref
 	if material != null and game != null:
 		material.set_shader_parameter("sun_dir", game.sun_dir)
 		material.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
@@ -450,6 +456,14 @@ func apply_sun(dir: Vector3) -> void:
 func apply_night01(value: float) -> void:
 	night_amount = clampf(value, 0.0, 1.0)
 	if material != null:
+		# FishKit рисуется отдельным квадом с тем же SDF-шейдером: его
+		# палитру нужно менять вместе с SandFish, иначе ночью рыбы внезапно
+		# остаются оранжевыми, даже когда море уже синее.
+		material.set_shader_parameter("sand_sunny", Coast.DAY_SUNNY.lerp(Coast.NIGHT_SUNNY, night_amount))
+		material.set_shader_parameter("sand_hot", Coast.DAY_HOT.lerp(Coast.NIGHT_HOT, night_amount))
+		material.set_shader_parameter("sand_shade", Coast.DAY_SHADE.lerp(Coast.NIGHT_SHADE, night_amount))
+		material.set_shader_parameter("horizon_col", Coast.DAY_HORIZON.lerp(Coast.NIGHT_HORIZON, night_amount))
+		material.set_shader_parameter("sky_col", Coast.DAY_SKY.lerp(Coast.NIGHT_SKY, night_amount))
 		material.set_shader_parameter("fog_distance", lerpf(340.0, 130.0, night_amount))
 	_push_uniforms()
 
@@ -457,6 +471,11 @@ func apply_night01(value: float) -> void:
 func set_sdf_enabled(on: bool) -> void:
 	if _quad != null:
 		_quad.visible = on
+
+
+## Минимальная глубина для вида размером s: тело не касается дна. Ниже — мель.
+func _zone_depth_for(s: float) -> float:
+	return maxf(1.2, 1.35 * s + 0.55)
 
 
 func _process(delta: float) -> void:
@@ -583,6 +602,9 @@ func _sim_fish(i: int, delta: float) -> void:
 		var cy := fposmod(t + _jump_offset[i], _jump_period[i])
 		var x := (cy - 0.55 * _jump_period[i]) / (0.09 * _jump_period[i])
 		bump = exp(-x * x)
+		if coast != null and not _pposed[i] \
+				and coast.water_depth(_pos[i].x, _pos[i].z) < _zone_depth_for(float(sp.s)):
+			bump = 0.0 # на мелководье не выпрыгиваем — не садимся на песок
 
 	# --- стрела: рывок-бросок, на выходе — прыжок ---
 	if sp.has("dash") and not _pposed[i]:
@@ -676,11 +698,28 @@ func _sim_fish(i: int, delta: float) -> void:
 	else:
 		if _scare[i] <= 0.0 and _dash_t[i] <= 0.0:
 			_turn[i] += (randf() - 0.5) * 2.4 * delta
-		var to_c := Vector2(_pos[i].x, _pos[i].z).length()
-		if to_c > bounds_radius * 0.72:
-			var ah := atan2(-_pos[i].z, -_pos[i].x)
+		var to_c := Vector2(_pos[i].x - _home[i].x, _pos[i].z - _home[i].y)
+		if to_c.length() > bounds_radius * 0.72:
+			var ah := atan2(-to_c.y, -to_c.x)
 			var dh := wrapf(ah - _heading[i], -PI, PI)
 			_turn[i] += dh * 1.8 * delta
+		# Курс от мели: выбираем глубину вперёд-вбок, чтобы не выйти на песок.
+		if coast != null:
+			var need: float = _zone_depth_for(float(sp.s))
+			var d_here: float = coast.water_depth(_pos[i].x, _pos[i].z)
+			if d_here < need + 2.2:
+				var best_h: float = _heading[i]
+				var best_d: float = d_here
+				for a: float in [-0.85, -0.35, 0.35, 0.85]:
+					var h: float = _heading[i] + a
+					var dp: float = coast.water_depth(_pos[i].x + cos(h) * 5.0,
+						_pos[i].z + sin(h) * 5.0)
+					if dp > best_d + 0.03:
+						best_d = dp
+						best_h = h
+				if best_d > d_here + 0.03:
+					var dh2: float = wrapf(best_h - _heading[i], -PI, PI)
+					_turn[i] += clampf(dh2 * 3.4, -0.9, 0.9) * delta * 5.0
 	_turn[i] = clampf(_turn[i], -0.7, 0.7)
 	var spd_k := 1.0 - 0.85 * _hover_k[i] # «водоросль» — почти стоп
 	_heading[i] += _turn[i] * delta
@@ -690,6 +729,21 @@ func _sim_fish(i: int, delta: float) -> void:
 		spd *= 0.1
 	_pos[i].x += cos(_heading[i]) * spd * delta
 	_pos[i].z += sin(_heading[i]) * spd * delta
+	if coast != null and not _pposed[i]:
+		# Руление начинается до мели, но рывок/испуг могут пересилить поворот.
+		# Как у SandFish, возвращаем центр тела туда, где достаточно глубоко.
+		var need: float = _zone_depth_for(s)
+		var depth: float = coast.water_depth(_pos[i].x, _pos[i].z)
+		if depth < need:
+			var e := 2.5
+			var gradient := Vector2(
+				coast.water_depth(_pos[i].x + e, _pos[i].z) - coast.water_depth(_pos[i].x - e, _pos[i].z),
+				coast.water_depth(_pos[i].x, _pos[i].z + e) - coast.water_depth(_pos[i].x, _pos[i].z - e))
+			if gradient.length_squared() > 1e-5:
+				var push := gradient.normalized() * (2.4 + 2.6 * clampf(1.0 - depth / need, 0.0, 1.0)) * delta
+				_pos[i].x += push.x
+				_pos[i].z += push.y
+		_pos[i].x = minf(_pos[i].x, coast.shore_x(_pos[i].z) - 6.0)
 
 	_bank[i] += (clampf(_turn[i] * 2.2, -0.55, 0.55) - _bank[i]) * (1.0 - exp(-3.0 * delta))
 	_pitch[i] += (pitch_tgt - _pitch[i]) * (1.0 - exp(-4.0 * delta))
@@ -720,6 +774,15 @@ func _sim_fish(i: int, delta: float) -> void:
 			y_tgt += (sp.depth * s + _jump_h[i]) * bump
 	var prev_y := _pos[i].y
 	_pos[i].y += (y_tgt - _pos[i].y) * (1.0 - exp(-7.0 * delta))
+	if coast != null and not _pposed[i]:
+		# дно: тело с запасом выше песка (усачу разрешено копать)
+		var clear: float = 0.38 * s
+		if _probe_k[i] > 0.3:
+			clear = -0.55 * s
+		var floor_y: float = coast.ground_height(_pos[i].x, _pos[i].z) + clear + 0.12
+		floor_y = minf(floor_y, water_level - 0.30 * s)
+		if _pos[i].y < floor_y:
+			_pos[i].y = floor_y
 
 	# всплески на пересечении поверхности
 	var above_now := _pos[i].y > 0.25 * s

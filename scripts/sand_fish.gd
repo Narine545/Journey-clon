@@ -89,6 +89,7 @@ var _nibbles_left := 0
 var _hooked_idx := -1 # рыба на крючке (вываживание)
 var _fscare := PackedFloat32Array() # > 0 — рыба убегает от поплавка
 var _respawn := PackedFloat32Array() # > 0 — таймер возвращения пойманной рыбы
+var _ffree := PackedFloat32Array() # > 0 — пауза зоны (отладочные прыжки)
 var _spawned := false # стая расселена (ждём камеру)
 
 # Отдельный SDF-слот для рыбы на вываживании/в руках. Ни один видимый
@@ -148,6 +149,8 @@ func _init_fish() -> void:
 	_fscare.resize(MAX_FISH)
 	_respawn.resize(MAX_FISH)
 	_respawn.fill(0.0)
+	_ffree.resize(MAX_FISH)
+	_ffree.fill(0.0)
 
 	var center := _camera_xz()
 	for i in range(MAX_FISH):
@@ -166,19 +169,37 @@ func _camera_xz() -> Vector2:
 	return Vector2(cam.global_position.x, cam.global_position.z)
 
 
+## Минимальная глубина для существа размером s: тело с запасом не касается
+## дна даже с волной хребта. Ниже — «плавание в песке», которого не должно быть.
+func _zone_depth_for(s: float) -> float:
+	return maxf(2.3, 1.6 * s + 1.5)
+
+
+## Найти x на глубине target_depth для данного z: идём от уреза в море.
+## Рыб размещаем ПО ГЛУБИНЕ, а не по расстоянию от берега — укос дна неровный.
+func _depth_x(z: float, target_depth: float, jitter := 7.0) -> float:
+	var x := coast.shore_x(z) - 8.0
+	for k in range(36):
+		x -= 3.0
+		if coast.water_depth(x, z) >= target_depth:
+			return x - randf_range(0.0, jitter)
+	return x
+
+
 ## Новое существо. Первичный спавн привязан к стартовому месту,
 ## повторный — к сохранённой мировой точке, никогда не к текущей камере.
 func _spawn_fish(i: int, center: Vector2, respawn_at_home := false) -> void:
+	var size := randf_range(0.55, 0.95) * size_mul
 	var pos := Vector3.ZERO
 	if coast != null:
 		if respawn_at_home:
 			var z := center.y + randf_range(-5.0, 5.0)
-			pos = Vector3(minf(center.x + randf_range(-7.0, 7.0), coast.shore_x(z) - 20.0),
-				0.0, z)
+			pos = Vector3(center.x + randf_range(-7.0, 7.0), 0.0, z)
 		else:
-			# Рыбы стоят дальше от берега, но остаются в зоне заброса.
+			# Держимся в зоне заброса, но на глубине, где тело в воде целиком.
 			var z := center.y + randf_range(-70.0, 70.0)
-			pos = Vector3(coast.shore_x(z) - randf_range(24.0, 58.0), 0.0, z)
+			var target := _zone_depth_for(size) + randf_range(0.5, 5.5)
+			pos = Vector3(_depth_x(z, target), 0.0, z)
 	else:
 		var origin := center if not respawn_at_home else _fish_home[i]
 		var ang := randf() * TAU
@@ -191,7 +212,7 @@ func _spawn_fish(i: int, center: Vector2, respawn_at_home := false) -> void:
 	_fheading[i] = randf() * TAU
 	_fturn[i] = 0.0
 	_fspeed[i] = randf_range(1.3, 2.2)
-	_fsize[i] = randf_range(0.55, 0.95) * size_mul
+	_fsize[i] = size
 	_fphase[i] = randf() * TAU
 	_fperiod[i] = randf_range(8.0, 14.0)
 	_foffset[i] = randf() * _fperiod[i]
@@ -245,9 +266,48 @@ func _process(delta: float) -> void:
 			_respawn[i] -= delta
 			if _respawn[i] <= 0.0:
 				_spawn_fish(i, _fish_home[i], true)
+		if _ffree[i] > 0.0:
+			_ffree[i] -= delta
 		_sim_fish(i, delta)
+		if _fsize[i] > 0.001 and _ffree[i] <= 0.0:
+			# Рыба на приманке/крючке обязана держаться у поплавка — только дно.
+			_constrain_fish(i, _fsize[i], delta,
+				i != _lure_idx and i != _hooked_idx)
 	_sim_drops(delta)
 	_push_uniforms(camera_center)
+
+
+## Держим существо в воде: выталкиваем с мели, дно — под телом с запасом.
+## free_move=false (приманка/крючок) — толкаем только по вертикали.
+func _constrain_fish(i: int, s: float, delta: float, free_move: bool) -> void:
+	if coast == null:
+		return
+	var need := _zone_depth_for(s)
+	var px := _fpos[i].x
+	var pz := _fpos[i].z
+	if free_move:
+		var d_here := coast.water_depth(px, pz)
+		if d_here < need:
+			# градиент глубины выталкивает в море (обычно вдоль −X)
+			var e := 2.5
+			var gx := coast.water_depth(px + e, pz) - coast.water_depth(px - e, pz)
+			var gz := coast.water_depth(px, pz + e) - coast.water_depth(px, pz - e)
+			var g := Vector2(gx, gz)
+			if g.length_squared() > 1e-5:
+				var speed := 2.4 + 2.6 * clampf(1.0 - d_here / maxf(need, 0.01), 0.0, 1.0)
+				var push := g.normalized() * speed * delta
+				_fpos[i].x += push.x
+				_fpos[i].z += push.y
+			# последний рубеж: на сушу вообще не выходим
+			var lim := coast.shore_x(_fpos[i].z) - 6.0
+			if _fpos[i].x > lim:
+				_fpos[i].x = lim
+	# дно: центр тела с запасом выше песка, но не выше поверхности воды
+	var floor_y := coast.ground_height(_fpos[i].x, _fpos[i].z) + 0.55 * s + 0.22
+	floor_y = minf(floor_y, water_level - 0.35 * s)
+	if _fy[i] < floor_y:
+		_fy[i] = floor_y
+	_fpos[i].y = _fy[i]
 
 
 # ---------------------------------------------------------------------------
@@ -282,14 +342,26 @@ func _sim_fish(i: int, delta: float) -> void:
 			var home_heading := atan2(to_home.y, to_home.x)
 			var home_delta := wrapf(home_heading - _fheading[i], -PI, PI)
 			_fturn[i] += home_delta * 1.4 * delta
+		# Курс от мели: смотрим на глубину вперёд-вбок и выбираем глубже.
+		if coast != null and _ffree[i] <= 0.0:
+			var need := _zone_depth_for(s)
+			var d_here := coast.water_depth(_fpos[i].x, _fpos[i].z)
+			if d_here < need + 2.2:
+				var best_h := _fheading[i]
+				var best_d := d_here
+				for a: float in [-0.85, -0.35, 0.35, 0.85]:
+					var h := _fheading[i] + a
+					var dp := coast.water_depth(_fpos[i].x + cos(h) * 5.0,
+						_fpos[i].z + sin(h) * 5.0)
+					if dp > best_d + 0.03:
+						best_d = dp
+						best_h = h
+				if best_d > d_here + 0.03:
+					var dh := wrapf(best_h - _fheading[i], -PI, PI)
+					_fturn[i] += clampf(dh * 3.4, -0.9, 0.9) * delta * 5.0
 	_fturn[i] = clampf(_fturn[i], -0.7, 0.7)
 	_fheading[i] += _fturn[i] * delta
 	_fpos[i] += Vector3(cos(_fheading[i]), 0.0, sin(_fheading[i])) * _fspeed[i] * boost * delta
-	if coast != null:
-		# существо живёт в море: у самого уреза разворачиваем обратно
-		var lim: float = coast.shore_x(_fpos[i].z) - 20.0
-		if _fpos[i].x > lim:
-			_fpos[i].x = lim
 
 	# волна тела бежит к хвосту
 	_fphase[i] += delta * (5.0 + _fspeed[i] * 2.2)
@@ -298,6 +370,9 @@ func _sim_fish(i: int, delta: float) -> void:
 	var cy := fposmod(t + _foffset[i], _fperiod[i])
 	var x := (cy - 0.55 * _fperiod[i]) / (0.09 * _fperiod[i])
 	var bump := exp(-x * x)
+	if coast != null and _ffree[i] <= 0.0 \
+			and coast.water_depth(_fpos[i].x, _fpos[i].z) < maxf(2.0, _zone_depth_for(s) * 0.8):
+		bump = 0.0 # на мелководье не выпрыгиваем — не садимся на песок
 	var target := water_level - _fcruise[i] + (_fcruise[i] + _fjump[i]) * bump
 	var prev_y := _fy[i]
 	_fy[i] = lerpf(_fy[i], target, 1.0 - exp(-7.0 * delta))
@@ -567,6 +642,7 @@ func debug_breach_near(pos: Vector3) -> void:
 	if fish_count <= 0:
 		return
 	var i := 0
+	_ffree[i] = 6.0 # зона не мешает контрольному прыжку
 	_fsize[i] = 0.9
 	_fpos[i] = Vector3(pos.x, water_level - 0.55, pos.z)
 	_fy[i] = water_level - 0.4
