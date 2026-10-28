@@ -24,7 +24,7 @@ func _run() -> void:
 	var aim := (main.target.global_position + Vector3(0, TargetDummy.CENTER_HEIGHT, 0) - main.cam_rig.cam.global_position).normalized()
 	_check((-main.cam_rig.cam.global_basis.z).dot(aim) > 0.999, "мишень в начальном направлении взгляда", failures)
 	var eye := main.cam_rig.cam.global_position
-	var target_center := main.target.global_position + Vector3.UP * TargetDummy.CENTER_HEIGHT
+	var target_center: Vector3 = main.target.global_position + Vector3.UP * TargetDummy.CENTER_HEIGHT
 	var terrain_clear := true
 	for i in range(1, 20):
 		var point := eye.lerp(target_center, float(i) / 20.0)
@@ -32,8 +32,8 @@ func _run() -> void:
 			terrain_clear = false
 	_check(terrain_clear, "рельеф не закрывает мишень", failures)
 	# Луч к мишени пересекает перила между двумя поручнями, не через настил.
-	var rail_t := (main.tower.global_position.x + 5.95 - eye.x) / (target_center.x - eye.x)
-	var rail_height := eye.lerp(target_center, rail_t).y - main.tower.global_position.y - ObservationTower.DECK_HEIGHT
+	var rail_t: float = (main.tower.global_position.x + 5.95 - eye.x) / (target_center.x - eye.x)
+	var rail_height: float = eye.lerp(target_center, rail_t).y - main.tower.global_position.y - ObservationTower.DECK_HEIGHT
 	_check(rail_height > 0.55 and rail_height < 1.17, "мишень между поручнями", failures)
 	var start_yaw: float = main.cam_rig.yaw
 	main.cam_rig.apply_mouse_motion(Vector2(50, 0))
@@ -61,6 +61,21 @@ func _run() -> void:
 		await get_tree().physics_frame
 	Input.action_release("move_right")
 	_check(main.player.position.x < before_side.x - 0.1, "D перемещает вправо относительно камеры", failures)
+	var before_back := main.player.position
+	Input.action_press("move_back")
+	for i in range(8):
+		await get_tree().physics_frame
+	Input.action_release("move_back")
+	_check(main.player.position.z < before_back.z - 0.1, "S перемещает назад", failures)
+	var before_left := main.player.position
+	Input.action_press("move_left")
+	for i in range(8):
+		await get_tree().physics_frame
+	Input.action_release("move_left")
+	_check(main.player.position.x > before_left.x + 0.1, "A перемещает влево", failures)
+	await get_tree().physics_frame
+	_check(main.cam_rig.cam.global_position.is_equal_approx(main.player.global_position + Vector3.UP * CameraRig.EYE),
+			"камера следует за игроком", failures)
 
 	# На каждой стороне и по диагонали даже большой шаг не может пересечь перила.
 	for direction in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK, Vector3(1, 8, 1), Vector3(-1, -8, -1)]:

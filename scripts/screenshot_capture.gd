@@ -19,11 +19,4 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	print("[SHOT] сохранён: ", path)
-	# Маленькое JPEG-превью доступно в аннотациях CI даже без доступа к артефактам.
-	image.resize(320, 180, Image.INTERPOLATE_LANCZOS)
-	var encoded := Marshalls.raw_to_base64(image.save_jpg_to_buffer(0.45))
-	var chunk := 0
-	for offset in range(0, encoded.length(), 3000):
-		print("[SHOT_PREVIEW_%d]%s" % [chunk, encoded.substr(offset, 3000)])
-		chunk += 1
 	get_tree().quit(0)
