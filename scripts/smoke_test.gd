@@ -16,6 +16,8 @@ func _run() -> void:
 	_check(main.sand.get_texture() != null, "поле физического песка", failures)
 	_check(main.world != null and main.cam_rig.cam.current, "мир и активная камера", failures)
 	_check(main.audio != null, "процедурный звук", failures)
+	_check(main.audio._step_streams.size() == 6, "синтез шагов", failures)
+	_check(main.audio._wind.stream != null and main.audio._wind.playing, "петля ветра", failures)
 	var origin := main.player.global_position
 	var yaw: float = main.cam_rig.yaw
 	main.cam_rig.apply_mouse_motion(Vector2(50.0, 0.0))

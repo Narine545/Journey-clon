@@ -80,6 +80,29 @@ func on_land(impact01: float) -> void:
 	_land.play()
 
 
+## Шаг по песку: глухой мягкий «пшш» — песок шуршит, а не трещит.
+func _gen_footstep(p_seed: int) -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = p_seed
+	var n := int(0.16 * RATE_SFX)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	var lp1 := 0.0
+	var lp2 := 0.0
+	var sway := lerpf(34.0, 58.0, rng.randf())
+	var cph := rng.randf() * TAU
+	for i in n:
+		var t := float(i) / RATE_SFX
+		var w := rng.randf_range(-1.0, 1.0)
+		var cut := lerpf(0.32, 0.09, t / 0.16)
+		lp1 += (w - lp1) * cut
+		lp2 += (lp1 - lp2) * cut
+		var env := minf(t / 0.016, 1.0) * exp(-t * 16.0)
+		var soft := 1.0 + 0.08 * sin(TAU * sway * t + cph)
+		s[i] = lp2 * env * soft * 0.34
+	return _stream(s, RATE_SFX, false)
+
+
 func _gen_wind() -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7717
