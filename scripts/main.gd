@@ -42,13 +42,13 @@ func _ready() -> void:
 	player.name = "TowerPlayer"
 	tower.add_child(player)
 	# У края площадки робот внизу виден без необходимости перелезать перила.
-	player.position = Vector3(4.3, ObservationTower.DECK_HEIGHT, -1.4)
+	player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	sand.set_tracking_target(player)
 
 	target = TargetDummy.new()
 	target.name = "TargetDummy"
 	add_child(target)
-	var target_x := spawn.x + 110.0
+	var target_x := spawn.x + 90.0
 	var target_z := spawn.y - 1.4
 	target.global_position = Vector3(target_x, coast.ground_height(target_x, target_z), target_z)
 
@@ -60,7 +60,7 @@ func _ready() -> void:
 	add_child(cam_rig)
 	cam_rig.setup(self)
 	player.camera_rig = cam_rig
-	var aim: Vector3 = target.global_position + Vector3(0.0, 2.65, 0.0) - (player.global_position + Vector3.UP * CameraRig.EYE)
+	var aim: Vector3 = target.global_position + Vector3(0.0, TargetDummy.CENTER_HEIGHT, 0.0) - (player.global_position + Vector3.UP * CameraRig.EYE)
 	cam_rig.set_view(atan2(aim.x, aim.z), atan2(aim.y, Vector2(aim.x, aim.z).length()))
 	set_time(game.night01)
 	apply_sun(game.sun_dir)

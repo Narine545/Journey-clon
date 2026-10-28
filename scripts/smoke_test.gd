@@ -21,8 +21,20 @@ func _run() -> void:
 	_check(main.player.get_parent() == main.tower, "игрок на башне", failures)
 	_check(is_equal_approx(main.player.position.y, ObservationTower.DECK_HEIGHT), "высота площадки", failures)
 	_check(main.target.global_position.y < main.player.global_position.y - 20.0, "мишень внизу", failures)
-	var aim := (main.target.global_position + Vector3(0, 2.65, 0) - main.cam_rig.cam.global_position).normalized()
+	var aim := (main.target.global_position + Vector3(0, TargetDummy.CENTER_HEIGHT, 0) - main.cam_rig.cam.global_position).normalized()
 	_check((-main.cam_rig.cam.global_basis.z).dot(aim) > 0.999, "мишень в начальном направлении взгляда", failures)
+	var eye := main.cam_rig.cam.global_position
+	var target_center := main.target.global_position + Vector3.UP * TargetDummy.CENTER_HEIGHT
+	var terrain_clear := true
+	for i in range(1, 20):
+		var point := eye.lerp(target_center, float(i) / 20.0)
+		if point.y <= main.coast.ground_height(point.x, point.z):
+			terrain_clear = false
+	_check(terrain_clear, "рельеф не закрывает мишень", failures)
+	# Луч к мишени пересекает перила между двумя поручнями, не через настил.
+	var rail_t := (main.tower.global_position.x + 5.95 - eye.x) / (target_center.x - eye.x)
+	var rail_height := eye.lerp(target_center, rail_t).y - main.tower.global_position.y - ObservationTower.DECK_HEIGHT
+	_check(rail_height > 0.55 and rail_height < 1.17, "мишень между поручнями", failures)
 	var start_yaw: float = main.cam_rig.yaw
 	main.cam_rig.apply_mouse_motion(Vector2(50, 0))
 	_check(not is_equal_approx(main.cam_rig.yaw, start_yaw), "поворот мышью", failures)
