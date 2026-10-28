@@ -35,7 +35,7 @@ func _ready() -> void:
 	add_child(player)
 	var spawn := coast.spawn_point()
 	player.global_position = Vector3(spawn.x, coast.ground_height(spawn.x, spawn.y), spawn.y)
-	sand.player = player
+	sand.set_tracking_target(player)
 	audio = SoundScape.new()
 	add_child(audio)
 	audio.setup(game, player)

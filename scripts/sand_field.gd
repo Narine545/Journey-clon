@@ -80,6 +80,13 @@ func setup(game_ref = null) -> void:
 # Публичное API
 # ---------------------------------------------------------------------------
 
+## Сразу располагаем окно вокруг якоря: штампы доступны до первого кадра.
+func set_tracking_target(target: Node3D) -> void:
+	player = target
+	if player != null:
+		_follow(player.global_position.x, player.global_position.z)
+
+
 ## Текстура карты для шейдера террейна.
 func get_texture() -> ImageTexture:
 	return _tex
