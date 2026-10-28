@@ -1,26 +1,23 @@
 class_name CameraRig
 extends Node3D
-## Камера от первого лица: обзор мышью (захват курсора), глаза на высоте
-## 1.66 м, лёгкое покачивание в такт шагам, FOV «дышит» на бегу.
+## Камера от первого лица: обзор мышью и неподвижный якорь на высоте глаз.
 ## Фонарик — на случай ночи (F): тёплый конус, в волюметрическом тумане
 ## читается лучом. По умолчанию выключен — день и закат не нуждаются.
 
 const EYE := 1.66
 const FOV_BASE := 74.0
-const FOV_SPRINT := 84.0
 const PITCH_MIN := -1.35
 const PITCH_MAX := 1.35
 const SENS := 0.0022 # рад на пиксель
 
 var cam: Camera3D
-var player: Player
+var player: Node3D
 var flashlight: SpotLight3D
 var flash_on := false
 
 var yaw := PI # fwd = (sin(yaw), 0, cos(yaw))
 var pitch := 0.0
 
-var _fov := FOV_BASE
 var _interactive := true
 
 
@@ -32,7 +29,7 @@ func setup(main_ref) -> void:
 	cam = Camera3D.new()
 	add_child(cam)
 	cam.fov = FOV_BASE
-	cam.near = 0.02 # удочка близко к камере
+	cam.near = 0.02
 	cam.far = 2200.0
 	cam.make_current()
 
@@ -45,14 +42,14 @@ func setup(main_ref) -> void:
 	flashlight.spot_attenuation = 1.4
 	flashlight.light_color = Color(1.0, 0.93, 0.80)
 	flashlight.light_energy = 2.6
-	# вью-модель удочки живёт на layer 2 — фонарь светит только мир
+	# фонарь светит только мир
 	flashlight.light_cull_mask = 1
 	flashlight.light_volumetric_fog_energy = 2.2
 	flashlight.shadow_enabled = true
 	flashlight.shadow_bias = 0.08
 	flashlight.visible = flash_on
 
-	yaw = player.heading
+	yaw = -PI * 0.5
 	if _interactive:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -86,22 +83,11 @@ func set_view(new_yaw: float, new_pitch: float) -> void:
 	pitch = clampf(new_pitch, PITCH_MIN, PITCH_MAX)
 
 
-func _physics_process(delta: float) -> void:
-	player.heading = yaw
+func _physics_process(_delta: float) -> void:
 
 	var p := player.global_position
-	cam.global_position = p + Vector3(0.0, EYE + player.gait_bob(), 0.0)
+	cam.global_position = p + Vector3(0.0, EYE, 0.0)
 
 	# взгляд: forward = (sin(yaw), 0, cos(yaw)) при pitch = 0
 	var b := Basis(Vector3.UP, yaw + PI) * Basis(Vector3.RIGHT, pitch)
 	cam.basis = b
-
-	_update_fov(delta)
-
-
-func _update_fov(delta: float) -> void:
-	var hv := Vector3(player.vel.x, 0.0, player.vel.z)
-	var spd01 := clampf((hv.length() - Player.WALK_MAX) / (Player.SPRINT_MAX - Player.WALK_MAX), 0.0, 1.0)
-	var target_fov := lerpf(FOV_BASE, FOV_SPRINT, clampf(spd01 * 0.8 + player.sprint01 * 0.4, 0.0, 1.0))
-	_fov = lerpf(_fov, target_fov, 1.0 - exp(-3.2 * delta))
-	cam.fov = _fov

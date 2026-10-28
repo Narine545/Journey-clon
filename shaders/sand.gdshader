@@ -31,7 +31,6 @@ uniform float glitter_amount = 0.20; // доля блестящих песчин
 uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.5;
 uniform float shadow_star_density : hint_range(0.15, 0.98) = 0.30;
-uniform float sea_swell = 0.055; // дыхание моря — как в water.gdshader
 
 // Общий переключатель прямого света Proxima + Schlick-GGX (A/B).
 uniform float proxima_test = 0.0;
@@ -49,18 +48,9 @@ uniform float proxima_smooth_terminator = 0.0;
 uniform float proxima_smooth_terminator_length = 0.5;
 
 
-// ---- Урез воды: мокрая полоса и подводный песок ----
-// Море лежит плоско на sea_level; там, где песок выше — вода спрятана
-// depth-тестом. Мокрую полосу и подводный песок красит этот же шейдер:
-// у уреза песок темнее, холоднее и глянцевее, искры гаснут.
-uniform float sea_level = 0.0;   // мировой Y уровня моря
-uniform sampler2D shore_lut : filter_linear, repeat_disable;
-uniform float shore_lut_z_min = -460.0;
-uniform float shore_lut_z_max = 460.0;
+// Акцент теней по умолчанию отключён.
 uniform vec2 shadow_star_focus = vec2(0.0);
 uniform float shadow_star_radius = 0.0;
-uniform float wet_band = 0.16;   // ВЫСОТА над водой (м), где песок ещё мокрый
-uniform float wet_darken = 0.44; // сила мокрого затемнения
 
 // ---- Настоящий песок: карта смещений ----
 uniform sampler2D sand_map : filter_linear, repeat_enable;
@@ -105,25 +95,10 @@ float sand_h(vec2 wp) {
 	return texture(sand_map, uv).r * edge;
 }
 
-// Фаза мега-ряби (слой 2): одинакова в vertex (высота) и fragment (нормаль)
-float mega_phase(vec2 wp, vec2 wdir, vec2 wperp) {
-	float u = dot(wp, wdir);
-	float v = dot(wp, wperp);
-	float rn = vnoise(wp * 0.15);
-	float rn2 = vnoise(wp * 0.07 + vec2(9.1, 3.3)); // вторая октава варпа
-	return v * 0.70 + u * 0.16 + rn * 2.6 + rn2 * 3.4 + TIME * 0.25;
-}
-
 void vertex() {
 	w_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	// песок реально проминается: смещаем вершину по карте (слой 3)
 	float h = sand_h(w_pos.xz);
-	// слой 2 (как в Journey): мега-рябь — НАСТОЯЩАЯ геометрия,
-	// волны ~9 м гребнями поперёк ветра, медленно ползут по ветру
-	vec2 wdir_v = normalize(wind_dir);
-	vec2 wperp_v = vec2(-wdir_v.y, wdir_v.x);
-	float mph = mega_phase(w_pos.xz, wdir_v, wperp_v);
-	// Волновая геометрическая рябь отключена: формы берега задаёт Coast.
 	VERTEX.y += h;
 	w_pos.y += h;
 	w_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -132,8 +107,6 @@ void vertex() {
 
 void fragment() {
 	vec2 wp = w_pos.xz;
-	vec2 wdir = normalize(wind_dir);
-	vec2 wperp = vec2(-wdir.y, wdir.x);
 
 	vec3 L = normalize(sun_dir);
 	vec3 N = normalize(w_normal);
@@ -154,9 +127,6 @@ void fragment() {
 	vec2 sgrad = vec2(hx1 - hx0, hz1 - hz0) / (2.0 * t);
 	float churn = clamp(abs(h) * 10.0, 0.0, 1.0); // потревоженный песок
 	N = normalize(N - vec3(sgrad.x, 0.0, sgrad.y));
-	// Фазу ветра используем только для движения мокрой каймы;
-	// на самой суше волновые нормали и полосы не рисуются.
-	float mph = mega_phase(wp, wdir, wperp);
 
 	// ---------- 2. Свет: солнце + небо + отблеск (три источника) ----------
 	// Главный мотив тот же (тёплый склон к солнцу / сиреневая тень),
@@ -192,24 +162,6 @@ void fragment() {
 	// Мелкое зерно сохраняет фактуру песка без ветровых полос.
 	base *= 1.0 + (vnoise(wp * 2.7) - 0.5) * 0.08 * detail;
 
-	// ---------- 2a. Урез: прибой ----------
-	// Высота воды в точке — ТА ЖЕ формула, что в vertex water.gdshader:
-	// море дышит, и мокрая кайма ползёт по пляжу вместе с ним.
-	float swash = (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
-		+ cos(mph * 0.47 + 0.8) * 0.22) * sea_swell * wind_power;
-	float above_sea = w_pos.y - (sea_level + swash);
-	float wob = vnoise(wp * 0.35 + vec2(4.1, 8.3));
-	// мокрая полоса: узкая, с рваным волокнистым краем
-	float wet = 1.0 - smoothstep(-0.02, wet_band * (0.65 + 0.7 * wob), above_sea);
-	wet *= 0.72 + 0.28 * wob;
-	float sub = 1.0 - smoothstep(-1.6, 0.0, above_sea);
-	// пена: узкая светлая кайма на самой кромке, вспенивается пятнами.
-	// Полоса не должна читаться «лентой»: пятна рвут её на куски.
-	float fw = 0.025 + 0.045 * vnoise(wp * 1.9 + vec2(2.0, 5.0));
-	float foam = 1.0 - smoothstep(0.0, fw, abs(above_sea - 0.01));
-	foam *= smoothstep(0.25, 0.75, vnoise(wp * 2.6 + vec2(TIME * 0.5, 0.0)));
-	foam *= wet * (0.30 + 0.35 * vnoise(wp * 3.1 + vec2(TIME * 0.6, 0.0)));
-
 	// ---------- 2b. След: настоящий рельеф красится как настоящий ----------
 	float press = clamp(-h * 12.0, 0.0, 1.0); // дно следа
 	float rise = clamp(h * 18.0, 0.0, 1.0);   // вал выброшенного песка
@@ -218,14 +170,6 @@ void fragment() {
 	base = mix(base, base * vec3(0.92, 0.90, 0.99), press * 0.30);
 	// вал: свежий сухой песок — светлее и теплее
 	base = mix(base, base * vec3(1.18, 1.07, 0.88), rise * 0.5);
-	// мокрый песок: темнее и холоднее, подводный — глуше и синее
-	// мокрый песок — тот же тёплый песок, только плотнее и темнее; никакой
-	// синевы (синева — признак воды, она теперь у моря, а не у берега)
-	base = mix(base, base * vec3(0.62, 0.55, 0.50), wet * wet_darken);
-	base = mix(base, base * vec3(0.34, 0.40, 0.48), sub * 0.55);
-	// прибойная пена — тёплый свет, не белая краска
-	base = mix(base, vec3(0.94, 0.90, 0.84), clamp(foam * 0.55, 0.0, 0.42));
-
 	// ---------- 3. Глиттер (микрофасеты, по мотивам Zucconi) ----------
 	// «Песчинки» размером с пиксель (LOD по дистанции). ДВА лба:
 	//   • солнечный — искра вспыхивает ярче, когда солнце в кадре;
@@ -257,7 +201,7 @@ void fragment() {
 	glint *= 0.40 + 0.60 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0));
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
 	float glit_fade = exp(-dist * 0.004); // искры живут далеко, до горизонта
-	glint *= 1.0 - 0.85 * wet; // мокрый песок не сверкает
+
 	glint *= 1.0 - smoothstep(0.12, 0.82, night_amount); // ночью оставляем только искры в тенях
 	// искры бьют сильно (2+ единицы) — даже на ярком песке после
 	// Filmic-тонмаппинга они остаются точками, а glow даёт им ореол
@@ -285,8 +229,7 @@ void fragment() {
 	// Аналитическая нормаль следов и ряби теперь питает реальный BRDF,
 	// поэтому фонарь скользит по гребням, а впадины получают контактную тень.
 	NORMAL = normalize((VIEW_MATRIX * vec4(N, 0.0)).xyz);
-	ROUGHNESS = mix(0.95, 0.80, clamp(fres, 0.0, 1.0)) + churn * 0.05
-		- wet * 0.16;
+	ROUGHNESS = mix(0.95, 0.80, clamp(fres, 0.0, 1.0)) + churn * 0.05;
 	SPECULAR = 0.16;
 	METALLIC = 0.0;
 }
@@ -331,10 +274,7 @@ void light() {
 	// ATTENUATION содержит настоящую тень от причала/камней. Каждая звезда
 	// остаётся на песке в мировых координатах, а не перемещается с камерой.
 	float cast_shadow = smoothstep(0.48, 0.84, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
-	float shore_u = clamp((w_pos.z - shore_lut_z_min)
-		/ (shore_lut_z_max - shore_lut_z_min), 0.0, 1.0);
-	float shore_x = texture(shore_lut, vec2(shore_u, 0.5)).r;
-	float dry_sand = smoothstep(0.0, 1.5, w_pos.x - shore_x);
+	float dry_sand = 1.0;
 	float focus_dist = distance(w_pos.xz, shadow_star_focus);
 	float star_zone = 1.0 - smoothstep(shadow_star_radius - 0.6,
 		shadow_star_radius + 0.6, focus_dist);

@@ -33,9 +33,6 @@ const SEABED_SLOPE := 0.085 # уклон дна у берега
 const SEABED_DEEP := 0.17 # уклон дна дальше от берега
 
 # --- ambient occlusion (запекается по карте высот) ---
-const SHORE_LUT_Z0 := -460.0
-const SHORE_LUT_Z1 := 460.0
-const SHORE_LUT_N := 1024
 
 const AO_STEP := 4
 const AO_DIRS := 8
@@ -54,11 +51,7 @@ var _bars := FastNoiseLite.new() # песчаные отмели под водо
 var _grid := PackedFloat32Array()
 var _dgrid := PackedFloat32Array() # 0 — пляж, 1 — дюны (для шейдера)
 var _ao_grid := PackedFloat32Array()
-## Одномерная «карта уреза»: shore_x(z). Её читает море, чтобы плавно
-## растворяться у песка (иначе линия пересечения рвётся треугольниками).
-var shore_lut: ImageTexture
-## Карта высот поверхности (та же, что у меша): шейдер моря кладёт
-## плёнку прибоя прямо на песок — иначе на буграх она рвётся лоскутами.
+## Карта высот рельефа.
 var height_tex: ImageTexture
 var grid_n := 0
 var grid_origin := Vector2.ZERO
@@ -107,22 +100,9 @@ func setup(game_ref) -> void:
 	_bars.frequency = 1.0
 	_bars.fractal_octaves = 2
 
-	_build_shore_lut() # после настройки шума: та же линия, что у геометрии
 	_build_grid()
 	_build_ao()
 	_build_mesh()
-
-
-# ---------------------------------------------------------------------------
-# Карта уреза для шейдера моря
-# ---------------------------------------------------------------------------
-
-func _build_shore_lut() -> void:
-	var img := Image.create(SHORE_LUT_N, 1, false, Image.FORMAT_RF)
-	for i in range(SHORE_LUT_N):
-		var z := lerpf(SHORE_LUT_Z0, SHORE_LUT_Z1, (float(i) + 0.5) / float(SHORE_LUT_N))
-		img.set_pixel(i, 0, Color(shore_x(z), 0.0, 0.0))
-	shore_lut = ImageTexture.create_from_image(img)
 
 
 # ---------------------------------------------------------------------------
@@ -198,15 +178,6 @@ func dune01_at(x: float, z: float) -> float:
 	if t < DUNE_FOOT * 0.5:
 		return 0.0
 	return smoothf(t, DUNE_FOOT * 0.6, DUNE_FOOT + DUNE_SPAN)
-
-
-## Глубина воды в точке (0 — сухо). Учитывает следы на песке.
-func water_depth(x: float, z: float) -> float:
-	return maxf(0.0, SEA_LEVEL - ground_height(x, z))
-
-
-func is_water(x: float, z: float) -> bool:
-	return ground_height(x, z) < SEA_LEVEL - 0.02
 
 
 ## Направление «вглубь суши» в горизонтальной плоскости (по рельефу).
@@ -424,13 +395,6 @@ func _build_mesh() -> void:
 	mat.set_shader_parameter("wind_dir", Game.wind_dir())
 	mat.set_shader_parameter("sand_map", ProcTextures.black_pixel())
 	mat.set_shader_parameter("sand_texel", SandField.TEXEL)
-	# мокрая полоса у уреза и подводный песок — красит шейдер
-	mat.set_shader_parameter("sea_level", SEA_LEVEL)
-	mat.set_shader_parameter("shore_lut", shore_lut)
-	# Узкая мокрая кайма сохраняет тёплую палитру суши; вода остаётся
-	# отдельным холодным материалом.
-	mat.set_shader_parameter("wet_band", 0.18)
-	mat.set_shader_parameter("wet_darken", 0.38)
 
 	mesh = coast_mesh
 	material_override = mat

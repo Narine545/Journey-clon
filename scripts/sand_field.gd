@@ -43,7 +43,7 @@ const SPOT_CAP := 420 # максимум точек (потом новые иг�
 var stamp_count := 0 # диагностика / smoke-тест
 
 var game: GameState # автозагрузка Game (сила ветра для заноса)
-var player: Player # за кем скользит окно
+var player: Node3D # неподвижный якорь окна в M0
 
 var _grid := PackedFloat32Array() # тор: [sj * N + si], мировые смещения (м)
 var _tex: ImageTexture
