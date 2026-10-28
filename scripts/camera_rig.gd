@@ -1,6 +1,6 @@
 class_name CameraRig
 extends Node3D
-## Камера от первого лица: обзор мышью и неподвижный якорь на высоте глаз.
+## Камера от первого лица: обзор мышью и следование за игроком на площадке.
 ## Фонарик — на случай ночи (F): тёплый конус, в волюметрическом тумане
 ## читается лучом. По умолчанию выключен — день и закат не нуждаются.
 
@@ -81,10 +81,16 @@ func apply_mouse_motion(rel: Vector2) -> void:
 func set_view(new_yaw: float, new_pitch: float) -> void:
 	yaw = wrapf(new_yaw, -PI, PI)
 	pitch = clampf(new_pitch, PITCH_MIN, PITCH_MAX)
+	_update_pose()
 
 
 func _physics_process(_delta: float) -> void:
+	_update_pose()
 
+
+func _update_pose() -> void:
+	if player == null or cam == null:
+		return
 	var p := player.global_position
 	cam.global_position = p + Vector3(0.0, EYE, 0.0)
 

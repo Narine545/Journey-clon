@@ -21,6 +21,23 @@ var wind_angle := 0.18 # текущее (гуляет вокруг базы)
 var wind_strength := 1.0
 var elapsed := 0.0
 
+func _ready() -> void:
+	_add_key_action("move_forward", [KEY_W, KEY_UP])
+	_add_key_action("move_back", [KEY_S, KEY_DOWN])
+	_add_key_action("move_left", [KEY_A, KEY_LEFT])
+	_add_key_action("move_right", [KEY_D, KEY_RIGHT])
+
+
+func _add_key_action(action: String, keys: Array) -> void:
+	if InputMap.has_action(action):
+		return
+	InputMap.add_action(action)
+	for key in keys:
+		var event := InputEventKey.new()
+		event.physical_keycode = key
+		InputMap.action_add_event(action, event)
+
+
 func _process(delta: float) -> void:
 	elapsed += delta
 	# Ветер живёт: медленно гуляет направление и сила (сумма синусов).

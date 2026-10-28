@@ -1,13 +1,16 @@
 class_name MainScene
 extends Node3D
-## M0: прежние процедурные окружение и камера, без рыбалки и движения.
-## Позиция на земле временная — башня появится только в M1.
+## M1: окружение M0, башня, ограниченная ходьба и временная мишень.
+
+const TOWER_SCENE := preload("res://scenes/Tower.tscn")
 
 var game: GameState
 var world: GameWorld
 var coast: Coast
 var sand: SandField
-var player: Node3D
+var tower: ObservationTower
+var target: TargetDummy
+var player: TowerPlayer
 var cam_rig: CameraRig
 var audio: SoundScape
 var color_grade: ColorGrader
@@ -30,26 +33,44 @@ func _ready() -> void:
 	add_child(sand)
 	sand.setup(game)
 	coast.attach_sand(sand)
-	player = Node3D.new()
-	player.name = "ViewAnchor"
-	add_child(player)
+
 	var spawn := coast.spawn_point()
-	player.global_position = Vector3(spawn.x, coast.ground_height(spawn.x, spawn.y), spawn.y)
+	tower = TOWER_SCENE.instantiate() as ObservationTower
+	tower.position = Vector3(spawn.x, coast.ground_height(spawn.x, spawn.y), spawn.y)
+	add_child(tower)
+	player = TowerPlayer.new()
+	player.name = "TowerPlayer"
+	tower.add_child(player)
+	# У края площадки робот внизу виден без необходимости перелезать перила.
+	player.position = Vector3(4.3, ObservationTower.DECK_HEIGHT, -1.4)
 	sand.set_tracking_target(player)
+
+	target = TargetDummy.new()
+	target.name = "TargetDummy"
+	add_child(target)
+	var target_x := spawn.x + 110.0
+	var target_z := spawn.y - 1.4
+	target.global_position = Vector3(target_x, coast.ground_height(target_x, target_z), target_z)
+
 	audio = SoundScape.new()
 	add_child(audio)
 	audio.setup(game, player)
+	player.audio = audio
 	cam_rig = CameraRig.new()
 	add_child(cam_rig)
 	cam_rig.setup(self)
-	# Смотреть на дюны, а не в пустое бывшее море.
-	cam_rig.set_view(PI * 0.5, -0.05)
+	player.camera_rig = cam_rig
+	var aim: Vector3 = target.global_position + Vector3(0.0, 2.65, 0.0) - (player.global_position + Vector3.UP * CameraRig.EYE)
+	cam_rig.set_view(atan2(aim.x, aim.z), atan2(aim.y, Vector2(aim.x, aim.z).length()))
 	set_time(game.night01)
 	apply_sun(game.sun_dir)
 	if OS.get_environment("JOURNEY_SMOKE") == "1":
 		var smoke := SmokeTest.new()
 		add_child(smoke)
 		smoke.setup(self)
+	elif OS.get_environment("JOURNEY_SHOT") == "1":
+		var shot := ScreenshotCapture.new()
+		add_child(shot)
 
 
 func set_time(value: float) -> void:
