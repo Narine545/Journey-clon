@@ -181,7 +181,7 @@ class RadioOverlay extends Control:
 
 	func _draw() -> void:
 		var font := ThemeDB.fallback_font
-		var scale_factor := clampf(size.y / 1080.0, 0.65, 1.3)
+		var scale_factor := clampf(size.y / 800.0, 0.8, 1.3)
 		var center := size * 0.5
 		var font_size := roundi(22.0 * scale_factor)
 		var ink := Color(0.91, 0.85, 0.70, 0.94)
@@ -189,7 +189,7 @@ class RadioOverlay extends Control:
 			draw_string(font, Vector2(center.x - 100.0 * scale_factor, size.y * 0.80), "R  ·  РАДИО", HORIZONTAL_ALIGNMENT_CENTER, 200.0 * scale_factor, font_size, ink)
 		if not tuning:
 			return
-		var box_size := Vector2(620.0, 245.0) * scale_factor
+		var box_size := Vector2(620.0, 280.0) * scale_factor
 		var rect := Rect2(center - box_size * 0.5, box_size)
 		draw_rect(rect, Color(0.055, 0.052, 0.045, 0.92))
 		draw_rect(rect, Color(0.49, 0.40, 0.28, 0.8), false, 2.0)
@@ -217,4 +217,6 @@ class RadioOverlay extends Control:
 		var bar := Rect2(Vector2(rect.end.x - 175.0 * scale_factor, top + 140.0 * scale_factor), Vector2(140.0, 9.0) * scale_factor)
 		draw_rect(bar, Color(0.25, 0.24, 0.20))
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * strength, bar.size.y)), Color(0.76, 0.64, 0.42))
-		draw_string(font, Vector2(left, top + 205.0 * scale_factor), "← / → или колесо: частота    X: питание    R / Esc: закрыть", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), Color(0.77, 0.73, 0.64))
+		var help_color := Color(0.77, 0.73, 0.64)
+		draw_string(font, Vector2(left, top + 205.0 * scale_factor), "← / → или колесо: частота", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
+		draw_string(font, Vector2(left, top + 235.0 * scale_factor), "X: питание      R / Esc: закрыть", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)

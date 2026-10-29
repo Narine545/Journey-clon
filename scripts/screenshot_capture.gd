@@ -75,7 +75,7 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	radio_image.resize(640, 360)
-	radio_image.save_jpg("radio-preview.jpg", 0.6)
+	radio_image.save_jpg("radio-preview.jpg", 0.45)
 	# Детерминированный объект только для CI-кадра, не для обычной игры.
 	main.radio_tuner.set_tuning(false)
 	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, -1.4)
@@ -102,5 +102,5 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	robot_image.resize(640, 360)
-	robot_image.save_jpg("robot-preview.jpg", 0.6)
+	robot_image.save_jpg("robot-preview.jpg", 0.45)
 	get_tree().quit(0)
