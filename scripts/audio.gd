@@ -13,6 +13,9 @@ var _land: AudioStreamPlayer3D
 var _wind: AudioStreamPlayer
 var _wind_filter: AudioEffectLowPassFilter
 var _wind_gain := 0.0
+var _shot: AudioStreamPlayer
+var _bolt: AudioStreamPlayer
+var _confirmation: AudioStreamPlayer
 
 
 func setup(game_ref: GameState, listener_ref: Node3D) -> void:
@@ -42,7 +45,31 @@ func setup(game_ref: GameState, listener_ref: Node3D) -> void:
 	add_child(_wind)
 	_wind.volume_db = linear_to_db(0.0001)
 	_wind.play()
+	_shot = _make_effect(_gen_rifle_shot(), -3.0)
+	_bolt = _make_effect(_gen_bolt(), -12.0)
+	_confirmation = _make_effect(_gen_confirmation(), -22.0)
 
+
+
+func _make_effect(stream: AudioStreamWAV, volume: float) -> AudioStreamPlayer:
+	var effect := AudioStreamPlayer.new()
+	effect.stream = stream
+	effect.volume_db = volume
+	add_child(effect)
+	return effect
+
+
+func on_rifle_shot() -> void:
+	_shot.pitch_scale = randf_range(0.97, 1.03)
+	_shot.play()
+
+
+func on_bolt() -> void:
+	_bolt.play()
+
+
+func on_hit_confirmed() -> void:
+	_confirmation.play()
 
 func _ensure_bus(bus_name: String) -> void:
 	if AudioServer.get_bus_index(bus_name) < 0:
@@ -150,6 +177,51 @@ func _gen_land() -> AudioStreamWAV:
 		s[i] = (lp * 0.8 + thump) * env
 	return _stream(s, RATE_SFX, false)
 
+
+
+## Сухой импульс и короткий низкий хвост: событие громче фонового ветра.
+func _gen_rifle_shot() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 91723
+	var count := int(0.65 * RATE_SFX)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	var low := 0.0
+	for i in count:
+		var t := float(i) / RATE_SFX
+		var noise := rng.randf_range(-1.0, 1.0)
+		low += (noise - low) * 0.08
+		var crack := noise * exp(-t * 45.0) * 0.48
+		var body := (low * 0.85 + sin(TAU * 72.0 * t) * 0.20) * exp(-t * 8.0)
+		samples[i] = clampf(crack + body, -0.9, 0.9)
+	return _stream(samples, RATE_SFX, false)
+
+
+## Два коротких металлических движения затвора на фоне ветра.
+func _gen_bolt() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7401
+	var count := int(0.48 * RATE_SFX)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	for i in count:
+		var t := float(i) / RATE_SFX
+		var first := exp(-maxf(t - 0.04, 0.0) * 45.0) if t >= 0.04 else 0.0
+		var second := exp(-maxf(t - 0.25, 0.0) * 36.0) if t >= 0.25 else 0.0
+		var metallic := sin(TAU * 1400.0 * t) * 0.32 + rng.randf_range(-1.0, 1.0) * 0.42
+		samples[i] = metallic * (first + second) * 0.55
+	return _stream(samples, RATE_SFX, false)
+
+
+## Тихий короткий тик — без фанфар за попадание.
+func _gen_confirmation() -> AudioStreamWAV:
+	var count := int(0.07 * RATE_SFX)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	for i in count:
+		var t := float(i) / RATE_SFX
+		samples[i] = sin(TAU * 1100.0 * t) * exp(-t * 75.0) * 0.25
+	return _stream(samples, RATE_SFX, false)
 
 ## Упаковка синтезированных сэмплов в WAV.
 func _stream(s: PackedFloat32Array, rate: int, loop: bool) -> AudioStreamWAV:

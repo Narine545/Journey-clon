@@ -17,6 +17,8 @@ var flash_on := false
 
 var yaw := PI # fwd = (sin(yaw), 0, cos(yaw))
 var pitch := 0.0
+var aim_offset := Vector2.ZERO
+var mouse_sensitivity_multiplier := 1.0
 
 var _interactive := true
 
@@ -73,27 +75,27 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Поворот взгляда мышью (радиан на пиксель) — общий путь для ввода и тестов.
 func apply_mouse_motion(rel: Vector2) -> void:
-	yaw = wrapf(yaw - rel.x * SENS, -PI, PI)
-	pitch = clampf(pitch - rel.y * SENS, PITCH_MIN, PITCH_MAX)
+	yaw = wrapf(yaw - rel.x * SENS * mouse_sensitivity_multiplier, -PI, PI)
+	pitch = clampf(pitch - rel.y * SENS * mouse_sensitivity_multiplier, PITCH_MIN, PITCH_MAX)
 
 
 ## Задать взгляд напрямую (тесты/сценарии CI).
 func set_view(new_yaw: float, new_pitch: float) -> void:
 	yaw = wrapf(new_yaw, -PI, PI)
 	pitch = clampf(new_pitch, PITCH_MIN, PITCH_MAX)
-	_update_pose()
+	refresh_pose()
 
 
 func _physics_process(_delta: float) -> void:
-	_update_pose()
+	refresh_pose()
 
 
-func _update_pose() -> void:
+func refresh_pose() -> void:
 	if player == null or cam == null:
 		return
 	var p := player.global_position
 	cam.global_position = p + Vector3(0.0, EYE, 0.0)
 
 	# взгляд: forward = (sin(yaw), 0, cos(yaw)) при pitch = 0
-	var b := Basis(Vector3.UP, yaw + PI) * Basis(Vector3.RIGHT, pitch)
+	var b := Basis(Vector3.UP, yaw + aim_offset.x + PI) * Basis(Vector3.RIGHT, clampf(pitch + aim_offset.y, PITCH_MIN, PITCH_MAX))
 	cam.basis = b

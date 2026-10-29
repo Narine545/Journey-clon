@@ -126,6 +126,61 @@ func _run() -> void:
 		var p := main.player.position
 		_check(absf(p.x) <= ObservationTower.WALK_LIMIT and absf(p.z) <= ObservationTower.WALK_LIMIT
 				and is_equal_approx(p.y, ObservationTower.DECK_HEIGHT), "граница площадки %s" % direction, failures)
+	# M3: реальный снаряд летит к дальней мишени, а не попадает в кадр выстрела.
+	_check(main.rifle.scene_file_path == "res://scenes/Rifle.tscn", "отдельная сцена винтовки", failures)
+	_check(main.rifle.get_parent() == main.cam_rig.cam, "винтовка прикреплена к камере", failures)
+	_check(main.long_target.global_position.distance_to(main.player.global_position) > 500.0, "дальняя мишень за 500 м", failures)
+	var initial_fov := main.cam_rig.cam.fov
+	main.rifle.aim_requested = true
+	for i in range(60):
+		await get_tree().physics_frame
+	_check(main.cam_rig.cam.fov < initial_fov - 25.0 and main.rifle.scope_amount > 0.8, "плавное увеличение прицела", failures)
+	main.rifle.aim_requested = false
+	for i in range(60):
+		await get_tree().physics_frame
+	_check(main.cam_rig.cam.fov > 65.0, "возврат из прицела", failures)
+	var accel := Ballistics.acceleration(main.game, 0.0, 0.0)
+	_check(accel.y < -9.0 and Vector2(accel.x, accel.z).length() > 0.1, "гравитация и ветер влияют на снаряд", failures)
+	var ground_x := main.tower.global_position.x + 35.0
+	var ground_z := main.tower.global_position.z
+	var ground_height := main.coast.ground_height(ground_x, ground_z)
+	var ground_test := Ballistics.terrain_hit(main.coast, Vector3(ground_x, ground_height + 10.0, ground_z), Vector3(ground_x, ground_height - 5.0, ground_z))
+	_check(not ground_test.is_empty(), "снаряд сталкивается с рельефом", failures)
+	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.set_view(-PI * 0.5, 0.0)
+	await get_tree().physics_frame
+	var firing_origin := main.player.global_position + Vector3.UP * CameraRig.EYE
+	var far_center := main.long_target.global_position + Vector3.UP * TargetDummy.CENTER_HEIGHT
+	var min_clearance := INF
+	for i in range(1, 50):
+		var point := firing_origin.lerp(far_center, float(i) / 50.0)
+		min_clearance = minf(min_clearance, point.y - main.coast.ground_height(point.x, point.z))
+	_check(min_clearance > 0.0, "дальняя мишень не закрыта рельефом (%.1f м)" % min_clearance, failures)
+	var range_to_far := firing_origin.distance_to(far_center)
+	var flight_time := range_to_far / SniperRifle.MUZZLE_SPEED
+	# Приближённое упреждение по баллистической формуле s = a*t²/2;
+	# интегратор и порывы не обязаны совпадать с оценкой идеально.
+	var correction := -Ballistics.acceleration(main.game, 0.0, 0.0) * (0.5 * flight_time * flight_time)
+	var shot_direction := (far_center + correction - firing_origin).normalized()
+	main.cam_rig.set_view(atan2(shot_direction.x, shot_direction.z), asin(shot_direction.y))
+	var score_before := main.game.score
+	main.rifle.on_projectile_hit(main.long_target, firing_origin + main.cam_rig.cam.global_basis.z * 10.0)
+	_check(main.game.score == score_before, "попадание вне кадра не начисляет очки", failures)
+	var ammo_before := main.rifle.ammo
+	_check(main.rifle.fire(), "выстрел разрешён", failures)
+	_check(not main.rifle.fire() and main.rifle.ammo == ammo_before - 1, "затвор блокирует повторный выстрел", failures)
+	_check(main.game.score == score_before and main.get_node_or_null("Projectile") != null, "снаряд летит, не хитскан", failures)
+	await get_tree().create_timer(1.8).timeout
+	_check(main.game.score == score_before + SniperRifle.HIT_POINTS, "подтверждённое попадание за 500 м начисляет очки", failures)
+	await get_tree().create_timer(0.8).timeout
+	_check(main.rifle.can_fire(), "затвор снова готов", failures)
+	_check(main.rifle.fire(), "второй выстрел после затвора", failures)
+	await get_tree().create_timer(1.8).timeout
+	_check(main.game.score == score_before + SniperRifle.HIT_POINTS, "повторное попадание не начисляет очки дважды", failures)
+	main.rifle.ammo = 0
+	_check(not main.rifle.fire(), "без патронов выстрел невозможен", failures)
+
 	if failures.is_empty():
 		print("[SMOKE] итог: ВСЁ ПРОШЛО")
 		get_tree().quit(0)

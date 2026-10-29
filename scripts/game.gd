@@ -20,6 +20,15 @@ var wind_base := 0.18
 var wind_angle := 0.18 # текущее (гуляет вокруг базы)
 var wind_strength := 1.0
 var elapsed := 0.0
+signal score_changed(value: int)
+var score := 0
+
+
+func add_confirmed_score(points: int) -> void:
+	if points <= 0:
+		return
+	score += points
+	score_changed.emit(score)
 
 func _ready() -> void:
 	_add_key_action("move_forward", [KEY_W, KEY_UP])

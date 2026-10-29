@@ -1,8 +1,9 @@
 class_name MainScene
 extends Node3D
-## M2: башня и процедурная пустошь с дальними ориентирами.
+## M3: башня, пустошь и снайперская винтовка с баллистикой.
 
 const TOWER_SCENE := preload("res://scenes/Tower.tscn")
+const RIFLE_SCENE := preload("res://scenes/Rifle.tscn")
 
 var game: GameState
 var world: GameWorld
@@ -11,6 +12,8 @@ var sand: SandField
 var tower: ObservationTower
 var landmarks: WastelandLandmarks
 var target: TargetDummy
+var long_target: TargetDummy
+var rifle: SniperRifle
 var player: TowerPlayer
 var cam_rig: CameraRig
 var audio: SoundScape
@@ -59,6 +62,14 @@ func _ready() -> void:
 	var target_z := spawn.y - 1.4
 	target.global_position = Vector3(target_x, coast.ground_height(target_x, target_z), target_z)
 
+	# Дальняя мишень за противоположным краем башни, более 500 м.
+	long_target = TargetDummy.new()
+	long_target.name = "LongTarget"
+	add_child(long_target)
+	var far_x := spawn.x - 600.0
+	var far_z := spawn.y - 1.4
+	long_target.global_position = Vector3(far_x, coast.ground_height(far_x, far_z), far_z)
+
 	audio = SoundScape.new()
 	add_child(audio)
 	audio.setup(game, player)
@@ -69,6 +80,8 @@ func _ready() -> void:
 	player.camera_rig = cam_rig
 	var aim: Vector3 = target.global_position + Vector3(0.0, TargetDummy.CENTER_HEIGHT, 0.0) - (player.global_position + Vector3.UP * CameraRig.EYE)
 	cam_rig.set_view(atan2(aim.x, aim.z), atan2(aim.y, Vector2(aim.x, aim.z).length()))
+	rifle = RIFLE_SCENE.instantiate() as SniperRifle
+	camera_add_rifle()
 	set_time(game.night01)
 	apply_sun(game.sun_dir)
 	if OS.get_environment("JOURNEY_SMOKE") == "1":
@@ -78,6 +91,11 @@ func _ready() -> void:
 	elif OS.get_environment("JOURNEY_SHOT") == "1":
 		var shot := ScreenshotCapture.new()
 		add_child(shot)
+
+
+func camera_add_rifle() -> void:
+	cam_rig.cam.add_child(rifle)
+	rifle.setup(self)
 
 
 func set_time(value: float) -> void:
