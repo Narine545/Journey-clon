@@ -2,6 +2,8 @@ class_name SniperRifle
 extends Node3D
 ## Болтовая винтовка M3. Перезарядка — цикл затвора после каждого выстрела;
 ## снаряд существует в мире, а очки выдаются только за видимое камерой попадание.
+signal impact_confirmed(target: TargetDummy)
+
 const MUZZLE_SPEED := 620.0
 const CYCLE_TIME := 2.4
 const HIT_POINTS := 100
@@ -128,6 +130,7 @@ func on_projectile_hit(target: TargetDummy, hit_position: Vector3) -> void:
 		if screen.distance_to(viewport_size * 0.5) > minf(viewport_size.x, viewport_size.y) * 0.44:
 			return
 	_hit_flash = 1.0
+	impact_confirmed.emit(target)
 	audio.on_hit_confirmed()
 	if target.claim_confirmed_hit():
 		main.game.add_confirmed_score(HIT_POINTS)

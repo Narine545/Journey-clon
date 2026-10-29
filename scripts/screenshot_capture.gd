@@ -55,7 +55,4 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	print("[SHOT] сохранён: ", scope_path)
-	# Temporary preview for remote visual inspection.
-	scope.resize(640, 360)
-	scope.save_jpg("scope-preview.jpg", 0.6)
 	get_tree().quit(0)
