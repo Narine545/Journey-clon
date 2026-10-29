@@ -265,6 +265,7 @@ func _run() -> void:
 			empty_runs += 1
 	_check(empty_runs > 200 and empty_runs < 400, "10 минут без встреч — штатный исход (%d/600)" % empty_runs, failures)
 	_check(AmbientSpawner.chance_for(1.0, 1.0, 0.0, true) > probability and probability > 0.0, "эфир лишь меняет вероятность, появление возможно без него", failures)
+	_check(AmbientSpawner.chance_for(1.0, 1.2, 0.0, false) < probability and AmbientSpawner.chance_for(1.0, 1.0, 1.0, false) > probability, "погода и время суток мягко влияют на вероятность", failures)
 	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	main.cam_rig.aim_offset = Vector2.ZERO
 	main.cam_rig.set_view(-PI * 0.5, 0.0)

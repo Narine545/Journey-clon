@@ -53,8 +53,14 @@ func _try_spawn() -> void:
 		var z := center.z + sin(angle) * distance
 		var pos := Vector3(x, main.coast.ground_height(x, z), z)
 		var robot_center := pos + Vector3.UP * 3.0
-		# Не телепортировать появление прямо в кадре и не прятать его за дюной.
-		if main.cam_rig.cam.is_position_in_frustum(robot_center):
+		# Прицел сужает frustum; также запрещаем появления перед камерой
+		# в широком секторе обычного обзора, чтобы не возникать на глазах
+		# при выходе из оптики. Y игнорируется: это запас по горизонтали.
+		var forward := -main.cam_rig.cam.global_basis.z
+		var to_candidate := robot_center - main.cam_rig.cam.global_position
+		var look_2d := Vector2(forward.x, forward.z).normalized()
+		var to_2d := Vector2(to_candidate.x, to_candidate.z).normalized()
+		if look_2d.dot(to_2d) > 0.4 or main.cam_rig.cam.is_position_in_frustum(robot_center):
 			continue
 		if not Ballistics.terrain_hit(main.coast, main.cam_rig.cam.global_position, robot_center, 8.0).is_empty():
 			continue

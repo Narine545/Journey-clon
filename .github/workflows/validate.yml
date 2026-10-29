@@ -51,10 +51,6 @@ jobs:
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
-      - name: Temporary radio preview
-        run: base64 -w0 radio-preview.jpg | fold -w 3000 | awk '{printf "::notice::M4CHUNK radio %04d %s\n", NR, $0}'
-      - name: Temporary robot preview
-        run: base64 -w0 robot-preview.jpg | fold -w 3000 | awk '{printf "::notice::M4CHUNK robot %04d %s\n", NR, $0}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
