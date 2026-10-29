@@ -19,4 +19,26 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	print("[SHOT] сохранён: ", path)
+	# Второй кадр — горизонт и мегаструктуры, а не только мишень под ногами.
+	var main := get_parent() as MainScene
+	main.cam_rig.set_view(PI * 0.5, 0.06)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var landscape := get_viewport().get_texture().get_image()
+	var landscape_path := OS.get_environment("JOURNEY_LANDSCAPE_PATH")
+	if landscape_path.is_empty():
+		landscape_path = "user://landscape.png"
+	if landscape.save_png(landscape_path) != OK:
+		printerr("[SHOT] не удалось сохранить горизонт")
+		get_tree().quit(1)
+		return
+	print("[SHOT] сохранён: ", landscape_path)
+	# Компактный кадр для проверки по аннотациям CI.
+	landscape.resize(320, 180, Image.INTERPOLATE_LANCZOS)
+	var encoded := Marshalls.raw_to_base64(landscape.save_jpg_to_buffer(0.45))
+	var chunk := 0
+	for offset in range(0, encoded.length(), 3000):
+		print("[SHOT_PREVIEW_%d]%s" % [chunk, encoded.substr(offset, 3000)])
+		chunk += 1
 	get_tree().quit(0)

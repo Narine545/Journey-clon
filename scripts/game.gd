@@ -13,7 +13,7 @@ const SAND_SHADE := Color(0.47, 0.40, 0.56)
 const HORIZON_COL := Color(1.00, 0.70, 0.48)
 const SKY_COL := Color(0.27, 0.24, 0.44)
 
-const FOG_DISTANCE := 340.0
+const FOG_DISTANCE := 800.0
 
 # --- Ветер ---
 var wind_base := 0.18

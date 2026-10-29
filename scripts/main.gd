@@ -1,6 +1,6 @@
 class_name MainScene
 extends Node3D
-## M1: окружение M0, башня, ограниченная ходьба и временная мишень.
+## M2: башня и процедурная пустошь с дальними ориентирами.
 
 const TOWER_SCENE := preload("res://scenes/Tower.tscn")
 
@@ -9,6 +9,7 @@ var world: GameWorld
 var coast: Coast
 var sand: SandField
 var tower: ObservationTower
+var landmarks: WastelandLandmarks
 var target: TargetDummy
 var player: TowerPlayer
 var cam_rig: CameraRig
@@ -35,6 +36,9 @@ func _ready() -> void:
 	coast.attach_sand(sand)
 
 	var spawn := coast.spawn_point()
+	landmarks = WastelandLandmarks.new()
+	add_child(landmarks)
+	landmarks.setup(coast, spawn)
 	tower = TOWER_SCENE.instantiate() as ObservationTower
 	tower.position = Vector3(spawn.x, coast.ground_height(spawn.x, spawn.y), spawn.y)
 	add_child(tower)

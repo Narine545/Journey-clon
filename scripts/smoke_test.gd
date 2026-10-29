@@ -13,6 +13,27 @@ func _run() -> void:
 	await get_tree().physics_frame
 	var failures: Array[String] = []
 	_check(main.coast.mesh != null, "сетка рельефа", failures)
+	_check(Coast.WORLD_SIZE >= 2500.0, "ширина пустоши не менее 2,5 км", failures)
+	var outer := main.coast.get_node_or_null("OuterDunes") as MeshInstance3D
+	_check(outer != null and outer.mesh != null, "внешний пояс рельефа", failures)
+	for side in range(4):
+		var sign_value := 1.0 if side % 2 == 0 else -1.0
+		var x := Coast.CENTER.x + (sign_value * Coast.SIZE * 0.5 if side < 2 else 0.0)
+		var z := Coast.CENTER.y + (sign_value * Coast.SIZE * 0.5 if side >= 2 else 0.0)
+		var direction := Vector2(sign_value, 0.0) if side < 2 else Vector2(0.0, sign_value)
+		var edge := main.coast.height_at(x, z)
+		var outside := main.coast.ground_height(x + direction.x * 0.01, z + direction.y * 0.01)
+		_check(absf(edge - outside) < 0.1, "непрерывный шов рельефа %d" % side, failures)
+	_check(main.landmarks.detailed.size() == 3 and main.landmarks.simplified.size() == 3, "три ориентира и LOD", failures)
+	for i in range(main.landmarks.detailed.size()):
+		var high := main.landmarks.detailed[i]
+		var low := main.landmarks.simplified[i]
+		_check(is_equal_approx(high.visibility_range_end, low.visibility_range_begin), "порог LOD %d" % i, failures)
+		_check(high.mesh.surface_get_array_len(0) > low.mesh.surface_get_array_len(0), "упрощение геометрии %d" % i, failures)
+	_check(main.world._env.fog_height_density > 0.0 and main.world._env.fog_aerial_perspective > 0.0,
+			"высотная дымка и воздушная перспектива", failures)
+	var target_low := main.target.get_node_or_null("DistantSilhouette") as MeshInstance3D
+	_check(target_low != null and target_low.visibility_range_begin > 0.0, "дальний LOD мишени", failures)
 	_check(main.sand.get_texture() != null, "поле физического песка", failures)
 	_check(main.world != null and main.cam_rig.cam.current, "мир и активная камера", failures)
 	_check(main.audio._step_streams.size() == 6, "синтез шагов", failures)

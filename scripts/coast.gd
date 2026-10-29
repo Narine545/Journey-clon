@@ -14,7 +14,9 @@ extends MeshInstance3D
 ## поверхностью, а fragment-depth и мягкая прозрачность дают чистый
 ## переход у берега. Узкую мокрую кайму красит шейдер песка.
 
-const SIZE := 900.0 # сторона мира (м)
+const SIZE := 900.0 # детальная центральная область (м)
+const WORLD_SIZE := 2700.0 # ширина всей пустоши с внешним кольцом
+const OUTER_RINGS := 28 # радиальные полосы внешнего рельефа
 const SEGMENTS := 760 # 761×761 вершин, ячейка ~1.18 м — урез не «лесенкой»
 const CENTER := Vector2(170.0, 0.0) # центр плоскости
 
@@ -103,6 +105,7 @@ func setup(game_ref) -> void:
 	_build_grid()
 	_build_ao()
 	_build_mesh()
+	_build_outer_terrain()
 
 
 # ---------------------------------------------------------------------------
@@ -212,11 +215,31 @@ func sample_height(x: float, z: float) -> float:
 
 ## Настоящая высота поверхности: рельеф + смещение песка (следы).
 func ground_height(x: float, z: float) -> float:
-	var h := sample_height(x, z)
+	var half := SIZE * 0.5
+	var outside := absf(x - CENTER.x) > half or absf(z - CENTER.y) > half
+	var h := extended_height(x, z) if outside else sample_height(x, z)
 	if sand != null:
 		h += sand.disp_at(x, z)
 	return h
 
+
+
+## Сохраняем существующий берег в центре; снаружи он плавно переходит в
+## широкие низкие дюны. Вес равен нулю на шве, поэтому высоты совпадают.
+func extended_height(x: float, z: float) -> float:
+	var half := SIZE * 0.5
+	var edge_x := clampf(x, CENTER.x - half, CENTER.x + half)
+	var edge_z := clampf(z, CENTER.y - half, CENTER.y + half)
+	var distance := Vector2(x - edge_x, z - edge_z).length()
+	if distance <= 0.0:
+		return height_at(x, z)
+	var blend := smoothf(distance, 0.0, 420.0)
+	var low_dunes := 12.0 + 10.0 * _macro.get_noise_2d(x * 0.55, z * 0.55)
+	low_dunes += 6.0 * _ridge.get_noise_2d(x * 0.008, z * 0.006)
+	# Кратер сглажен экспонентой, а не вырезан ступенчатым кругом.
+	var crater_distance := Vector2(x - 930.0, z + 390.0).length()
+	low_dunes -= 19.0 * exp(-3.0 * pow(crater_distance / 145.0, 2.0))
+	return lerpf(height_at(edge_x, edge_z), low_dunes, blend)
 
 func ground_normal(x: float, z: float) -> Vector3:
 	var e := _cell * 0.35
@@ -401,6 +424,86 @@ func _build_mesh() -> void:
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
+
+## Внешний квадратный пояс использует общую кромку с детальной сеткой.
+## Вдоль шва те же 760 сегментов; радиально шаг растёт до ~32 м —
+## дополнительно ~170 тыс. треугольников вместо многомиллионной сетки 2,7 км.
+func _build_outer_terrain() -> void:
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var uvs2 := PackedVector2Array()
+	var indices := PackedInt32Array()
+	var row_size := SEGMENTS + 1
+	var patch_size := row_size * (OUTER_RINGS + 1)
+	var vertex_count := patch_size * 4
+	verts.resize(vertex_count)
+	normals.resize(vertex_count)
+	uvs.resize(vertex_count)
+	uvs2.resize(vertex_count)
+	indices.resize(4 * OUTER_RINGS * SEGMENTS * 6)
+	var inner_half := SIZE * 0.5
+	var outer_half := WORLD_SIZE * 0.5
+	for side in range(4):
+		for ring in range(OUTER_RINGS + 1):
+			var extent := lerpf(inner_half, outer_half, float(ring) / float(OUTER_RINGS))
+			for i in range(row_size):
+				var along := lerpf(-extent, extent, float(i) / float(SEGMENTS))
+				var x := CENTER.x + (extent if side == 0 else -extent if side == 1 else along)
+				var z := CENTER.y + (along if side < 2 else extent if side == 2 else -extent)
+				var index := side * patch_size + ring * row_size + i
+				verts[index] = Vector3(x, extended_height(x, z), z)
+				uvs[index] = Vector2(x, z) * 0.01
+				var edge_x := clampf(x, CENTER.x - inner_half, CENTER.x + inner_half)
+				var edge_z := clampf(z, CENTER.y - inner_half, CENTER.y + inner_half)
+				var fade := smoothf(Vector2(x - edge_x, z - edge_z).length(), 0.0, 300.0)
+				var ix := clampi(roundi((edge_x - _x0) / _cell), 0, SEGMENTS)
+				var iz := clampi(roundi((edge_z - _z0) / _cell), 0, SEGMENTS)
+				uvs2[index] = Vector2(lerpf(_dgrid[iz * _row + ix], 1.0, fade), lerpf(_ao_at(ix, iz), 1.0, fade))
+	# Нормали вычисляем по соседним вершинам каждого участка; направление
+	# исправляем к небу, независимо от ориентации стороны квадрата.
+	for side in range(4):
+		for ring in range(OUTER_RINGS + 1):
+			for i in range(row_size):
+				var index := side * patch_size + ring * row_size + i
+				var a := verts[side * patch_size + ring * row_size + maxi(i - 1, 0)]
+				var b := verts[side * patch_size + ring * row_size + mini(i + 1, SEGMENTS)]
+				var c := verts[side * patch_size + maxi(ring - 1, 0) * row_size + i]
+				var d := verts[side * patch_size + mini(ring + 1, OUTER_RINGS) * row_size + i]
+				var normal := (b - a).cross(d - c).normalized()
+				normals[index] = normal if normal.y >= 0.0 else -normal
+	var w := 0
+	for side in range(4):
+		for ring in range(OUTER_RINGS):
+			for i in range(SEGMENTS):
+				var a := side * patch_size + ring * row_size + i
+				var b := a + 1
+				var c := a + row_size
+				var d := c + 1
+				# Разный обход двух противоположных граней сохраняет видимую сторону.
+				if side == 0 or side == 3:
+					indices[w] = a; indices[w + 1] = c; indices[w + 2] = b
+					indices[w + 3] = b; indices[w + 4] = c; indices[w + 5] = d
+				else:
+					indices[w] = a; indices[w + 1] = b; indices[w + 2] = c
+					indices[w + 3] = b; indices[w + 4] = d; indices[w + 5] = c
+				w += 6
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_TEX_UV2] = uvs2
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var outer_mesh := ArrayMesh.new()
+	outer_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var outer := MeshInstance3D.new()
+	outer.name = "OuterDunes"
+	outer.mesh = outer_mesh
+	outer.material_override = material_override # один ветер, свет и день/ночь с ближним песком
+	outer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(outer)
+
 func _process(_delta: float) -> void:
 	if material_override != null:
 		var m: ShaderMaterial = material_override
@@ -437,7 +540,7 @@ func set_night01(v: float) -> void:
 	m.set_shader_parameter("sand_shade", DAY_SHADE.lerp(NIGHT_SHADE, v))
 	m.set_shader_parameter("horizon_col", DAY_HORIZON.lerp(NIGHT_HORIZON, v))
 	m.set_shader_parameter("sky_col", DAY_SKY.lerp(NIGHT_SKY, v))
-	m.set_shader_parameter("fog_distance", lerpf(340.0, 130.0, v))
+	m.set_shader_parameter("fog_distance", lerpf(800.0, 300.0, v))
 	m.set_shader_parameter("glitter_amount", lerpf(0.20, 0.06, v))
 	m.set_shader_parameter("night_amount", v)
 
