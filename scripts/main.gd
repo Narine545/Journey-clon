@@ -96,6 +96,9 @@ func _ready() -> void:
 	set_time(game.night01)
 	apply_sun(game.sun_dir)
 	if OS.get_environment("JOURNEY_SMOKE") == "1":
+		# Обычный случайный спавн отключён только в CI, чтобы остальные тесты
+		# не зависели от случайной встречи в соседнем физическом кадре.
+		ambient_spawner.set_process(false)
 		var smoke := SmokeTest.new()
 		add_child(smoke)
 		smoke.setup(self)

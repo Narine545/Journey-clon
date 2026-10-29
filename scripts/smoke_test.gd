@@ -12,14 +12,22 @@ func setup(main_ref: MainScene) -> void:
 func _run() -> void:
 	await get_tree().physics_frame
 	var failures: Array[String] = []
-	# Дальнейшие проверки случайного процесса детерминированны, а не зависят
-	# от реального появления робота во время тестирования M0–M3.
-	main.ambient_spawner.set_process(false)
-	# Демо M4: три типа должны реально существовать с первого кадра,
-	# попадать в исходный кадр и не быть скрытыми рельефом.
-	_check(main.ambient_spawner.preview_robots and main.ambient_spawner.get_child_count() == 3, "три робота в демонстрации при старте", failures)
+	# По умолчанию — редкий режим без обязательных объектов и F4.
+	_check(not main.ambient_spawner.preview_robots and main.ambient_spawner.get_child_count() == 0, "тихий режим запускается без гарантированных роботов", failures)
+	var reset_key := InputEventKey.new()
+	reset_key.physical_keycode = KEY_F4
+	reset_key.pressed = true
+	main.ambient_spawner._unhandled_input(reset_key)
+	_check(main.ambient_spawner.get_child_count() == 0, "F4 не создаёт роботов в тихом режиме", failures)
+	# Отдельно включаем опциональную демонстрацию и проверяем её в CI;
+	# после проверки возвращаем исходную настройку и пустую сцену.
+	ProjectSettings.set_setting("journey/m4/robot_preview", true)
+	var preview_spawner := AmbientSpawner.new()
+	main.add_child(preview_spawner)
+	preview_spawner.setup(main)
+	_check(preview_spawner.preview_robots and preview_spawner.get_child_count() == 3, "три робота в режиме демонстрации", failures)
 	var demo_kinds: Array[int] = []
-	for child in main.ambient_spawner.get_children():
+	for child in preview_spawner.get_children():
 		var demo_robot := child as AmbientRobot
 		if demo_robot == null:
 			continue
@@ -28,26 +36,11 @@ func _run() -> void:
 		_check(main.cam_rig.cam.is_position_in_frustum(demo_center), "демонстрационный робот %d в начальном кадре" % demo_robot.kind, failures)
 		_check(Ballistics.terrain_hit(main.coast, main.cam_rig.cam.global_position, demo_center, 4.0).is_empty(), "демонстрационный робот %d не скрыт рельефом" % demo_robot.kind, failures)
 	_check(demo_kinds.has(0) and demo_kinds.has(1) and demo_kinds.has(2), "все три типа представлены", failures)
-	var reset_key := InputEventKey.new()
-	reset_key.physical_keycode = KEY_F4
-	reset_key.pressed = true
-	main.ambient_spawner._unhandled_input(reset_key)
+	preview_spawner._unhandled_input(reset_key)
 	await get_tree().process_frame
-	_check(main.ambient_spawner.get_child_count() == 3, "F4 восстанавливает демо", failures)
-	# Остальные M0–M4 тесты, включая отсутствие робота при живом сигнале,
-	# продолжаются на пустой сцене; обычный редкий процесс не менялся.
-	for child in main.ambient_spawner.get_children():
-		child.free()
+	_check(preview_spawner.get_child_count() == 3, "F4 восстанавливает демо", failures)
+	preview_spawner.free()
 	ProjectSettings.set_setting("journey/m4/robot_preview", false)
-	var quiet_spawner := AmbientSpawner.new()
-	main.add_child(quiet_spawner)
-	quiet_spawner.setup(main)
-	quiet_spawner.set_process(false)
-	_check(not quiet_spawner.preview_robots and quiet_spawner.get_child_count() == 0, "тихий режим запускается без гарантированных роботов", failures)
-	quiet_spawner._unhandled_input(reset_key)
-	_check(quiet_spawner.get_child_count() == 0, "F4 не создаёт роботов в тихом режиме", failures)
-	quiet_spawner.free()
-	ProjectSettings.set_setting("journey/m4/robot_preview", true)
 	_check(main.coast.mesh != null, "сетка рельефа", failures)
 	_check(Coast.WORLD_SIZE >= 2500.0, "ширина пустоши не менее 2,5 км", failures)
 	var outer := main.coast.get_node_or_null("OuterDunes") as MeshInstance3D

@@ -17,7 +17,7 @@ const PREVIEW_OFFSETS := [Vector2(185.0, -25.0), Vector2(220.0, 0.0), Vector2(26
 func setup(main_ref: MainScene) -> void:
 	main = main_ref
 	rng.randomize()
-	preview_robots = bool(ProjectSettings.get_setting("journey/m4/robot_preview", true))
+	preview_robots = bool(ProjectSettings.get_setting("journey/m4/robot_preview", false))
 	if preview_robots:
 		reset_preview()
 		set_process(false) # демонстрация вместо случайного фонового спавна
