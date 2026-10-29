@@ -34,6 +34,23 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	print("[SHOT] сохранён: ", landscape_path)
+	# Взгляд с самого края, без оптики, для проверки оружия и перил.
+	main.player.position = Vector3(ObservationTower.WALK_LIMIT, ObservationTower.DECK_HEIGHT, -1.4)
+	main.cam_rig.set_view(PI * 0.5, -0.30)
+	main.rifle._physics_process(0.016)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var rail := get_viewport().get_texture().get_image()
+	var rail_path := OS.get_environment("JOURNEY_RAIL_PATH")
+	if rail_path.is_empty():
+		rail_path = "user://rail.png"
+	if rail.save_png(rail_path) != OK:
+		printerr("[SHOT] не удалось сохранить вид у перил")
+		get_tree().quit(1)
+		return
+	rail.resize(640, 360)
+	rail.save_jpg("rail-preview.jpg", 0.45)
 	# Небо в оптике — отдельный регрессионный кадр Forward+.
 	main.cam_rig.set_view(PI * 0.5, 0.60)
 	main.rifle.aim_requested = true

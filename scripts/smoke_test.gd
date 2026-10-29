@@ -109,10 +109,10 @@ func _run() -> void:
 		if point.y <= main.coast.ground_height(point.x, point.z):
 			terrain_clear = false
 	_check(terrain_clear, "рельеф не закрывает мишень", failures)
-	# Луч к мишени пересекает перила между двумя поручнями, не через настил.
+	# После подъёма камеры луч к ближней мишени проходит над верхним поручнем.
 	var rail_t: float = (main.tower.global_position.x + 5.95 - eye.x) / (target_center.x - eye.x)
 	var rail_height: float = eye.lerp(target_center, rail_t).y - main.tower.global_position.y - ObservationTower.DECK_HEIGHT
-	_check(rail_height > 0.55 and rail_height < 1.17, "мишень между поручнями", failures)
+	_check(rail_height > 1.34, "ближняя мишень видна над поручнем (%.2f м)" % rail_height, failures)
 	var start_yaw: float = main.cam_rig.yaw
 	main.cam_rig.apply_mouse_motion(Vector2(50, 0))
 	_check(not is_equal_approx(main.cam_rig.yaw, start_yaw), "поворот мышью", failures)
@@ -162,6 +162,34 @@ func _run() -> void:
 		var p := main.player.position
 		_check(absf(p.x) <= ObservationTower.WALK_LIMIT and absf(p.z) <= ObservationTower.WALK_LIMIT
 				and is_equal_approx(p.y, ObservationTower.DECK_HEIGHT), "граница площадки %s" % direction, failures)
+	# Проверяем все углы ограничивающих коробок модели у сторон и в углах
+	# площадки, при горизонтальном и крутом взгляде вверх/вниз.
+	main.rifle.aim_requested = false
+	main.rifle.scope_amount = 0.0
+	main.rifle._recoil = 0.0
+	var limit := ObservationTower.WALK_LIMIT
+	var poses := [Vector2(limit, 0), Vector2(-limit, 0), Vector2(0, limit), Vector2(0, -limit), Vector2(limit, limit), Vector2(-limit, -limit)]
+	var model_clear := true
+	for deck_pos in poses:
+		main.player.position = Vector3(deck_pos.x, ObservationTower.DECK_HEIGHT, deck_pos.y)
+		for direction_index in range(8):
+			for view_pitch in [-1.3, -0.6, 0.0, 0.6, 1.3]:
+				main.cam_rig.set_view(float(direction_index) * PI / 4.0, view_pitch)
+				main.rifle._physics_process(0.0)
+				if not _model_within_rails():
+					model_clear = false
+	_check(model_clear, "винтовка остаётся внутри перил при разных положениях и углах", failures)
+	# Равномерное масштабирование вместе со смещением сохраняет проекцию.
+	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
+	main.cam_rig.set_view(PI * 0.5, -0.3)
+	main.rifle._physics_process(0.0)
+	var barrel := main.rifle._view_model.get_node("Barrel") as MeshInstance3D
+	var center_projection := main.cam_rig.cam.unproject_position(barrel.global_position)
+	main.player.position.x = limit
+	main.cam_rig.refresh_pose()
+	main.rifle._physics_process(0.0)
+	var edge_projection := main.cam_rig.cam.unproject_position(barrel.global_position)
+	_check(center_projection.distance_to(edge_projection) < 1.0, "положение винтовки на экране сохраняется у перил", failures)
 	# M3: реальный снаряд летит к дальней мишени, а не попадает в кадр выстрела.
 	_check(main.rifle.scene_file_path == "res://scenes/Rifle.tscn", "отдельная сцена винтовки", failures)
 	_check(main.rifle.get_parent() == main.cam_rig.cam, "винтовка прикреплена к камере", failures)
@@ -346,10 +374,18 @@ func _run() -> void:
 	main.rifle._recoil = 0.0
 	main.rifle._hit_flash = 0.0
 	var score_before_robot := main.game.score
+	var robot_feedback: Array[float] = []
+	main.rifle.robot_impact_confirmed.connect(func(_robot: AmbientRobot) -> void: robot_feedback.append(main.rifle._hit_flash))
+	main.rifle.on_robot_hit(victim, shot_origin + main.cam_rig.cam.global_basis.z * 10.0)
+	_check(robot_feedback.is_empty() and main.rifle._hit_flash == 0.0, "робот вне кадра не подтверждается", failures)
+	main.rifle.aim_requested = true
+	main.rifle.scope_amount = 1.0
+	main.rifle._physics_process(0.0)
 	_check(main.rifle.fire(), "выстрел по роботу", failures)
 	await get_tree().create_timer(1.0).timeout
 	_check(not victim.alive and victim.hitbox.disabled, "реальный летящий снаряд тихо выводит робота из строя", failures)
-	_check(main.game.score == score_before_robot and main.rifle._hit_flash == 0.0, "робот не создаёт награды, счётчика и сигнала убийства", failures)
+	_check(robot_feedback.size() == 1 and robot_feedback[0] > 0.9, "видимое попадание в робота подтверждается маркером", failures)
+	_check(main.game.score == score_before_robot, "подтверждение робота не начисляет очки", failures)
 	for robot in robots:
 		robot.queue_free()
 
@@ -359,6 +395,20 @@ func _run() -> void:
 	else:
 		printerr("[SMOKE] итог: ошибки: ", failures)
 		get_tree().quit(1)
+
+
+func _model_within_rails() -> bool:
+	var max_coordinate := ObservationTower.HALF_DECK - 0.10
+	for child in main.rifle._view_model.get_children():
+		var mesh_part := child as MeshInstance3D
+		if mesh_part == null:
+			continue
+		var bounds := mesh_part.mesh.get_aabb()
+		for i in range(8):
+			var corner := main.tower.to_local(mesh_part.to_global(bounds.get_endpoint(i)))
+			if absf(corner.x) > max_coordinate or absf(corner.z) > max_coordinate:
+				return false
+	return true
 
 
 func _check(ok: bool, description: String, failures: Array[String]) -> void:

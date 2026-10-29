@@ -40,18 +40,21 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers
-          JOURNEY_SHOT=1 JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
+          JOURNEY_SHOT=1 JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
           test -s tower.png
           test -s landscape.png
           test -s scope.png
           test -s radio.png
           test -s robot.png
           test -s sky.png
+          test -s rail.png
           grep -q 'Vulkan.*Forward+' render.log
           if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log; then
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
+      - name: Temporary rail preview
+        run: base64 -w0 rail-preview.jpg | fold -w 3000 | awk '{printf "::notice::RAILCHUNK %04d %s\n", NR, $0}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -64,3 +67,4 @@ jobs:
             radio.png
             robot.png
             sky.png
+            rail.png

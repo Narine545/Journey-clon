@@ -3,12 +3,16 @@ extends Node3D
 ## Болтовая винтовка M3. Перезарядка — цикл затвора после каждого выстрела;
 ## снаряд существует в мире, а очки выдаются только за видимое камерой попадание.
 signal impact_confirmed(target: TargetDummy)
+signal robot_impact_confirmed(robot: AmbientRobot)
 
 const MUZZLE_SPEED := 620.0
 const CYCLE_TIME := 2.4
 const HIT_POINTS := 100
 const SCOPE_FOV := 18.0
 const RANGE_LIMIT := 1500.0
+# Самая дальняя вершина оружия в локальных координатах камеры < 1.6 м.
+const VIEW_MODEL_RADIUS := 1.60
+const RAIL_CLEARANCE := 0.16
 
 var main: MainScene
 var cam_rig: CameraRig
@@ -70,7 +74,7 @@ func _physics_process(delta: float) -> void:
 	cam_rig.aim_offset = sway + Vector2(0.0, _recoil)
 	cam_rig.refresh_pose()
 	_view_model.visible = scope_amount < 0.45
-	_view_model.position.z = -0.52 + _recoil * 2.0
+	_update_view_model()
 	crosswind = Ballistics.wind_velocity(main.game).dot(camera.global_basis.x)
 	_range_clock -= delta
 	if scope_amount > 0.5 and _range_clock <= 0.0:
@@ -120,22 +124,52 @@ func measure_range() -> float:
 
 
 func on_projectile_hit(target: TargetDummy, hit_position: Vector3) -> void:
-	# «Камера винтовки» подтверждает только то, что остаётся внутри кадра,
-	# а в оптике — внутри круглого поля, а не в чёрной маске.
+	if not _is_visible_hit(hit_position):
+		return
+	_show_hit_confirmation()
+	impact_confirmed.emit(target)
+	if target.claim_confirmed_hit():
+		main.game.add_confirmed_score(HIT_POINTS)
+
+
+func on_robot_hit(robot: AmbientRobot, hit_position: Vector3) -> void:
+	if not _is_visible_hit(hit_position):
+		return
+	# Тот же тихий тик и маркер, что у мишеней, но без очков и звука смерти.
+	_show_hit_confirmation()
+	robot_impact_confirmed.emit(robot)
+
+
+func _show_hit_confirmation() -> void:
+	_hit_flash = 1.0
+	audio.on_hit_confirmed()
+
+
+func _is_visible_hit(hit_position: Vector3) -> bool:
+	# Камера подтверждает только то, что внутри кадра и не закрыто рельефом;
+	# в оптике попадание также должно быть внутри круглого поля.
 	if camera.is_position_behind(hit_position) or not camera.is_position_in_frustum(hit_position):
-		return
+		return false
 	if not Ballistics.terrain_hit(main.coast, camera.global_position, hit_position, 12.0).is_empty():
-		return
+		return false
 	if scope_amount > 0.15:
 		var screen := camera.unproject_position(hit_position)
 		var viewport_size := get_viewport().get_visible_rect().size
 		if screen.distance_to(viewport_size * 0.5) > minf(viewport_size.x, viewport_size.y) * 0.44:
-			return
-	_hit_flash = 1.0
-	impact_confirmed.emit(target)
-	audio.on_hit_confirmed()
-	if target.claim_confirmed_hit():
-		main.game.add_confirmed_score(HIT_POINTS)
+			return false
+	return true
+
+
+func _update_view_model() -> void:
+	# Модель и её смещение к камере масштабируются одинаково. При перспективной
+	# проекции видимый размер почти не меняется, но у самого края реальная
+	# геометрия помещается перед перилами при любом повороте камеры.
+	var local_player := main.player.position
+	var safe_half := ObservationTower.HALF_DECK - RAIL_CLEARANCE
+	var clearance := minf(safe_half - absf(local_player.x), safe_half - absf(local_player.z))
+	var model_scale := clampf(clearance / VIEW_MODEL_RADIUS, 0.1, 1.0)
+	_view_model.scale = Vector3.ONE * model_scale
+	_view_model.position = Vector3(0.28, -0.25, -0.52 + _recoil * 2.0) * model_scale
 
 
 func _build_view_model() -> void:
