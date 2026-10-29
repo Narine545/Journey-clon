@@ -9,11 +9,39 @@ const MIN_DISTANCE := 220.0
 const MAX_DISTANCE := 520.0
 var main: MainScene
 var rng := RandomNumberGenerator.new()
+var preview_robots := false
+# Точки относительно башни: все рядом с начальным направлением взгляда.
+const PREVIEW_OFFSETS := [Vector2(185.0, -25.0), Vector2(220.0, 0.0), Vector2(260.0, 35.0)]
 
 
 func setup(main_ref: MainScene) -> void:
 	main = main_ref
 	rng.randomize()
+	preview_robots = bool(ProjectSettings.get_setting("journey/m4/robot_preview", true))
+	if preview_robots:
+		reset_preview()
+		set_process(false) # демонстрация вместо случайного фонового спавна
+
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# Явный ручной сброс только в демонстрационном режиме, без таймера/волн.
+	if preview_robots and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F4:
+		reset_preview()
+
+
+func reset_preview() -> void:
+	for child in get_children():
+		child.queue_free()
+	for i in range(PREVIEW_OFFSETS.size()):
+		var offset: Vector2 = PREVIEW_OFFSETS[i]
+		var x := main.tower.global_position.x + offset.x
+		var z := main.tower.global_position.z + offset.y
+		var p := Vector3(x, main.coast.ground_height(x, z), z)
+		var robot := spawn_at(i as AmbientRobot.Kind, p, 4010 + i)
+		# Живые демонстрационные экземпляры остаются до перезапуска/F4.
+		robot.preview = true
+		robot._choose_destination()
 
 
 static func chance_for(delta: float, wind_strength: float, night: float, signal_on_air: bool) -> float:

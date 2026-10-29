@@ -131,7 +131,9 @@ func _setup_sky_plus_material() -> void:
 	_sky_mat.set_shader_parameter("cloud_shape", _noise_3d(64, 2, 0.023, FastNoiseLite.TYPE_SIMPLEX_SMOOTH))
 	_sky_mat.set_shader_parameter("cloud_noise", _noise_3d(64, 19, 0.045, FastNoiseLite.TYPE_CELLULAR))
 	_sky_mat.set_shader_parameter("cloud_color_texture", _noise_2d(256, 41, 0.018, 3))
-	_sky_mat.set_shader_parameter("use_cirrus", true)
+	# Тонкий 2D-слой с искажением выглядел масляными разводами в оптике.
+	# Основное Sky++ и объёмные облака остаются; циррус доступен для A/B.
+	_sky_mat.set_shader_parameter("use_cirrus", false)
 	_sky_mat.set_shader_parameter("cirrus_texture", _noise_2d(512, 73, 0.012, 4))
 	_sky_mat.set_shader_parameter("cirrus_distortion_texture", _noise_2d(256, 7, 0.02, 2))
 	_sky_mat.set_shader_parameter("cirrus_mask_texture", _noise_2d(256, 101, 0.008, 2))

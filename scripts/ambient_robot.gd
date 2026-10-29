@@ -4,12 +4,14 @@ extends Node3D
 ## Попадание гасит механизм и валит его без звука, наград или эффектов.
 enum Kind { SCOUT, CARRIER, WALKER }
 const ROAM_RADIUS := 65.0
+const PREVIEW_ROAM_RADIUS := 20.0
 var kind: Kind
 var coast: Coast
 var origin: Vector3
 var velocity := Vector2.ZERO
 var destination := Vector2.ZERO
 var alive := true
+var preview := false
 var age := 0.0
 var lifetime := 480.0
 var speed := 0.8
@@ -93,7 +95,7 @@ func _box(at: Vector3, dimensions: Vector3, material: Material) -> void:
 
 func _choose_destination() -> void:
 	var angle := rng.randf_range(0.0, TAU)
-	var radius := rng.randf_range(15.0, ROAM_RADIUS)
+	var radius := rng.randf_range(8.0, PREVIEW_ROAM_RADIUS if preview else ROAM_RADIUS)
 	destination = Vector2(origin.x, origin.z) + Vector2(cos(angle), sin(angle)) * radius
 
 

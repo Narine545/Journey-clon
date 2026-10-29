@@ -24,6 +24,11 @@ window/size/viewport_height=1080
 
 enabled=PackedStringArray()
 
+; Временная демонстрация M4: false возвращает редкий независимый спавн.
+[journey]
+
+m4/robot_preview=true
+
 [rendering]
 
 renderer/rendering_method="forward_plus"

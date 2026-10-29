@@ -166,12 +166,14 @@ func height_at(x: float, z: float) -> float:
 
 ## Высота дюнного поля над пляжем (гребни вдоль берега).
 func _dune_height(x: float, z: float) -> float:
-	var w: float = _dune.get_noise_2d(x * 1.0, z * 1.0) * 42.0
-	var ridge: float = _ridge.get_noise_2d((x + w) * 0.024, z * 0.0072)
-	var h: float = 3.2 + 9.0 * (ridge * 0.5 + 0.5)
+	# Более широкие, менее параллельные формы вместо узких полос. Основной
+	# профиль берега и дальняя стена остаются прежними; меняем только детали.
+	var w: float = _dune.get_noise_2d(x, z) * 28.0
+	var ridge: float = _ridge.get_noise_2d((x + w) * 0.012, (z + w * 0.3) * 0.010)
+	var h: float = 3.2 + 5.5 * (ridge * 0.5 + 0.5)
 	var m: float = 0.72 + 0.55 * (_macro.get_noise_2d(x, z) * 0.5 + 0.5)
 	h *= m
-	h += 0.9 * _fine.get_noise_2d(x * 0.055, z * 0.055)
+	h += 0.18 * _fine.get_noise_2d(x * 0.035, z * 0.035)
 	return h
 
 

@@ -229,7 +229,7 @@ func _gen_radio_noise() -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5589
 	var count := RATE_SFX * 2
-	var fade := RATE_SFX / 20
+	var fade: int = int(float(RATE_SFX) / 20.0)
 	var samples := PackedFloat32Array()
 	samples.resize(count + fade)
 	var low := 0.0

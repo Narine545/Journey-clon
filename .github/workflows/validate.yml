@@ -22,8 +22,8 @@ jobs:
       - name: Import
         run: |
           ./godot --headless --path . --import 2>&1 | tee import.log
-          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' import.log; then
-            grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' import.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' import.log; then
+            grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' import.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
       - name: M4 smoke test
@@ -32,10 +32,10 @@ jobs:
           JOURNEY_SMOKE=1 timeout 300 ./godot --headless --path . 2>&1 | tee smoke.log
           code=${PIPESTATUS[0]}
           set -e
-          grep -iE 'SMOKE.*(FAIL|итог)|SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' smoke.log | head -30 | while IFS= read -r line; do echo "::notice::$line"; done || true
+          grep -iE 'SMOKE.*(FAIL|итог)|SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' smoke.log | head -30 | while IFS= read -r line; do echo "::notice::$line"; done || true
           if [ "$code" -ne 0 ]; then echo "::error::Smoke exited with code $code"; exit 1; fi
           grep -q '\[SMOKE\] итог: ВСЁ ПРОШЛО' smoke.log
-          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' smoke.log; then exit 1; fi
+          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' smoke.log; then exit 1; fi
       - name: Forward+ Vulkan render
         run: |
           sudo apt-get update -qq
@@ -47,10 +47,18 @@ jobs:
           test -s radio.png
           test -s robot.png
           grep -q 'Vulkan.*Forward+' render.log
-          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' render.log; then
-            grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log; then
+            grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
+      - name: Temporary demo preview
+        run: base64 -w0 demo-preview.jpg | fold -w 3000 | awk '{printf "::notice::CAP demo %04d %s\n", NR, $0}'
+      - name: Temporary landscape preview
+        run: base64 -w0 land-preview.jpg | fold -w 3000 | awk '{printf "::notice::CAP land %04d %s\n", NR, $0}'
+      - name: Temporary sky before preview
+        run: base64 -w0 sky-before-preview.jpg | fold -w 3000 | awk '{printf "::notice::CAP skybefore %04d %s\n", NR, $0}'
+      - name: Temporary sky after preview
+        run: base64 -w0 sky-after-preview.jpg | fold -w 3000 | awk '{printf "::notice::CAP skyafter %04d %s\n", NR, $0}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
