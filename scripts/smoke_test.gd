@@ -266,6 +266,23 @@ func _run() -> void:
 	_check(empty_runs > 200 and empty_runs < 400, "10 минут без встреч — штатный исход (%d/600)" % empty_runs, failures)
 	_check(AmbientSpawner.chance_for(1.0, 1.0, 0.0, true) > probability and probability > 0.0, "эфир лишь меняет вероятность, появление возможно без него", failures)
 	_check(AmbientSpawner.chance_for(1.0, 1.2, 0.0, false) < probability and AmbientSpawner.chance_for(1.0, 1.0, 1.0, false) > probability, "погода и время суток мягко влияют на вероятность", failures)
+	# Испытать и настоящий путь выбора позиции, не только ручное spawn_at.
+	main.cam_rig.refresh_pose()
+	radio.live_on_air = false
+	main.ambient_spawner.rng.seed = 1771
+	for attempt in range(10):
+		if main.ambient_spawner.get_child_count() > 0:
+			break
+		main.ambient_spawner._try_spawn()
+	_check(main.ambient_spawner.get_child_count() == 1, "реальный алгоритм создаёт встречу и без сигнала", failures)
+	if main.ambient_spawner.get_child_count() > 0:
+		var spawned := main.ambient_spawner.get_child(0) as AmbientRobot
+		var view_vector := -main.cam_rig.cam.global_basis.z
+		var robot_vector := spawned.global_position - main.cam_rig.cam.global_position
+		var view_flat := Vector2(view_vector.x, view_vector.z).normalized()
+		var robot_flat := Vector2(robot_vector.x, robot_vector.z).normalized()
+		_check(view_flat.dot(robot_flat) <= 0.4, "робот появляется за пределами широкого сектора обзора", failures)
+		spawned.free()
 	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	main.cam_rig.aim_offset = Vector2.ZERO
 	main.cam_rig.set_view(-PI * 0.5, 0.0)
