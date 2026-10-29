@@ -29,7 +29,6 @@ func setup(main_ref: MainScene) -> void:
 	live_on_air = rng.randf() < 0.5
 	position = Vector3(-4.75, ObservationTower.DECK_HEIGHT + 1.18, -3.9)
 	_noise = _make_player(main.audio._gen_radio_noise())
-	_noise.play()
 	_record = _make_player(null)
 	_live = _make_player(null)
 	_recordings = [load("res://assets/radio/post.wav") as AudioStream, load("res://assets/radio/weather.wav") as AudioStream]
@@ -106,7 +105,10 @@ func set_tuning(value: bool) -> void:
 
 func set_powered(value: bool) -> void:
 	powered = value
-	if not value:
+	if value and not _noise.playing:
+		_noise.play()
+	elif not value:
+		_noise.stop()
 		_record.stop()
 		_live.stop()
 	_last_station = -1

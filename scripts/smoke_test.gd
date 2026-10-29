@@ -233,7 +233,7 @@ func _run() -> void:
 	radio.set_frequency(94.2)
 	radio.live_on_air = true
 	radio.update_signal()
-	_check(radio.station_index == 1 and radio.signal_strength > 0.8, "живой сигнал при наличии эфира", failures)
+	_check(radio.station_index == 1 and radio.signal_strength > 0.8 and main.ambient_spawner.get_child_count() == 0, "живой сигнал возможен без робота", failures)
 	radio.live_on_air = false
 	radio.update_signal()
 	_check(radio.station_index == -1 and radio.signal_strength == 0.0, "эфир может пропасть без появления робота", failures)
@@ -244,7 +244,7 @@ func _run() -> void:
 	radio.set_frequency(120.0)
 	_check(is_equal_approx(radio.frequency, RadioTuner.MAX_FREQ), "шкала ограничена", failures)
 	radio.set_powered(false)
-	_check(not radio.powered and not radio._record.playing and not radio._live.playing, "питание выключает записи и сигнал", failures)
+	_check(not radio.powered and not radio._record.playing and not radio._live.playing and not radio._noise.playing, "питание выключает записи, шум и сигнал", failures)
 	radio.set_tuning(false)
 	_check(main.rifle.hud.visible, "выход из радио возвращает интерфейс винтовки", failures)
 	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)

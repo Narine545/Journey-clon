@@ -55,4 +55,52 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	print("[SHOT] сохранён: ", scope_path)
+	# Временно открыть радио около стола для проверки шкалы.
+	main.rifle.aim_requested = false
+	main.rifle.scope_amount = 0.0
+	main.rifle._physics_process(0.016)
+	main.player.position = Vector3(-4.0, ObservationTower.DECK_HEIGHT, -3.9)
+	main.cam_rig.set_view(-PI * 0.5, -0.4)
+	main.radio_tuner.set_tuning(true)
+	main.radio_tuner.set_frequency(88.5)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var radio_image := get_viewport().get_texture().get_image()
+	var radio_path := OS.get_environment("JOURNEY_RADIO_PATH")
+	if radio_path.is_empty():
+		radio_path = "user://radio.png"
+	if radio_image.save_png(radio_path) != OK:
+		printerr("[SHOT] не удалось сохранить радио")
+		get_tree().quit(1)
+		return
+	radio_image.resize(640, 360)
+	radio_image.save_jpg("radio-preview.jpg", 0.6)
+	# Детерминированный объект только для CI-кадра, не для обычной игры.
+	main.radio_tuner.set_tuning(false)
+	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	var robot_x := main.tower.global_position.x - 220.0
+	var robot_z := main.tower.global_position.z - 1.4
+	var robot_pos := Vector3(robot_x, main.coast.ground_height(robot_x, robot_z), robot_z)
+	var robot := main.ambient_spawner.spawn_at(AmbientRobot.Kind.SCOUT, robot_pos, 1401)
+	robot.speed = 0.0
+	var robot_eye := main.player.global_position + Vector3.UP * CameraRig.EYE
+	var robot_dir := (robot.global_position + Vector3.UP * robot.body_size.y * 0.5 - robot_eye).normalized()
+	main.cam_rig.set_view(atan2(robot_dir.x, robot_dir.z), asin(robot_dir.y))
+	main.rifle.aim_requested = true
+	main.rifle.scope_amount = 1.0
+	main.rifle._physics_process(0.016)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var robot_image := get_viewport().get_texture().get_image()
+	var robot_path := OS.get_environment("JOURNEY_ROBOT_PATH")
+	if robot_path.is_empty():
+		robot_path = "user://robot.png"
+	if robot_image.save_png(robot_path) != OK:
+		printerr("[SHOT] не удалось сохранить робота")
+		get_tree().quit(1)
+		return
+	robot_image.resize(640, 360)
+	robot_image.save_jpg("robot-preview.jpg", 0.6)
 	get_tree().quit(0)
