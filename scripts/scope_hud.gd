@@ -20,12 +20,11 @@ func _ready() -> void:
 	add_child(_drawing)
 
 
-func update_state(amount: float, ammo: int, is_ready: bool, points: int, range_m: float, wind_cross: float, hit_flash: float) -> void:
+func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind_cross: float, hit_flash: float) -> void:
 	_mask_material.set_shader_parameter("scope_amount", amount)
 	_drawing.amount = amount
 	_drawing.ammo = ammo
 	_drawing.ready_to_fire = is_ready
-	_drawing.points = points
 	_drawing.range_m = range_m
 	_drawing.wind_cross = wind_cross
 	_drawing.hit_flash = hit_flash
@@ -36,7 +35,6 @@ class ScopeDrawing extends Control:
 	var amount := 0.0
 	var ammo := 0
 	var ready_to_fire := true
-	var points := 0
 	var range_m := -1.0
 	var wind_cross := 0.0
 	var hit_flash := 0.0
@@ -66,13 +64,13 @@ class ScopeDrawing extends Control:
 			var font_size := clampi(roundi(radius * 0.045), 12, 22)
 			draw_string(font, center + Vector2(-radius * 0.58, radius * 0.54), distance_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			draw_string(font, center + Vector2(-radius * 0.58, radius * 0.61), wind_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
-			draw_string(font, center + Vector2(radius * 0.25, radius * 0.61), "%d ПАТР." % ammo, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
+			var status := "ГОТОВА" if ready_to_fire and ammo > 0 else ("НЕТ ПАТРОНОВ" if ammo <= 0 else "ЗАТВОР")
+			draw_string(font, center + Vector2(radius * 0.15, radius * 0.61), status, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 		if hit_flash > 0.0:
 			var tick := Color(0.94, 0.82, 0.57, clampf(hit_flash, 0.0, 1.0) * 0.7)
 			draw_arc(center, maxf(7.0, radius * 0.022), 0.0, TAU, 24, tick, 1.5)
-		# Вне прицела — только патроны, состояние и накопленный счёт.
+		# Без числовых счётчиков: остаётся только состояние оружия.
 		var hud_alpha := 0.68 * (1.0 - amount)
 		if hud_alpha > 0.02:
 			var status := "ГОТОВА" if ready_to_fire and ammo > 0 else ("НЕТ ПАТРОНОВ" if ammo <= 0 else "ЗАТВОР")
-			var text := "%d ПАТР.  ·  %s   |   %d ОЧК." % [ammo, status, points]
-			draw_string(font, Vector2(size.x - 400.0, size.y - 32.0), text, HORIZONTAL_ALIGNMENT_RIGHT, 370, 18, Color(0.92, 0.84, 0.68, hud_alpha))
+			draw_string(font, Vector2(size.x - 300.0, size.y - 32.0), status, HORIZONTAL_ALIGNMENT_RIGHT, 270, 18, Color(0.92, 0.84, 0.68, hud_alpha))

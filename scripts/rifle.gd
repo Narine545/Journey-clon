@@ -76,7 +76,7 @@ func _physics_process(delta: float) -> void:
 	if scope_amount > 0.5 and _range_clock <= 0.0:
 		_range_clock = 0.2
 		range_m = measure_range()
-	hud.update_state(scope_amount, ammo, can_fire(), main.game.score, range_m, crosswind, _hit_flash)
+	hud.update_state(scope_amount, ammo, can_fire(), range_m, crosswind, _hit_flash)
 
 
 func can_fire() -> bool:
