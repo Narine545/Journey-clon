@@ -19,8 +19,6 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	print("[SHOT] сохранён: ", path)
-	image.resize(640, 360)
-	image.save_jpg("demo-preview.jpg", 0.45)
 	# Второй кадр — горизонт и мегаструктуры, а не только мишень под ногами.
 	var main := get_parent() as MainScene
 	main.cam_rig.set_view(PI * 0.5, 0.06)
@@ -36,27 +34,23 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	print("[SHOT] сохранён: ", landscape_path)
-	landscape.resize(640, 360)
-	landscape.save_jpg("land-preview.jpg", 0.45)
-	# A/B в оптике: одинаковый ракурс с тонким слоем cirrus и без него.
+	# Небо в оптике — отдельный регрессионный кадр Forward+.
 	main.cam_rig.set_view(PI * 0.5, 0.60)
 	main.rifle.aim_requested = true
 	main.rifle.scope_amount = 1.0
 	main.rifle._physics_process(0.016)
-	main.world._sky_mat.set_shader_parameter("use_cirrus", true)
 	for i in range(8):
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
-	var sky_before := get_viewport().get_texture().get_image()
-	sky_before.resize(640, 360)
-	sky_before.save_jpg("sky-before-preview.jpg", 0.45)
-	main.world._sky_mat.set_shader_parameter("use_cirrus", false)
-	for i in range(8):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var sky_after := get_viewport().get_texture().get_image()
-	sky_after.resize(640, 360)
-	sky_after.save_jpg("sky-after-preview.jpg", 0.45)
+	var sky_image := get_viewport().get_texture().get_image()
+	var sky_path := OS.get_environment("JOURNEY_SKY_PATH")
+	if sky_path.is_empty():
+		sky_path = "user://sky.png"
+	if sky_image.save_png(sky_path) != OK:
+		printerr("[SHOT] не удалось сохранить небо")
+		get_tree().quit(1)
+		return
+
 	# Третий кадр — увеличенная дальняя мишень и маска оптики.
 	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	var eye := main.player.global_position + Vector3.UP * CameraRig.EYE

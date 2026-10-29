@@ -125,11 +125,12 @@ func _setup_sky_plus_material() -> void:
 	_sky_mat.set_shader_parameter("light_strength", 18.0)
 	_sky_mat.set_shader_parameter("cloud_shape_size", 3.2)
 	_sky_mat.set_shader_parameter("cloud_noise_size", 11.0)
-	_sky_mat.set_shader_parameter("cloud_noise_factor", 0.24)
+	# Клеточный шум давал гладкие кольцевые границы, заметные в оптике.
+	_sky_mat.set_shader_parameter("cloud_noise_factor", 0.14)
 	_sky_mat.set_shader_parameter("cloud_base_color", Color(0.58, 0.64, 0.76))
 	_sky_mat.set_shader_parameter("cloud_overcast_color", Color(0.16, 0.20, 0.30))
 	_sky_mat.set_shader_parameter("cloud_shape", _noise_3d(64, 2, 0.023, FastNoiseLite.TYPE_SIMPLEX_SMOOTH))
-	_sky_mat.set_shader_parameter("cloud_noise", _noise_3d(64, 19, 0.045, FastNoiseLite.TYPE_CELLULAR))
+	_sky_mat.set_shader_parameter("cloud_noise", _noise_3d(64, 19, 0.045, FastNoiseLite.TYPE_SIMPLEX_SMOOTH))
 	_sky_mat.set_shader_parameter("cloud_color_texture", _noise_2d(256, 41, 0.018, 3))
 	# Тонкий 2D-слой с искажением выглядел масляными разводами в оптике.
 	# Основное Sky++ и объёмные облака остаются; циррус доступен для A/B.

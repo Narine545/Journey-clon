@@ -38,6 +38,16 @@ func _run() -> void:
 	# продолжаются на пустой сцене; обычный редкий процесс не менялся.
 	for child in main.ambient_spawner.get_children():
 		child.free()
+	ProjectSettings.set_setting("journey/m4/robot_preview", false)
+	var quiet_spawner := AmbientSpawner.new()
+	main.add_child(quiet_spawner)
+	quiet_spawner.setup(main)
+	quiet_spawner.set_process(false)
+	_check(not quiet_spawner.preview_robots and quiet_spawner.get_child_count() == 0, "тихий режим запускается без гарантированных роботов", failures)
+	quiet_spawner._unhandled_input(reset_key)
+	_check(quiet_spawner.get_child_count() == 0, "F4 не создаёт роботов в тихом режиме", failures)
+	quiet_spawner.free()
+	ProjectSettings.set_setting("journey/m4/robot_preview", true)
 	_check(main.coast.mesh != null, "сетка рельефа", failures)
 	_check(Coast.WORLD_SIZE >= 2500.0, "ширина пустоши не менее 2,5 км", failures)
 	var outer := main.coast.get_node_or_null("OuterDunes") as MeshInstance3D
