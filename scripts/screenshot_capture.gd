@@ -76,6 +76,7 @@ func _capture() -> void:
 		return
 	# Детерминированный объект только для CI-кадра, не для обычной игры.
 	main.radio_tuner.set_tuning(false)
+	main.radio_tuner.set_powered(false)
 	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	var robot_x := main.tower.global_position.x - 220.0
 	var robot_z := main.tower.global_position.z - 1.4
@@ -99,4 +100,6 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить робота")
 		get_tree().quit(1)
 		return
+	robot.queue_free()
+	await get_tree().process_frame
 	get_tree().quit(0)
