@@ -36,6 +36,14 @@ func _run() -> void:
 	_check(target_low != null and target_low.visibility_range_begin > 0.0, "дальний LOD мишени", failures)
 	_check(main.sand.get_texture() != null, "поле физического песка", failures)
 	_check(main.world != null and main.cam_rig.cam.current, "мир и активная камера", failures)
+	_check(not main.performance_overlay.visible, "FPS по умолчанию скрыт", failures)
+	var f3 := InputEventKey.new()
+	f3.physical_keycode = KEY_F3
+	f3.pressed = true
+	main.performance_overlay._unhandled_input(f3)
+	_check(main.performance_overlay.visible, "F3 показывает FPS", failures)
+	main.performance_overlay._unhandled_input(f3)
+	_check(not main.performance_overlay.visible, "F3 скрывает FPS", failures)
 	_check(main.audio._step_streams.size() == 6, "синтез шагов", failures)
 	_check(main.audio._wind.stream != null and main.audio._wind.playing, "петля ветра", failures)
 	_check(main.tower.scene_file_path == "res://scenes/Tower.tscn", "отдельная сцена башни", failures)

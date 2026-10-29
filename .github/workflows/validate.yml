@@ -43,7 +43,6 @@ jobs:
           JOURNEY_SHOT=1 JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
           test -s tower.png
           test -s landscape.png
-          grep '^\[SHOT_PREVIEW_' render.log | sed -E 's/^\[SHOT_PREVIEW_([0-9]+)\]/::notice::SHOT_PREVIEW_\1 /'
           grep -q 'Vulkan.*Forward+' render.log
           if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:' render.log; then
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done

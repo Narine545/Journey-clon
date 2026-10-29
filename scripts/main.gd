@@ -15,6 +15,7 @@ var player: TowerPlayer
 var cam_rig: CameraRig
 var audio: SoundScape
 var color_grade: ColorGrader
+var performance_overlay: PerformanceOverlay
 
 
 func _ready() -> void:
@@ -27,6 +28,8 @@ func _ready() -> void:
 	color_grade.preset_idx = 2
 	color_grade.intensity = 0.5
 	color_grade.setup()
+	performance_overlay = PerformanceOverlay.new()
+	add_child(performance_overlay)
 	coast = Coast.new()
 	add_child(coast)
 	coast.setup(game)

@@ -34,11 +34,4 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	print("[SHOT] сохранён: ", landscape_path)
-	# Компактный кадр для проверки по аннотациям CI.
-	landscape.resize(640, 360, Image.INTERPOLATE_LANCZOS)
-	var encoded := Marshalls.raw_to_base64(landscape.save_jpg_to_buffer(0.35))
-	var chunk := 0
-	for offset in range(0, encoded.length(), 3000):
-		print("[SHOT_PREVIEW_%d]%s" % [chunk, encoded.substr(offset, 3000)])
-		chunk += 1
 	get_tree().quit(0)
