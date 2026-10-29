@@ -24,6 +24,10 @@ func _ready() -> void:
 	_add_box("DistantSilhouette", Vector3(0, 2.9, 0), Vector3(5.5, 5.8, 4.4), shell)
 	var distant := get_node("DistantSilhouette") as MeshInstance3D
 	distant.visibility_range_begin = DETAIL_DISTANCE
+	# Одинаковый мировой центр AABB для частей и силуэта: единый порог LOD.
+	for child in get_children():
+		if child is MeshInstance3D:
+			child.custom_aabb = AABB(Vector3(-2.9, 0.0, -2.3) - child.position, Vector3(5.8, 5.8, 4.6))
 	distant.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 

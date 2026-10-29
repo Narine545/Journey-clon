@@ -35,8 +35,8 @@ func _capture() -> void:
 		return
 	print("[SHOT] сохранён: ", landscape_path)
 	# Компактный кадр для проверки по аннотациям CI.
-	landscape.resize(320, 180, Image.INTERPOLATE_LANCZOS)
-	var encoded := Marshalls.raw_to_base64(landscape.save_jpg_to_buffer(0.45))
+	landscape.resize(640, 360, Image.INTERPOLATE_LANCZOS)
+	var encoded := Marshalls.raw_to_base64(landscape.save_jpg_to_buffer(0.35))
 	var chunk := 0
 	for offset in range(0, encoded.length(), 3000):
 		print("[SHOT_PREVIEW_%d]%s" % [chunk, encoded.substr(offset, 3000)])

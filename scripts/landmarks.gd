@@ -13,12 +13,12 @@ var _wreck: StandardMaterial3D
 
 func setup(coast: Coast, origin: Vector2) -> void:
 	_metal = StandardMaterial3D.new()
-	_metal.albedo_color = Color(0.25, 0.23, 0.21)
+	_metal.albedo_color = Color(0.16, 0.17, 0.16)
 	_metal.roughness = 0.95
 	_wreck = StandardMaterial3D.new()
 	_wreck.albedo_color = Color(0.29, 0.20, 0.14)
 	_wreck.roughness = 0.95
-	_build_ship(coast, origin + Vector2(950.0, -150.0))
+	_build_ship(coast, origin + Vector2(850.0, -150.0))
 	_build_mast(coast, origin + Vector2(740.0, 330.0))
 	_build_arch(coast, origin + Vector2(1050.0, -620.0))
 	_build_wreck(coast, origin + Vector2(310.0, 155.0), -0.18)
@@ -57,6 +57,11 @@ func _place_pair(label: String, coast: Coast, point: Vector2, high: Array, low: 
 	low_mesh.name = "DistantSilhouette"
 	low_mesh.mesh = _mesh(low, _metal)
 	low_mesh.visibility_range_begin = LOD_DISTANCE
+	# Godot измеряет Visibility Range до центра AABB, а не до origin.
+	# Общая рамка исключает щель/двойной показ при переключении уровней.
+	var shared_bounds: AABB = high_mesh.mesh.get_aabb().merge(low_mesh.mesh.get_aabb())
+	high_mesh.custom_aabb = shared_bounds
+	low_mesh.custom_aabb = shared_bounds
 	low_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	anchor.add_child(low_mesh)
 	detailed.append(high_mesh)
@@ -66,15 +71,15 @@ func _place_pair(label: String, coast: Coast, point: Vector2, high: Array, low: 
 func _build_ship(coast: Coast, point: Vector2) -> void:
 	# Остов корабля поперёк горизонта; нос частично погребён песком.
 	var low := [
-		_part(Vector3(0, 23, 0), Vector3(32, 38, 235)),
-		_part(Vector3(0, 57, 65), Vector3(26, 38, 70)),
-		_part(Vector3(0, 92, 74), Vector3(18, 34, 30)),
-		_part(Vector3(0, 38, -110), Vector3(28, 16, 70), Vector3(0.30, 0, 0))]
+		_part(Vector3(0, 40, 0), Vector3(32, 70, 235)),
+		_part(Vector3(0, 92, 65), Vector3(26, 42, 70)),
+		_part(Vector3(0, 132, 74), Vector3(18, 40, 30)),
+		_part(Vector3(0, 62, -110), Vector3(28, 16, 70), Vector3(0.30, 0, 0))]
 	var high := low.duplicate()
 	for z in [-85.0, -48.0, -10.0, 28.0, 66.0, 103.0]:
-		high.append(_part(Vector3(-17, 30, z), Vector3(3.5, 50, 4.0), Vector3(0.0, 0.0, -0.12)))
-	high.append(_part(Vector3(-17, 51, 0), Vector3(3.0, 3.0, 220)))
-	high.append(_part(Vector3(1, 120, 76), Vector3(3.0, 35, 3.0), Vector3(0, 0, 0.16)))
+		high.append(_part(Vector3(-17, 44, z), Vector3(3.5, 76, 4.0), Vector3(0.0, 0.0, -0.12)))
+	high.append(_part(Vector3(-17, 75, 0), Vector3(3.0, 3.0, 220)))
+	high.append(_part(Vector3(1, 165, 76), Vector3(3.0, 35, 3.0), Vector3(0, 0, 0.16)))
 	_place_pair("BuriedShip", coast, point, high, low)
 
 

@@ -28,7 +28,7 @@ func _run() -> void:
 	for i in range(main.landmarks.detailed.size()):
 		var high := main.landmarks.detailed[i]
 		var low := main.landmarks.simplified[i]
-		_check(is_equal_approx(high.visibility_range_end, low.visibility_range_begin), "порог LOD %d" % i, failures)
+		_check(is_equal_approx(high.visibility_range_end, low.visibility_range_begin) and high.custom_aabb == low.custom_aabb, "совпадающий порог и AABB LOD %d" % i, failures)
 		_check(high.mesh.surface_get_array_len(0) > low.mesh.surface_get_array_len(0), "упрощение геометрии %d" % i, failures)
 	_check(main.world._env.fog_height_density > 0.0 and main.world._env.fog_aerial_perspective > 0.0,
 			"высотная дымка и воздушная перспектива", failures)
@@ -46,6 +46,16 @@ func _run() -> void:
 	_check((-main.cam_rig.cam.global_basis.z).dot(aim) > 0.999, "мишень в начальном направлении взгляда", failures)
 	var eye := main.cam_rig.cam.global_position
 	var target_center: Vector3 = main.target.global_position + Vector3.UP * TargetDummy.CENTER_HEIGHT
+	# Дальний ориентир должен действительно выступать над дюнами, а не быть
+	# просто расположен в направлении камеры за непрозрачным рельефом.
+	for landmark in ["BuriedShip", "RadioMast", "BrokenRib"]:
+		var anchor := main.landmarks.get_node(landmark) as Node3D
+		var high_point := anchor.global_position + Vector3.UP * 150.0
+		var clearance := INF
+		for sample in range(1, 30):
+			var test_point := eye.lerp(high_point, float(sample) / 30.0)
+			clearance = minf(clearance, test_point.y - main.coast.ground_height(test_point.x, test_point.z))
+		_check(clearance > 0.0, "ориентир %s над дюнами (%.1f м)" % [landmark, clearance], failures)
 	var terrain_clear := true
 	for i in range(1, 20):
 		var point := eye.lerp(target_center, float(i) / 20.0)
