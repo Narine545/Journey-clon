@@ -22,7 +22,14 @@ func _ready() -> void:
 	for child in get_children():
 		if child is MeshInstance3D:
 			child.visibility_range_end = DETAIL_DISTANCE
-	_add_box("DistantSilhouette", Vector3(0, 2.9, 0), Vector3(5.5, 5.8, 4.4), shell)
+	# M3: объёмный туман полностью прятал тестовую цель на 600 м.
+	# Дальняя упрощённая модель окрашена в приглушённый пыльный цвет и
+	# исключена из тумана: видна в оптике, но не подсвечивается маркером.
+	var distant_shell := StandardMaterial3D.new()
+	distant_shell.albedo_color = Color(0.24, 0.19, 0.16)
+	distant_shell.roughness = 1.0
+	distant_shell.disable_fog = true
+	_add_box("DistantSilhouette", Vector3(0, 2.9, 0), Vector3(5.5, 5.8, 4.4), distant_shell)
 	var distant := get_node("DistantSilhouette") as MeshInstance3D
 	distant.visibility_range_begin = DETAIL_DISTANCE
 	# Одинаковый мировой центр AABB для частей и силуэта: единый порог LOD.
