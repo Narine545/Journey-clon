@@ -40,9 +40,11 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers
-          JOURNEY_SHOT=1 JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
+          JOURNEY_SHOT=1 JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
           test -s tower.png
           test -s landscape.png
+          test -s scope.png
+          base64 -w0 scope-preview.jpg | fold -w 3000 | awk '{ printf "::notice::SCOPECHUNK %04d %s\n", NR, $0 }' 
           grep -q 'Vulkan.*Forward+' render.log
           if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' render.log; then
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
@@ -56,3 +58,4 @@ jobs:
             *.log
             tower.png
             landscape.png
+            scope.png

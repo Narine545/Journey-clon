@@ -34,4 +34,28 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	print("[SHOT] сохранён: ", landscape_path)
+	# Третий кадр — увеличенная дальняя мишень и маска оптики.
+	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	var eye := main.player.global_position + Vector3.UP * CameraRig.EYE
+	var target_point := main.long_target.global_position + Vector3.UP * TargetDummy.CENTER_HEIGHT
+	var direction := (target_point - eye).normalized()
+	main.cam_rig.set_view(atan2(direction.x, direction.z), asin(direction.y))
+	main.rifle.aim_requested = true
+	main.rifle.scope_amount = 1.0
+	main.rifle._physics_process(0.016)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var scope := get_viewport().get_texture().get_image()
+	var scope_path := OS.get_environment("JOURNEY_SCOPE_PATH")
+	if scope_path.is_empty():
+		scope_path = "user://scope.png"
+	if scope.save_png(scope_path) != OK:
+		printerr("[SHOT] не удалось сохранить оптику")
+		get_tree().quit(1)
+		return
+	print("[SHOT] сохранён: ", scope_path)
+	# Temporary preview for remote visual inspection.
+	scope.resize(640, 360)
+	scope.save_jpg("scope-preview.jpg", 0.6)
 	get_tree().quit(0)

@@ -120,6 +120,8 @@ func on_projectile_hit(target: TargetDummy, hit_position: Vector3) -> void:
 	# а в оптике — внутри круглого поля, а не в чёрной маске.
 	if camera.is_position_behind(hit_position) or not camera.is_position_in_frustum(hit_position):
 		return
+	if not Ballistics.terrain_hit(main.coast, camera.global_position, hit_position, 12.0).is_empty():
+		return
 	if scope_amount > 0.15:
 		var screen := camera.unproject_position(hit_position)
 		var viewport_size := get_viewport().get_visible_rect().size
