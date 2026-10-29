@@ -12,6 +12,9 @@ func setup(main_ref: MainScene) -> void:
 func _run() -> void:
 	await get_tree().physics_frame
 	var failures: Array[String] = []
+	# Дальнейшие проверки случайного процесса детерминированны, а не зависят
+	# от реального появления робота во время тестирования M0–M3.
+	main.ambient_spawner.set_process(false)
 	_check(main.coast.mesh != null, "сетка рельефа", failures)
 	_check(Coast.WORLD_SIZE >= 2500.0, "ширина пустоши не менее 2,5 км", failures)
 	var outer := main.coast.get_node_or_null("OuterDunes") as MeshInstance3D
@@ -196,6 +199,108 @@ func _run() -> void:
 	_check(observed_impacts.size() == 2 and main.game.score == score_before + SniperRifle.HIT_POINTS, "повторное попадание не начисляет очки дважды", failures)
 	main.rifle.ammo = 0
 	_check(not main.rifle.fire(), "без патронов выстрел невозможен", failures)
+
+	# M4: радио — интерактивное и локальное, эфир не равен присутствию робота.
+	var radio := main.radio_tuner
+	_check(not radio.powered and not radio.tuning, "радио выключено по умолчанию", failures)
+	main.player.position = Vector3(-4.0, ObservationTower.DECK_HEIGHT, -3.9)
+	_check(radio.nearby(), "к радио можно подойти", failures)
+	var radio_key := InputEventKey.new()
+	radio_key.physical_keycode = KEY_R
+	radio_key.pressed = true
+	radio._input(radio_key)
+	_check(radio.tuning and radio.powered, "R открывает и включает приёмник", failures)
+	var player_before_radio := main.player.position
+	Input.action_press("move_forward")
+	main.player._physics_process(1.0)
+	Input.action_release("move_forward")
+	_check(main.player.position == player_before_radio, "при настройке ходьба отключена", failures)
+	main.rifle.ammo = 2
+	main.rifle.cycle_remaining = 0.0
+	main.rifle._input(capture_click)
+	_check(main.rifle.ammo == 2, "при настройке нельзя случайно выстрелить", failures)
+	var freq_key := InputEventKey.new()
+	freq_key.physical_keycode = KEY_RIGHT
+	freq_key.pressed = true
+	var previous_freq := radio.frequency
+	radio._input(freq_key)
+	_check(is_equal_approx(radio.frequency, previous_freq + 0.1), "ручная настройка частоты", failures)
+	radio.set_frequency(88.5)
+	radio.update_signal()
+	_check(radio.station_index == 0 and radio.signal_strength > 0.8, "станция архивной записи", failures)
+	radio._process(0.0)
+	_check(radio._record.stream != null and radio._record.playing, "архивная речь воспроизводится", failures)
+	radio.set_frequency(94.2)
+	radio.live_on_air = true
+	radio.update_signal()
+	_check(radio.station_index == 1 and radio.signal_strength > 0.8, "живой сигнал при наличии эфира", failures)
+	radio.live_on_air = false
+	radio.update_signal()
+	_check(radio.station_index == -1 and radio.signal_strength == 0.0, "эфир может пропасть без появления робота", failures)
+	_check(radio._packets.size() == 4 and radio._noise.stream != null, "живые пакеты и фоновый шум", failures)
+	radio.set_frequency(103.1)
+	radio.update_signal()
+	_check(radio.station_index == 2, "вторая архивная запись", failures)
+	radio.set_frequency(120.0)
+	_check(is_equal_approx(radio.frequency, RadioTuner.MAX_FREQ), "шкала ограничена", failures)
+	radio.set_powered(false)
+	_check(not radio.powered and not radio._record.playing and not radio._live.playing, "питание выключает записи и сигнал", failures)
+	radio.set_tuning(false)
+	_check(main.rifle.hud.visible, "выход из радио возвращает интерфейс винтовки", failures)
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	_check(not radio.nearby(), "радио не управляется с другого края площадки", failures)
+	# Статистическая проверка вероятностного процесса: более 500 опытов по
+	# десять минут в виртуальном времени; игра не обязана показывать встречу.
+	var sim_rng := RandomNumberGenerator.new()
+	sim_rng.seed = 4791
+	var empty_runs := 0
+	var probability := AmbientSpawner.chance_for(1.0, 1.0, 0.0, false)
+	for run in range(600):
+		var encountered := false
+		for second in range(600):
+			if sim_rng.randf() < probability:
+				encountered = true
+				break
+		if not encountered:
+			empty_runs += 1
+	_check(empty_runs > 200 and empty_runs < 400, "10 минут без встреч — штатный исход (%d/600)" % empty_runs, failures)
+	_check(AmbientSpawner.chance_for(1.0, 1.0, 0.0, true) > probability and probability > 0.0, "эфир лишь меняет вероятность, появление возможно без него", failures)
+	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.set_view(-PI * 0.5, 0.0)
+	await get_tree().physics_frame
+	var robot_x := main.tower.global_position.x - 220.0
+	var robot_z := main.tower.global_position.z - 1.4
+	var robots: Array[AmbientRobot] = []
+	for i in range(3):
+		var z := robot_z + (float(i) - 1.0) * 25.0
+		var robot_pos := Vector3(robot_x, main.coast.ground_height(robot_x, z), z)
+		robots.append(main.ambient_spawner.spawn_at(i as AmbientRobot.Kind, robot_pos, 6300 + i))
+	_check(robots[0].body_size != robots[1].body_size and robots[1].body_size != robots[2].body_size, "три разных типа роботов", failures)
+	var robot_start := robots[0].global_position
+	robots[0]._physics_process(1.0)
+	_check(robots[0].global_position.distance_to(robot_start) > 0.05 and absf(robots[0].global_position.y - main.coast.ground_height(robots[0].global_position.x, robots[0].global_position.z)) < 0.01, "робот медленно движется по рельефу", failures)
+	_check(not radio.live_on_air and robots[1].alive, "робот существует без живого сигнала", failures)
+	radio.live_on_air = true
+	_check(radio.live_on_air and main.ambient_spawner.get_child_count() > 0, "состояние эфира независимо от объектов", failures)
+	var victim := robots[1]
+	victim.speed = 0.0
+	victim.velocity = Vector2.ZERO
+	await get_tree().physics_frame
+	var shot_origin := main.player.global_position + Vector3.UP * CameraRig.EYE
+	var victim_center := victim.global_position + Vector3.UP * victim.body_size.y * 0.5
+	var travel := shot_origin.distance_to(victim_center) / SniperRifle.MUZZLE_SPEED
+	var aim_robot := (victim_center - Ballistics.acceleration(main.game, 0.0, 0.0) * (0.5 * travel * travel) - shot_origin).normalized()
+	main.cam_rig.set_view(atan2(aim_robot.x, aim_robot.z), asin(aim_robot.y))
+	main.rifle._recoil = 0.0
+	main.rifle._hit_flash = 0.0
+	var score_before_robot := main.game.score
+	_check(main.rifle.fire(), "выстрел по роботу", failures)
+	await get_tree().create_timer(1.0).timeout
+	_check(not victim.alive and victim.hitbox.disabled, "реальный летящий снаряд тихо выводит робота из строя", failures)
+	_check(main.game.score == score_before_robot and main.rifle._hit_flash == 0.0, "робот не создаёт награды, счётчика и сигнала убийства", failures)
+	for robot in robots:
+		robot.queue_free()
 
 	if failures.is_empty():
 		print("[SMOKE] итог: ВСЁ ПРОШЛО")

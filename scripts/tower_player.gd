@@ -9,11 +9,12 @@ const STEP_DISTANCE := 1.35
 
 var camera_rig: CameraRig
 var audio: SoundScape
+var radio: RadioTuner
 var _step_distance := 0.0
 
 
 func _physics_process(delta: float) -> void:
-	if camera_rig == null:
+	if camera_rig == null or (radio != null and radio.tuning):
 		return
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var yaw: float = camera_rig.yaw

@@ -40,6 +40,8 @@ func setup(main_ref: MainScene) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if main != null and main.radio_tuner != null and main.radio_tuner.tuning:
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			aim_requested = event.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED

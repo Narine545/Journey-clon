@@ -223,6 +223,45 @@ func _gen_confirmation() -> AudioStreamWAV:
 		samples[i] = sin(TAU * 1100.0 * t) * exp(-t * 75.0) * 0.25
 	return _stream(samples, RATE_SFX, false)
 
+
+## Тихий аналоговый фон; кроссфейд концов убирает щелчок цикла.
+func _gen_radio_noise() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5589
+	var count := RATE_SFX * 2
+	var fade := RATE_SFX / 20
+	var samples := PackedFloat32Array()
+	samples.resize(count + fade)
+	var low := 0.0
+	for i in samples.size():
+		low += (rng.randf_range(-1.0, 1.0) - low) * 0.48
+		samples[i] = low * 0.27
+	for i in fade:
+		var mix := float(i) / float(fade)
+		samples[i] = samples[i] * mix + samples[count + i] * (1.0 - mix)
+	samples.resize(count)
+	return _stream(samples, RATE_SFX, true)
+
+
+## Короткие нестабильные цифровые пакеты; не речь и не музыкальная мелодия.
+func _gen_radio_packet(seed_value: int) -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var count := int(RATE_SFX * 1.8)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	var phase := 0.0
+	var pitch := 660.0
+	var gate := 0.0
+	for i in count:
+		if i % 2205 == 0:
+			gate = 1.0 if rng.randf() > 0.35 else 0.0
+			pitch = rng.randf_range(550.0, 950.0)
+		phase += TAU * pitch / RATE_SFX
+		var edge := minf(float(i % 2205) / 140.0, float(2204 - i % 2205) / 140.0)
+		samples[i] = sin(phase) * gate * clampf(edge, 0.0, 1.0) * 0.2
+	return _stream(samples, RATE_SFX, false)
+
 ## Упаковка синтезированных сэмплов в WAV.
 func _stream(s: PackedFloat32Array, rate: int, loop: bool) -> AudioStreamWAV:
 	var data := PackedByteArray()

@@ -42,6 +42,10 @@ func _physics_process(delta: float) -> void:
 		var target: TargetDummy = collider.get_parent() as TargetDummy if collider != null else null
 		if target != null and is_instance_valid(rifle):
 			rifle.on_projectile_hit(target, global_position)
+		elif collider != null:
+			var robot := collider.get_parent() as AmbientRobot
+			if robot != null:
+				robot.apply_projectile_hit()
 		queue_free()
 		return
 	global_position = end

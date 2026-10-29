@@ -1,6 +1,6 @@
 class_name MainScene
 extends Node3D
-## M3: башня, пустошь и снайперская винтовка с баллистикой.
+## M4: башня, баллистика, радио и редкие встречи без волн.
 
 const TOWER_SCENE := preload("res://scenes/Tower.tscn")
 const RIFLE_SCENE := preload("res://scenes/Rifle.tscn")
@@ -19,6 +19,8 @@ var cam_rig: CameraRig
 var audio: SoundScape
 var color_grade: ColorGrader
 var performance_overlay: PerformanceOverlay
+var radio_tuner: RadioTuner
+var ambient_spawner: AmbientSpawner
 
 
 func _ready() -> void:
@@ -82,6 +84,15 @@ func _ready() -> void:
 	cam_rig.set_view(atan2(aim.x, aim.z), atan2(aim.y, Vector2(aim.x, aim.z).length()))
 	rifle = RIFLE_SCENE.instantiate() as SniperRifle
 	camera_add_rifle()
+	radio_tuner = RadioTuner.new()
+	radio_tuner.name = "RadioTuner"
+	tower.add_child(radio_tuner)
+	radio_tuner.setup(self)
+	player.radio = radio_tuner
+	ambient_spawner = AmbientSpawner.new()
+	ambient_spawner.name = "AmbientSpawner"
+	add_child(ambient_spawner)
+	ambient_spawner.setup(self)
 	set_time(game.night01)
 	apply_sun(game.sun_dir)
 	if OS.get_environment("JOURNEY_SMOKE") == "1":

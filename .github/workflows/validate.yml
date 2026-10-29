@@ -26,7 +26,7 @@ jobs:
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' import.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
-      - name: M3 smoke test
+      - name: M4 smoke test
         run: |
           set +e
           JOURNEY_SMOKE=1 timeout 300 ./godot --headless --path . 2>&1 | tee smoke.log
