@@ -49,8 +49,6 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить вид у перил")
 		get_tree().quit(1)
 		return
-	rail.resize(640, 360)
-	rail.save_jpg("rail-preview.jpg", 0.45)
 	# Небо в оптике — отдельный регрессионный кадр Forward+.
 	main.cam_rig.set_view(PI * 0.5, 0.60)
 	main.rifle.aim_requested = true
