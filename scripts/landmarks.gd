@@ -25,8 +25,8 @@ func setup(coast: Coast, origin: Vector2) -> void:
 	_build_wreck(coast, origin + Vector2(390.0, -205.0), 0.27)
 
 
-func _part(pos: Vector3, size: Vector3, rotation: Vector3 = Vector3.ZERO) -> Dictionary:
-	return {"position": pos, "size": size, "rotation": rotation}
+func _part(pos: Vector3, size: Vector3, part_rotation: Vector3 = Vector3.ZERO) -> Dictionary:
+	return {"position": pos, "size": size, "rotation": part_rotation}
 
 
 func _mesh(parts: Array, material: Material) -> ArrayMesh:
@@ -36,8 +36,8 @@ func _mesh(parts: Array, material: Material) -> ArrayMesh:
 		var cube := BoxMesh.new()
 		cube.size = part["size"]
 		var euler: Vector3 = part["rotation"]
-		var basis := Basis.from_euler(euler)
-		surface.append_from(cube, 0, Transform3D(basis, part["position"]))
+		var part_basis := Basis.from_euler(euler)
+		surface.append_from(cube, 0, Transform3D(part_basis, part["position"]))
 	surface.set_material(material)
 	return surface.commit()
 

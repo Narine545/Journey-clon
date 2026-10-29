@@ -22,8 +22,8 @@ jobs:
       - name: Import
         run: |
           ./godot --headless --path . --import 2>&1 | tee import.log
-          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:' import.log; then
-            grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:' import.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' import.log; then
+            grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' import.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
       - name: M2 smoke test
@@ -32,10 +32,10 @@ jobs:
           JOURNEY_SMOKE=1 timeout 300 ./godot --headless --path . 2>&1 | tee smoke.log
           code=${PIPESTATUS[0]}
           set -e
-          grep -iE 'SMOKE.*(FAIL|итог)|SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:' smoke.log | head -30 | while IFS= read -r line; do echo "::notice::$line"; done || true
+          grep -iE 'SMOKE.*(FAIL|итог)|SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' smoke.log | head -30 | while IFS= read -r line; do echo "::notice::$line"; done || true
           if [ "$code" -ne 0 ]; then echo "::error::Smoke exited with code $code"; exit 1; fi
           grep -q '\[SMOKE\] итог: ВСЁ ПРОШЛО' smoke.log
-          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:' smoke.log; then exit 1; fi
+          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' smoke.log; then exit 1; fi
       - name: Forward+ Vulkan render
         run: |
           sudo apt-get update -qq
@@ -44,8 +44,8 @@ jobs:
           test -s tower.png
           test -s landscape.png
           grep -q 'Vulkan.*Forward+' render.log
-          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:' render.log; then
-            grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+          if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' render.log; then
+            grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
       - uses: actions/upload-artifact@v4

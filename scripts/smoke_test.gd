@@ -25,6 +25,9 @@ func _run() -> void:
 		var outside := main.coast.ground_height(x + direction.x * 0.01, z + direction.y * 0.01)
 		_check(absf(edge - outside) < 0.1, "непрерывный шов рельефа %d" % side, failures)
 	_check(main.landmarks.detailed.size() == 3 and main.landmarks.simplified.size() == 3, "три ориентира и LOD", failures)
+	var test_rotation := Vector3(0.1, 0.2, 0.3)
+	var part := main.landmarks._part(Vector3.ZERO, Vector3.ONE, test_rotation)
+	_check(part["rotation"] == test_rotation, "поворот детали ориентира", failures)
 	for i in range(main.landmarks.detailed.size()):
 		var high := main.landmarks.detailed[i]
 		var low := main.landmarks.simplified[i]
