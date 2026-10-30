@@ -4,6 +4,8 @@ extends Node3D
 
 const TOWER_SCENE := preload("res://scenes/Tower.tscn")
 const RIFLE_SCENE := preload("res://scenes/Rifle.tscn")
+const LIFT_SCENE := preload("res://scenes/Lift.tscn")
+const SHOP_SCENE := preload("res://scenes/ShopUI.tscn")
 
 var game: GameState
 var world: GameWorld
@@ -21,6 +23,8 @@ var color_grade: ColorGrader
 var performance_overlay: PerformanceOverlay
 var radio_tuner: RadioTuner
 var ambient_spawner: AmbientSpawner
+var lift: SupplyLift
+var shop: ShopUI
 
 
 func _ready() -> void:
@@ -89,6 +93,14 @@ func _ready() -> void:
 	tower.add_child(radio_tuner)
 	radio_tuner.setup(self)
 	player.radio = radio_tuner
+	lift = LIFT_SCENE.instantiate() as SupplyLift
+	tower.add_child(lift)
+	lift.setup(self)
+	lift.effect_applied.connect(rifle.apply_delivery)
+	lift.effect_applied.connect(radio_tuner.apply_delivery)
+	shop = SHOP_SCENE.instantiate() as ShopUI
+	add_child(shop)
+	shop.setup(self)
 	ambient_spawner = AmbientSpawner.new()
 	ambient_spawner.name = "AmbientSpawner"
 	add_child(ambient_spawner)
@@ -110,6 +122,7 @@ func _ready() -> void:
 func camera_add_rifle() -> void:
 	cam_rig.cam.add_child(rifle)
 	rifle.setup(self)
+	rifle.reward_confirmed.connect(Economy.add_points)
 
 
 func set_time(value: float) -> void:

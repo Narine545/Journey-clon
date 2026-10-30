@@ -11,6 +11,7 @@ var origin: Vector3
 var velocity := Vector2.ZERO
 var destination := Vector2.ZERO
 var alive := true
+var _reward_claimed := false
 var preview := false
 var age := 0.0
 var lifetime := 480.0
@@ -119,10 +120,18 @@ func _physics_process(delta: float) -> void:
 		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(velocity.x, velocity.y), minf(1.0, delta * 0.5))
 
 
-func apply_projectile_hit() -> void:
-	if not alive:
-		return
+func apply_projectile_hit(pierce: bool = false) -> bool:
+	if not alive or (kind == Kind.CARRIER and not pierce):
+		return false
 	alive = false
 	velocity = Vector2.ZERO
 	age = 0.0
 	hitbox.set_deferred("disabled", true)
+	return true
+
+
+func claim_reward() -> bool:
+	if _reward_claimed:
+		return false
+	_reward_claimed = true
+	return true

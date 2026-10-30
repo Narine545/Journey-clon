@@ -13,6 +13,7 @@ var powered := false
 var tuning := false
 var live_on_air := false
 var signal_strength := 0.0
+var live_signal_multiplier := 1.0
 var station_index := -1
 var _last_station := -1
 var _noise: AudioStreamPlayer3D
@@ -65,7 +66,7 @@ func set_frequency(value: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if main == null:
+	if main == null or (main.shop != null and main.shop.is_open):
 		return
 	if event is InputEventKey and event.pressed:
 		if event.physical_keycode == KEY_R and not event.echo and (tuning or nearby()):
@@ -73,6 +74,13 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		if tuning:
+			if event.physical_keycode == KEY_B and not event.echo:
+				if powered:
+					main.shop.set_open(true)
+				else:
+					main.audio.on_refused()
+				get_viewport().set_input_as_handled()
+				return
 			match event.physical_keycode:
 				KEY_ESCAPE:
 					set_tuning(false)
@@ -122,12 +130,20 @@ func update_signal() -> void:
 		var available := i != 1 or live_on_air
 		if not available:
 			continue
-		var strength := clampf(1.0 - absf(frequency - float(STATIONS[i])) / 0.8, 0.0, 1.0)
+		var antenna := live_signal_multiplier if i == 1 else 1.0
+		var strength := clampf((1.0 - absf(frequency - float(STATIONS[i])) / (0.8 * antenna)) * antenna, 0.0, 1.0)
 		if strength > signal_strength:
 			station_index = i
 			signal_strength = strength
 	# Погода слегка меняет приём, не зашифровывая точное положение робота.
 	signal_strength *= clampf(1.02 - (main.game.wind_strength - 1.0) * 0.15, 0.70, 1.0)
+
+
+func apply_delivery(_item_id: String, effect: Dictionary) -> void:
+	if effect.has("live_signal_multiplier"):
+		live_signal_multiplier = float(effect["live_signal_multiplier"])
+		_live.max_distance = 18.0 * live_signal_multiplier
+		update_signal()
 
 
 func _process(delta: float) -> void:

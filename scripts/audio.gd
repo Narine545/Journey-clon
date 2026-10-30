@@ -16,6 +16,7 @@ var _wind_gain := 0.0
 var _shot: AudioStreamPlayer
 var _bolt: AudioStreamPlayer
 var _confirmation: AudioStreamPlayer
+var _refused: AudioStreamPlayer
 
 
 func setup(game_ref: GameState, listener_ref: Node3D) -> void:
@@ -48,6 +49,7 @@ func setup(game_ref: GameState, listener_ref: Node3D) -> void:
 	_shot = _make_effect(_gen_rifle_shot(), -3.0)
 	_bolt = _make_effect(_gen_bolt(), -12.0)
 	_confirmation = _make_effect(_gen_confirmation(), -22.0)
+	_refused = _make_effect(_gen_refusal(), -24.0)
 
 
 
@@ -70,6 +72,10 @@ func on_bolt() -> void:
 
 func on_hit_confirmed() -> void:
 	_confirmation.play()
+
+func on_refused() -> void:
+	_refused.play()
+
 
 func _ensure_bus(bus_name: String) -> void:
 	if AudioServer.get_bus_index(bus_name) < 0:
@@ -261,6 +267,53 @@ func _gen_radio_packet(seed_value: int) -> AudioStreamWAV:
 		var edge := minf(float(i % 2205) / 140.0, float(2204 - i % 2205) / 140.0)
 		samples[i] = sin(phase) * gate * clampf(edge, 0.0, 1.0) * 0.2
 	return _stream(samples, RATE_SFX, false)
+
+
+## Короткий сухой щелчок: отказ заказа или отскок от брони.
+func _gen_refusal() -> AudioStreamWAV:
+	var count := int(0.09 * RATE_SFX)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	for i in count:
+		var t := float(i) / RATE_SFX
+		samples[i] = sin(TAU * 320.0 * t) * exp(-t * 45.0) * 0.28
+	return _stream(samples, RATE_SFX, false)
+
+
+## Короткий механический лязг, не музыка и не сигнал давления.
+func make_lift_clank(arrival: bool) -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 718 if arrival else 719
+	var count := int((0.85 if arrival else 0.5) * RATE_SFX)
+	var samples := PackedFloat32Array()
+	samples.resize(count)
+	for i in count:
+		var t := float(i) / RATE_SFX
+		var noise := rng.randf_range(-1.0, 1.0)
+		var clang := (noise * 0.3 + sin(TAU * 170.0 * t) * 0.35 + sin(TAU * 730.0 * t) * 0.10) * exp(-t * 12.0)
+		var creak := sin(TAU * (380.0 + 65.0 * sin(t * 5.0)) * t) * exp(-absf(t - 0.38) * 7.0) * (0.08 if arrival else 0.025)
+		samples[i] = (clang + creak) * 0.7
+	return _stream(samples, RATE_SFX, false)
+
+
+## Низкий шум троса с мягкой стыковкой в цикле.
+func make_lift_hum() -> AudioStreamWAV:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 721
+	var count := RATE_SFX * 2
+	var fade: int = int(float(RATE_SFX) * 0.10)
+	var samples := PackedFloat32Array()
+	samples.resize(count + fade)
+	var low := 0.0
+	for i in samples.size():
+		var t := float(i) / RATE_SFX
+		low += (rng.randf_range(-1.0, 1.0) - low) * 0.025
+		samples[i] = low * 0.5 + sin(TAU * 58.0 * t) * 0.055
+	for i in fade:
+		var k := float(i) / float(fade)
+		samples[i] = samples[i] * k + samples[count + i] * (1.0 - k)
+	samples.resize(count)
+	return _stream(samples, RATE_SFX, true)
 
 ## Упаковка синтезированных сэмплов в WAV.
 func _stream(s: PackedFloat32Array, rate: int, loop: bool) -> AudioStreamWAV:

@@ -86,7 +86,6 @@ func _build_tower() -> void:
 	for h in [5.0, 15.0, 25.0, 35.0, 45.0, 54.0]:
 		_box("LiftCrossbar", Vector3(-6.8, h, 2.4), Vector3(2.0, 0.18, 0.18), _steel)
 		_box("LiftCrossbar", Vector3(-6.8, h, 4.6), Vector3(2.0, 0.18, 0.18), _steel)
-	_box("LiftCage", Vector3(-6.8, 1.0, 3.5), Vector3(1.7, 0.25, 2.0), _dark)
 	# На столе работает приёмник M4; крепление винтовки декоративное.
 	_box("RadioStand", Vector3(-4.75, DECK_HEIGHT + 0.46, -3.9), Vector3(1.15, 0.92, 1.0), _dark)
 	_box("RadioBody", Vector3(-4.75, DECK_HEIGHT + 1.05, -3.9), Vector3(0.85, 0.32, 0.62), _paint)

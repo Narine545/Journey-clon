@@ -4,10 +4,11 @@ extends Node3D
 ## снаряд существует в мире, а очки выдаются только за видимое камерой попадание.
 signal impact_confirmed(target: TargetDummy)
 signal robot_impact_confirmed(robot: AmbientRobot)
+signal reward_confirmed(amount: int)
 
-const MUZZLE_SPEED := 620.0
-const CYCLE_TIME := 2.4
-const HIT_POINTS := 100
+const MUZZLE_SPEED: float = SupplyCatalog.SETTINGS["muzzle_speed"]
+const CYCLE_TIME: float = SupplyCatalog.SETTINGS["bolt_seconds"]
+const HIT_POINTS: int = SupplyCatalog.SETTINGS["target_reward"]
 const SCOPE_FOV := 18.0
 const RANGE_LIMIT := 1500.0
 # Самая дальняя вершина оружия в локальных координатах камеры < 1.6 м.
@@ -19,7 +20,13 @@ var cam_rig: CameraRig
 var camera: Camera3D
 var audio: SoundScape
 var hud: ScopeHUD
-var ammo := 12
+var ammo: int = SupplyCatalog.SETTINGS["start_magazine"]
+var regular_reserve: int = SupplyCatalog.SETTINGS["start_regular_reserve"]
+var ap_reserve: int = SupplyCatalog.SETTINGS["start_ap_reserve"]
+var ammo_type := "regular"
+var zoom_multiplier := 1.0
+var sway_multiplier := 1.0
+var _deflect_flash := 0.0
 var cycle_remaining := 0.0
 var aim_requested := false
 var scope_amount := 0.0
@@ -46,6 +53,10 @@ func setup(main_ref: MainScene) -> void:
 func _input(event: InputEvent) -> void:
 	if main != null and main.radio_tuner != null and main.radio_tuner.tuning:
 		return
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_TAB:
+		switch_ammo()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			aim_requested = event.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
@@ -64,13 +75,16 @@ func _physics_process(delta: float) -> void:
 		if not _cycle_bolt_played and cycle_remaining <= CYCLE_TIME - 0.65:
 			_cycle_bolt_played = true
 			audio.on_bolt()
+		if cycle_remaining <= 0.0 and ammo == 0:
+			_reload_selected()
 	_recoil = move_toward(_recoil, 0.0, delta * 0.032)
 	_hit_flash = maxf(0.0, _hit_flash - delta * 2.5)
+	_deflect_flash = maxf(0.0, _deflect_flash - delta * 2.0)
 	scope_amount = lerpf(scope_amount, 1.0 if aim_requested else 0.0, 1.0 - exp(-7.0 * delta))
-	camera.fov = lerpf(CameraRig.FOV_BASE, SCOPE_FOV, scope_amount)
+	camera.fov = lerpf(CameraRig.FOV_BASE, SCOPE_FOV / zoom_multiplier, scope_amount)
 	cam_rig.mouse_sensitivity_multiplier = lerpf(1.0, 0.30, scope_amount)
 	# Дыхание в оптике плавное, маленькое и повторяемое; отдача затухает.
-	var sway := Vector2(sin(_clock * 0.75) * 0.0010, sin(_clock * 1.10 + 0.8) * 0.0008) * scope_amount
+	var sway := Vector2(sin(_clock * 0.75) * 0.0010, sin(_clock * 1.10 + 0.8) * 0.0008) * scope_amount * sway_multiplier
 	cam_rig.aim_offset = sway + Vector2(0.0, _recoil)
 	cam_rig.refresh_pose()
 	_view_model.visible = scope_amount < 0.45
@@ -80,7 +94,7 @@ func _physics_process(delta: float) -> void:
 	if scope_amount > 0.5 and _range_clock <= 0.0:
 		_range_clock = 0.2
 		range_m = measure_range()
-	hud.update_state(scope_amount, ammo, can_fire(), range_m, crosswind, _hit_flash)
+	hud.update_state(scope_amount, ammo, can_fire(), range_m, crosswind, _hit_flash, _deflect_flash, ammo_type, regular_reserve, ap_reserve, Economy.points, main.lift.status_text() if main.lift != null else "")
 
 
 func can_fire() -> bool:
@@ -96,13 +110,55 @@ func fire() -> bool:
 	var projectile := RifleProjectile.new()
 	projectile.name = "Projectile"
 	main.add_child(projectile)
-	projectile.setup(camera.global_position, direction, MUZZLE_SPEED, main, self)
+	projectile.setup(camera.global_position, direction, MUZZLE_SPEED, main, self, ammo_type == "ap")
 	ammo -= 1
 	cycle_remaining = CYCLE_TIME
 	_cycle_bolt_played = false
 	_recoil = 0.018
 	audio.on_rifle_shot()
 	return true
+
+
+func switch_ammo() -> void:
+	# При смене типа не теряем патроны из магазина.
+	if ammo_type == "regular":
+		regular_reserve += ammo
+		ammo_type = "ap"
+	else:
+		ap_reserve += ammo
+		ammo_type = "regular"
+	ammo = 0
+	_reload_selected()
+
+
+func _reload_selected() -> void:
+	var capacity: int = SupplyCatalog.SETTINGS["magazine_capacity"]
+	var available := regular_reserve if ammo_type == "regular" else ap_reserve
+	var loaded := mini(capacity - ammo, available)
+	ammo += loaded
+	if ammo_type == "regular":
+		regular_reserve -= loaded
+	else:
+		ap_reserve -= loaded
+
+
+## Слот для сигнала доставки: источник не знает о винтовке напрямую.
+func apply_delivery(_item_id: String, effect: Dictionary) -> void:
+	regular_reserve += int(effect.get("regular_ammo", 0))
+	ap_reserve += int(effect.get("ap_ammo", 0))
+	if effect.has("zoom_multiplier"):
+		zoom_multiplier = float(effect["zoom_multiplier"])
+	if effect.has("sway_multiplier"):
+		sway_multiplier = float(effect["sway_multiplier"])
+	if ammo == 0 and cycle_remaining <= 0.0:
+		_reload_selected()
+
+
+func on_armor_deflect(hit_position: Vector3) -> void:
+	if not _is_visible_hit(hit_position):
+		return
+	_deflect_flash = 1.0
+	audio.on_refused()
 
 
 ## Дальномер может использовать луч: попадание же считается исключительно
@@ -129,7 +185,7 @@ func on_projectile_hit(target: TargetDummy, hit_position: Vector3) -> void:
 	_show_hit_confirmation()
 	impact_confirmed.emit(target)
 	if target.claim_confirmed_hit():
-		main.game.add_confirmed_score(HIT_POINTS)
+		reward_confirmed.emit(HIT_POINTS)
 
 
 func on_robot_hit(robot: AmbientRobot, hit_position: Vector3) -> void:
@@ -138,6 +194,9 @@ func on_robot_hit(robot: AmbientRobot, hit_position: Vector3) -> void:
 	# Тот же тихий тик и маркер, что у мишеней, но без очков и звука смерти.
 	_show_hit_confirmation()
 	robot_impact_confirmed.emit(robot)
+	if robot.claim_reward():
+		var category := "scout" if robot.kind == AmbientRobot.Kind.SCOUT else ("carrier" if robot.kind == AmbientRobot.Kind.CARRIER else "walker")
+		reward_confirmed.emit(int(SupplyCatalog.SETTINGS["robot_rewards"][category]))
 
 
 func _show_hit_confirmation() -> void:

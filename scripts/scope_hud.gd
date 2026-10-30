@@ -20,7 +20,7 @@ func _ready() -> void:
 	add_child(_drawing)
 
 
-func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind_cross: float, hit_flash: float) -> void:
+func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind_cross: float, hit_flash: float, deflect_flash: float, ammo_type: String, regular_reserve: int, ap_reserve: int, points: int, lift_status: String) -> void:
 	_mask_material.set_shader_parameter("scope_amount", amount)
 	_drawing.amount = amount
 	_drawing.ammo = ammo
@@ -28,6 +28,12 @@ func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind
 	_drawing.range_m = range_m
 	_drawing.wind_cross = wind_cross
 	_drawing.hit_flash = hit_flash
+	_drawing.deflect_flash = deflect_flash
+	_drawing.ammo_type = ammo_type
+	_drawing.regular_reserve = regular_reserve
+	_drawing.ap_reserve = ap_reserve
+	_drawing.points = points
+	_drawing.lift_status = lift_status
 	_drawing.queue_redraw()
 
 
@@ -38,6 +44,12 @@ class ScopeDrawing extends Control:
 	var range_m := -1.0
 	var wind_cross := 0.0
 	var hit_flash := 0.0
+	var deflect_flash := 0.0
+	var ammo_type := "regular"
+	var regular_reserve := 0
+	var ap_reserve := 0
+	var points := 0
+	var lift_status := ""
 
 	func _draw() -> void:
 		var font := ThemeDB.fallback_font
@@ -64,13 +76,20 @@ class ScopeDrawing extends Control:
 			var font_size := clampi(roundi(radius * 0.045), 12, 22)
 			draw_string(font, center + Vector2(-radius * 0.58, radius * 0.54), distance_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			draw_string(font, center + Vector2(-radius * 0.58, radius * 0.61), wind_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
-			var status := "ГОТОВА" if ready_to_fire and ammo > 0 else ("НЕТ ПАТРОНОВ" if ammo <= 0 else "ЗАТВОР")
-			draw_string(font, center + Vector2(radius * 0.15, radius * 0.61), status, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
+			var reserve := ap_reserve if ammo_type == "ap" else regular_reserve
+			var rounds := "%s %d / %d" % ["AP" if ammo_type == "ap" else "ОБ", ammo, reserve]
+			draw_string(font, center + Vector2(radius * 0.12, radius * 0.61), rounds, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
+			draw_string(font, center + Vector2(radius * 0.12, radius * 0.54), "%d ОЧК." % points, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 		if hit_flash > 0.0:
 			var tick := Color(0.94, 0.82, 0.57, clampf(hit_flash, 0.0, 1.0) * 0.7)
 			draw_arc(center, maxf(7.0, radius * 0.022), 0.0, TAU, 24, tick, 1.5)
-		# Без числовых счётчиков: остаётся только состояние оружия.
+		if deflect_flash > 0.0:
+			draw_string(font, center + Vector2(-radius * 0.12, radius * 0.12), "БРОНЯ", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.93, 0.75, 0.50, deflect_flash))
+		# M5 показывает баланс, магазин и резерв, без таймеров давления.
 		var hud_alpha := 0.68 * (1.0 - amount)
 		if hud_alpha > 0.02:
 			var status := "ГОТОВА" if ready_to_fire and ammo > 0 else ("НЕТ ПАТРОНОВ" if ammo <= 0 else "ЗАТВОР")
-			draw_string(font, Vector2(size.x - 300.0, size.y - 32.0), status, HORIZONTAL_ALIGNMENT_RIGHT, 270, 18, Color(0.92, 0.84, 0.68, hud_alpha))
+			var reserve := ap_reserve if ammo_type == "ap" else regular_reserve
+			var text := "%d ОЧК.   %s %d / %d   %s" % [points, "AP" if ammo_type == "ap" else "ОБ", ammo, reserve, status]
+			draw_string(font, Vector2(size.x - 510.0, size.y - 32.0), text, HORIZONTAL_ALIGNMENT_RIGHT, 480, 18, Color(0.92, 0.84, 0.68, hud_alpha))
+			draw_string(font, Vector2(30.0, size.y - 32.0), lift_status, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.82, 0.80, 0.68, hud_alpha))

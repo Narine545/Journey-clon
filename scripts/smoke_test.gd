@@ -223,9 +223,9 @@ func _run() -> void:
 	main.cam_rig.set_view(atan2(shot_direction.x, shot_direction.z), asin(shot_direction.y))
 	var observed_impacts: Array[TargetDummy] = []
 	main.rifle.impact_confirmed.connect(func(hit_target: TargetDummy) -> void: observed_impacts.append(hit_target))
-	var score_before := main.game.score
+	var score_before := Economy.points
 	main.rifle.on_projectile_hit(main.long_target, firing_origin + main.cam_rig.cam.global_basis.z * 10.0)
-	_check(main.game.score == score_before, "попадание вне кадра не начисляет очки", failures)
+	_check(Economy.points == score_before, "попадание вне кадра не начисляет очки", failures)
 	var ammo_before := main.rifle.ammo
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var capture_click := InputEventMouseButton.new()
@@ -235,7 +235,7 @@ func _run() -> void:
 	_check(main.rifle.ammo == ammo_before, "клик захвата курсора не стреляет", failures)
 	_check(main.rifle.fire(), "выстрел разрешён", failures)
 	_check(not main.rifle.fire() and main.rifle.ammo == ammo_before - 1, "затвор блокирует повторный выстрел", failures)
-	_check(main.game.score == score_before and main.get_node_or_null("Projectile") != null, "снаряд летит, не хитскан", failures)
+	_check(Economy.points == score_before and main.get_node_or_null("Projectile") != null, "снаряд летит, не хитскан", failures)
 	var flying := main.get_node("Projectile") as RifleProjectile
 	var initial_position := flying.position
 	var initial_velocity := flying.velocity
@@ -245,12 +245,12 @@ func _run() -> void:
 	_check(flying.position.distance_to(initial_position) > 1.0, "снаряд проходит расстояние во времени", failures)
 	_check(delta_velocity.y < 0.0 and Vector2(delta_velocity.x, delta_velocity.z).length() > 0.001, "скорость снаряда меняется под действием ветра и гравитации", failures)
 	await get_tree().create_timer(1.8).timeout
-	_check(main.game.score == score_before + SniperRifle.HIT_POINTS and observed_impacts.size() == 1, "подтверждённое попадание за 500 м начисляет очки", failures)
+	_check(Economy.points == score_before + SniperRifle.HIT_POINTS and observed_impacts.size() == 1, "подтверждённое попадание за 500 м начисляет очки", failures)
 	await get_tree().create_timer(0.8).timeout
 	_check(main.rifle.can_fire(), "затвор снова готов", failures)
 	_check(main.rifle.fire(), "второй выстрел после затвора", failures)
 	await get_tree().create_timer(1.8).timeout
-	_check(observed_impacts.size() == 2 and main.game.score == score_before + SniperRifle.HIT_POINTS, "повторное попадание не начисляет очки дважды", failures)
+	_check(observed_impacts.size() == 2 and Economy.points == score_before + SniperRifle.HIT_POINTS, "повторное попадание не начисляет очки дважды", failures)
 	main.rifle.ammo = 0
 	_check(not main.rifle.fire(), "без патронов выстрел невозможен", failures)
 
@@ -366,7 +366,7 @@ func _run() -> void:
 	main.cam_rig.set_view(atan2(aim_robot.x, aim_robot.z), asin(aim_robot.y))
 	main.rifle._recoil = 0.0
 	main.rifle._hit_flash = 0.0
-	var score_before_robot := main.game.score
+	var score_before_robot := Economy.points
 	var robot_feedback: Array[float] = []
 	main.rifle.robot_impact_confirmed.connect(func(_robot: AmbientRobot) -> void: robot_feedback.append(main.rifle._hit_flash))
 	main.rifle.on_robot_hit(victim, shot_origin + main.cam_rig.cam.global_basis.z * 10.0)
@@ -378,7 +378,7 @@ func _run() -> void:
 	await get_tree().create_timer(1.0).timeout
 	_check(not victim.alive and victim.hitbox.disabled, "реальный летящий снаряд тихо выводит робота из строя", failures)
 	_check(robot_feedback.size() == 1 and robot_feedback[0] > 0.9, "видимое попадание в робота подтверждается маркером", failures)
-	_check(main.game.score == score_before_robot, "подтверждение робота не начисляет очки", failures)
+	_check(Economy.points == score_before_robot + 400, "подтверждение робота начисляет награду", failures)
 	for robot in robots:
 		robot.queue_free()
 
