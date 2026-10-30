@@ -466,6 +466,8 @@ func _test_m5(failures: Array[String]) -> void:
 	var lift := main.lift
 	_check(lift.state == SupplyLift.State.IDLE and lift.status_text() == "ЛИФТ ВНИЗУ", "лифт первоначально внизу", failures)
 	_check(lift.scene_file_path == "res://scenes/Lift.tscn" and main.shop.scene_file_path == "res://scenes/ShopUI.tscn", "лифт и магазин — отдельные сцены", failures)
+	Economy.try_spend(Economy.points)
+	_check(not lift.can_order("ammo") and not lift.request_order("ammo") and Economy.points == 0, "недостаток очков делает товар недоступным без списания", failures)
 	# Радио открывает терминал; пока он открыт, оружие/ходьба блокируются.
 	main.player.position = Vector3(-4.0, ObservationTower.DECK_HEIGHT, -3.9)
 	main.radio_tuner.set_tuning(true)

@@ -57,11 +57,12 @@ jobs:
           fi
       - name: Temporary M5 shop preview
         run: |
-          convert shop.png -resize 640x360 -quality 36 /tmp/m5-shop.jpg
+          sudo apt-get install -y -qq imagemagick
+          convert shop.png -resize 560x315 -quality 30 /tmp/m5-shop.jpg
           base64 -w 0 /tmp/m5-shop.jpg | fold -w 3000 | awk '{printf "::notice::SHOP%02d_%s\n", NR, $0}'
       - name: Temporary M5 crate preview
         run: |
-          convert crate.png -resize 640x360 -quality 36 /tmp/m5-crate.jpg
+          convert crate.png -resize 560x315 -quality 30 /tmp/m5-crate.jpg
           base64 -w 0 /tmp/m5-crate.jpg | fold -w 3000 | awk '{printf "::notice::CRATE%02d_%s\n", NR, $0}'
       - uses: actions/upload-artifact@v4
         if: always()
