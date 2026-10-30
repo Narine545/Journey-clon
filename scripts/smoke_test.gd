@@ -475,8 +475,12 @@ func _test_m5(failures: Array[String]) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	main.rifle.cycle_remaining = 0.0
 	var bullet_before_click := main.rifle.ammo
+	var origin := main.cam_rig.cam.global_position
+	var direction := -main.cam_rig.cam.global_basis.z
+	var test_query := PhysicsRayQueryParameters3D.create(origin, origin + direction * float(SupplyCatalog.SETTINGS["crate_reach"]), 4)
+	var test_hit := main.cam_rig.cam.get_world_3d().direct_space_state.intersect_ray(test_query)
 	main.rifle._input(click)
-	_check(lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 5 and main.rifle.ammo == bullet_before_click, "настоящий луч камеры принимает ящик без выстрела", failures)
+	_check(lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 5 and main.rifle.ammo == bullet_before_click, "настоящий луч камеры принимает ящик без выстрела (state=%d, mouse=%d, hit=%s, direction=%s)" % [lift.state, Input.mouse_mode, str(test_hit.get("collider")), str(direction)], failures)
 	_check(not lift.collect_crate() and not lift.request_order("ammo"), "ящик нельзя принять дважды, пока лифт не внизу", failures)
 	lift.advance(1.0)
 	_check(lift.state == SupplyLift.State.DESCENDING and lift._hum.playing, "DESCENDING и гул", failures)

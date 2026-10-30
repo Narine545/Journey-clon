@@ -106,6 +106,40 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить радио")
 		get_tree().quit(1)
 		return
+	# Отдельно проверяем реальный текстовый терминал M5.
+	Economy.add_points(1000)
+	main.shop.set_open(true)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var shop_path := OS.get_environment("JOURNEY_SHOP_PATH")
+	if shop_path.is_empty():
+		shop_path = "user://shop.png"
+	if get_viewport().get_texture().get_image().save_png(shop_path) != OK:
+		printerr("[SHOT] не удалось сохранить терминал")
+		get_tree().quit(1)
+		return
+	main.shop.set_open(false)
+	main.radio_tuner.set_tuning(false)
+	# Ящик на настиле и угол взгляда, с которого его можно принять.
+	main.lift.request_order("ammo")
+	main.lift.advance(1.0)
+	main.lift.advance(main.lift.ascent_duration)
+	main.player.position = Vector3(-2.6, ObservationTower.DECK_HEIGHT, 3.5)
+	main.cam_rig.aim_offset = Vector2.ZERO
+	var crate_dir := (main.lift.crate.global_position - (main.player.global_position + Vector3.UP * CameraRig.EYE)).normalized()
+	main.cam_rig.set_view(atan2(crate_dir.x, crate_dir.z), asin(crate_dir.y))
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var crate_path := OS.get_environment("JOURNEY_CRATE_PATH")
+	if crate_path.is_empty():
+		crate_path = "user://crate.png"
+	if get_viewport().get_texture().get_image().save_png(crate_path) != OK:
+		printerr("[SHOT] не удалось сохранить ящик")
+		get_tree().quit(1)
+		return
+	main.lift.collect_crate()
 	# Детерминированный объект только для CI-кадра, не для обычной игры.
 	main.radio_tuner.set_tuning(false)
 	main.radio_tuner.set_powered(false)

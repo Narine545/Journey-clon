@@ -26,7 +26,7 @@ jobs:
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' import.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
-      - name: M4 smoke test
+      - name: M5 smoke test
         run: |
           set +e
           JOURNEY_SMOKE=1 timeout 300 ./godot --headless --path . 2>&1 | tee smoke.log
@@ -40,7 +40,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers
-          JOURNEY_SHOT=1 JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
+          JOURNEY_SHOT=1 JOURNEY_SHOP_PATH="$PWD/shop.png" JOURNEY_CRATE_PATH="$PWD/crate.png" JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
           test -s tower.png
           test -s landscape.png
           test -s scope.png
@@ -48,11 +48,21 @@ jobs:
           test -s robot.png
           test -s sky.png
           test -s rail.png
+          test -s shop.png
+          test -s crate.png
           grep -q 'Vulkan.*Forward+' render.log
           if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log; then
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
+      - name: Temporary M5 shop preview
+        run: |
+          convert shop.png -resize 640x360 -quality 36 /tmp/m5-shop.jpg
+          base64 -w 0 /tmp/m5-shop.jpg | fold -w 3000 | awk '{printf "::notice::SHOP%02d_%s\n", NR, $0}'
+      - name: Temporary M5 crate preview
+        run: |
+          convert crate.png -resize 640x360 -quality 36 /tmp/m5-crate.jpg
+          base64 -w 0 /tmp/m5-crate.jpg | fold -w 3000 | awk '{printf "::notice::CRATE%02d_%s\n", NR, $0}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -66,3 +76,5 @@ jobs:
             robot.png
             sky.png
             rail.png
+            shop.png
+            crate.png
