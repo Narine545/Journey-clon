@@ -512,7 +512,7 @@ func _test_m5(failures: Array[String]) -> void:
 	var cage_bottom: float = cage_anchor.global_position.y if cage_anchor != null else 0.0
 	var ammo_before_collect := main.rifle.regular_reserve
 	lift.advance(lift.ascent_duration * 0.5)
-	_check(cage_anchor != null and cage_anchor.global_position.y > cage_bottom + 10.0, "авторская кабина поднимается вместе с заказом", failures)
+	_check(cage_anchor != null and cage_anchor.global_position.y > cage_bottom + 10.0, "авторская кабина поднимается вместе с заказом (низ=%.2f, середина=%.2f)" % [cage_bottom, cage_anchor.global_position.y if cage_anchor != null else -999.0], failures)
 	lift.advance(lift.ascent_duration * 0.5)
 	_check(lift.state == SupplyLift.State.ARRIVED and lift._arrival_sfx.playing, "ARRIVED: удар и скрип", failures)
 	_check(not lift.collect_crate(), "ящик нельзя принять до открытия дверцы", failures)
