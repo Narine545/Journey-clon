@@ -1,10 +1,8 @@
 name: Inspect supplied tower
 on:
-  push:
-    branches: ["arena/4b8d381d-journey-clon"]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -21,5 +19,14 @@ jobs:
           sudo apt-get install -y -qq libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libice6 libgl1
           python3 -m venv /tmp/blender-venv
           /tmp/blender-venv/bin/pip -q install bpy==5.0.1 > /tmp/blend-install.log 2>&1
+          mkdir -p assets/tower
           /tmp/blender-venv/bin/python tools/inspect_blend.py "$PWD/godot tower with lift.blend" > /tmp/blend-inspection.log 2>&1
           grep 'INSPECTION_JSON=' /tmp/blend-inspection.log | sed 's/^INSPECTION_JSON=//' | gzip -c | base64 -w0 | fold -w 3000 | awk '{printf "::notice::BLEND%02d_%s\n", NR, $0}'
+      - name: Save exported model to this branch
+        run: |
+          test -s assets/tower/animated_tower.glb
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/tower/animated_tower.glb
+          git diff --cached --quiet || git commit -m "Export supplied animated tower to glTF"
+          git push origin HEAD:arena/4b8d381d-journey-clon
