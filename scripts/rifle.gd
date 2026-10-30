@@ -61,12 +61,20 @@ func _input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			aim_requested = event.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 		elif event.button_index == MOUSE_BUTTON_LEFT and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-			if main.lift != null and main.lift.try_collect_from_camera():
+			if _primary_action():
 				get_viewport().set_input_as_handled()
 				return
-			fire()
 	elif event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
 		aim_requested = false
+
+
+## Единый путь ЛКМ; headless-тест использует его после проверки луча,
+## поскольку headless DisplayServer не умеет захватить курсор.
+func _primary_action() -> bool:
+	if main.lift != null and main.lift.try_collect_from_camera():
+		return true
+	fire()
+	return false
 
 
 func _physics_process(delta: float) -> void:

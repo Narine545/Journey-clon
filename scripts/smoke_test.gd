@@ -399,7 +399,10 @@ func _run() -> void:
 	main.rifle.cycle_remaining = 0.0
 	main.rifle._recoil = 0.0
 	main.rifle.ap_reserve = 3
-	main.rifle.switch_ammo()
+	var tab_key := InputEventKey.new()
+	tab_key.pressed = true
+	tab_key.physical_keycode = KEY_TAB
+	main.rifle._input(tab_key)
 	_check(main.rifle.ammo_type == "ap" and main.rifle.ammo == 3, "Tab меняет тип и заряжает AP из запаса", failures)
 	main.cam_rig.set_view(atan2(armor_aim.x, armor_aim.z), asin(armor_aim.y))
 	_check(main.rifle.fire(), "выстрел AP", failures)
@@ -454,8 +457,14 @@ func _test_m5(failures: Array[String]) -> void:
 	var reentrant := func(_value: int, _delta: int) -> void: orders_during_signal.append(lift.request_order("ammo"))
 	Economy.points_changed.connect(reentrant, CONNECT_ONE_SHOT)
 	main.shop.selected = 0
-	_check(main.shop.attempt_selected(), "заказ патронов через терминал", failures)
-	_check(orders_during_signal == [false] and not main.shop.attempt_selected() and Economy.points == before_order - 150, "повторный и reentrant-заказ не списывает второй раз", failures)
+	var shop_click := InputEventMouseButton.new()
+	shop_click.button_index = MOUSE_BUTTON_LEFT
+	shop_click.pressed = true
+	shop_click.position = main.shop.panel.row(0).get_center()
+	main.shop.panel._gui_input(shop_click)
+	_check(lift.state == SupplyLift.State.CALLED, "заказ патронов кликом в терминале", failures)
+	main.shop.panel._gui_input(shop_click)
+	_check(orders_during_signal == [false] and Economy.points == before_order - 150, "двойной клик и reentrant-заказ не списывает второй раз", failures)
 	_check(lift.state == SupplyLift.State.CALLED and lift._start_sfx.playing, "CALLED и лязг старта", failures)
 	_check(lift.ascent_duration >= 30.0 and lift.ascent_duration <= 60.0 and lift.status_text() == "ЛИФТ В ПУТИ", "длительность 45±15 и только статус без обратного отсчёта", failures)
 	main.shop.set_open(false)
@@ -479,8 +488,9 @@ func _test_m5(failures: Array[String]) -> void:
 	var direction := -main.cam_rig.cam.global_basis.z
 	var test_query := PhysicsRayQueryParameters3D.create(origin, origin + direction * float(SupplyCatalog.SETTINGS["crate_reach"]), 4)
 	var test_hit := main.cam_rig.cam.get_world_3d().direct_space_state.intersect_ray(test_query)
-	main.rifle._input(click)
-	_check(lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 5 and main.rifle.ammo == bullet_before_click, "настоящий луч камеры принимает ящик без выстрела (state=%d, mouse=%d, hit=%s, direction=%s)" % [lift.state, Input.mouse_mode, str(test_hit.get("collider")), str(direction)], failures)
+	_check(test_hit.get("collider") == lift.crate, "луч камеры попадает именно в ящик", failures)
+	var collected_via_click := main.rifle._primary_action()
+	_check(collected_via_click and lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 5 and main.rifle.ammo == bullet_before_click, "путь ЛКМ принимает ящик реальным лучом без выстрела", failures)
 	_check(not lift.collect_crate() and not lift.request_order("ammo"), "ящик нельзя принять дважды, пока лифт не внизу", failures)
 	lift.advance(1.0)
 	_check(lift.state == SupplyLift.State.DESCENDING and lift._hum.playing, "DESCENDING и гул", failures)
@@ -507,6 +517,15 @@ func _test_m5(failures: Array[String]) -> void:
 	main.rifle.aim_requested = true
 	main.rifle._physics_process(0.0)
 	_check(main.cam_rig.cam.fov < SniperRifle.SCOPE_FOV, "оптика действительно увеличивает кратность", failures)
+	_check(main.rifle.hud._drawing.points == Economy.points and main.rifle.hud._drawing.ammo_type == main.rifle.ammo_type, "HUD показывает кошелёк и тип патрона", failures)
+	main.rifle._clock = 1.3
+	main.rifle._recoil = 0.0
+	main.rifle.sway_multiplier = 1.0
+	main.rifle._physics_process(0.0)
+	var base_sway := main.cam_rig.aim_offset.length()
+	main.rifle.sway_multiplier = 0.5
+	main.rifle._physics_process(0.0)
+	_check(is_equal_approx(main.cam_rig.aim_offset.length(), base_sway * 0.5), "стабилизация реально уменьшает раскачку", failures)
 	# Длинный виртуальный прогон не заменяет ручную игру и измерение FPS.
 	for step in range(7200):
 		lift.advance(0.1)

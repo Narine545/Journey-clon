@@ -80,6 +80,9 @@ class ScopeDrawing extends Control:
 			var rounds := "%s %d / %d" % ["AP" if ammo_type == "ap" else "ОБ", ammo, reserve]
 			draw_string(font, center + Vector2(radius * 0.12, radius * 0.61), rounds, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			draw_string(font, center + Vector2(radius * 0.12, radius * 0.54), "%d ОЧК." % points, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
+		if lift_status == "ГРУЗ НА ПЛОЩАДКЕ" and amount < 0.5:
+			# Ненавязчивая точка показывает центр луча только пока груз ожидает.
+			draw_circle(center, 2.0, Color(0.91, 0.85, 0.70, 0.8 * (1.0 - amount)))
 		if hit_flash > 0.0:
 			var tick := Color(0.94, 0.82, 0.57, clampf(hit_flash, 0.0, 1.0) * 0.7)
 			draw_arc(center, maxf(7.0, radius * 0.022), 0.0, TAU, 24, tick, 1.5)
@@ -92,4 +95,5 @@ class ScopeDrawing extends Control:
 			var reserve := ap_reserve if ammo_type == "ap" else regular_reserve
 			var text := "%d ОЧК.   %s %d / %d   %s" % [points, "AP" if ammo_type == "ap" else "ОБ", ammo, reserve, status]
 			draw_string(font, Vector2(size.x - 510.0, size.y - 32.0), text, HORIZONTAL_ALIGNMENT_RIGHT, 480, 18, Color(0.92, 0.84, 0.68, hud_alpha))
-			draw_string(font, Vector2(30.0, size.y - 32.0), lift_status, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.82, 0.80, 0.68, hud_alpha))
+			var lift_hint := lift_status + ("  •  ВЗГЛЯД + ЛКМ" if lift_status == "ГРУЗ НА ПЛОЩАДКЕ" else "")
+			draw_string(font, Vector2(30.0, size.y - 32.0), lift_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.82, 0.80, 0.68, hud_alpha))
