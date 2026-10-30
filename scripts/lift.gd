@@ -11,7 +11,7 @@ var main: MainScene
 var pending_id := ""
 var installed: Dictionary = {}
 var elapsed := 0.0
-var ascent_duration := 45.0
+var ascent_duration: float = SupplyCatalog.SETTINGS["lift_ascent_mean"]
 var rng := RandomNumberGenerator.new()
 var cage: Node3D
 var crate: SupplyCrate
@@ -165,5 +165,5 @@ func status_text() -> String:
 		State.IDLE: return "ЛИФТ ВНИЗУ"
 		State.CALLED, State.ASCENDING, State.DESCENDING: return "ЛИФТ В ПУТИ"
 		State.ARRIVED: return "ГРУЗ НА ПЛОЩАДКЕ"
-		State.UNLOADED: return "ГРУЗ ПРИНЯТ"
+		State.UNLOADED: return "ЛИФТ В ПУТИ"
 	return "ЛИФТ ВНИЗУ"
