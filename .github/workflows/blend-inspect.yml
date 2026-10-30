@@ -1,10 +1,12 @@
 name: Inspect supplied tower
 on:
-  workflow_dispatch:
+  push:
+    branches: ["arena/4b8d381d-journey-clon"]
 permissions:
   contents: write
 jobs:
   inspect:
+    if: github.event.head_commit.author.name != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
