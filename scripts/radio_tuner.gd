@@ -235,4 +235,4 @@ class RadioOverlay extends Control:
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * strength, bar.size.y)), Color(0.76, 0.64, 0.42))
 		var help_color := Color(0.77, 0.73, 0.64)
 		draw_string(font, Vector2(left, top + 205.0 * scale_factor), "← / → или колесо: частота", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
-		draw_string(font, Vector2(left, top + 235.0 * scale_factor), "X: питание      R / Esc: закрыть", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
+		draw_string(font, Vector2(left, top + 235.0 * scale_factor), "B: снабжение      X: питание      R / Esc: закрыть", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)

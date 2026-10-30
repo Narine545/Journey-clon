@@ -355,7 +355,7 @@ func _run() -> void:
 	_check(not radio.live_on_air and robots[1].alive, "робот существует без живого сигнала", failures)
 	radio.live_on_air = true
 	_check(radio.live_on_air and main.ambient_spawner.get_child_count() > 0, "состояние эфира независимо от объектов", failures)
-	var victim := robots[1]
+	var victim := robots[2]
 	victim.speed = 0.0
 	victim.velocity = Vector2.ZERO
 	await get_tree().physics_frame
@@ -378,9 +378,39 @@ func _run() -> void:
 	await get_tree().create_timer(1.0).timeout
 	_check(not victim.alive and victim.hitbox.disabled, "реальный летящий снаряд тихо выводит робота из строя", failures)
 	_check(robot_feedback.size() == 1 and robot_feedback[0] > 0.9, "видимое попадание в робота подтверждается маркером", failures)
-	_check(Economy.points == score_before_robot + 400, "подтверждение робота начисляет награду", failures)
+	_check(Economy.points == score_before_robot + 250, "подтверждение робота начисляет награду", failures)
+	# M5: броня принимает только реальный AP-снаряд.
+	var armored := robots[1]
+	armored.speed = 0.0
+	armored.velocity = Vector2.ZERO
+	main.rifle.cycle_remaining = 0.0
+	main.rifle.ammo_type = "regular"
+	main.rifle.ammo = 2
+	main.rifle._recoil = 0.0
+	var armor_center := armored.global_position + Vector3.UP * armored.body_size.y * 0.5
+	var armor_flight := shot_origin.distance_to(armor_center) / SniperRifle.MUZZLE_SPEED
+	var armor_aim := (armor_center - Ballistics.acceleration(main.game, 0.0, 0.0) * (0.5 * armor_flight * armor_flight) - shot_origin).normalized()
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.set_view(atan2(armor_aim.x, armor_aim.z), asin(armor_aim.y))
+	var points_before_armor := Economy.points
+	_check(main.rifle.fire(), "обычный выстрел по броне", failures)
+	await get_tree().create_timer(0.55).timeout
+	_check(armored.alive and Economy.points == points_before_armor and main.rifle._deflect_flash > 0.0, "обычный снаряд отскакивает без награды", failures)
+	main.rifle.cycle_remaining = 0.0
+	main.rifle._recoil = 0.0
+	main.rifle.ap_reserve = 3
+	main.rifle.switch_ammo()
+	_check(main.rifle.ammo_type == "ap" and main.rifle.ammo == 3, "Tab меняет тип и заряжает AP из запаса", failures)
+	main.cam_rig.set_view(atan2(armor_aim.x, armor_aim.z), asin(armor_aim.y))
+	_check(main.rifle.fire(), "выстрел AP", failures)
+	var ap_shot := main.get_node_or_null("Projectile") as RifleProjectile
+	_check(ap_shot != null and ap_shot.pierce, "физический снаряд имеет флаг pierce", failures)
+	await get_tree().create_timer(0.8).timeout
+	_check(not armored.alive and Economy.points == points_before_armor + 400, "AP поражает броню и даёт 400 очков", failures)
 	for robot in robots:
 		robot.queue_free()
+	await get_tree().process_frame
+	await _test_m5(failures)
 
 	if failures.is_empty():
 		print("[SMOKE] итог: ВСЁ ПРОШЛО")
@@ -388,6 +418,107 @@ func _run() -> void:
 	else:
 		printerr("[SMOKE] итог: ошибки: ", failures)
 		get_tree().quit(1)
+
+
+func _test_m5(failures: Array[String]) -> void:
+	# Автономный кошелёк проверяет сигналы и граничное списание без сброса
+	# настоящего баланса игры, в том числе отрицательные значения.
+	var wallet := Wallet.new()
+	var deltas: Array[int] = []
+	wallet.points_changed.connect(func(_value: int, delta: int) -> void: deltas.append(delta))
+	wallet.add_points(150)
+	_check(wallet.can_afford(150) and wallet.try_spend(150) and wallet.points == 0, "кошелёк списывает впритык", failures)
+	_check(not wallet.try_spend(1) and not wallet.try_spend(-1) and wallet.points == 0, "недостаток и отрицательная цена не дают уйти в минус", failures)
+	_check(deltas == [150, -150], "кошелёк сообщает значение и дельту", failures)
+	wallet.free()
+	var lift := main.lift
+	_check(lift.state == SupplyLift.State.IDLE and lift.status_text() == "ЛИФТ ВНИЗУ", "лифт первоначально внизу", failures)
+	_check(lift.scene_file_path == "res://scenes/Lift.tscn" and main.shop.scene_file_path == "res://scenes/ShopUI.tscn", "лифт и магазин — отдельные сцены", failures)
+	# Радио открывает терминал; пока он открыт, оружие/ходьба блокируются.
+	main.player.position = Vector3(-4.0, ObservationTower.DECK_HEIGHT, -3.9)
+	main.radio_tuner.set_tuning(true)
+	var open_key := InputEventKey.new()
+	open_key.physical_keycode = KEY_B
+	open_key.pressed = true
+	main.radio_tuner._input(open_key)
+	_check(main.shop.is_open and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "B на радио открывает терминал и курсор", failures)
+	var before_ammo := main.rifle.ammo
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	main.rifle._input(click)
+	_check(main.rifle.ammo == before_ammo, "в терминале клик не стреляет", failures)
+	Economy.add_points(5000)
+	var before_order := Economy.points
+	var orders_during_signal: Array[bool] = []
+	var reentrant := func(_value: int, _delta: int) -> void: orders_during_signal.append(lift.request_order("ammo"))
+	Economy.points_changed.connect(reentrant, CONNECT_ONE_SHOT)
+	main.shop.selected = 0
+	_check(main.shop.attempt_selected(), "заказ патронов через терминал", failures)
+	_check(orders_during_signal == [false] and not main.shop.attempt_selected() and Economy.points == before_order - 150, "повторный и reentrant-заказ не списывает второй раз", failures)
+	_check(lift.state == SupplyLift.State.CALLED and lift._start_sfx.playing, "CALLED и лязг старта", failures)
+	_check(lift.ascent_duration >= 30.0 and lift.ascent_duration <= 60.0 and lift.status_text() == "ЛИФТ В ПУТИ", "длительность 45±15 и только статус без обратного отсчёта", failures)
+	main.shop.set_open(false)
+	main.radio_tuner.set_tuning(false)
+	lift.advance(1.0)
+	_check(lift.state == SupplyLift.State.ASCENDING and lift._hum.playing, "ASCENDING и гул троса", failures)
+	var ammo_before_collect := main.rifle.regular_reserve
+	lift.advance(lift.ascent_duration)
+	_check(lift.state == SupplyLift.State.ARRIVED and lift._arrival_sfx.playing and is_instance_valid(lift.crate), "ARRIVED: удар, скрип и ящик", failures)
+	_check(lift.crate.scene_file_path == "res://scenes/Crate.tscn" and lift.status_text() == "ГРУЗ НА ПЛОЩАДКЕ", "ящик и статус груза", failures)
+	await get_tree().physics_frame
+	main.player.position = Vector3(-3.0, ObservationTower.DECK_HEIGHT, 3.5)
+	main.cam_rig.aim_offset = Vector2.ZERO
+	var to_crate := (lift.crate.global_position - (main.player.global_position + Vector3.UP * CameraRig.EYE)).normalized()
+	main.cam_rig.set_view(atan2(to_crate.x, to_crate.z), asin(to_crate.y))
+	await get_tree().physics_frame
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	main.rifle.cycle_remaining = 0.0
+	var bullet_before_click := main.rifle.ammo
+	main.rifle._input(click)
+	_check(lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 5 and main.rifle.ammo == bullet_before_click, "настоящий луч камеры принимает ящик без выстрела", failures)
+	_check(not lift.collect_crate() and not lift.request_order("ammo"), "ящик нельзя принять дважды, пока лифт не внизу", failures)
+	lift.advance(1.0)
+	_check(lift.state == SupplyLift.State.DESCENDING and lift._hum.playing, "DESCENDING и гул", failures)
+	lift.advance(float(SupplyCatalog.SETTINGS["lift_descent_seconds"]))
+	_check(lift.state == SupplyLift.State.IDLE and not lift._hum.playing, "лифт возвращается в IDLE", failures)
+	_check(lift.request_order("ammo"), "расходники можно заказывать повторно", failures)
+	await _deliver_test_item(failures)
+	_check(main.rifle.regular_reserve == ammo_before_collect + 10, "вторая пачка прибавлена в резерв", failures)
+	# Все улучшения идут через тот же сигнал доставки и один раз.
+	main.radio_tuner.live_on_air = true
+	main.radio_tuner.set_frequency(94.7)
+	main.radio_tuner.update_signal()
+	var weak_signal := main.radio_tuner.signal_strength
+	for id in ["antenna", "stability", "scope", "ap"]:
+		_check(lift.request_order(id), "заказ %s" % id, failures)
+		await _deliver_test_item(failures)
+		if SupplyCatalog.item(id)["type"] == "Upgrade":
+			var points_before_repeat := Economy.points
+			_check(lift.is_installed(id) and not lift.request_order(id) and Economy.points == points_before_repeat, "%s установлен один раз" % id, failures)
+	_check(main.radio_tuner.signal_strength > weak_signal and main.radio_tuner._live.max_distance > 18.0, "антенна усиливает и расширяет живой приём", failures)
+	_check(is_equal_approx(main.rifle.sway_multiplier, 0.5) and is_equal_approx(main.rifle.zoom_multiplier, 1.5), "стабилизация и оптика меняют параметры винтовки", failures)
+	_check(main.rifle.ap_reserve >= 3, "AP добавлены в запас", failures)
+	main.rifle.scope_amount = 1.0
+	main.rifle.aim_requested = true
+	main.rifle._physics_process(0.0)
+	_check(main.cam_rig.cam.fov < SniperRifle.SCOPE_FOV, "оптика действительно увеличивает кратность", failures)
+	# Длинный виртуальный прогон не заменяет ручную игру и измерение FPS.
+	for step in range(7200):
+		lift.advance(0.1)
+		main.game._process(0.1)
+		main.radio_tuner.update_signal()
+	_check(lift.state == SupplyLift.State.IDLE and Economy.points >= 0 and is_finite(main.game.wind_strength), "720 секунд ускоренной симуляции систем без ошибки", failures)
+
+
+func _deliver_test_item(failures: Array[String]) -> void:
+	var lift := main.lift
+	lift.advance(1.0)
+	lift.advance(lift.ascent_duration)
+	await get_tree().physics_frame
+	_check(lift.collect_crate(), "доставка и получение содержимого", failures)
+	lift.advance(1.0)
+	lift.advance(float(SupplyCatalog.SETTINGS["lift_descent_seconds"]))
 
 
 func _model_within_rails() -> bool:
