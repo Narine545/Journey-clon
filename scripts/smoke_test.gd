@@ -413,6 +413,7 @@ func _run() -> void:
 	for robot in robots:
 		robot.queue_free()
 	await get_tree().process_frame
+	await _test_piercing(failures)
 	await _test_m5(failures)
 
 	if failures.is_empty():
@@ -421,6 +422,34 @@ func _run() -> void:
 	else:
 		printerr("[SMOKE] итог: ошибки: ", failures)
 		get_tree().quit(1)
+
+
+func _test_piercing(failures: Array[String]) -> void:
+	# Два тестовых хитбокса в воздухе на одной линии: один физический
+	# отрезок бронебойного снаряда должен реально пройти сквозь первый.
+	main.rifle.aim_requested = false
+	main.rifle.scope_amount = 0.0
+	main.rifle._recoil = 0.0
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.set_view(PI * 0.5, 0.0)
+	var origin := main.player.global_position + Vector3.UP * CameraRig.EYE
+	var targets: Array[TargetDummy] = []
+	for distance in [18.0, 34.0]:
+		var dummy := TargetDummy.new()
+		main.add_child(dummy)
+		dummy.global_position = origin + Vector3.RIGHT * distance - Vector3.UP * 2.9
+		targets.append(dummy)
+	await get_tree().physics_frame
+	var shot := RifleProjectile.new()
+	main.add_child(shot)
+	shot.set_physics_process(false)
+	shot.setup(origin, Vector3.RIGHT, SniperRifle.MUZZLE_SPEED, main, main.rifle, true)
+	shot._physics_process(0.08)
+	_check(targets[0]._confirmed and targets[1]._confirmed and shot.excluded.size() == 2, "AP реально проходит сквозь первую цель и поражает вторую", failures)
+	shot.queue_free()
+	for dummy in targets:
+		dummy.queue_free()
+	await get_tree().process_frame
 
 
 func _test_m5(failures: Array[String]) -> void:
@@ -445,6 +474,9 @@ func _test_m5(failures: Array[String]) -> void:
 	open_key.pressed = true
 	main.radio_tuner._input(open_key)
 	_check(main.shop.is_open and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "B на радио открывает терминал и курсор", failures)
+	# После показа Control получает размеры на следующем кадре.
+	await get_tree().process_frame
+	await get_tree().process_frame
 	var before_ammo := main.rifle.ammo
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT

@@ -69,13 +69,13 @@ class ShopPanel extends Control:
 	var shop: ShopUI
 	const ROW_HEIGHT := 65.0
 	func box() -> Rect2:
-		var width := minf(820.0, size.x - 32.0)
+		var width := maxf(1.0, minf(820.0, size.x - 32.0))
 		var height := 545.0
 		return Rect2(Vector2((size.x - width) * 0.5, (size.y - height) * 0.5), Vector2(width, height))
 
 	func row(index: int) -> Rect2:
 		var frame := box()
-		return Rect2(frame.position + Vector2(22.0, 112.0 + ROW_HEIGHT * index), Vector2(frame.size.x - 44.0, ROW_HEIGHT - 5.0))
+		return Rect2(frame.position + Vector2(22.0, 112.0 + ROW_HEIGHT * index), Vector2(maxf(1.0, frame.size.x - 44.0), ROW_HEIGHT - 5.0))
 
 	func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
