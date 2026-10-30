@@ -84,8 +84,8 @@ func _run() -> void:
 	# Исправленный экспорт содержит отражённые модификаторами детали, а не
 	# одиночные исходные кубы старого экспорта (по 36 индексов каждый).
 	for part_pattern in ["*LiftFloorPanel*001*", "*LiftFloorPanel*002*", "*LiftFloorPanel*003*", "*LiftFloorPanel*004*", "*LiftCrossbar*54*Z2*001*", "*LiftCrossbar*54*Z2*002*", "*LiftCrossbar*54*Z2*003*", "*LiftCrossbar*54*Z2*005*", "*LiftCrossbar*54*Z2*006*"]:
-		var part := main.tower.model.find_child(part_pattern, true, false) as MeshInstance3D
-		_check(part != null and part.mesh != null and part.mesh.get_faces().size() >= 72, "геометрия с модификаторами %s" % part_pattern, failures)
+		var mesh_piece := main.tower.model.find_child(part_pattern, true, false) as MeshInstance3D
+		_check(mesh_piece != null and mesh_piece.mesh != null and mesh_piece.mesh.get_faces().size() >= 72, "геометрия с модификаторами %s" % part_pattern, failures)
 	_check(main.player.get_parent() == main.tower, "игрок на башне", failures)
 	_check(is_equal_approx(main.player.position.y, ObservationTower.DECK_HEIGHT), "высота площадки", failures)
 	_check(main.target.global_position.y < main.player.global_position.y - 20.0, "мишень внизу", failures)

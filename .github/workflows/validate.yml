@@ -28,6 +28,7 @@ jobs:
           ./godot --headless --path . --import 2>&1 | tee import.log
           if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' import.log; then
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' import.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+            ./godot --headless --path . --script res://scripts/smoke_test.gd --check-only 2>&1 | head -30 | while IFS= read -r line; do echo "::error::$line"; done || true
             exit 1
           fi
       - name: M5 smoke test
