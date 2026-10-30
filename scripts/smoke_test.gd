@@ -80,6 +80,12 @@ func _run() -> void:
 	_check(main.audio._wind.stream != null and main.audio._wind.playing, "петля ветра", failures)
 	_check(main.tower.scene_file_path == "res://scenes/Tower.tscn", "отдельная сцена башни", failures)
 	_check(main.tower.model != null and main.tower.animation != null and not main.tower.cage_track.is_empty() and not main.tower.door_track.is_empty(), "модель пользователя и дорожки лифта/дверцы", failures)
+	_check(main.tower.model.scene_file_path == "res://assets/tower/tower_delivery.glb", "используется исправленный GLB", failures)
+	# Исправленный экспорт содержит отражённые модификаторами детали, а не
+	# одиночные исходные кубы старого экспорта (по 36 индексов каждый).
+	for part_pattern in ["*LiftFloorPanel*001*", "*LiftFloorPanel*002*", "*LiftFloorPanel*003*", "*LiftFloorPanel*004*", "*LiftCrossbar*54*Z2*001*", "*LiftCrossbar*54*Z2*002*", "*LiftCrossbar*54*Z2*003*", "*LiftCrossbar*54*Z2*005*", "*LiftCrossbar*54*Z2*006*"]:
+		var part := main.tower.model.find_child(part_pattern, true, false) as MeshInstance3D
+		_check(part != null and part.mesh != null and part.mesh.get_faces().size() >= 72, "геометрия с модификаторами %s" % part_pattern, failures)
 	_check(main.player.get_parent() == main.tower, "игрок на башне", failures)
 	_check(is_equal_approx(main.player.position.y, ObservationTower.DECK_HEIGHT), "высота площадки", failures)
 	_check(main.target.global_position.y < main.player.global_position.y - 20.0, "мишень внизу", failures)
@@ -515,6 +521,14 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(cage_anchor != null and cage_anchor.global_position.y > cage_bottom + 10.0, "авторская кабина поднимается вместе с заказом (низ=%.2f, середина=%.2f)" % [cage_bottom, cage_anchor.global_position.y if cage_anchor != null else -999.0], failures)
 	lift.advance(lift.ascent_duration * 0.5)
 	_check(lift.state == SupplyLift.State.ARRIVED and lift._arrival_sfx.playing, "ARRIVED: удар и скрип", failures)
+	_check(cage_anchor != null and absf(cage_anchor.position.y - ObservationTower.DECK_HEIGHT - ObservationTower.FLOOR_BELOW_ANCHOR) < 0.01, "центр кабины на расчётной высоте", failures)
+	var floor_mesh := main.tower.model.find_child("*LiftFloorPanel*001*", true, false) as MeshInstance3D
+	var floor_bottom := INF
+	if floor_mesh != null and floor_mesh.mesh != null:
+		var bounds := floor_mesh.mesh.get_aabb()
+		for corner in range(8):
+			floor_bottom = minf(floor_bottom, floor_mesh.to_global(bounds.get_endpoint(corner)).y - main.tower.global_position.y)
+	_check(absf(floor_bottom - (ObservationTower.DECK_HEIGHT - 0.05)) < 0.08, "реальный пол кабины совпадает с настилом", failures)
 	_check(not lift.collect_crate(), "ящик нельзя принять до открытия дверцы", failures)
 	main.player.position = Vector3(-3.0, ObservationTower.DECK_HEIGHT, 3.5)
 	main.cam_rig.aim_offset = Vector2.ZERO
