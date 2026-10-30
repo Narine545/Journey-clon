@@ -16,6 +16,11 @@ config/icon="res://icon.svg"
 Game="*res://scripts/game.gd"
 Economy="*res://scripts/economy.gd"
 
+; Исходный Blender 5 хранится рядом; в игре используется экспорт glTF.
+[filesystem]
+
+import/blender/enabled=false
+
 [display]
 
 window/size/viewport_width=1920

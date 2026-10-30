@@ -13,9 +13,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Load Blender model
         run: |
+          trap 'echo "::error::failed near line $LINENO, exit $?"; test ! -f /tmp/blend-inspection.log || tail -20 /tmp/blend-inspection.log | while IFS= read -r line; do echo "::error::$line"; done' ERR
           sudo apt-get update -qq
           sudo apt-get install -y -qq libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libice6 libgl1
           python3 -m venv /tmp/blender-venv
           /tmp/blender-venv/bin/pip -q install bpy==5.0.1
-          /tmp/blender-venv/bin/python tools/inspect_blend.py "$PWD/godot tower with lift.blend" > /tmp/blend-inspection.log
+          /tmp/blender-venv/bin/python tools/inspect_blend.py "$PWD/godot tower with lift.blend" > /tmp/blend-inspection.log 2>&1
           grep 'INSPECTION_JSON=' /tmp/blend-inspection.log | sed 's/^INSPECTION_JSON=//' | gzip -c | base64 -w0 | fold -w 3000 | awk '{printf "::notice::BLEND%02d_%s\n", NR, $0}'
