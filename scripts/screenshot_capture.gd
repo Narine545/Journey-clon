@@ -125,6 +125,7 @@ func _capture() -> void:
 	main.lift.request_order("ammo")
 	main.lift.advance(1.0)
 	main.lift.advance(main.lift.ascent_duration)
+	main.lift.advance(1.0)
 	main.player.position = Vector3(-2.6, ObservationTower.DECK_HEIGHT, 3.5)
 	main.cam_rig.aim_offset = Vector2.ZERO
 	var crate_dir := (main.lift.crate.global_position - (main.player.global_position + Vector3.UP * CameraRig.EYE)).normalized()

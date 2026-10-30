@@ -79,6 +79,7 @@ func _run() -> void:
 	_check(main.audio._step_streams.size() == 6, "синтез шагов", failures)
 	_check(main.audio._wind.stream != null and main.audio._wind.playing, "петля ветра", failures)
 	_check(main.tower.scene_file_path == "res://scenes/Tower.tscn", "отдельная сцена башни", failures)
+	_check(main.tower.model != null and main.tower.animation != null and not main.tower.cage_track.is_empty() and not main.tower.door_track.is_empty(), "модель пользователя и дорожки лифта/дверцы", failures)
 	_check(main.player.get_parent() == main.tower, "игрок на башне", failures)
 	_check(is_equal_approx(main.player.position.y, ObservationTower.DECK_HEIGHT), "высота площадки", failures)
 	_check(main.target.global_position.y < main.player.global_position.y - 20.0, "мишень внизу", failures)
@@ -507,8 +508,10 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(lift.state == SupplyLift.State.ASCENDING and lift._hum.playing, "ASCENDING и гул троса", failures)
 	var ammo_before_collect := main.rifle.regular_reserve
 	lift.advance(lift.ascent_duration)
-	_check(lift.state == SupplyLift.State.ARRIVED and lift._arrival_sfx.playing and is_instance_valid(lift.crate), "ARRIVED: удар, скрип и ящик", failures)
-	_check(lift.crate.scene_file_path == "res://scenes/Crate.tscn" and lift.status_text() == "ГРУЗ НА ПЛОЩАДКЕ", "ящик и статус груза", failures)
+	_check(lift.state == SupplyLift.State.ARRIVED and lift._arrival_sfx.playing, "ARRIVED: удар и скрип", failures)
+	_check(not lift.collect_crate(), "ящик нельзя принять до открытия дверцы", failures)
+	lift.advance(1.0)
+	_check(is_instance_valid(lift.crate) and lift.crate.scene_file_path == "res://scenes/Crate.tscn" and lift.status_text() == "ГРУЗ НА ПЛОЩАДКЕ", "после открытия доставлен ящик", failures)
 	await get_tree().physics_frame
 	main.player.position = Vector3(-3.0, ObservationTower.DECK_HEIGHT, 3.5)
 	main.cam_rig.aim_offset = Vector2.ZERO
@@ -572,6 +575,7 @@ func _deliver_test_item(failures: Array[String]) -> void:
 	var lift := main.lift
 	lift.advance(1.0)
 	lift.advance(lift.ascent_duration)
+	lift.advance(1.0)
 	await get_tree().physics_frame
 	_check(lift.collect_crate(), "доставка и получение содержимого", failures)
 	lift.advance(1.0)

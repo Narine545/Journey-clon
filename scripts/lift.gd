@@ -26,16 +26,8 @@ func setup(main_ref: MainScene) -> void:
 	cage = Node3D.new()
 	cage.position = Vector3(-6.8, 1.0, 3.5)
 	add_child(cage)
-	var platform := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(1.7, 0.25, 2.0)
-	platform.mesh = mesh
-	var metal := StandardMaterial3D.new()
-	metal.albedo_color = Color(0.095, 0.10, 0.095)
-	metal.metallic = 0.45
-	metal.roughness = 0.91
-	platform.material_override = metal
-	cage.add_child(platform)
+	# Визуальная кабина — часть модели пользователя; этот узел остаётся
+	# только пространственным якорем звука, без второй платформы.
 	_start_sfx = _make_sound(main.audio.make_lift_clank(false), -10.0)
 	_arrival_sfx = _make_sound(main.audio.make_lift_clank(true), -9.0)
 	_hum = _make_sound(main.audio.make_lift_hum(), -18.0)
@@ -87,9 +79,16 @@ func _process(delta: float) -> void:
 
 ## Детерминированный шаг используется и реальным процессом, и тестом.
 func advance(delta: float) -> void:
-	if state == State.IDLE or state == State.ARRIVED:
+	if state == State.IDLE:
 		return
 	elapsed += maxf(delta, 0.0)
+	if state == State.ARRIVED:
+		# Первую половину авторской анимации дверцы проигрываем один раз,
+		# затем удерживаем открытой до принятия груза.
+		main.tower.pose_door(4.0 + minf(elapsed, 1.0))
+		if elapsed >= 1.0 and not is_instance_valid(crate):
+			_spawn_crate()
+		return
 	match state:
 		State.CALLED:
 			if elapsed >= float(SupplyCatalog.SETTINGS["lift_called_seconds"]):
@@ -98,12 +97,15 @@ func advance(delta: float) -> void:
 		State.ASCENDING:
 			var progress := clampf(elapsed / ascent_duration, 0.0, 1.0)
 			cage.position.y = lerpf(1.0, ObservationTower.DECK_HEIGHT - 0.15, progress)
+			# Кадры 120–240: подъём, растянутый на конфигурируемую доставку.
+			main.tower.pose_cage(2.0 + 2.0 * progress)
 			if progress >= 1.0:
 				_hum.stop()
 				_arrival_sfx.play()
-				_spawn_crate()
 				_set_state(State.ARRIVED)
 		State.UNLOADED:
+			var closing := clampf(elapsed / float(SupplyCatalog.SETTINGS["lift_unloaded_seconds"]), 0.0, 1.0)
+			main.tower.pose_door(5.0 + closing)
 			if elapsed >= float(SupplyCatalog.SETTINGS["lift_unloaded_seconds"]):
 				_set_state(State.DESCENDING)
 				_start_sfx.play()
@@ -111,6 +113,7 @@ func advance(delta: float) -> void:
 		State.DESCENDING:
 			var progress := clampf(elapsed / float(SupplyCatalog.SETTINGS["lift_descent_seconds"]), 0.0, 1.0)
 			cage.position.y = lerpf(ObservationTower.DECK_HEIGHT - 0.15, 1.0, progress)
+			main.tower.pose_cage(4.0 - 2.0 * progress)
 			if progress >= 1.0:
 				_hum.stop()
 				pending_id = ""
@@ -131,7 +134,7 @@ func _spawn_crate() -> void:
 
 
 func try_collect_from_camera() -> bool:
-	if state != State.ARRIVED or not is_instance_valid(crate):
+	if state != State.ARRIVED or elapsed < 1.0 or not is_instance_valid(crate):
 		return false
 	var camera := main.cam_rig.cam
 	var from := camera.global_position
@@ -144,7 +147,7 @@ func try_collect_from_camera() -> bool:
 
 
 func collect_crate() -> bool:
-	if state != State.ARRIVED or not is_instance_valid(crate):
+	if state != State.ARRIVED or elapsed < 1.0 or not is_instance_valid(crate):
 		return false
 	var data := SupplyCatalog.item(pending_id)
 	if data.is_empty():
