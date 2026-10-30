@@ -85,9 +85,8 @@ func advance(delta: float) -> void:
 	if state == State.ARRIVED:
 		# Первую половину авторской анимации дверцы проигрываем один раз,
 		# затем удерживаем открытой до принятия груза.
-		main.tower.pose_door(4.0 + minf(elapsed, 1.0))
-		if elapsed >= 1.0 and not is_instance_valid(crate):
-			_spawn_crate()
+		var open_progress := clampf(elapsed / float(SupplyCatalog.SETTINGS["lift_open_seconds"]), 0.0, 1.0)
+		main.tower.pose_door(4.0 + open_progress)
 		return
 	match state:
 		State.CALLED:
@@ -102,6 +101,7 @@ func advance(delta: float) -> void:
 			if progress >= 1.0:
 				_hum.stop()
 				_arrival_sfx.play()
+				_spawn_crate()
 				_set_state(State.ARRIVED)
 		State.UNLOADED:
 			var closing := clampf(elapsed / float(SupplyCatalog.SETTINGS["lift_unloaded_seconds"]), 0.0, 1.0)
@@ -134,7 +134,7 @@ func _spawn_crate() -> void:
 
 
 func try_collect_from_camera() -> bool:
-	if state != State.ARRIVED or elapsed < 1.0 or not is_instance_valid(crate):
+	if state != State.ARRIVED or not is_instance_valid(crate):
 		return false
 	var camera := main.cam_rig.cam
 	var from := camera.global_position
@@ -143,11 +143,14 @@ func try_collect_from_camera() -> bool:
 	var result := camera.get_world_3d().direct_space_state.intersect_ray(query)
 	if result.get("collider") != crate:
 		return false
+	# Ранний клик по грузу не стреляет, даже пока дверца открывается.
+	if elapsed < float(SupplyCatalog.SETTINGS["lift_open_seconds"]):
+		return true
 	return collect_crate()
 
 
 func collect_crate() -> bool:
-	if state != State.ARRIVED or elapsed < 1.0 or not is_instance_valid(crate):
+	if state != State.ARRIVED or elapsed < float(SupplyCatalog.SETTINGS["lift_open_seconds"]) or not is_instance_valid(crate):
 		return false
 	var data := SupplyCatalog.item(pending_id)
 	if data.is_empty():

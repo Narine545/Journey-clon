@@ -516,6 +516,15 @@ func _test_m5(failures: Array[String]) -> void:
 	lift.advance(lift.ascent_duration * 0.5)
 	_check(lift.state == SupplyLift.State.ARRIVED and lift._arrival_sfx.playing, "ARRIVED: удар и скрип", failures)
 	_check(not lift.collect_crate(), "ящик нельзя принять до открытия дверцы", failures)
+	main.player.position = Vector3(-3.0, ObservationTower.DECK_HEIGHT, 3.5)
+	main.cam_rig.aim_offset = Vector2.ZERO
+	var early_direction := (lift.crate.global_position - (main.player.global_position + Vector3.UP * CameraRig.EYE)).normalized()
+	main.cam_rig.set_view(atan2(early_direction.x, early_direction.z), asin(early_direction.y))
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	main.rifle.cycle_remaining = 0.0
+	var ammo_before_early_click := main.rifle.ammo
+	_check(main.rifle._primary_action() and main.rifle.ammo == ammo_before_early_click and lift.state == SupplyLift.State.ARRIVED, "ранний клик по ящику не стреляет и ждёт открытия", failures)
 	var door_closed: float = door_anchor.global_position.y if door_anchor != null else 0.0
 	lift.advance(0.5)
 	_check(door_anchor != null and door_anchor.global_position.y > door_closed + 0.5, "авторская дверца открывается после прибытия", failures)

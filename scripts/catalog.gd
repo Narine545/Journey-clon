@@ -15,6 +15,7 @@ const SETTINGS := {
 	"lift_ascent_variance": 15.0,
 	"lift_descent_seconds": 12.0,
 	"lift_called_seconds": 0.6,
+	"lift_open_seconds": 1.0,
 	"lift_unloaded_seconds": 0.6,
 	"crate_reach": 5.0,
 }
