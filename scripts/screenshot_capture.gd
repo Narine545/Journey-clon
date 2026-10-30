@@ -126,6 +126,22 @@ func _capture() -> void:
 	main.lift.advance(1.0)
 	main.lift.advance(main.lift.ascent_duration)
 	main.lift.advance(1.0)
+	# Крупный план авторской кабины и открытой дверцы после прибытия.
+	main.player.position = Vector3(-3.7, ObservationTower.DECK_HEIGHT, 1.5)
+	main.cam_rig.aim_offset = Vector2.ZERO
+	var lift_target := main.tower.to_global(Vector3(-6.4, ObservationTower.DECK_HEIGHT + 2.5, 3.5))
+	var lift_dir := (lift_target - (main.player.global_position + Vector3.UP * CameraRig.EYE)).normalized()
+	main.cam_rig.set_view(atan2(lift_dir.x, lift_dir.z), asin(lift_dir.y))
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var lift_path := OS.get_environment("JOURNEY_LIFT_PATH")
+	if lift_path.is_empty():
+		lift_path = "user://lift.png"
+	if get_viewport().get_texture().get_image().save_png(lift_path) != OK:
+		printerr("[SHOT] не удалось сохранить лифт")
+		get_tree().quit(1)
+		return
 	main.player.position = Vector3(-2.6, ObservationTower.DECK_HEIGHT, 3.5)
 	main.cam_rig.aim_offset = Vector2.ZERO
 	var crate_dir := (main.lift.crate.global_position - (main.player.global_position + Vector3.UP * CameraRig.EYE)).normalized()

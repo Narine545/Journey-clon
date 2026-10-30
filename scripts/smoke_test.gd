@@ -506,11 +506,20 @@ func _test_m5(failures: Array[String]) -> void:
 	main.radio_tuner.set_tuning(false)
 	lift.advance(1.0)
 	_check(lift.state == SupplyLift.State.ASCENDING and lift._hum.playing, "ASCENDING и гул троса", failures)
+	var cage_anchor := main.tower.model.find_child("*CAGE*center*", true, false) as Node3D
+	var door_anchor := main.tower.model.find_child("*door*center*", true, false) as Node3D
+	_check(cage_anchor != null and door_anchor != null, "якоря авторской модели", failures)
+	var cage_bottom: float = cage_anchor.global_position.y if cage_anchor != null else 0.0
 	var ammo_before_collect := main.rifle.regular_reserve
-	lift.advance(lift.ascent_duration)
+	lift.advance(lift.ascent_duration * 0.5)
+	_check(cage_anchor != null and cage_anchor.global_position.y > cage_bottom + 10.0, "авторская кабина поднимается вместе с заказом", failures)
+	lift.advance(lift.ascent_duration * 0.5)
 	_check(lift.state == SupplyLift.State.ARRIVED and lift._arrival_sfx.playing, "ARRIVED: удар и скрип", failures)
 	_check(not lift.collect_crate(), "ящик нельзя принять до открытия дверцы", failures)
-	lift.advance(1.0)
+	var door_closed: float = door_anchor.global_position.y if door_anchor != null else 0.0
+	lift.advance(0.5)
+	_check(door_anchor != null and door_anchor.global_position.y > door_closed + 0.5, "авторская дверца открывается после прибытия", failures)
+	lift.advance(0.5)
 	_check(is_instance_valid(lift.crate) and lift.crate.scene_file_path == "res://scenes/Crate.tscn" and lift.status_text() == "ГРУЗ НА ПЛОЩАДКЕ", "после открытия доставлен ящик", failures)
 	await get_tree().physics_frame
 	main.player.position = Vector3(-3.0, ObservationTower.DECK_HEIGHT, 3.5)
@@ -531,7 +540,11 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(not lift.collect_crate() and not lift.request_order("ammo"), "ящик нельзя принять дважды, пока лифт не внизу", failures)
 	lift.advance(1.0)
 	_check(lift.state == SupplyLift.State.DESCENDING and lift._hum.playing, "DESCENDING и гул", failures)
-	lift.advance(float(SupplyCatalog.SETTINGS["lift_descent_seconds"]))
+	_check(door_anchor != null and absf(door_anchor.global_position.y - door_closed) < 0.1, "дверца закрылась до спуска", failures)
+	var cage_top: float = cage_anchor.global_position.y if cage_anchor != null else 0.0
+	lift.advance(float(SupplyCatalog.SETTINGS["lift_descent_seconds"]) * 0.5)
+	_check(cage_anchor != null and cage_anchor.global_position.y < cage_top - 10.0, "авторская кабина опускается", failures)
+	lift.advance(float(SupplyCatalog.SETTINGS["lift_descent_seconds"]) * 0.5)
 	_check(lift.state == SupplyLift.State.IDLE and not lift._hum.playing, "лифт возвращается в IDLE", failures)
 	_check(lift.request_order("ammo"), "расходники можно заказывать повторно", failures)
 	await _deliver_test_item(failures)
