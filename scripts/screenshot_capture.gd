@@ -193,7 +193,7 @@ func _capture() -> void:
 	# Проверяем в рендере робота у опоры, а не только далёкий силуэт.
 	main.rifle.aim_requested = false
 	main.rifle.scope_amount = 0.0
-	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -4.7)
 	var climb_center := main.tower.global_position
 	var climb_start := climb_center + Vector3(20.0, 0.0, -1.4)
 	climb_start.y = main.coast.ground_height(climb_start.x, climb_start.z)
@@ -202,7 +202,7 @@ func _capture() -> void:
 	climber.respond_to_signal(climb_center, 0)
 	for step in range(120):
 		climber._physics_process(0.5)
-		if climber.climb_state == AmbientRobot.ClimbState.CLIMBING and climber.global_position.y >= climb_center.y + 43.0:
+		if climber.climb_state == AmbientRobot.ClimbState.CLIMBING and climber.global_position.y >= climb_center.y + 49.0:
 			break
 	if climber.climb_state != AmbientRobot.ClimbState.CLIMBING:
 		printerr("[SHOT] робот не достиг опоры")

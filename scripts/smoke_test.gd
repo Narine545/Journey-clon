@@ -700,7 +700,7 @@ func _test_climbing(failures: Array[String]) -> void:
 	shot_climber.respond_to_signal(center, 0)
 	for virtual_step in range(120):
 		shot_climber._physics_process(0.5)
-		if shot_climber.climb_state == AmbientRobot.ClimbState.CLIMBING and shot_climber.global_position.y >= center.y + 42.0:
+		if shot_climber.climb_state == AmbientRobot.ClimbState.CLIMBING and shot_climber.global_position.y >= center.y + 49.0:
 			break
 	_check(shot_climber.climb_state == AmbientRobot.ClimbState.CLIMBING, "мишень для теста находится на подъёме", failures)
 	main.radio_tuner.set_powered(true)
@@ -710,7 +710,7 @@ func _test_climbing(failures: Array[String]) -> void:
 	shot_climber._physics_process(0.5)
 	_check(shot_climber.signal_called and shot_climber.global_position.y > climb_before_cancel, "выключение маяка не останавливает подъём", failures)
 	main.radio_tuner.set_tuning(false)
-	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -4.7)
 	await get_tree().physics_frame
 	main.cam_rig.aim_offset = Vector2.ZERO
 	main.cam_rig.refresh_pose()
@@ -738,7 +738,7 @@ func _test_climbing(failures: Array[String]) -> void:
 	armored_climber.respond_to_signal(center, 1)
 	for virtual_step in range(200):
 		armored_climber._physics_process(0.5)
-		if armored_climber.climb_state == AmbientRobot.ClimbState.CLIMBING and armored_climber.global_position.y >= center.y + 42.0:
+		if armored_climber.climb_state == AmbientRobot.ClimbState.CLIMBING and armored_climber.global_position.y >= center.y + 49.0:
 			break
 	_check(armored_climber.climb_state == AmbientRobot.ClimbState.CLIMBING, "бронированный робот находится на подъёме", failures)
 	main.cam_rig.refresh_pose()
