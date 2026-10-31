@@ -681,6 +681,9 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(not lift.request_batch({"ammo": 1, "ap": 1}) and lift.pending_items.is_empty() and lift.state == SupplyLift.State.IDLE and Economy.points == 0, "недостаток очков отклоняет всю корзину без частичной покупки", failures)
 	for invalid_basket in [{}, {"missing": 1}, {"ammo": 0}, {"ammo": -1}, {"ammo": 100}, {"ammo": 1.5}, {"scope": 2}]:
 		_check(lift.order_total(invalid_basket) == -1 and not lift.request_batch(invalid_basket) and lift.state == SupplyLift.State.IDLE, "отклоняется некорректная корзина %s" % str(invalid_basket), failures)
+	# Headless создаёт окно 64×64: для проверки координат кнопок нужен
+	# реалистичный размер viewport, иначе элементы не помещаются физически.
+	get_tree().root.size = Vector2i(1280, 720)
 	# Радио открывает терминал; пока он открыт, оружие/ходьба блокируются.
 	main.player.position = Vector3(-3.6, ObservationTower.DECK_HEIGHT, -3.9)
 	main.radio_tuner.set_tuning(true)
