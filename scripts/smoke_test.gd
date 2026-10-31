@@ -270,6 +270,7 @@ func _run() -> void:
 	radio_key.physical_keycode = KEY_E
 	radio_key.pressed = true
 	Input.parse_input_event(radio_key)
+	Input.flush_buffered_events()
 	await get_tree().process_frame
 	_check(radio.tuning and radio.powered, "E открывает и включает приёмник через ввод", failures)
 	var player_before_radio := main.player.position
@@ -309,6 +310,7 @@ func _run() -> void:
 	_check(not radio.powered and not radio._record.playing and not radio._live.playing and not radio._noise.playing, "питание выключает записи, шум и сигнал", failures)
 	var freq_before_close := radio.frequency
 	Input.parse_input_event(radio_key)
+	Input.flush_buffered_events()
 	await get_tree().process_frame
 	_check(not radio.tuning and is_equal_approx(radio.frequency, freq_before_close), "E закрывает радио, не меняя частоту", failures)
 	_check(main.rifle.hud.visible, "выход из радио возвращает интерфейс винтовки", failures)
@@ -574,6 +576,7 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(lift.state == SupplyLift.State.ARRIVED, "повтор удерживаемой E не принимает ящик", failures)
 	interaction.echo = false
 	Input.parse_input_event(interaction)
+	Input.flush_buffered_events()
 	await get_tree().process_frame
 	_check(lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 5 and main.rifle.ammo == bullet_before_interaction, "E принимает ящик лучом камеры без выстрела", failures)
 	main.rifle._input(interaction)
