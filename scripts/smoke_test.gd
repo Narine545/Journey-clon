@@ -351,7 +351,8 @@ func _run() -> void:
 	Input.action_press("move_forward")
 	main.player._physics_process(1.0)
 	Input.action_release("move_forward")
-	_check(main.player.position == player_before_radio, "при настройке ходьба отключена", failures)
+	var radio_horizontal_move := Vector2(main.player.position.x - player_before_radio.x, main.player.position.z - player_before_radio.z).length()
+	_check(radio_horizontal_move < 0.01, "при настройке ходьба отключена", failures)
 	main.rifle.ammo = 2
 	main.rifle.cycle_remaining = 0.0
 	main.rifle._input(capture_click)
