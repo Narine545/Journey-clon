@@ -959,6 +959,9 @@ func _test_contact_combat(failures: Array[String]) -> void:
 
 
 func _test_pistol_and_infinite(failures: Array[String]) -> void:
+	var viewport_before := get_tree().root.size
+	get_tree().root.size = Vector2i(1280, 720)
+	await get_tree().process_frame
 	var rifle := main.rifle
 	main.radio_tuner.set_tuning(false)
 	main.ambient_spawner.set_process(false)
@@ -998,6 +1001,7 @@ func _test_pistol_and_infinite(failures: Array[String]) -> void:
 	var before_points := Economy.points
 	await get_tree().physics_frame
 	_check(rifle.fire() and rifle.pistol_ammo == 7, "пистолет стреляет и расходует один патрон", failures)
+	_check(not rifle.fire() and rifle.pistol_ammo == 7, "пистолет соблюдает паузу между выстрелами", failures)
 	var pistol_shot := main.get_node_or_null("Projectile") as RifleProjectile
 	_check(pistol_shot != null and not pistol_shot.pierce and is_equal_approx(pistol_shot.velocity.length(), float(SupplyCatalog.SETTINGS["pistol_muzzle_speed"])), "пистолет создаёт реальный обычный снаряд", failures)
 	await get_tree().create_timer(0.4).timeout
@@ -1035,13 +1039,15 @@ func _test_pistol_and_infinite(failures: Array[String]) -> void:
 	rifle.reload_remaining = 0.0
 	main.debug_menu.set_open(true)
 	_check(not main.debug_menu.ammo_toggle.button_pressed and not rifle.infinite_ammo, "бесконечные патроны по умолчанию выключены", failures)
-	main.debug_menu.ammo_toggle.button_pressed = true
-	_check(rifle.infinite_ammo, "флажок F2 включает бесконечные патроны", failures)
+	await _click_debug_control(main.debug_menu.ammo_toggle)
+	_check(rifle.infinite_ammo and main.debug_menu.ammo_toggle.button_pressed, "реальный клик по флажку F2 включает бесконечные патроны", failures)
 	main.debug_menu.set_open(false)
 	for shot_index in range(12):
 		_check(rifle.fire(), "бесконечный выстрел %d" % shot_index, failures)
 		rifle._physics_process(SniperRifle.CYCLE_TIME)
 	_check(rifle.ammo == 2 and rifle.regular_reserve == 7 and rifle.ap_reserve == 0 and rifle.reload_remaining == 0.0, "бесконечный режим не расходует магазин, запас и не ждёт перезарядку", failures)
+	rifle.apply_delivery("ammo", {"regular_ammo": 5})
+	_check(rifle.regular_reserve == 12, "реальная доставка учитывается и в бесконечном режиме", failures)
 	rifle.switch_ammo()
 	_check(rifle.selected_ammo_type() == "ap" and rifle.ammo_type == "regular" and rifle.ap_reserve == 0, "бесконечный AP выбирается без покупки и изменения реального типа", failures)
 	var ap_target := main.ambient_spawner.spawn_at(AmbientRobot.Kind.CARRIER, at, 4401)
@@ -1064,14 +1070,40 @@ func _test_pistol_and_infinite(failures: Array[String]) -> void:
 	rifle._physics_process(0.0)
 	_check(rifle.hud._drawing.infinite_ammo and rifle.hud._drawing.is_pistol, "HUD явно показывает бесконечный режим пистолета", failures)
 	main.debug_menu.set_open(true)
-	main.debug_menu.ammo_toggle.button_pressed = false
-	_check(not rifle.infinite_ammo and rifle.ammo == 2 and rifle.ammo_type == "regular" and rifle.regular_reserve == 7 and rifle.ap_reserve == 0 and rifle.pistol_ammo == 0, "выключение бесконечных патронов возвращает нетронутые реальные запасы", failures)
+	await _click_debug_control(main.debug_menu.ammo_toggle)
+	_check(not rifle.infinite_ammo and rifle.ammo == 2 and rifle.ammo_type == "regular" and rifle.regular_reserve == 12 and rifle.ap_reserve == 0 and rifle.pistol_ammo == 0, "повторный клик возвращает нетронутые запасы и полученную доставку", failures)
 	main.debug_menu.set_open(false)
 	rifle.cycle_remaining = 0.0
 	_check(not rifle.can_fire() and rifle.start_reload(), "после отключения снова нужна обычная перезарядка", failures)
+	rifle.pistol_ammo = 8
+	rifle.regular_reserve = 7
+	rifle.reload_remaining = 0.0
+	for shot_index in range(8):
+		_check(rifle.fire(), "патрон %d пистолетного магазина" % shot_index, failures)
+		if shot_index < 7:
+			rifle._physics_process(float(SupplyCatalog.SETTINGS["pistol_cycle_seconds"]))
+	_check(rifle.pistol_ammo == 0 and rifle.reload_remaining > 0.0 and rifle.regular_reserve == 7, "пустой пистолет начинает автоматическую перезарядку", failures)
+	rifle._physics_process(float(SupplyCatalog.SETTINGS["pistol_reload_seconds"]))
+	_check(rifle.pistol_ammo == 7 and rifle.regular_reserve == 0, "автоперезарядка пистолета учитывает остаток запаса", failures)
 	rifle.select_weapon(SniperRifle.Weapon.RIFLE)
 	rifle.cycle_remaining = 0.0
 	rifle.reload_remaining = 0.0
+	get_tree().root.size = viewport_before
+	await get_tree().process_frame
+
+
+## Используем реальный GUI-маршрут мыши, а не прямой вызов сигнала.
+func _click_debug_control(control: Control) -> void:
+	await get_tree().process_frame
+	var at := control.get_global_rect().get_center()
+	for down in [true, false]:
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.position = at
+		click.global_position = at
+		click.pressed = down
+		Input.parse_input_event(click)
+		Input.flush_buffered_events()
 	await get_tree().process_frame
 
 
