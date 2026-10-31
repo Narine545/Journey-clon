@@ -1,0 +1,46 @@
+name: Temporary Blender rifle prototype
+on:
+  push:
+    branches: ["arena/4b8d381d-journey-clon"]
+permissions:
+  contents: write
+jobs:
+  generate:
+    if: contains(github.event.head_commit.message, '[rifle-generate]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: arena/4b8d381d-journey-clon
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Blender Python runtime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libice6 libgl1
+          python -m pip install 'bpy==4.5.15'
+      - name: Build and render the separate concept
+        run: |
+          python tools/create_scifi_rifle.py
+          test -s concepts/sniper_rifle/scifi_sniper_concept.blend
+          test -s concepts/sniper_rifle/scifi_sniper_concept.glb
+          test -s concepts/sniper_rifle/scifi_sniper_preview.png
+          python - <<'PY'
+          import bpy, os
+          p = os.path.abspath('concepts/sniper_rifle/scifi_sniper_concept.blend')
+          bpy.ops.wm.open_mainfile(filepath=p)
+          parts = bpy.data.collections.get('RIFLE - editable parts')
+          studio = bpy.data.collections.get('STUDIO - hide for modelling')
+          assert parts is not None and len(parts.objects) >= 40
+          assert studio is not None and bpy.context.scene.camera is not None
+          print('[RIFLE] blend re-opened, editable parts:', len(parts.objects))
+          PY
+      - name: Publish generated model on this branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add concepts/sniper_rifle/scifi_sniper_concept.blend concepts/sniper_rifle/scifi_sniper_concept.glb concepts/sniper_rifle/scifi_sniper_preview.png
+          git commit -m 'Add separate science-fiction sniper rifle concept'
+          git push origin HEAD:refs/heads/arena/4b8d381d-journey-clon
