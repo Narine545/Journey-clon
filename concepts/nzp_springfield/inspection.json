@@ -1,0 +1,307 @@
+{
+  "blender_version": "4.5.15 LTS",
+  "file_version": [
+    2,
+    92,
+    15
+  ],
+  "scenes": [
+    {
+      "name": "Scene",
+      "fps": 10,
+      "fps_base": 1.0,
+      "start": 1,
+      "end": 250,
+      "current": 38
+    }
+  ],
+  "objects": [
+    {
+      "name": "ArmsCamera",
+      "type": "CAMERA",
+      "visible": true,
+      "parent": null,
+      "vertices": null,
+      "polygons": null,
+      "materials": [],
+      "modifiers": [],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    },
+    {
+      "name": "ArmsMesh",
+      "type": "MESH",
+      "visible": true,
+      "parent": "ArmsRig",
+      "vertices": 594,
+      "polygons": 808,
+      "materials": [
+        "Material.007",
+        "Material.002"
+      ],
+      "modifiers": [
+        {
+          "name": "Armature",
+          "type": "ARMATURE",
+          "object": "ArmsRig"
+        }
+      ],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    },
+    {
+      "name": "ArmsMesh.001",
+      "type": "MESH",
+      "visible": true,
+      "parent": "ArmsRig",
+      "vertices": 570,
+      "polygons": 963,
+      "materials": [
+        "Material",
+        "Material.001"
+      ],
+      "modifiers": [
+        {
+          "name": "Armature",
+          "type": "ARMATURE",
+          "object": "ArmsRig"
+        }
+      ],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    },
+    {
+      "name": "ArmsRig",
+      "type": "ARMATURE",
+      "visible": true,
+      "parent": null,
+      "vertices": null,
+      "polygons": null,
+      "materials": [],
+      "modifiers": [],
+      "bones": [
+        "upper_arm.r",
+        "lower_arm.r",
+        "hand.r",
+        "thumb1.r",
+        "thumb2.r",
+        "thumb3.r",
+        "pinkie1.r",
+        "pinkie2.r",
+        "pinkie3.r",
+        "ring1.r",
+        "ring2.r",
+        "ring3.r",
+        "middle1.r",
+        "middle2.r",
+        "middle3.r",
+        "index1.r",
+        "index2.r",
+        "index3.r",
+        "upper_arm.l",
+        "lower_arm.l",
+        "hand.l",
+        "thumb1.l",
+        "thumb2.l",
+        "thumb3.l",
+        "pinkie1.l",
+        "pinkie2.l",
+        "pinkie3.l",
+        "ring1.l",
+        "ring2.l",
+        "ring3.l",
+        "middle1.l",
+        "middle2.l",
+        "middle3.l",
+        "index1.l",
+        "index2.l",
+        "index3.l",
+        "rifle",
+        "slide",
+        "popper",
+        "bolt",
+        "slideturn",
+        "Clip",
+        "Rounds",
+        "Round",
+        "trigger"
+      ],
+      "shape_keys": null,
+      "animation": {
+        "active_action": "Kar98k.001",
+        "nla_tracks": [],
+        "drivers": 0
+      },
+      "shape_key_animation": null
+    },
+    {
+      "name": "Camera",
+      "type": "CAMERA",
+      "visible": true,
+      "parent": null,
+      "vertices": null,
+      "polygons": null,
+      "materials": [],
+      "modifiers": [],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    },
+    {
+      "name": "Cylinder.001",
+      "type": "MESH",
+      "visible": true,
+      "parent": null,
+      "vertices": 128,
+      "polygons": 130,
+      "materials": [
+        "Material",
+        "Material.001"
+      ],
+      "modifiers": [],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    },
+    {
+      "name": "Cylinder.002",
+      "type": "MESH",
+      "visible": true,
+      "parent": null,
+      "vertices": 365,
+      "polygons": 388,
+      "materials": [
+        "Material",
+        "Material.001"
+      ],
+      "modifiers": [],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    },
+    {
+      "name": "Cylinder.003",
+      "type": "MESH",
+      "visible": true,
+      "parent": null,
+      "vertices": 379,
+      "polygons": 318,
+      "materials": [
+        "Material",
+        "Material.001"
+      ],
+      "modifiers": [],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    },
+    {
+      "name": "Scope Attachment",
+      "type": "MESH",
+      "visible": true,
+      "parent": "ArmsRig",
+      "vertices": 128,
+      "polygons": 130,
+      "materials": [
+        "Material.004",
+        "Material.005"
+      ],
+      "modifiers": [],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    },
+    {
+      "name": "Sun",
+      "type": "LIGHT",
+      "visible": true,
+      "parent": null,
+      "vertices": null,
+      "polygons": null,
+      "materials": [],
+      "modifiers": [],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    },
+    {
+      "name": "Sun.001",
+      "type": "LIGHT",
+      "visible": true,
+      "parent": null,
+      "vertices": null,
+      "polygons": null,
+      "materials": [],
+      "modifiers": [],
+      "bones": null,
+      "shape_keys": null,
+      "animation": null,
+      "shape_key_animation": null
+    }
+  ],
+  "actions": [
+    {
+      "name": "Kar98k",
+      "frame_start": 1.0,
+      "frame_end": 32.0,
+      "slots": [
+        "OBLegacy Slot"
+      ]
+    },
+    {
+      "name": "Kar98k.001",
+      "frame_start": 1.0,
+      "frame_end": 38.0,
+      "slots": [
+        "OBLegacy Slot"
+      ]
+    },
+    {
+      "name": "Oldk98k",
+      "frame_start": 1.0,
+      "frame_end": 78.0,
+      "slots": [
+        "OBLegacy Slot"
+      ]
+    }
+  ],
+  "images": [
+    {
+      "name": "v_spring.mdl_0.png",
+      "filepath": "W:/NZP-Reboot-Modern/nzp/models/weapons/spring/v_spring.mdl_0.png",
+      "exists": false,
+      "packed": false,
+      "size": [
+        0,
+        0
+      ]
+    },
+    {
+      "name": "v_spring.mdl_1.png",
+      "filepath": "W:/NZP-Reboot-Modern/nzp/models/weapons/spring/v_spring.mdl_1.png",
+      "exists": false,
+      "packed": false,
+      "size": [
+        0,
+        0
+      ]
+    }
+  ],
+  "text_blocks": [
+    "mdl_export_log",
+    "Text"
+  ],
+  "libraries": []
+}
