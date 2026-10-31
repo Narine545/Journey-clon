@@ -66,6 +66,7 @@ func _input(event: InputEvent) -> void:
 		elif event.physical_keycode == KEY_V and attached:
 			manual_control = not manual_control
 			arrived = false
+			launch_stage = 0 if manual_control else _initial_launch_stage()
 			rope_length = maxf(MIN_LENGTH, attachment_point().distance_to(anchor))
 			get_viewport().set_input_as_handled()
 
@@ -140,10 +141,7 @@ func try_attach() -> bool:
 		return false
 	anchor = hit["position"]
 	anchor_kind = hit["kind"]
-	var local := main.player.global_position - main.tower.global_position
-	# От старта на площадке сначала поднимаемся над физическими перилами,
-	# затем пересекаем край: прямая линия вниз упиралась бы в ограждение.
-	launch_stage = 1 if anchor_kind == "ground" and local.y >= ObservationTower.DECK_HEIGHT - 0.1 and local.y < ObservationTower.DECK_HEIGHT + 1.55 and absf(local.x) < 6.0 and absf(local.z) < 6.0 else 0
+	launch_stage = _initial_launch_stage()
 	manual_control = false
 	arrived = false
 	rope_length = maxf(MIN_LENGTH, attachment_point().distance_to(anchor))
@@ -152,6 +150,13 @@ func try_attach() -> bool:
 	main.player.collision_mask = 8
 	_update_rope()
 	return true
+
+
+## Автоматический выход через перила нужен только если игрок всё ещё на
+## площадке. После ручного спуска нельзя внезапно тянуть его вверх к башне.
+func _initial_launch_stage() -> int:
+	var local := main.player.global_position - main.tower.global_position
+	return 1 if anchor_kind == "ground" and local.y >= ObservationTower.DECK_HEIGHT - 0.1 and local.y < ObservationTower.DECK_HEIGHT + 1.55 and absf(local.x) < 6.0 and absf(local.z) < 6.0 else 0
 
 
 func detach() -> void:

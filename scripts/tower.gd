@@ -63,7 +63,7 @@ func _build_structure_collisions() -> void:
 	var prefixes := ["Support_", "Footing_", "CrossBrace_", "SupportRing_", "LiftShaft_", "LiftCrossbar_", "DeckRim_", "RailX_", "RailZ_", "RailPostX_", "RailPostZ_"]
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		var part := node as MeshInstance3D
-		if part == null or part.mesh == null:
+		if part == null or part.mesh == null or _is_animated_cage_part(part):
 			continue
 		var selected := false
 		for prefix in prefixes:
@@ -84,6 +84,17 @@ func _build_structure_collisions() -> void:
 		collider.shape = box
 		collider.transform = Transform3D(local_transform.basis.orthonormalized(), local_transform * bounds.get_center())
 		body.add_child(collider)
+
+
+## Кабина и её дверца являются потомками анимируемого якоря. Нельзя
+## запекать их текущее положение в неподвижный коллайдер шахты.
+func _is_animated_cage_part(part: Node) -> bool:
+	var ancestor: Node = part
+	while ancestor != null and ancestor != model:
+		if "ANCHOR_LIFT_CAGE" in String(ancestor.name).to_upper():
+			return true
+		ancestor = ancestor.get_parent()
+	return false
 
 
 ## Физические прокси пока только для площадки: пол, безопасные границы и

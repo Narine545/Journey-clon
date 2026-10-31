@@ -963,6 +963,11 @@ func _test_grapple(failures: Array[String]) -> void:
 	var hook := main.grapple
 	var structure := main.tower.get_node_or_null("TowerStructureCollisions") as StaticBody3D
 	_check(structure != null and structure.get_child_count() >= 50, "физические коллизии опор, раскосов, перил и шахты башни", failures)
+	var no_frozen_cabin := true
+	for animated_part in main.tower.cage_anchor.find_children("*", "MeshInstance3D", true, false):
+		if not main.tower._is_animated_cage_part(animated_part) or structure.get_node_or_null("Collision_" + String(animated_part.name)) != null:
+			no_frozen_cabin = false
+	_check(no_frozen_cabin, "у анимированной кабины нет неподвижных призрачных коллизий", failures)
 	await get_tree().physics_frame
 	var origin := main.tower.global_position
 	for ray in [
@@ -1079,6 +1084,18 @@ func _test_grapple(failures: Array[String]) -> void:
 			for frame in range(15):
 				await get_tree().physics_frame
 			_check(main.player.safety_barriers_enabled, "защитные границы восстанавливаются на площадке", failures)
+	# Переключение с ручного режима у земли не должно запускать подъём над перилами.
+	main.player.position = Vector3(30, 3, 0)
+	hook.attached = true
+	hook.anchor_kind = "ground"
+	hook.launch_stage = 1
+	var control_event := InputEventKey.new()
+	control_event.physical_keycode = KEY_V
+	control_event.pressed = true
+	hook._input(control_event)
+	hook._input(control_event)
+	_check(not hook.manual_control and hook.launch_stage == 0, "выход из ручного режима вне площадки не запускает вертикальный обход перил", failures)
+	hook.detach()
 	# Компонента вдоль касательной не гасится ограничением длины: основа маятника.
 	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
 	main.player.velocity = Vector3.ZERO
