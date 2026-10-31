@@ -110,7 +110,7 @@ func reset_climb_preview(near_top: bool = false) -> AmbientRobot:
 func reset_attack_preview() -> AmbientRobot:
 	_clear_preview()
 	var center := main.tower.global_position
-	var pos := center + Vector3(1.2, ObservationTower.DECK_HEIGHT, -1.4)
+	var pos := center + Vector3(-0.3, ObservationTower.DECK_HEIGHT, -1.4)
 	var robot := spawn_at(AmbientRobot.Kind.SCOUT, pos, 9210)
 	robot.name = "AttackPreviewRobot"
 	robot.preview = true

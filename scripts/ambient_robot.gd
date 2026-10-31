@@ -11,6 +11,7 @@ const DECK_SPEED := 1.15
 const ATTACK_WINDUP := 2.0
 const ATTACK_COOLDOWN := 3.5
 const ATTACK_DAMAGE := 15
+const ARM_REACH := 2.4 # дополнительный вылет телескопического привода
 const ROAM_RADIUS := 65.0
 const PREVIEW_ROAM_RADIUS := 20.0
 var kind: Kind
@@ -43,6 +44,8 @@ var health_ref: PlayerHealth
 var attack_windup := 0.0
 var attack_cooldown := 0.0
 var metal: StandardMaterial3D
+var attack_arm: MeshInstance3D
+var attack_beacon: MeshInstance3D
 
 
 func setup(robot_kind: Kind, coast_ref: Coast, at: Vector3, seed_value: int) -> void:
@@ -106,6 +109,29 @@ func _build() -> void:
 			for side in [-1.0, 1.0]:
 				for depth in [-0.3, 0.3]:
 					_box(Vector3(side * s.x * 0.38, s.y * 0.28, s.z * depth), Vector3(0.42, s.y * 0.56, 0.45), metal)
+	# Простой выдвижной привод показывает направление и дальность удара.
+	attack_arm = MeshInstance3D.new()
+	var arm_mesh := BoxMesh.new()
+	arm_mesh.size = Vector3(0.28, 0.28, ARM_REACH)
+	attack_arm.mesh = arm_mesh
+	attack_arm.material_override = metal
+	attack_arm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	attack_arm.visible = false
+	visual.add_child(attack_arm)
+	attack_beacon = MeshInstance3D.new()
+	var lamp_mesh := SphereMesh.new()
+	lamp_mesh.radius = 0.18
+	lamp_mesh.height = 0.36
+	attack_beacon.mesh = lamp_mesh
+	attack_beacon.position = Vector3(0, s.y + 0.15, 0)
+	var lamp_material := StandardMaterial3D.new()
+	lamp_material.albedo_color = Color(1.0, 0.35, 0.04)
+	lamp_material.emission_enabled = true
+	lamp_material.emission = Color(1.0, 0.20, 0.015)
+	lamp_material.emission_energy_multiplier = 1.5
+	attack_beacon.material_override = lamp_material
+	attack_beacon.visible = false
+	visual.add_child(attack_beacon)
 	var body := StaticBody3D.new()
 	body.name = "Hitbox"
 	body.collision_layer = 2
@@ -235,7 +261,7 @@ func _advance_deck(delta: float) -> void:
 	var difference := target - here
 	var distance := difference.length()
 	# Диагональ корпуса безопасна при его произвольном повороте.
-	var reach := Vector2(body_size.x, body_size.z).length() * 0.5 + 0.85
+	var reach := Vector2(body_size.x, body_size.z).length() * 0.5 + ARM_REACH
 	var in_height := absf(player_ref.global_position.y - global_position.y) <= 3.0
 	if distance > reach + 0.08 or not in_height:
 		attack_windup = 0.0
@@ -248,8 +274,11 @@ func _advance_deck(delta: float) -> void:
 		if distance > 0.01:
 			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(difference.x, difference.y), minf(1.0, delta * 2.0))
 		return
+	if distance > 0.01:
+		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(difference.x, difference.y), minf(1.0, delta * 3.0))
 	if attack_windup > 0.0:
 		attack_windup = maxf(0.0, attack_windup - delta)
+		_set_arm_extension(1.0 - attack_windup / ATTACK_WINDUP)
 		if attack_windup <= 0.0:
 			_set_warning(false)
 			health_ref.take_damage(ATTACK_DAMAGE)
@@ -261,11 +290,24 @@ func _advance_deck(delta: float) -> void:
 
 
 func _set_warning(active: bool) -> void:
+	if attack_arm != null:
+		attack_arm.visible = active
+	if attack_beacon != null:
+		attack_beacon.visible = active
 	if metal != null:
 		metal.emission_enabled = active
 		if active:
-			metal.emission = Color(0.65, 0.12, 0.025)
-			metal.emission_energy_multiplier = 0.8
+			metal.emission = Color(0.18, 0.045, 0.008)
+			metal.emission_energy_multiplier = 0.7
+			_set_arm_extension(0.05)
+
+
+func _set_arm_extension(amount: float) -> void:
+	if attack_arm == null:
+		return
+	var extension := clampf(amount, 0.05, 1.0)
+	attack_arm.scale.z = extension
+	attack_arm.position = Vector3(0, body_size.y * 0.55, body_size.z * 0.5 + ARM_REACH * extension * 0.5)
 
 
 func apply_projectile_hit(pierce: bool = false) -> bool:
