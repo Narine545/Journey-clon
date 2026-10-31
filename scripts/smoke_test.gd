@@ -257,16 +257,23 @@ func _run() -> void:
 	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
 	main.cam_rig.set_view(PI * 0.5, -0.3)
 	main.rifle._physics_process(0.0)
-	var barrel := main.rifle._view_model.get_node("Barrel") as MeshInstance3D
-	var center_projection := main.cam_rig.cam.unproject_position(barrel.global_position)
+	var projection_anchor := main.rifle._view_model.get_node("ProjectionAnchor") as Node3D
+	var center_projection := main.cam_rig.cam.unproject_position(projection_anchor.global_position)
 	main.player.position.x = limit
 	main.cam_rig.refresh_pose()
 	main.rifle._physics_process(0.0)
-	var edge_projection := main.cam_rig.cam.unproject_position(barrel.global_position)
+	var edge_projection := main.cam_rig.cam.unproject_position(projection_anchor.global_position)
 	_check(center_projection.distance_to(edge_projection) < 1.0, "положение винтовки на экране сохраняется у перил", failures)
 	# M3: реальный снаряд летит к дальней мишени, а не попадает в кадр выстрела.
 	_check(main.rifle.scene_file_path == "res://scenes/Rifle.tscn", "отдельная сцена винтовки", failures)
 	_check(main.rifle.get_parent() == main.cam_rig.cam, "винтовка прикреплена к камере", failures)
+	_check(main.rifle._springfield_mesh != null and main.rifle._springfield_animation != null, "игровая модель Springfield с руками и скелетом загружена", failures)
+	_check(main.rifle._springfield_animation.has_animation("Kar98k_001"), "исходная анимация импортирована", failures)
+	main.rifle.reload_remaining = SniperRifle.RELOAD_TIME * 0.5
+	main.rifle._update_springfield_animation()
+	_check(absf(main.rifle._springfield_animation.current_animation_position - 1.55) < 0.02, "пробное движение синхронизировано с перезарядкой", failures)
+	main.rifle.reload_remaining = 0.0
+	main.rifle._update_springfield_animation()
 	_check(main.long_target.global_position.distance_to(main.player.global_position) > 500.0, "дальняя мишень за 500 м", failures)
 	var initial_fov := main.cam_rig.cam.fov
 	main.rifle.aim_requested = true
@@ -1647,17 +1654,12 @@ func _deliver_test_item(failures: Array[String]) -> void:
 
 
 func _model_within_rails() -> bool:
+	# Все позы импортированной сетки ограничены сферой относительно камеры;
+	# проверяем эту консервативную границу, а не только неподвижный AABB рига.
+	var center := main.tower.to_local(main.rifle._view_model.global_position)
+	var radius := SniperRifle.SPRINGFIELD_TARGET_RADIUS * main.rifle._view_model.scale.x
 	var max_coordinate := ObservationTower.HALF_DECK - 0.10
-	for child in main.rifle._view_model.get_children():
-		var mesh_part := child as MeshInstance3D
-		if mesh_part == null:
-			continue
-		var bounds := mesh_part.mesh.get_aabb()
-		for i in range(8):
-			var corner := main.tower.to_local(mesh_part.to_global(bounds.get_endpoint(i)))
-			if absf(corner.x) > max_coordinate or absf(corner.z) > max_coordinate:
-				return false
-	return true
+	return absf(center.x) + radius <= max_coordinate and absf(center.z) + radius <= max_coordinate
 
 
 func _check(ok: bool, description: String, failures: Array[String]) -> void:

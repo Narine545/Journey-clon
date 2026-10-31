@@ -79,6 +79,30 @@ jobs:
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
+      - name: Temporary Springfield visual review
+        run: |
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -v error -y -i tower.png -vf scale=800:-2 -q:v 9 /tmp/spring-tower.jpg
+          ffmpeg -v error -y -i rail.png -vf scale=800:-2 -q:v 9 /tmp/spring-rail.jpg
+          python3 - <<'PYCODE'
+          import base64
+          from pathlib import Path
+          for tag in ['tower', 'rail']:
+              data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
+              chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
+              print('::notice::SPRING_COUNT_'+tag+'_'+str(len(chunks)))
+              for i,c in enumerate(chunks[:9]): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+c)
+          PYCODE
+      - name: Temporary remaining review data
+        run: |
+          python3 - <<'PYCODE'
+          import base64
+          from pathlib import Path
+          for tag in ['tower', 'rail']:
+              data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
+              chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
+              for i in range(9,len(chunks)): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+chunks[i])
+          PYCODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:

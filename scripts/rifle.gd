@@ -15,6 +15,10 @@ const SCOPE_FOV := 18.0
 const RANGE_LIMIT := 1500.0
 # Самая дальняя вершина оружия в локальных координатах камеры < 1.6 м.
 const VIEW_MODEL_RADIUS := 1.60
+# Граница вычислена по всем позам исходных действий, в координатах его камеры.
+const SPRINGFIELD_SOURCE_RADIUS := 14.285921
+const SPRINGFIELD_TARGET_RADIUS := 1.30
+const SPRINGFIELD_SCENE := preload("res://assets/weapons/nzp_springfield.glb")
 const RAIL_CLEARANCE := 0.16
 
 var main: MainScene
@@ -46,6 +50,9 @@ var _range_clock := 0.0
 var _hit_flash := 0.0
 var _view_model: Node3D
 var _pistol_view_model: Node3D
+var _springfield_model: Node3D
+var _springfield_animation: AnimationPlayer
+var _springfield_mesh: MeshInstance3D
 
 
 func setup(main_ref: MainScene) -> void:
@@ -120,6 +127,7 @@ func _physics_process(delta: float) -> void:
 	var sway := Vector2(sin(_clock * 0.75) * 0.0010, sin(_clock * 1.10 + 0.8) * 0.0008) * scope_amount * sway_multiplier
 	cam_rig.aim_offset = sway + Vector2(0.0, _recoil)
 	cam_rig.refresh_pose()
+	_update_springfield_animation()
 	_view_model.visible = weapon == Weapon.RIFLE and scope_amount < 0.45
 	_pistol_view_model.visible = weapon == Weapon.PISTOL
 	_update_view_model()
@@ -336,59 +344,74 @@ func _is_visible_hit(hit_position: Vector3) -> bool:
 
 
 func _update_view_model() -> void:
-	# Модель и её смещение к камере масштабируются одинаково. При перспективной
-	# проекции видимый размер почти не меняется, но у самого края реальная
-	# геометрия помещается перед перилами при любом повороте камеры.
+	# Сферическая граница включает все кадры исходной анимации. Смещение и
+	# модель масштабируются вместе при приближении к краю площадки.
 	var local_player := camera.global_position - main.tower.global_position
 	var safe_half := ObservationTower.HALF_DECK - RAIL_CLEARANCE
 	var clearance := minf(safe_half - absf(local_player.x), safe_half - absf(local_player.z))
 	var on_deck := local_player.y >= ObservationTower.DECK_HEIGHT and absf(local_player.x) <= ObservationTower.WALK_LIMIT + 0.1 and absf(local_player.z) <= ObservationTower.WALK_LIMIT + 0.1
 	var model_scale := clampf(clearance / VIEW_MODEL_RADIUS, 0.1, 1.0) if on_deck else 1.0
 	_view_model.scale = Vector3.ONE * model_scale
+	_view_model.position = Vector3(0, 0, _recoil * 2.0) * model_scale
 	var reload_drop := 0.10 * sin(PI * (1.0 - reload_remaining / RELOAD_TIME)) if reload_remaining > 0.0 else 0.0
-	_view_model.position = Vector3(0.28, -0.25 - reload_drop, -0.52 + _recoil * 2.0) * model_scale
 	_pistol_view_model.scale = Vector3.ONE * model_scale
 	_pistol_view_model.position = Vector3(0.25, -0.27 - reload_drop, -0.42 + _recoil * 2.0) * model_scale
 
 
+func _update_springfield_animation() -> void:
+	if _springfield_animation == null:
+		return
+	# В исходнике действие названо Kar98k.001, Godot заменяет точку на _. Его
+	# назначение неизвестно: это пробный фрагмент, синхронизированный только
+	# визуально, механическое время затвора/перезарядки не меняется.
+	var position_seconds := 0.1
+	if weapon == Weapon.RIFLE and reload_remaining > 0.0:
+		position_seconds = lerpf(0.1, 3.0, clampf(1.0 - reload_remaining / RELOAD_TIME, 0.0, 1.0))
+	elif weapon == Weapon.RIFLE and cycle_remaining > 0.0:
+		position_seconds = lerpf(0.1, 0.7, clampf(1.0 - cycle_remaining / CYCLE_TIME, 0.0, 1.0))
+	if _springfield_animation.current_animation != "Kar98k_001":
+		_springfield_animation.play("Kar98k_001")
+	_springfield_animation.seek(position_seconds, true)
+	_springfield_animation.pause()
+
+
 func _build_view_model() -> void:
 	_view_model = Node3D.new()
-	_view_model.position = Vector3(0.28, -0.25, -0.52)
+	_view_model.name = "SpringfieldViewModel"
 	add_child(_view_model)
-	var metal := StandardMaterial3D.new()
-	metal.albedo_color = Color(0.12, 0.13, 0.12)
-	metal.metallic = 0.55
-	metal.roughness = 0.78
-	var stock := StandardMaterial3D.new()
-	stock.albedo_color = Color(0.25, 0.19, 0.13)
-	stock.roughness = 0.93
-	_box("Receiver", Vector3(0, 0, -0.20), Vector3(0.12, 0.13, 0.42), metal)
-	_box("Stock", Vector3(0, -0.055, 0.08), Vector3(0.11, 0.16, 0.35), stock)
-	_box("Magazine", Vector3(0, -0.10, -0.24), Vector3(0.09, 0.10, 0.13), metal)
-	_box("Barrel", Vector3(0, 0.015, -0.62), Vector3(0.045, 0.045, 0.65), metal)
-	_box("Scope", Vector3(0, 0.13, -0.23), Vector3(0.105, 0.095, 0.32), metal)
-	_box("ScopeMount", Vector3(0, 0.075, -0.23), Vector3(0.06, 0.08, 0.12), metal)
-	_box("Bolt", Vector3(0.09, 0.0, -0.10), Vector3(0.06, 0.035, 0.035), metal)
-	var accent := StandardMaterial3D.new()
-	accent.albedo_color = Color(0.54, 0.42, 0.21)
-	accent.metallic = 0.55
-	_box("Stabilizer", Vector3(-0.07, -0.025, -0.25), Vector3(0.025, 0.045, 0.18), accent)
-	_box("ScopeUpgrade", Vector3(0, 0.13, -0.38), Vector3(0.12, 0.11, 0.04), accent)
-	(_view_model.get_node("Stabilizer") as Node3D).visible = false
-	(_view_model.get_node("ScopeUpgrade") as Node3D).visible = false
-
-
-func _box(part_name: String, at: Vector3, dimensions: Vector3, material: Material) -> void:
-	var part := MeshInstance3D.new()
-	part.name = part_name
-	var cube := BoxMesh.new()
-	cube.size = dimensions
-	part.mesh = cube
-	part.material_override = material
-	part.position = at
-	part.layers = 2
-	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_view_model.add_child(part)
+	_springfield_model = SPRINGFIELD_SCENE.instantiate() as Node3D
+	var source_camera := _springfield_model.find_child("ArmsCamera", true, false) as Camera3D
+	assert(source_camera != null)
+	# Оригинальная камера хранит постановку рук и винтовки. Преобразуем модель
+	# в её систему координат, а саму камеру не подключаем к игровой сцене.
+	var source_camera_transform := source_camera.transform
+	var ancestor := source_camera.get_parent() as Node3D
+	while ancestor != null and ancestor != _springfield_model:
+		source_camera_transform = ancestor.transform * source_camera_transform
+		ancestor = ancestor.get_parent() as Node3D
+	source_camera.free()
+	var framing := Node3D.new()
+	framing.name = "SourceCameraFraming"
+	framing.transform = Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * (SPRINGFIELD_TARGET_RADIUS / SPRINGFIELD_SOURCE_RADIUS)), Vector3.ZERO) * source_camera_transform.affine_inverse()
+	_view_model.add_child(framing)
+	framing.add_child(_springfield_model)
+	_springfield_animation = _springfield_model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+	_springfield_mesh = _springfield_model.find_child("ArmsMesh", true, false) as MeshInstance3D
+	assert(_springfield_animation != null and _springfield_mesh != null and _springfield_animation.has_animation("Kar98k_001"))
+	_springfield_mesh.layers = 2
+	_springfield_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Обновления по-прежнему работают механически. Видимых новых деталей для
+	# этой модели пока нет; не рисуем старые кубы поверх рук.
+	for part_name in ["Stabilizer", "ScopeUpgrade"]:
+		var marker := Node3D.new()
+		marker.name = part_name
+		marker.visible = false
+		_view_model.add_child(marker)
+	var projection_anchor := Node3D.new()
+	projection_anchor.name = "ProjectionAnchor"
+	projection_anchor.position = Vector3(0.1, -0.1, -0.7)
+	_view_model.add_child(projection_anchor)
+	_update_springfield_animation()
 
 
 func _build_pistol_view_model() -> void:
