@@ -1551,6 +1551,11 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(not lift.collect_crate() and not lift.request_order("ammo"), "ящик нельзя принять дважды, пока лифт не внизу", failures)
 	lift.advance(3.0)
 	_check(lift.state == SupplyLift.State.UNLOADED and main.tower.lift_access_open and lift.status_text() == "ВЫЙДИТЕ ИЗ КАБИНЫ", "лифт не отправляется, пока игрок внутри кабины, и показывает подсказку", failures)
+	var cabin_position := main.player.position
+	main.player.position = Vector3(-5.3, ObservationTower.DECK_HEIGHT, 3.5)
+	lift.advance(2.0)
+	_check(lift.state == SupplyLift.State.UNLOADED and main.tower.lift_access_open, "лифт не закрывается, пока игрок на пороге", failures)
+	main.player.position = cabin_position
 	main.cam_rig.set_view(PI * 0.5, 0.0)
 	Input.action_press("move_forward")
 	for frame in range(100):
@@ -1569,6 +1574,13 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(cage_anchor != null and cage_anchor.global_position.y < cage_top - 10.0, "авторская кабина опускается", failures)
 	lift.advance(float(SupplyCatalog.SETTINGS["lift_descent_seconds"]) * 0.5)
 	_check(lift.state == SupplyLift.State.IDLE and not lift._hum.playing, "лифт возвращается в IDLE", failures)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var dock_disabled := true
+	for dock_shape in main.tower.dock_body.get_children():
+		if not (dock_shape as CollisionShape3D).disabled:
+			dock_disabled = false
+	_check(not main.tower.lift_gate_shape.disabled and dock_disabled, "после ухода кабины защитная калитка физически закрыта, а невидимый пол отключён", failures)
 	main.radio_tuner.set_tuning(true)
 	main.shop.set_open(true)
 	main.shop.change_quantity(0, 1)
