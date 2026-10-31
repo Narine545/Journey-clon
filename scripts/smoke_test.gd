@@ -855,6 +855,11 @@ func _test_contact_combat(failures: Array[String]) -> void:
 	_check(attacker.global_position.distance_to(main.player.global_position) < start_distance, "робот движется к игроку по площадке", failures)
 	attacker._physics_process(0.1)
 	_check(attacker.attack_windup > 0.0 and attacker.metal.emission_enabled and attacker.attack_arm.visible and attacker.attack_beacon.visible and main.player_health.warning_time > 0.0, "перед ударом есть визуальное и текстовое предупреждение", failures)
+	var held_windup := attacker.attack_windup
+	main.debug_menu.set_open(true)
+	attacker._physics_process(5.0)
+	_check(attacker.attack_windup == held_windup and main.player_health.health == 100, "отладочное меню приостанавливает нападение", failures)
+	main.debug_menu.set_open(false)
 	# Уход за дистанцию в течение подготовки отменяет удар.
 	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, 4.7)
 	attacker._physics_process(0.1)

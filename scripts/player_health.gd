@@ -6,6 +6,7 @@ const INVULNERABILITY := 0.8
 var main: MainScene
 var health := MAX_HEALTH
 var defeated := false
+var restarting := false
 var invulnerability := 0.0
 var damage_flash := 0.0
 var warning_time := 0.0
@@ -55,7 +56,8 @@ func setup(main_ref: MainScene) -> void:
 func _physics_process(delta: float) -> void:
 	invulnerability = maxf(0.0, invulnerability - delta)
 	damage_flash = maxf(0.0, damage_flash - delta * 1.7)
-	warning_time = maxf(0.0, warning_time - delta)
+	if main == null or main.debug_menu == null or not main.debug_menu.is_open:
+		warning_time = maxf(0.0, warning_time - delta)
 	if hud != null:
 		hud.queue_redraw()
 
@@ -82,8 +84,12 @@ func take_damage(amount: int) -> bool:
 func _defeat() -> void:
 	defeated = true
 	# Поражение не оставляет открытыми взаимодействующие панели и передачу.
-	if main.debug_menu != null and main.debug_menu.is_open:
-		main.debug_menu.set_open(false)
+	if main.debug_menu != null:
+		if main.debug_menu.is_open:
+			main.debug_menu.set_open(false)
+		main.debug_menu.hint.visible = false
+	if main.ambient_spawner != null:
+		main.ambient_spawner.set_process(false)
 	if main.shop != null and main.shop.is_open:
 		main.shop.set_open(false)
 	if main.radio_tuner != null:
@@ -101,8 +107,9 @@ func _input(event: InputEvent) -> void:
 
 
 func restart() -> void:
-	if not defeated:
+	if not defeated or restarting:
 		return
+	restarting = true
 	# Все покупки и ресурсы принадлежат попытке; аутозагрузки очищаем отдельно.
 	Economy.reset_run()
 	main.game.reset_run()

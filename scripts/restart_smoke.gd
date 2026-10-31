@@ -28,6 +28,7 @@ func _run() -> void:
 		return
 	# Реальный сигнал кнопки и deferred-пересоздание сцены.
 	old_main.player_health.restart_button.pressed.emit()
+	old_main.player_health.restart_button.pressed.emit() # повторный клик не должен перезагрузить дважды
 	await get_tree().scene_changed
 	await get_tree().process_frame
 	var fresh := get_tree().current_scene as MainScene

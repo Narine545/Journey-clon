@@ -255,6 +255,10 @@ func _advance_deck(delta: float) -> void:
 		_set_warning(false)
 		attack_windup = 0.0
 		return
+	# В отладочном меню нельзя двигаться или отстреливаться: не наносить
+	# удары, пока пользователь выбирает тестовую кнопку.
+	if health_ref.main.debug_menu != null and health_ref.main.debug_menu.is_open:
+		return
 	attack_cooldown = maxf(0.0, attack_cooldown - delta)
 	var here := Vector2(global_position.x, global_position.z)
 	var target := Vector2(player_ref.global_position.x, player_ref.global_position.z)
