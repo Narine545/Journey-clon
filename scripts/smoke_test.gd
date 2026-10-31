@@ -678,6 +678,9 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(lift.scene_file_path == "res://scenes/Lift.tscn" and main.shop.scene_file_path == "res://scenes/ShopUI.tscn", "лифт и магазин — отдельные сцены", failures)
 	Economy.try_spend(Economy.points)
 	_check(not lift.can_order("ammo") and not lift.request_order("ammo") and Economy.points == 0, "недостаток очков делает товар недоступным без списания", failures)
+	_check(not lift.request_batch({"ammo": 1, "ap": 1}) and lift.pending_items.is_empty() and lift.state == SupplyLift.State.IDLE and Economy.points == 0, "недостаток очков отклоняет всю корзину без частичной покупки", failures)
+	for invalid_basket in [{}, {"missing": 1}, {"ammo": 0}, {"ammo": -1}, {"ammo": 100}, {"ammo": 1.5}, {"scope": 2}]:
+		_check(lift.order_total(invalid_basket) == -1 and not lift.request_batch(invalid_basket) and lift.state == SupplyLift.State.IDLE, "отклоняется некорректная корзина %s" % str(invalid_basket), failures)
 	# Радио открывает терминал; пока он открыт, оружие/ходьба блокируются.
 	main.player.position = Vector3(-3.6, ObservationTower.DECK_HEIGHT, -3.9)
 	main.radio_tuner.set_tuning(true)
@@ -702,18 +705,43 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(main.rifle.ammo == before_ammo, "в терминале клик не стреляет", failures)
 	Economy.add_points(5000)
 	var before_order := Economy.points
+	main.shop.change_quantity(0, 40)
+	_check(not main.shop.attempt_order() and Economy.points == before_order and main.shop.cart == {"ammo": 40} and lift.state == SupplyLift.State.IDLE, "дорогая корзина не списывает деньги и остаётся для редактирования", failures)
+	main.shop.change_quantity(0, -40)
 	var orders_during_signal: Array[bool] = []
 	var reentrant := func(_value: int, _delta: int) -> void: orders_during_signal.append(lift.request_order("ammo"))
 	Economy.points_changed.connect(reentrant, CONNECT_ONE_SHOT)
-	main.shop.selected = 0
 	var shop_click := InputEventMouseButton.new()
 	shop_click.button_index = MOUSE_BUTTON_LEFT
 	shop_click.pressed = true
-	shop_click.position = main.shop.panel.row(0).get_center()
+	shop_click.position = main.shop.panel.plus_button(0).get_center()
 	main.shop.panel._gui_input(shop_click)
-	_check(lift.state == SupplyLift.State.CALLED, "заказ патронов кликом в терминале", failures)
 	main.shop.panel._gui_input(shop_click)
-	_check(orders_during_signal == [false] and Economy.points == before_order - 150, "двойной клик и reentrant-заказ не списывает второй раз", failures)
+	shop_click.position = main.shop.panel.plus_button(1).get_center()
+	main.shop.panel._gui_input(shop_click)
+	shop_click.position = main.shop.panel.plus_button(3).get_center()
+	main.shop.panel._gui_input(shop_click)
+	main.shop.panel._gui_input(shop_click)
+	_check(main.shop.cart == {"ammo": 2, "ap": 1, "stability": 1} and Economy.points == before_order and lift.state == SupplyLift.State.IDLE, "выбор нескольких позиций и двойной пачки без списания; улучшение только одно", failures)
+	shop_click.position = main.shop.panel.minus_button(0).get_center()
+	main.shop.panel._gui_input(shop_click)
+	_check(int(main.shop.cart.get("ammo", 0)) == 1, "кнопка минус уменьшает количество", failures)
+	main.shop.selected = 0
+	var cart_right := InputEventKey.new()
+	cart_right.physical_keycode = KEY_RIGHT
+	cart_right.pressed = true
+	main.shop._input(cart_right)
+	_check(int(main.shop.cart.get("ammo", 0)) == 2 and lift.order_total(main.shop.cart) == 1100, "стрелка увеличивает количество, сумма всей корзины верна", failures)
+	shop_click.position = main.shop.panel.order_button().get_center()
+	main.shop.panel._gui_input(shop_click)
+	_check(lift.state == SupplyLift.State.CALLED and lift.pending_items == {"ammo": 2, "ap": 1, "stability": 1} and main.shop.cart.is_empty(), "кнопка оформляет один заказ и сохраняет снимок содержимого", failures)
+	main.shop.panel._gui_input(shop_click)
+	_check(orders_during_signal == [false] and Economy.points == before_order - 1100, "повторный клик и reentrant-заказ не списывают деньги дважды", failures)
+	var order_enter := InputEventKey.new()
+	order_enter.physical_keycode = KEY_ENTER
+	order_enter.pressed = true
+	main.shop._input(order_enter)
+	_check(Economy.points == before_order - 1100 and lift.pending_items.size() == 3, "Enter с пустой корзиной не дублирует заказ", failures)
 	_check(lift.state == SupplyLift.State.CALLED and lift._start_sfx.playing, "CALLED и лязг старта", failures)
 	_check(lift.ascent_duration >= 30.0 and lift.ascent_duration <= 60.0 and lift.status_text() == "ЛИФТ В ПУТИ", "длительность 45±15 и только статус без обратного отсчёта", failures)
 	main.shop.set_open(false)
@@ -725,6 +753,9 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(cage_anchor != null and door_anchor != null, "якоря авторской модели", failures)
 	var cage_bottom: float = cage_anchor.global_position.y if cage_anchor != null else 0.0
 	var ammo_before_collect := main.rifle.regular_reserve
+	var ap_before_collect := main.rifle.ap_reserve
+	var received_batches: Array[Dictionary] = []
+	lift.delivery_collected.connect(func(contents: Dictionary) -> void: received_batches.append(contents.duplicate(true)))
 	lift.advance(lift.ascent_duration * 0.5)
 	_check(cage_anchor != null and cage_anchor.global_position.y > cage_bottom + 10.0, "авторская кабина поднимается вместе с заказом (низ=%.2f, середина=%.2f)" % [cage_bottom, cage_anchor.global_position.y if cage_anchor != null else -999.0], failures)
 	lift.advance(lift.ascent_duration * 0.5)
@@ -775,9 +806,11 @@ func _test_m5(failures: Array[String]) -> void:
 	Input.parse_input_event(interaction)
 	Input.flush_buffered_events()
 	await get_tree().process_frame
-	_check(lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 5 and main.rifle.ammo == bullet_before_interaction, "E принимает ящик лучом камеры без выстрела", failures)
+	_check(lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 10 and main.rifle.ap_reserve == ap_before_collect + 3 and main.rifle.ammo == bullet_before_interaction, "E принимает весь заказ одним ящиком без выстрела", failures)
+	_check(received_batches == [{"ammo": 2, "ap": 1, "stability": 1}] and lift.is_installed("stability") and (main.rifle._view_model.get_node("Stabilizer") as Node3D).visible, "все позиции применены один раз, улучшение установлено", failures)
+	_check("ПАТРОНЫ ×2" in main.rifle.hud._notice and "БРОНЕБОЙНЫЕ ×1" in main.rifle.hud._notice and "СТАБИЛИЗАЦИЯ ×1" in main.rifle.hud._notice, "уведомление перечисляет весь полученный состав", failures)
 	main.rifle._input(interaction)
-	_check(main.rifle.ammo == bullet_before_interaction, "повторная E не стреляет", failures)
+	_check(main.rifle.ammo == bullet_before_interaction and received_batches.size() == 1, "повторная E не стреляет и не выдаёт заказ повторно", failures)
 	_check(not lift.collect_crate() and not lift.request_order("ammo"), "ящик нельзя принять дважды, пока лифт не внизу", failures)
 	lift.advance(1.0)
 	_check(lift.state == SupplyLift.State.DESCENDING and lift._hum.playing, "DESCENDING и гул", failures)
@@ -789,13 +822,15 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(lift.state == SupplyLift.State.IDLE and not lift._hum.playing, "лифт возвращается в IDLE", failures)
 	_check(lift.request_order("ammo"), "расходники можно заказывать повторно", failures)
 	await _deliver_test_item(failures)
-	_check(main.rifle.regular_reserve == ammo_before_collect + 10, "вторая пачка прибавлена в резерв", failures)
+	_check(main.rifle.regular_reserve == ammo_before_collect + 15, "вторая пачка прибавлена в резерв", failures)
 	# Все улучшения идут через тот же сигнал доставки и один раз.
 	main.radio_tuner.live_on_air = true
 	main.radio_tuner.set_frequency(94.7)
 	main.radio_tuner.update_signal()
 	var weak_signal := main.radio_tuner.signal_strength
-	for id in ["antenna", "stability", "scope", "ap"]:
+	var stability_balance := Economy.points
+	_check(not lift.request_batch({"ammo": 1, "stability": 1}) and Economy.points == stability_balance, "уже установленное улучшение отклоняет весь заказ без списания", failures)
+	for id in ["antenna", "scope", "ap"]:
 		_check(lift.request_order(id), "заказ %s" % id, failures)
 		await _deliver_test_item(failures)
 		_check(not main.rifle.hud._notice.is_empty(), "%s отображает подтверждение получения" % id, failures)

@@ -30,16 +30,18 @@ func notify_ammo_type(ammo_type: String, loaded: int) -> void:
 	_notice_time = 5.0
 
 
-func notify_delivery(item_id: String) -> void:
-	var messages := {
-		"ammo": "ДОСТАВЛЕНО: +5 ОБЫЧНЫХ ПАТРОНОВ",
-		"ap": "ДОСТАВЛЕНО: +3 БРОНЕБОЙНЫХ ПАТРОНА",
-		"antenna": "АНТЕННА УСТАНОВЛЕНА · ПРИЁМ УСИЛЕН",
-		"stability": "СТАБИЛИЗАЦИЯ УСТАНОВЛЕНА · РАСКАЧКА -50%",
-		"scope": "ОПТИКА УСТАНОВЛЕНА · УВЕЛИЧЕНИЕ +50%",
-	}
-	_notice = String(messages.get(item_id, ""))
-	_notice_time = 6.0
+func notify_batch(items: Dictionary) -> void:
+	var entries: Array[String] = []
+	for id in SupplyCatalog.ORDER:
+		if items.has(id):
+			var item := SupplyCatalog.item(id)
+			var amount: int = items[id]
+			entries.append("%s ×%d" % [String(item["name"]).to_upper(), amount])
+	var lines: Array[String] = []
+	for i in range(0, entries.size(), 3):
+		lines.append("   •   ".join(entries.slice(i, mini(i + 3, entries.size()))))
+	_notice = "ПОЛУЧЕНО: " + "\n".join(lines)
+	_notice_time = 8.0
 
 
 func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind_cross: float, hit_flash: float, deflect_flash: float, ammo_type: String, regular_reserve: int, ap_reserve: int, points: int, lift_status: String, reloading: bool, delta: float) -> void:
@@ -108,7 +110,9 @@ class ScopeDrawing extends Control:
 			draw_string(font, center + Vector2(radius * 0.12, radius * 0.61), rounds, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			draw_string(font, center + Vector2(radius * 0.12, radius * 0.54), "%d ОЧК." % points, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 		if not notice.is_empty():
-			draw_string(font, Vector2(center.x - 380.0, size.y * 0.13), notice, HORIZONTAL_ALIGNMENT_CENTER, 760.0, 20, Color(0.94, 0.85, 0.63, 0.96))
+			var notice_lines := notice.split("\n")
+			for i in range(notice_lines.size()):
+				draw_string(font, Vector2(center.x - 420.0, size.y * 0.13 + i * 24.0), notice_lines[i], HORIZONTAL_ALIGNMENT_CENTER, 840.0, 18, Color(0.94, 0.85, 0.63, 0.96))
 		if reloading:
 			draw_string(font, Vector2(center.x - 110.0, center.y + 72.0), "ПЕРЕЗАРЯДКА", HORIZONTAL_ALIGNMENT_CENTER, 220.0, 16, Color(0.92, 0.84, 0.68, 0.85))
 		if lift_status == "ГРУЗ НА ПЛОЩАДКЕ" and amount < 0.5:

@@ -1,15 +1,16 @@
 class_name SupplyLift
 extends Node3D
-## Один оплаченный заказ за цикл. Состояние блокируется ДО списания,
+## Один оплаченный пакет из нескольких позиций за цикл. Состояние блокируется ДО списания,
 ## в том числе против повторного вызова из points_changed.
 signal state_changed(new_state: int)
 signal cargo_ready
+signal delivery_collected(items: Dictionary)
 signal effect_applied(item_id: String, effect: Dictionary)
 enum State { IDLE, CALLED, ASCENDING, ARRIVED, UNLOADED, DESCENDING }
 const CRATE_SCENE := preload("res://scenes/Crate.tscn")
 var state := State.IDLE
 var main: MainScene
-var pending_id := ""
+var pending_items: Dictionary = {}
 var installed: Dictionary = {}
 var elapsed := 0.0
 var ascent_duration: float = SupplyCatalog.SETTINGS["lift_ascent_mean"]
@@ -44,28 +45,60 @@ func _make_sound(stream: AudioStream, volume: float) -> AudioStreamPlayer3D:
 	return player
 
 
+## Единая валидация цены как для интерфейса, так и для фактической покупки.
+## -1 означает пустую или некорректную корзину.
+func order_total(items: Dictionary) -> int:
+	if items.is_empty():
+		return -1
+	var total := 0
+	for key in items:
+		if typeof(key) != TYPE_STRING or typeof(items[key]) != TYPE_INT:
+			return -1
+		var id := String(key)
+		var data := SupplyCatalog.item(id)
+		var quantity: int = items[key]
+		if data.is_empty() or quantity < 1 or quantity > 99:
+			return -1
+		if data["type"] == "Upgrade" and (quantity != 1 or is_installed(id)):
+			return -1
+		total += int(data["cost"]) * quantity
+	return total
+
+
 func can_order(item_id: String) -> bool:
-	var data := SupplyCatalog.item(item_id)
-	return state == State.IDLE and not data.is_empty() and not is_installed(item_id) and Economy.can_afford(int(data["cost"]))
+	return can_order_batch({item_id: 1})
+
+
+func can_order_batch(items: Dictionary) -> bool:
+	var total := order_total(items)
+	return state == State.IDLE and total >= 0 and Economy.can_afford(total)
 
 
 func is_installed(item_id: String) -> bool:
 	return bool(installed.get(item_id, false))
 
 
+## Совместимость со сценариями и одиночными заказами.
 func request_order(item_id: String) -> bool:
-	var data := SupplyCatalog.item(item_id)
-	if state != State.IDLE or data.is_empty() or is_installed(item_id):
+	return request_batch({item_id: 1})
+
+
+func request_batch(items: Dictionary) -> bool:
+	# Снимок не зависит от последующего редактирования корзины и обработчиков.
+	var snapshot := items.duplicate(true)
+	var total := order_total(snapshot)
+	if state != State.IDLE or total < 0:
 		main.audio.on_refused()
 		return false
-	# Закрываем заказ до сигнала кошелька, чтобы даже reentrant-клик не
-	# списал очки дважды; при отказе немедленно возвращаем IDLE.
+	# Блокируем состояние ДО сигнала кошелька, иначе reentrant-клик оформит
+	# второй заказ. При отказе все данные заказа возвращаются к исходным.
 	state = State.CALLED
-	if not Economy.try_spend(int(data["cost"])):
+	pending_items = snapshot
+	if not Economy.try_spend(total):
+		pending_items.clear()
 		state = State.IDLE
 		main.audio.on_refused()
 		return false
-	pending_id = item_id
 	elapsed = 0.0
 	ascent_duration = rng.randf_range(float(SupplyCatalog.SETTINGS["lift_ascent_mean"]) - float(SupplyCatalog.SETTINGS["lift_ascent_variance"]), float(SupplyCatalog.SETTINGS["lift_ascent_mean"]) + float(SupplyCatalog.SETTINGS["lift_ascent_variance"]))
 	_start_sfx.play()
@@ -120,7 +153,7 @@ func advance(delta: float) -> void:
 			main.tower.pose_cage(4.0 - 2.0 * progress)
 			if progress >= 1.0:
 				_hum.stop()
-				pending_id = ""
+				pending_items.clear()
 				_set_state(State.IDLE)
 
 
@@ -153,17 +186,27 @@ func try_collect_from_camera() -> bool:
 func collect_crate() -> bool:
 	if state != State.ARRIVED or elapsed < float(SupplyCatalog.SETTINGS["lift_open_seconds"]) or not is_instance_valid(crate):
 		return false
-	var data := SupplyCatalog.item(pending_id)
-	if data.is_empty():
+	if pending_items.is_empty():
 		return false
-	# Меняем состояние прежде чем испустить сигнал эффекта: повторный клик
-	# и обработчики сигнала не могут получить один и тот же груз дважды.
+	var contents := pending_items.duplicate(true)
+	# Устанавливаем все улучшения и блокируем ящик ДО вызова внешних сигналов.
+	for id in contents:
+		var item := SupplyCatalog.item(String(id))
+		if item["type"] == "Upgrade":
+			installed[id] = true
 	_set_state(State.UNLOADED)
-	if data["type"] == "Upgrade":
-		installed[pending_id] = true
 	crate.queue_free()
 	crate = null
-	effect_applied.emit(pending_id, data["effect_payload"])
+	for id in SupplyCatalog.ORDER:
+		if not contents.has(id):
+			continue
+		var item := SupplyCatalog.item(id)
+		var effect: Dictionary = item["effect_payload"].duplicate(true)
+		if item["type"] == "Consumable":
+			for field in effect:
+				effect[field] = int(effect[field]) * int(contents[id])
+		effect_applied.emit(id, effect)
+	delivery_collected.emit(contents.duplicate(true))
 	return true
 
 

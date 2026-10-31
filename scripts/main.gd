@@ -98,6 +98,7 @@ func _ready() -> void:
 	lift.setup(self)
 	lift.effect_applied.connect(rifle.apply_delivery)
 	lift.effect_applied.connect(radio_tuner.apply_delivery)
+	lift.delivery_collected.connect(rifle.on_delivery_collected)
 	shop = SHOP_SCENE.instantiate() as ShopUI
 	add_child(shop)
 	shop.setup(self)

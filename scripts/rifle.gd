@@ -183,7 +183,10 @@ func apply_delivery(item_id: String, effect: Dictionary) -> void:
 		(_view_model.get_node("Stabilizer") as Node3D).visible = true
 	if item_id == "scope":
 		(_view_model.get_node("ScopeUpgrade") as Node3D).visible = true
-	hud.notify_delivery(item_id)
+
+
+func on_delivery_collected(items: Dictionary) -> void:
+	hud.notify_batch(items)
 
 
 func on_armor_deflect(hit_position: Vector3) -> void:
