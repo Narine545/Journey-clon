@@ -1,0 +1,32 @@
+name: Temporary NZP inspection
+on:
+  push:
+    branches: ["arena/4b8d381d-journey-clon"]
+permissions:
+  contents: write
+jobs:
+  inspect:
+    if: contains(github.event.head_commit.message, '[nzp-inspect]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: arena/4b8d381d-journey-clon
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Blender runtime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libice6 libgl1
+          python -m pip install 'bpy==4.5.15'
+      - name: Inspect source with script execution disabled
+        run: python tools/inspect_nzp_springfield.py
+      - name: Publish inspection on this branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add concepts/nzp_springfield/inspection.json
+          git commit -m 'Record NZP Springfield Blender inspection'
+          git push origin HEAD:refs/heads/arena/4b8d381d-journey-clon
