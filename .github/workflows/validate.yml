@@ -62,6 +62,16 @@ jobs:
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
+      - name: Temporary preview encode
+        run: |
+          sudo apt-get install -y -qq imagemagick
+          convert climb.png -resize 640x360 -quality 25 /tmp/climb.jpg
+          base64 -w 0 /tmp/climb.jpg > /tmp/climb.b64
+          split -b 3000 -d /tmp/climb.b64 /tmp/climb-part-
+          for n in $(seq -w 0 7); do if [ -f "/tmp/climb-part-$n" ]; then echo "::notice::CLIMB$n:$(cat /tmp/climb-part-$n)"; fi; done
+      - name: Temporary preview encode continued
+        run: |
+          for n in $(seq -w 8 15); do if [ -f "/tmp/climb-part-$n" ]; then echo "::notice::CLIMB$n:$(cat /tmp/climb-part-$n)"; fi; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
