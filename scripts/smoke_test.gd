@@ -263,6 +263,7 @@ func _run() -> void:
 	main.cam_rig.refresh_pose()
 	main.rifle._physics_process(0.0)
 	var edge_projection := main.cam_rig.cam.unproject_position(projection_anchor.global_position)
+	_check(is_equal_approx(main.cam_rig.cam.near, 0.02 * main.rifle._view_model.scale.x), "ближняя плоскость уменьшается у перил вместе с винтовкой", failures)
 	_check(center_projection.distance_to(edge_projection) < 1.0, "положение винтовки на экране сохраняется у перил", failures)
 	# M3: реальный снаряд летит к дальней мишени, а не попадает в кадр выстрела.
 	_check(main.rifle.scene_file_path == "res://scenes/Rifle.tscn", "отдельная сцена винтовки", failures)
