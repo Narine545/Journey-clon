@@ -13,6 +13,8 @@ var destination := Vector2.ZERO
 var alive := true
 var _reward_claimed := false
 var preview := false
+var call_slot := -1
+var approaching_signal := false
 var age := 0.0
 var lifetime := 480.0
 var speed := 0.8
@@ -96,8 +98,17 @@ func _box(at: Vector3, dimensions: Vector3, material: Material) -> void:
 
 func _choose_destination() -> void:
 	var angle := rng.randf_range(0.0, TAU)
-	var radius := rng.randf_range(8.0, PREVIEW_ROAM_RADIUS if preview else ROAM_RADIUS)
+	var radius := rng.randf_range(8.0, PREVIEW_ROAM_RADIUS if preview or call_slot >= 0 else ROAM_RADIUS)
 	destination = Vector2(origin.x, origin.z) + Vector2(cos(angle), sin(angle)) * radius
+
+
+## Зовущие роботы идут к подножию, а не к самому центру башни.
+func respond_to_signal(tower_position: Vector3, slot: int) -> void:
+	call_slot = slot
+	approaching_signal = true
+	var tower_2d := Vector2(tower_position.x, tower_position.z)
+	var from_tower := Vector2(global_position.x, global_position.z) - tower_2d
+	destination = tower_2d + from_tower.normalized() * 18.0
 
 
 func _physics_process(delta: float) -> void:
@@ -110,6 +121,10 @@ func _physics_process(delta: float) -> void:
 	var here := Vector2(global_position.x, global_position.z)
 	var to_goal := destination - here
 	if to_goal.length() < 2.0:
+		if approaching_signal:
+			approaching_signal = false
+			age = 0.0
+			origin = global_position
 		_choose_destination()
 		to_goal = destination - here
 	# Плавный разгон, без навигационной сетки и атак; высота всегда по рельефу.
@@ -124,6 +139,7 @@ func apply_projectile_hit(pierce: bool = false) -> bool:
 	if not alive or (kind == Kind.CARRIER and not pierce):
 		return false
 	alive = false
+	approaching_signal = false
 	velocity = Vector2.ZERO
 	age = 0.0
 	hitbox.set_deferred("disabled", true)

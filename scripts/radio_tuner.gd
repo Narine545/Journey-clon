@@ -10,6 +10,8 @@ var main: MainScene
 var rng := RandomNumberGenerator.new()
 var frequency := 88.5
 var powered := false
+var transmitting := false
+var _beacon_repeat := 0.0
 var tuning := false
 var live_on_air := false
 var signal_strength := 0.0
@@ -19,6 +21,7 @@ var _last_station := -1
 var _noise: AudioStreamPlayer3D
 var _record: AudioStreamPlayer3D
 var _live: AudioStreamPlayer3D
+var _beacon: AudioStreamPlayer3D
 var _recordings: Array[AudioStream] = []
 var _packets: Array[AudioStream] = []
 var _overlay: RadioOverlay
@@ -32,6 +35,7 @@ func setup(main_ref: MainScene) -> void:
 	_noise = _make_player(main.audio._gen_radio_noise())
 	_record = _make_player(null)
 	_live = _make_player(null)
+	_beacon = _make_player(load("res://assets/radio/beacon.wav") as AudioStream)
 	_recordings = [load("res://assets/radio/post.wav") as AudioStream, load("res://assets/radio/weather.wav") as AudioStream]
 	for i in range(4):
 		_packets.append(main.audio._gen_radio_packet(7100 + i * 173))
@@ -113,12 +117,30 @@ func set_tuning(value: bool) -> void:
 
 func set_powered(value: bool) -> void:
 	powered = value
+	if not value:
+		set_transmitting(false)
 	if value and not _noise.playing:
 		_noise.play()
 	elif not value:
 		_noise.stop()
 		_record.stop()
 		_live.stop()
+	_last_station = -1
+
+
+## Маяк работает независимо от настройки принимаемой частоты и от открытой панели.
+func set_transmitting(value: bool) -> void:
+	transmitting = value and powered
+	_beacon_repeat = 12.0
+	if transmitting:
+		_record.stop()
+		_live.stop()
+		_beacon.volume_db = linear_to_db(0.22)
+		_beacon.play()
+	else:
+		_beacon.stop()
+		if main != null and main.ambient_spawner != null:
+			main.ambient_spawner.cancel_signal()
 	_last_station = -1
 
 
@@ -154,7 +176,12 @@ func _process(delta: float) -> void:
 	if rng.randf() < 1.0 - exp(-delta / mean_change):
 		live_on_air = not live_on_air
 	update_signal()
-	var audible_station := station_index if powered and signal_strength > 0.4 else -1
+	var audible_station := station_index if powered and not transmitting and signal_strength > 0.4 else -1
+	if transmitting and not _beacon.playing:
+		_beacon_repeat -= delta
+		if _beacon_repeat <= 0.0:
+			_beacon.play()
+			_beacon_repeat = 12.0
 	if audible_station != _last_station:
 		_record.stop()
 		_live.stop()
@@ -176,6 +203,7 @@ func _process(delta: float) -> void:
 	_overlay.tuning = tuning
 	_overlay.hint = nearby() and not tuning and main.rifle.scope_amount < 0.2
 	_overlay.powered = powered
+	_overlay.transmitting = transmitting
 	_overlay.frequency = frequency
 	_overlay.strength = signal_strength if powered else 0.0
 	_overlay.station = audible_station
@@ -191,6 +219,7 @@ class RadioOverlay extends Control:
 	var tuning := false
 	var hint := false
 	var powered := false
+	var transmitting := false
 	var frequency := 88.5
 	var strength := 0.0
 	var station := -1
@@ -234,5 +263,6 @@ class RadioOverlay extends Control:
 		draw_rect(bar, Color(0.25, 0.24, 0.20))
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * strength, bar.size.y)), Color(0.76, 0.64, 0.42))
 		var help_color := Color(0.77, 0.73, 0.64)
-		draw_string(font, Vector2(left, top + 205.0 * scale_factor), "← / → или колесо: частота", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
-		draw_string(font, Vector2(left, top + 235.0 * scale_factor), "B: снабжение      X: питание      E / Esc: закрыть", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
+		draw_string(font, Vector2(left, top + 185.0 * scale_factor), "МАЯК: %s    ·    T: включить / выключить" % ("ПЕРЕДАЁТ" if transmitting else "ВЫКЛ"), HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), ink)
+		draw_string(font, Vector2(left, top + 215.0 * scale_factor), "← / → или колесо: частота", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
+		draw_string(font, Vector2(left, top + 245.0 * scale_factor), "B: снабжение      X: питание      E / Esc: закрыть", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)

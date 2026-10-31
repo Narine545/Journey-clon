@@ -7,9 +7,13 @@ const BASE_INTERVAL := 900.0 # математическое ожидание, Н
 const MAX_ACTIVE := 2 # только бюджет объектов, не игровая цель
 const MIN_DISTANCE := 220.0
 const MAX_DISTANCE := 520.0
+const CALL_DELAY_MIN := 10.0
+const CALL_DELAY_MAX := 40.0
 var main: MainScene
 var rng := RandomNumberGenerator.new()
 var preview_robots := false
+# Каждый свободный слот имеет собственную задержку; -1 означает незапущенный.
+var call_delays: Array[float] = [-1.0, -1.0]
 # Точки относительно башни: все рядом с начальным направлением взгляда.
 const PREVIEW_OFFSETS := [Vector2(185.0, -25.0), Vector2(220.0, 0.0), Vector2(260.0, 35.0)]
 
@@ -63,16 +67,48 @@ func _process(delta: float) -> void:
 			living += 1
 		# Не убирать даже мёртвый объект на глазах у игрока.
 		var expiry := robot.lifetime if robot.alive else 90.0
-		if robot.age >= expiry and not main.cam_rig.cam.is_position_in_frustum(robot.global_position + Vector3.UP * robot.body_size.y * 0.5):
+		if not robot.approaching_signal and robot.age >= expiry and not main.cam_rig.cam.is_position_in_frustum(robot.global_position + Vector3.UP * robot.body_size.y * 0.5):
 			robot.queue_free()
-	if living >= MAX_ACTIVE:
+	advance_signal(delta, living)
+	# Обычные встречи продолжаются сами по себе; общий бюджет не меняется.
+	if living >= MAX_ACTIVE or main.radio_tuner.transmitting:
 		return
 	if rng.randf() >= chance_for(delta, main.game.wind_strength, main.game.night01, main.radio_tuner.live_on_air):
 		return
 	_try_spawn()
 
 
-func _try_spawn() -> void:
+## Нет долга по вызовам: занятый слот получает новую задержку после освобождения.
+## При заполненном общем бюджете готовый вызов ждёт свободное место.
+func cancel_signal() -> void:
+	call_delays = [-1.0, -1.0]
+
+
+func advance_signal(delta: float, living: int) -> void:
+	if not main.radio_tuner.transmitting:
+		cancel_signal()
+		return
+	var occupied: Array[bool] = [false, false]
+	for child in get_children():
+		var robot := child as AmbientRobot
+		if robot != null and robot.alive and robot.call_slot >= 0 and robot.call_slot < MAX_ACTIVE:
+			occupied[robot.call_slot] = true
+	for slot in range(MAX_ACTIVE):
+		if occupied[slot]:
+			call_delays[slot] = -1.0
+			continue
+		if call_delays[slot] < 0.0:
+			call_delays[slot] = rng.randf_range(CALL_DELAY_MIN, CALL_DELAY_MAX)
+		else:
+			call_delays[slot] = maxf(0.0, call_delays[slot] - delta)
+		if call_delays[slot] <= 0.0 and living < MAX_ACTIVE:
+			var called := _try_spawn(slot)
+			if called != null:
+				living += 1
+				call_delays[slot] = -1.0
+
+
+func _try_spawn(call_slot: int = -1) -> AmbientRobot:
 	var center := main.tower.global_position
 	for attempt in range(8):
 		var angle := rng.randf_range(0.0, TAU)
@@ -92,8 +128,11 @@ func _try_spawn() -> void:
 			continue
 		if not Ballistics.terrain_hit(main.coast, main.cam_rig.cam.global_position, robot_center, 8.0).is_empty():
 			continue
-		spawn_at(rng.randi_range(0, 2) as AmbientRobot.Kind, pos, rng.randi())
-		return
+		var robot := spawn_at(rng.randi_range(0, 2) as AmbientRobot.Kind, pos, rng.randi())
+		if call_slot >= 0:
+			robot.respond_to_signal(center, call_slot)
+		return robot
+	return null
 
 
 ## Отдельный метод также позволяет детерминированно проверять физику в CI,

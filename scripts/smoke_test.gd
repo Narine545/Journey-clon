@@ -306,8 +306,47 @@ func _run() -> void:
 	_check(radio.station_index == 2, "вторая архивная запись", failures)
 	radio.set_frequency(120.0)
 	_check(is_equal_approx(radio.frequency, RadioTuner.MAX_FREQ), "шкала ограничена", failures)
+	# Передача включается отдельной клавишей; приём эфира остаётся независимым.
+	var beacon_key := InputEventKey.new()
+	beacon_key.physical_keycode = KEY_T
+	beacon_key.pressed = true
+	Input.parse_input_event(beacon_key)
+	Input.flush_buffered_events()
+	_check(radio.transmitting and radio._beacon.playing, "T запускает сообщение маяка через ввод", failures)
+	var beacon_spawner := main.ambient_spawner
+	beacon_spawner.rng.seed = 19381
+	beacon_spawner.advance_signal(0.0, 0)
+	_check(beacon_spawner.get_child_count() == 0 and beacon_spawner.call_delays[0] >= 10.0 and beacon_spawner.call_delays[0] <= 40.0 and beacon_spawner.call_delays[1] >= 10.0 and beacon_spawner.call_delays[1] <= 40.0 and not is_equal_approx(beacon_spawner.call_delays[0], beacon_spawner.call_delays[1]), "у каждого свободного слота своя задержка 10–40 секунд", failures)
+	beacon_spawner.advance_signal(9.9, 0)
+	_check(beacon_spawner.get_child_count() == 0, "на сигнал нет мгновенного появления", failures)
+	for attempt in range(40):
+		beacon_spawner.advance_signal(40.0 if attempt == 0 else 0.0, beacon_spawner.get_child_count())
+		if beacon_spawner.get_child_count() >= AmbientSpawner.MAX_ACTIVE:
+			break
+	_check(beacon_spawner.get_child_count() == AmbientSpawner.MAX_ACTIVE, "сигнал вызывает роботов с общим лимитом", failures)
+	for called_child in beacon_spawner.get_children():
+		var called_robot := called_child as AmbientRobot
+		var called_vector := called_robot.global_position - main.cam_rig.cam.global_position
+		var called_forward := -main.cam_rig.cam.global_basis.z
+		var called_dot := Vector2(called_forward.x, called_forward.z).normalized().dot(Vector2(called_vector.x, called_vector.z).normalized())
+		_check(called_dot <= 0.4 and not main.cam_rig.cam.is_position_in_frustum(called_robot.global_position + Vector3.UP * 3.0), "вызванный робот создаётся вне широкого сектора взгляда", failures)
+		_check(called_robot.approaching_signal and called_robot.call_slot >= 0 and Vector2(called_robot.destination.x - main.tower.global_position.x, called_robot.destination.y - main.tower.global_position.z).length() < 20.0, "вызванный робот направляется к подножию", failures)
+	radio.set_tuning(false)
+	_check(radio.transmitting, "маяк продолжает передачу после закрытия панели", failures)
+	radio.set_tuning(true)
+	radio.set_transmitting(false)
+	beacon_spawner.advance_signal(100.0, beacon_spawner.get_child_count())
+	_check(not radio._beacon.playing and beacon_spawner.call_delays == [-1.0, -1.0], "отключение отменяет ожидающие вызовы", failures)
+	for called_child in beacon_spawner.get_children():
+		var called_robot := called_child as AmbientRobot
+		var dist_before_call_move := Vector2(called_robot.global_position.x - main.tower.global_position.x, called_robot.global_position.z - main.tower.global_position.z).length()
+		called_robot._physics_process(3.0)
+		var dist_after_call_move := Vector2(called_robot.global_position.x - main.tower.global_position.x, called_robot.global_position.z - main.tower.global_position.z).length()
+		_check(called_robot.approaching_signal and dist_after_call_move < dist_before_call_move, "уже откликнувшийся робот продолжает путь после выключения", failures)
+		called_robot.free()
+	radio.set_transmitting(true)
 	radio.set_powered(false)
-	_check(not radio.powered and not radio._record.playing and not radio._live.playing and not radio._noise.playing, "питание выключает записи, шум и сигнал", failures)
+	_check(not radio.transmitting and not radio._beacon.playing and not radio.powered and not radio._record.playing and not radio._live.playing and not radio._noise.playing, "питание выключает передачу, записи, шум и сигнал", failures)
 	var freq_before_close := radio.frequency
 	Input.parse_input_event(radio_key)
 	Input.flush_buffered_events()
