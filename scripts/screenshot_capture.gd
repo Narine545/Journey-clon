@@ -225,4 +225,16 @@ func _capture() -> void:
 		return
 	climber.queue_free()
 	await get_tree().process_frame
+	main.debug_menu.set_open(true)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var debug_path := OS.get_environment("JOURNEY_DEBUG_PATH")
+	if debug_path.is_empty():
+		debug_path = "user://debug.png"
+	if get_viewport().get_texture().get_image().save_png(debug_path) != OK:
+		printerr("[SHOT] не удалось сохранить меню отладки")
+		get_tree().quit(1)
+		return
+	main.debug_menu.set_open(false)
 	get_tree().quit(0)

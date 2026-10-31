@@ -596,6 +596,7 @@ func _run() -> void:
 	_test_terrain_paths(failures)
 	await _test_climbing(failures)
 	_test_reload(failures)
+	await _test_debug_menu(failures)
 
 	if failures.is_empty():
 		print("[SMOKE] итог: ВСЁ ПРОШЛО")
@@ -763,6 +764,54 @@ func _test_climbing(failures: Array[String]) -> void:
 	await get_tree().create_timer(0.4).timeout
 	_check(not armored_climber.alive and armored_climber.falling and Economy.points == armored_reward_before + 400, "AP поражает броню на опоре с наградой и падением", failures)
 	armored_climber.free()
+
+
+func _test_debug_menu(failures: Array[String]) -> void:
+	# Настоящее событие F2, а кнопки посылают тот же сигнал, что и клик.
+	_check(not main.debug_menu.is_open and main.debug_menu.hint.visible, "подсказка F2 видна без включения демонстрации", failures)
+	main.radio_tuner.set_tuning(true)
+	main.shop.set_open(true)
+	var f2_event := InputEventKey.new()
+	f2_event.physical_keycode = KEY_F2
+	f2_event.pressed = true
+	Input.parse_input_event(f2_event)
+	Input.flush_buffered_events()
+	await get_tree().process_frame
+	_check(main.debug_menu.is_open and main.debug_menu.backdrop.visible and not main.shop.is_open and not main.radio_tuner.tuning, "F2 открывает отладку и корректно закрывает радио и магазин", failures)
+	var ammo_type_before := main.rifle.ammo_type
+	var tab_event := InputEventKey.new()
+	tab_event.physical_keycode = KEY_TAB
+	tab_event.pressed = true
+	main.rifle._input(tab_event)
+	_check(main.rifle.ammo_type == ammo_type_before, "клавиши отладки не переключают боеприпасы", failures)
+	var ordinary_at := main.tower.global_position + Vector3(100.0, 0.0, 100.0)
+	ordinary_at.y = main.coast.ground_height(ordinary_at.x, ordinary_at.z)
+	var ordinary := main.ambient_spawner.spawn_at(AmbientRobot.Kind.SCOUT, ordinary_at, 11991)
+	ordinary.set_physics_process(false)
+	main.debug_menu.top_button.pressed.emit()
+	main.ambient_spawner.set_process(false)
+	var top_robot := main.ambient_spawner.get_node_or_null("ClimbPreviewRobot") as AmbientRobot
+	_check(not main.debug_menu.is_open and main.ambient_spawner.preview_climbing and top_robot != null and top_robot.climb_state == AmbientRobot.ClimbState.CLIMBING, "кнопка сразу показывает подъём у площадки", failures)
+	if top_robot != null:
+		var aim := (top_robot.global_position + Vector3.UP * top_robot.body_size.y * 0.5 - main.cam_rig.cam.global_position).normalized()
+		_check((-main.cam_rig.cam.global_basis.z).dot(aim) > 0.999, "быстрая проверка наводит камеру на робота", failures)
+	var f4_event := InputEventKey.new()
+	f4_event.physical_keycode = KEY_F4
+	f4_event.pressed = true
+	main.ambient_spawner._unhandled_input(f4_event)
+	var reset_robot := main.ambient_spawner.get_node_or_null("ClimbPreviewRobot") as AmbientRobot
+	_check(reset_robot != null and reset_robot.approaching_signal and ordinary.get_parent() == main.ambient_spawner, "F4 сбрасывает только тестового робота, не обычного", failures)
+	main.debug_menu.set_open(true)
+	main.debug_menu.robots_button.pressed.emit()
+	_check(main.ambient_spawner.preview_robots and not main.ambient_spawner.preview_climbing and ordinary.get_parent() == main.ambient_spawner and main.ambient_spawner.get_child_count() == 4, "демо трёх типов сохраняет обычных роботов", failures)
+	main.ambient_spawner._unhandled_input(f4_event)
+	_check(main.ambient_spawner.get_child_count() == 4 and ordinary.get_parent() == main.ambient_spawner, "F4 тройки не удаляет обычных роботов", failures)
+	main.debug_menu.set_open(true)
+	main.debug_menu.normal_button.pressed.emit()
+	main.ambient_spawner.set_process(false)
+	_check(not main.ambient_spawner.preview_robots and not main.ambient_spawner.preview_climbing and ordinary.get_parent() == main.ambient_spawner and main.ambient_spawner.get_child_count() == 1, "обычный режим убирает только демо и возвращает обычный спавнер", failures)
+	ordinary.free()
+	await get_tree().process_frame
 
 
 func _test_reload(failures: Array[String]) -> void:

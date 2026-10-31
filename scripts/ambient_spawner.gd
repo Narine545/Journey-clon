@@ -17,6 +17,7 @@ var main: MainScene
 var rng := RandomNumberGenerator.new()
 var preview_robots := false
 var preview_climbing := false
+enum DebugMode { NORMAL, CLIMB, ROBOTS }
 # Каждый свободный слот имеет собственную задержку; -1 означает незапущенный.
 var call_delays: Array[float] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
 var threat := 0.0 # 0..1: растёт только при передаче, затем плавно спадает
@@ -46,26 +47,42 @@ func _unhandled_input(event: InputEvent) -> void:
 			reset_climb_preview()
 
 
-func reset_preview() -> void:
+## Демонстрационные и обычные машины разделены: переключатель не удаляет
+## реально вызванных, не сбрасывает угрозу, очки или состояние маяка.
+func _clear_preview() -> void:
 	for child in get_children():
-		child.queue_free()
+		var robot := child as AmbientRobot
+		if robot != null and robot.preview:
+			remove_child(robot)
+			robot.queue_free()
+
+
+func set_debug_mode(mode: DebugMode, near_top: bool = false) -> void:
+	_clear_preview()
+	preview_robots = mode == DebugMode.ROBOTS
+	preview_climbing = mode == DebugMode.CLIMB
+	set_process(not preview_robots)
+	if preview_robots:
+		reset_preview()
+	elif preview_climbing:
+		reset_climb_preview(near_top)
+
+
+func reset_preview() -> void:
+	_clear_preview()
 	for i in range(PREVIEW_OFFSETS.size()):
 		var offset: Vector2 = PREVIEW_OFFSETS[i]
 		var x := main.tower.global_position.x + offset.x
 		var z := main.tower.global_position.z + offset.y
 		var p := Vector3(x, main.coast.ground_height(x, z), z)
 		var robot := spawn_at(i as AmbientRobot.Kind, p, 4010 + i)
-		# Живые демонстрационные экземпляры остаются до перезапуска/F4.
 		robot.preview = true
 		robot._choose_destination()
 
 
-## Только явная отладочная настройка: не меняет реальные задержки маяка.
-func reset_climb_preview() -> void:
-	for child in get_children():
-		if child.name == "ClimbPreviewRobot":
-			remove_child(child)
-			child.queue_free()
+## Только явное действие в отладке; реальные задержки маяка не меняются.
+func reset_climb_preview(near_top: bool = false) -> AmbientRobot:
+	_clear_preview()
 	var center := main.tower.global_position
 	var at := Vector3(center.x + 20.0, 0.0, center.z - 1.4)
 	at.y = main.coast.ground_height(at.x, at.z)
@@ -73,6 +90,12 @@ func reset_climb_preview() -> void:
 	test_robot.name = "ClimbPreviewRobot"
 	test_robot.preview = true
 	test_robot.respond_to_signal(center, -1)
+	if near_top:
+		# Этот телепорт существует только по отдельной команде отладки.
+		test_robot.global_position = Vector3(test_robot.support_target.x, center.y + ObservationTower.DECK_HEIGHT - 3.0, test_robot.support_target.y)
+		test_robot.approaching_signal = false
+		test_robot.climb_state = AmbientRobot.ClimbState.CLIMBING
+	return test_robot
 
 
 static func chance_for(delta: float, wind_strength: float, night: float, signal_on_air: bool) -> float:

@@ -45,7 +45,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers
-          JOURNEY_SHOT=1 JOURNEY_CLIMB_PATH="$PWD/climb.png" JOURNEY_LIFT_PATH="$PWD/lift.png" JOURNEY_SHOP_PATH="$PWD/shop.png" JOURNEY_CRATE_PATH="$PWD/crate.png" JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
+          JOURNEY_SHOT=1 JOURNEY_DEBUG_PATH="$PWD/debug.png" JOURNEY_CLIMB_PATH="$PWD/climb.png" JOURNEY_LIFT_PATH="$PWD/lift.png" JOURNEY_SHOP_PATH="$PWD/shop.png" JOURNEY_CRATE_PATH="$PWD/crate.png" JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
           test -s tower.png
           test -s landscape.png
           test -s scope.png
@@ -57,6 +57,7 @@ jobs:
           test -s crate.png
           test -s lift.png
           test -s climb.png
+          test -s debug.png
           grep -q 'Vulkan.*Forward+' render.log
           if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log; then
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
@@ -79,3 +80,4 @@ jobs:
             crate.png
             lift.png
             climb.png
+            debug.png

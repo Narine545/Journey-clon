@@ -25,6 +25,7 @@ var radio_tuner: RadioTuner
 var ambient_spawner: AmbientSpawner
 var lift: SupplyLift
 var shop: ShopUI
+var debug_menu: DebugMenu
 
 
 func _ready() -> void:
@@ -106,6 +107,10 @@ func _ready() -> void:
 	ambient_spawner.name = "AmbientSpawner"
 	add_child(ambient_spawner)
 	ambient_spawner.setup(self)
+	debug_menu = DebugMenu.new()
+	add_child(debug_menu)
+	debug_menu.setup(self)
+	player.debug_menu = debug_menu
 	set_time(game.night01)
 	apply_sun(game.sun_dir)
 	if OS.get_environment("JOURNEY_SMOKE") == "1":

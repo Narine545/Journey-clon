@@ -15,6 +15,7 @@ const STEP_DISTANCE := 1.35
 var camera_rig: CameraRig
 var audio: SoundScape
 var radio: RadioTuner
+var debug_menu: DebugMenu
 var sprinting := false
 var _step_distance := 0.0
 var _bob_phase := 0.0
@@ -38,7 +39,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if camera_rig == null:
 		return
-	var locked := radio != null and radio.tuning
+	var locked := (radio != null and radio.tuning) or (debug_menu != null and debug_menu.is_open)
 	var input := Vector2.ZERO if locked else Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var yaw: float = camera_rig.yaw
 	var forward := Vector3(sin(yaw), 0.0, cos(yaw))
