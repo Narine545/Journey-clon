@@ -167,9 +167,12 @@ func _physics_process(delta: float) -> void:
 			# Выведенная из строя машина не зависает в воздухе.
 			fall_speed += FALL_GRAVITY * delta
 			var floor_y := support_height(global_position.x, global_position.z)
-			global_position.y = maxf(floor_y, global_position.y - fall_speed * delta)
-			if global_position.y <= floor_y:
+			var next_y := global_position.y - fall_speed * delta
+			if next_y <= floor_y:
+				global_position.y = floor_y
 				falling = false
+			else:
+				global_position.y = next_y
 		return
 	if climb_state == ClimbState.CLIMBING:
 		global_position.y = move_toward(global_position.y, signal_tower.y + ObservationTower.DECK_HEIGHT, climb_speed * delta)

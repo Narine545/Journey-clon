@@ -731,6 +731,38 @@ func _test_climbing(failures: Array[String]) -> void:
 	await get_tree().create_timer(0.4).timeout
 	_check(not shot_climber.alive and shot_climber.falling and Economy.points == climb_reward_before + 100, "выстрел прерывает подъём и начисляет обычную награду", failures)
 	shot_climber.free()
+	# Та же проверка физическим снарядом для брони: обычная пуля не
+	# прерывает подъём, AP поражает и начисляет награду один раз.
+	var armored_climber := main.ambient_spawner.spawn_at(AmbientRobot.Kind.CARRIER, shot_start, 9121)
+	armored_climber.set_physics_process(false)
+	armored_climber.respond_to_signal(center, 1)
+	for virtual_step in range(200):
+		armored_climber._physics_process(0.5)
+		if armored_climber.climb_state == AmbientRobot.ClimbState.CLIMBING and armored_climber.global_position.y >= center.y + 42.0:
+			break
+	_check(armored_climber.climb_state == AmbientRobot.ClimbState.CLIMBING, "бронированный робот находится на подъёме", failures)
+	main.cam_rig.refresh_pose()
+	var armored_center := armored_climber.global_position + Vector3.UP * armored_climber.body_size.y * 0.5
+	var armored_dir := (armored_center - main.cam_rig.cam.global_position).normalized()
+	main.cam_rig.set_view(atan2(armored_dir.x, armored_dir.z), asin(armored_dir.y))
+	main.rifle.ammo_type = "regular"
+	main.rifle.ammo = 2
+	main.rifle.cycle_remaining = 0.0
+	main.rifle._recoil = 0.0
+	var armored_reward_before := Economy.points
+	await get_tree().physics_frame
+	_check(main.rifle.fire(), "обычный выстрел по броне на опоре", failures)
+	await get_tree().create_timer(0.4).timeout
+	_check(armored_climber.alive and Economy.points == armored_reward_before and main.rifle._deflect_flash > 0.0, "броня на опоре отражает обычный снаряд", failures)
+	main.rifle.ammo_type = "ap"
+	main.rifle.ammo = 2
+	main.rifle.cycle_remaining = 0.0
+	main.rifle._recoil = 0.0
+	main.cam_rig.set_view(atan2(armored_dir.x, armored_dir.z), asin(armored_dir.y))
+	_check(main.rifle.fire(), "AP по броне на опоре", failures)
+	await get_tree().create_timer(0.4).timeout
+	_check(not armored_climber.alive and armored_climber.falling and Economy.points == armored_reward_before + 400, "AP поражает броню на опоре с наградой и падением", failures)
+	armored_climber.free()
 
 
 func _test_reload(failures: Array[String]) -> void:
