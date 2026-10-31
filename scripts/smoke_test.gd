@@ -600,6 +600,7 @@ func _run() -> void:
 	_test_humanoid_scale(failures)
 	await _test_contact_combat(failures)
 	await _test_pistol_and_infinite(failures)
+	await _test_grapple(failures)
 
 	if failures.is_empty():
 		print("[SMOKE] итог: ВСЁ ПРОШЛО")
@@ -956,6 +957,90 @@ func _test_contact_combat(failures: Array[String]) -> void:
 	main.player_health.health = PlayerHealth.MAX_HEALTH
 	main.player_health.invulnerability = 0.0
 	await get_tree().process_frame
+
+
+func _test_grapple(failures: Array[String]) -> void:
+	var hook := main.grapple
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, 0.0)
+	main.player.velocity = Vector3.ZERO
+	main.rifle.aim_requested = false
+	main.rifle.scope_amount = 0.0
+	main.rifle._recoil = 0.0
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.set_view(PI * 0.5, -0.85)
+	await get_tree().physics_frame
+	var ground_hit := hook.find_anchor()
+	_check(not ground_hit.is_empty() and ground_hit.get("kind") == "ground", "крюк видит реальную землю от площадки", failures)
+	var press_g := InputEventKey.new()
+	press_g.physical_keycode = KEY_G
+	press_g.pressed = true
+	hook._input(press_g)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_check(hook.attached and not main.player.safety_barriers_enabled, "G зацепляет землю и временно открывает границу", failures)
+	if hook.attached:
+		var rope_before := hook.rope_length
+		Input.action_press("rope_release")
+		hook.constrain_velocity(Vector3.ZERO, 0.1)
+		Input.action_release("rope_release")
+		_check(hook.rope_length > rope_before, "Z выпускает трос", failures)
+		rope_before = hook.rope_length
+		Input.action_press("rope_reel")
+		hook.constrain_velocity(Vector3.ZERO, 0.1)
+		Input.action_release("rope_reel")
+		_check(hook.rope_length < rope_before, "X вручную втягивает трос", failures)
+		# Перемещение без телепорта: пролететь край и достичь рельефа.
+		for frame in range(1250):
+			await get_tree().physics_frame
+			if main.player.terrain_grounded:
+				break
+		_check(main.player.terrain_grounded and main.player.position.x > ObservationTower.HALF_DECK, "крюк позволяет покинуть площадку и приземлиться на рельеф", failures)
+		hook.detach()
+		main.player.velocity = Vector3.ZERO
+		await get_tree().physics_frame
+		var ground_y := main.coast.ground_height(main.player.global_position.x, main.player.global_position.z)
+		_check(absf(main.player.global_position.y - ground_y) < 0.1, "игрок не проваливается под песок", failures)
+		var tower_target := main.tower.global_position + Vector3(6.6, ObservationTower.DECK_HEIGHT + 2.3, 0.0)
+		main.cam_rig.aim_offset = Vector2.ZERO
+		main.cam_rig.refresh_pose()
+		var aim := (tower_target - main.cam_rig.cam.global_position).normalized()
+		main.cam_rig.set_view(atan2(aim.x, aim.z), asin(aim.y))
+		await get_tree().physics_frame
+		var tower_hit := hook.find_anchor()
+		_check(not tower_hit.is_empty() and tower_hit.get("kind") == "tower", "с земли можно навести крюк на верх башни", failures)
+		hook._input(press_g)
+		await get_tree().physics_frame
+		await get_tree().physics_frame
+		_check(hook.attached, "повторное G цепляет башню", failures)
+		if hook.attached:
+			for frame in range(1500):
+				await get_tree().physics_frame
+				if main.player.position.y >= ObservationTower.DECK_HEIGHT + 0.05:
+					break
+			_check(main.player.position.y >= ObservationTower.DECK_HEIGHT - 0.1, "лебёдка поднимает игрока с земли к площадке", failures)
+			Input.action_press("move_forward")
+			for frame in range(240):
+				await get_tree().physics_frame
+				if main.player.position.x < ObservationTower.WALK_LIMIT - 0.2 and main.player.position.y >= ObservationTower.DECK_HEIGHT - 0.1:
+					break
+			Input.action_release("move_forward")
+			_check(main.player.position.x < ObservationTower.WALK_LIMIT and main.player.position.y >= ObservationTower.DECK_HEIGHT - 0.1, "с троса можно перейти обратно на настил", failures)
+			hook.detach()
+			for frame in range(15):
+				await get_tree().physics_frame
+			_check(main.player.safety_barriers_enabled, "защитные границы восстанавливаются на площадке", failures)
+	# Компонента вдоль касательной не гасится ограничением длины: основа маятника.
+	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
+	main.player.velocity = Vector3.ZERO
+	hook.attached = true
+	hook.anchor = main.player.global_position + Vector3.UP * (GrappleHook.ANCHOR_HEIGHT + 10.0)
+	hook.rope_length = 10.0
+	var swinging := hook.constrain_velocity(Vector3(3.0, -2.0, 0.0), 1.0 / 60.0)
+	_check(absf(swinging.x - 3.0) < 0.01 and swinging.y >= 0.0, "трос сохраняет касательную скорость для раскачивания", failures)
+	hook.detach()
+	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
+	main.player.velocity = Vector3.ZERO
+	await get_tree().physics_frame
 
 
 func _test_pistol_and_infinite(failures: Array[String]) -> void:

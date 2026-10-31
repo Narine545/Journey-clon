@@ -59,11 +59,28 @@ func _build_deck_collisions() -> void:
 	body.collision_mask = 0
 	add_child(body)
 	_add_box(body, Vector3(0, DECK_HEIGHT - 0.1, 0), Vector3(12.0, 0.2, 12.0))
-	# Временные высокие границы не дают выпрыгнуть за перила до этапа спуска.
+	# Без троса невидимые границы по-прежнему защищают от случайного падения.
+	# Крюк временно отключает только их, не пол и не радиостойку.
+	var barriers := StaticBody3D.new()
+	barriers.name = "DeckBarriers"
+	barriers.collision_layer = 64
+	barriers.collision_mask = 0
+	add_child(barriers)
 	for side in [-1.0, 1.0]:
-		_add_box(body, Vector3(side * 5.9, DECK_HEIGHT + 2.0, 0), Vector3(0.4, 4.0, 12.0))
-		_add_box(body, Vector3(0, DECK_HEIGHT + 2.0, side * 5.9), Vector3(12.0, 4.0, 0.4))
+		_add_box(barriers, Vector3(side * 5.9, DECK_HEIGHT + 2.0, 0), Vector3(0.4, 4.0, 12.0))
+		_add_box(barriers, Vector3(0, DECK_HEIGHT + 2.0, side * 5.9), Vector3(12.0, 4.0, 0.4))
 	_add_box(body, Vector3(-4.75, DECK_HEIGHT + 0.46, -3.9), Vector3(1.15, 0.92, 1.0))
+	# Прокси по верхнему краю для прицеливания крюком, отдельный слой не
+	# вмешивается в выстрелы и физику игрока. Чуть снаружи настила, чтобы
+	# при подъёме трос не затягивал игрока сквозь пол снизу.
+	var anchors := StaticBody3D.new()
+	anchors.name = "GrappleAnchors"
+	anchors.collision_layer = 32
+	anchors.collision_mask = 0
+	add_child(anchors)
+	for side in [-1.0, 1.0]:
+		_add_box(anchors, Vector3(side * 6.25, DECK_HEIGHT + 2.3, 0), Vector3(0.7, 0.7, 12.5))
+		_add_box(anchors, Vector3(0, DECK_HEIGHT + 2.3, side * 6.25), Vector3(12.5, 0.7, 0.7))
 
 
 func _add_box(body: StaticBody3D, at: Vector3, size: Vector3) -> void:

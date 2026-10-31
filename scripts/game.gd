@@ -30,6 +30,8 @@ func _ready() -> void:
 	_add_key_action("jump", [KEY_SPACE])
 	_add_key_action("lean_left", [KEY_Q])
 	_add_key_action("lean_right", [KEY_C])
+	_add_key_action("rope_release", [KEY_Z])
+	_add_key_action("rope_reel", [KEY_X])
 
 
 func _add_key_action(action: String, keys: Array) -> void:

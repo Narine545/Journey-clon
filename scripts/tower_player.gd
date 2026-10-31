@@ -17,6 +17,10 @@ var audio: SoundScape
 var radio: RadioTuner
 var debug_menu: DebugMenu
 var health: PlayerHealth
+var coast: Coast
+var grapple: GrappleHook
+var terrain_grounded := false
+var safety_barriers_enabled := true
 var sprinting := false
 var _step_distance := 0.0
 var _bob_phase := 0.0
@@ -24,7 +28,7 @@ var _bob_phase := 0.0
 
 func _ready() -> void:
 	collision_layer = 16
-	collision_mask = 8
+	collision_mask = 8 | 64
 	floor_snap_length = 0.15
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.35
@@ -46,7 +50,11 @@ func _physics_process(delta: float) -> void:
 	var forward := Vector3(sin(yaw), 0.0, cos(yaw))
 	var right := Vector3(-cos(yaw), 0.0, sin(yaw))
 	var direction := (right * input.x - forward * input.y).normalized()
-	var was_grounded := is_on_floor()
+	if locked and grapple != null and grapple.attached:
+		# При открытом меню не отпускаем зависшего на тросе игрока.
+		velocity = Vector3.ZERO
+		return
+	var was_grounded := is_on_floor() or terrain_grounded
 	sprinting = not locked and was_grounded and Input.is_action_pressed("sprint") and input.y < -0.1
 	if was_grounded:
 		if not locked and Input.is_action_just_pressed("jump"):
@@ -56,13 +64,22 @@ func _physics_process(delta: float) -> void:
 	if locked:
 		velocity.x = 0.0
 		velocity.z = 0.0
+	elif grapple != null and grapple.attached and not was_grounded:
+		# Не гасим инерцию маятника обычным воздушным торможением FPS.
+		velocity.x += direction.x * 5.0 * delta
+		velocity.z += direction.z * 5.0 * delta
 	else:
 		_accelerate(direction, SPRINT_SPEED if sprinting else WALK_SPEED, delta, was_grounded)
+	if grapple != null and grapple.attached:
+		velocity = grapple.constrain_velocity(velocity, delta)
 	var previous := global_position
 	move_and_slide()
+	_update_terrain_floor()
+	_update_barriers()
 	var displacement := global_position - previous
-	var distance := Vector2(displacement.x, displacement.z).length() if is_on_floor() else 0.0
-	if not was_grounded and is_on_floor() and audio != null:
+	var grounded_now := is_on_floor() or terrain_grounded
+	var distance := Vector2(displacement.x, displacement.z).length() if grounded_now else 0.0
+	if not was_grounded and grounded_now and audio != null:
 		audio.on_land(0.35)
 	_step_distance += distance
 	if _step_distance >= STEP_DISTANCE:
@@ -86,3 +103,27 @@ func _accelerate(direction: Vector3, speed: float, delta: float, grounded: bool)
 	horizontal = horizontal.lerp(direction * speed, clampf(rate * delta, 0.0, 1.0))
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
+
+
+## Песок — высотное поле без встроенного тела Godot. Останавливаем капсулу
+## по той же функции, что используется снарядами и роботами. Крыша башни
+## остаётся обычной коллизией move_and_slide и не заменяется этим полом.
+func _update_terrain_floor() -> void:
+	terrain_grounded = false
+	if coast == null:
+		return
+	var ground := coast.ground_height(global_position.x, global_position.z)
+	if global_position.y <= ground + 0.04 and velocity.y <= 0.0:
+		global_position.y = ground
+		velocity.y = 0.0
+		terrain_grounded = true
+
+
+func _update_barriers() -> void:
+	var local := global_position - (get_parent() as Node3D).global_position
+	if grapple != null and grapple.attached:
+		safety_barriers_enabled = false
+	elif absf(local.x) < ObservationTower.WALK_LIMIT - 0.15 and absf(local.z) < ObservationTower.WALK_LIMIT - 0.15 and local.y >= ObservationTower.DECK_HEIGHT - 0.05:
+		# Включаем барьеры только когда капсула полностью внутри площадки.
+		safety_barriers_enabled = true
+	collision_mask = 8 | (64 if safety_barriers_enabled else 0)

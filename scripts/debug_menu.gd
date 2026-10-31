@@ -169,6 +169,8 @@ func _select_robots() -> void:
 
 
 func _show_near_top() -> void:
+	if main.grapple != null:
+		main.grapple.detach()
 	main.ambient_spawner.set_debug_mode(AmbientSpawner.DebugMode.CLIMB, true)
 	var climber := main.ambient_spawner.get_node_or_null("ClimbPreviewRobot") as AmbientRobot
 	if climber != null:
@@ -184,6 +186,8 @@ func _show_near_top() -> void:
 
 
 func _select_attack() -> void:
+	if main.grapple != null:
+		main.grapple.detach()
 	# Как и предыдущая быстрая проверка, явно переносит игрока к краю.
 	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	main.player.velocity = Vector3.ZERO
@@ -206,6 +210,8 @@ func _restore_health() -> void:
 
 
 func _select_scale() -> void:
+	if main.grapple != null:
+		main.grapple.detach()
 	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	main.player.velocity = Vector3.ZERO
 	main.ambient_spawner.set_debug_mode(AmbientSpawner.DebugMode.SCALE)

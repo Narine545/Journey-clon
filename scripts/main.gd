@@ -27,6 +27,7 @@ var lift: SupplyLift
 var shop: ShopUI
 var debug_menu: DebugMenu
 var player_health: PlayerHealth
+var grapple: GrappleHook
 
 
 func _ready() -> void:
@@ -116,6 +117,12 @@ func _ready() -> void:
 	add_child(debug_menu)
 	debug_menu.setup(self)
 	player.debug_menu = debug_menu
+	grapple = GrappleHook.new()
+	grapple.name = "GrappleHook"
+	add_child(grapple)
+	grapple.setup(self)
+	player.grapple = grapple
+	player.coast = coast
 	set_time(game.night01)
 	apply_sun(game.sun_dir)
 	if OS.get_environment("JOURNEY_SMOKE") == "1":
