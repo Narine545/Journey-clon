@@ -5,6 +5,7 @@ extends Node3D
 signal impact_confirmed(target: TargetDummy)
 signal robot_impact_confirmed(robot: AmbientRobot)
 signal reward_confirmed(amount: int)
+enum Weapon { RIFLE, PISTOL }
 
 const MUZZLE_SPEED: float = SupplyCatalog.SETTINGS["muzzle_speed"]
 const CYCLE_TIME: float = SupplyCatalog.SETTINGS["bolt_seconds"]
@@ -22,6 +23,10 @@ var camera: Camera3D
 var audio: SoundScape
 var hud: ScopeHUD
 var ammo: int = SupplyCatalog.SETTINGS["start_magazine"]
+var weapon := Weapon.RIFLE
+var pistol_ammo: int = SupplyCatalog.SETTINGS["pistol_capacity"]
+var infinite_ammo := false
+var debug_ammo_type := "regular"
 var regular_reserve: int = SupplyCatalog.SETTINGS["start_regular_reserve"]
 var ap_reserve: int = SupplyCatalog.SETTINGS["start_ap_reserve"]
 var ammo_type := "regular"
@@ -40,6 +45,7 @@ var _clock := 0.0
 var _range_clock := 0.0
 var _hit_flash := 0.0
 var _view_model: Node3D
+var _pistol_view_model: Node3D
 
 
 func setup(main_ref: MainScene) -> void:
@@ -48,6 +54,7 @@ func setup(main_ref: MainScene) -> void:
 	camera = cam_rig.cam
 	audio = main.audio
 	_build_view_model()
+	_build_pistol_view_model()
 	hud = ScopeHUD.new()
 	add_child(hud)
 
@@ -64,6 +71,14 @@ func _input(event: InputEvent) -> void:
 			if main.lift != null and main.lift.try_collect_from_camera():
 				get_viewport().set_input_as_handled()
 				return
+		elif event.physical_keycode == KEY_1:
+			select_weapon(Weapon.RIFLE)
+			get_viewport().set_input_as_handled()
+			return
+		elif event.physical_keycode == KEY_2:
+			select_weapon(Weapon.PISTOL)
+			get_viewport().set_input_as_handled()
+			return
 		elif event.physical_keycode == KEY_R:
 			start_reload()
 			get_viewport().set_input_as_handled()
@@ -74,7 +89,7 @@ func _input(event: InputEvent) -> void:
 			return
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_RIGHT:
-			aim_requested = event.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
+			aim_requested = event.pressed and weapon == Weapon.RIFLE and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 		elif event.button_index == MOUSE_BUTTON_LEFT and event.pressed and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 			fire()
 	elif event is InputEventKey and event.pressed and event.physical_keycode == KEY_ESCAPE:
@@ -89,7 +104,8 @@ func _physics_process(delta: float) -> void:
 		cycle_remaining = maxf(0.0, cycle_remaining - delta)
 		if not _cycle_bolt_played and cycle_remaining <= CYCLE_TIME * 0.5:
 			_cycle_bolt_played = true
-			audio.on_bolt()
+			if weapon == Weapon.RIFLE:
+				audio.on_bolt()
 	if reload_remaining > 0.0:
 		reload_remaining = maxf(0.0, reload_remaining - delta)
 		if reload_remaining <= 0.0:
@@ -104,55 +120,107 @@ func _physics_process(delta: float) -> void:
 	var sway := Vector2(sin(_clock * 0.75) * 0.0010, sin(_clock * 1.10 + 0.8) * 0.0008) * scope_amount * sway_multiplier
 	cam_rig.aim_offset = sway + Vector2(0.0, _recoil)
 	cam_rig.refresh_pose()
-	_view_model.visible = scope_amount < 0.45
+	_view_model.visible = weapon == Weapon.RIFLE and scope_amount < 0.45
+	_pistol_view_model.visible = weapon == Weapon.PISTOL
 	_update_view_model()
 	crosswind = Ballistics.wind_velocity(main.game).dot(camera.global_basis.x)
 	_range_clock -= delta
 	if scope_amount > 0.5 and _range_clock <= 0.0:
 		_range_clock = 0.2
 		range_m = measure_range()
-	hud.update_state(scope_amount, ammo, can_fire(), range_m, crosswind, _hit_flash, _deflect_flash, ammo_type, regular_reserve, ap_reserve, Economy.points, main.lift.status_text() if main.lift != null else "", reload_remaining > 0.0, delta)
+	hud.update_state(scope_amount, current_ammo(), can_fire(), range_m, crosswind, _hit_flash, _deflect_flash, selected_ammo_type(), regular_reserve, ap_reserve, Economy.points, main.lift.status_text() if main.lift != null else "", reload_remaining > 0.0, delta, magazine_capacity(), infinite_ammo, weapon == Weapon.PISTOL)
+
+
+func current_ammo() -> int:
+	return pistol_ammo if weapon == Weapon.PISTOL else ammo
+
+
+func magazine_capacity() -> int:
+	return int(SupplyCatalog.SETTINGS["pistol_capacity"]) if weapon == Weapon.PISTOL else int(SupplyCatalog.SETTINGS["magazine_capacity"])
+
+
+func selected_ammo_type() -> String:
+	if weapon == Weapon.PISTOL:
+		return "regular"
+	return debug_ammo_type if infinite_ammo else ammo_type
+
+
+func set_infinite_ammo(value: bool) -> void:
+	if value == infinite_ammo:
+		return
+	if value:
+		# Настоящие магазины и резервы остаются нетронутыми; AP можно испытать
+		# даже с нулевым запасом, отдельно от сохранённого выбора патронов.
+		debug_ammo_type = ammo_type
+		reload_remaining = 0.0
+	infinite_ammo = value
+
+
+func select_weapon(next_weapon: Weapon) -> void:
+	if next_weapon == weapon:
+		return
+	weapon = next_weapon
+	reload_remaining = 0.0 # незавершённая перезарядка не расходует запас
+	aim_requested = false
+	scope_amount = 0.0
+	cam_rig.aim_offset = Vector2.ZERO
+	if not infinite_ammo and current_ammo() == 0:
+		start_reload()
 
 
 func can_fire() -> bool:
 	if main != null and main.player_health != null and main.player_health.defeated:
 		return false
-	return ammo > 0 and cycle_remaining <= 0.0 and reload_remaining <= 0.0
+	return (infinite_ammo or current_ammo() > 0) and cycle_remaining <= 0.0 and reload_remaining <= 0.0
 
 
 func fire() -> bool:
 	if not can_fire():
 		return false
-	# Сначала фиксируем направление из оптики, потом добавляем отдачу.
 	cam_rig.refresh_pose()
 	var direction := -camera.global_basis.z
 	var projectile := RifleProjectile.new()
 	projectile.name = "Projectile"
 	main.add_child(projectile)
-	projectile.setup(camera.global_position, direction, MUZZLE_SPEED, main, self, ammo_type == "ap")
-	ammo -= 1
-	cycle_remaining = CYCLE_TIME
+	var pistol := weapon == Weapon.PISTOL
+	var muzzle := float(SupplyCatalog.SETTINGS["pistol_muzzle_speed"]) if pistol else MUZZLE_SPEED
+	projectile.setup(camera.global_position, direction, muzzle, main, self, not pistol and selected_ammo_type() == "ap")
+	if not infinite_ammo:
+		if pistol:
+			pistol_ammo -= 1
+		else:
+			ammo -= 1
+	cycle_remaining = float(SupplyCatalog.SETTINGS["pistol_cycle_seconds"]) if pistol else CYCLE_TIME
 	_cycle_bolt_played = false
-	_recoil = 0.018
-	audio.on_rifle_shot()
-	if ammo == 0:
+	_recoil = 0.010 if pistol else 0.018
+	if pistol:
+		audio.on_pistol_shot()
+	else:
+		audio.on_rifle_shot()
+	if not infinite_ammo and current_ammo() == 0:
 		start_reload()
 	return true
 
 
 func start_reload() -> bool:
-	var available := regular_reserve if ammo_type == "regular" else ap_reserve
-	if reload_remaining > 0.0 or ammo >= int(SupplyCatalog.SETTINGS["magazine_capacity"]) or available <= 0:
+	if infinite_ammo:
 		return false
-	reload_remaining = RELOAD_TIME
+	var available := regular_reserve if weapon == Weapon.PISTOL or ammo_type == "regular" else ap_reserve
+	if reload_remaining > 0.0 or current_ammo() >= magazine_capacity() or available <= 0:
+		return false
+	reload_remaining = float(SupplyCatalog.SETTINGS["pistol_reload_seconds"]) if weapon == Weapon.PISTOL else RELOAD_TIME
 	audio.on_bolt()
 	return true
 
 
 func switch_ammo() -> void:
-	# Прерывание не расходует патроны; новый тип загружается из своего резерва.
+	if weapon == Weapon.PISTOL:
+		return # пистолет всегда использует только обычные патроны
+	if infinite_ammo:
+		debug_ammo_type = "ap" if debug_ammo_type == "regular" else "regular"
+		hud.notify_ammo_type(debug_ammo_type, 1)
+		return
 	reload_remaining = 0.0
-	# При смене типа не теряем патроны из магазина.
 	if ammo_type == "regular":
 		regular_reserve += ammo
 		ammo_type = "ap"
@@ -165,6 +233,13 @@ func switch_ammo() -> void:
 
 
 func _reload_selected() -> void:
+	if infinite_ammo:
+		return
+	if weapon == Weapon.PISTOL:
+		var pistol_loaded := mini(magazine_capacity() - pistol_ammo, regular_reserve)
+		pistol_ammo += pistol_loaded
+		regular_reserve -= pistol_loaded
+		return
 	var capacity: int = SupplyCatalog.SETTINGS["magazine_capacity"]
 	var available := regular_reserve if ammo_type == "regular" else ap_reserve
 	var loaded := mini(capacity - ammo, available)
@@ -183,7 +258,7 @@ func apply_delivery(item_id: String, effect: Dictionary) -> void:
 		zoom_multiplier = float(effect["zoom_multiplier"])
 	if effect.has("sway_multiplier"):
 		sway_multiplier = float(effect["sway_multiplier"])
-	if ammo == 0:
+	if current_ammo() == 0:
 		start_reload()
 	if item_id == "stability":
 		(_view_model.get_node("Stabilizer") as Node3D).visible = true
@@ -271,6 +346,8 @@ func _update_view_model() -> void:
 	_view_model.scale = Vector3.ONE * model_scale
 	var reload_drop := 0.10 * sin(PI * (1.0 - reload_remaining / RELOAD_TIME)) if reload_remaining > 0.0 else 0.0
 	_view_model.position = Vector3(0.28, -0.25 - reload_drop, -0.52 + _recoil * 2.0) * model_scale
+	_pistol_view_model.scale = Vector3.ONE * model_scale
+	_pistol_view_model.position = Vector3(0.25, -0.27 - reload_drop, -0.42 + _recoil * 2.0) * model_scale
 
 
 func _build_view_model() -> void:
@@ -311,3 +388,28 @@ func _box(part_name: String, at: Vector3, dimensions: Vector3, material: Materia
 	part.layers = 2
 	part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_view_model.add_child(part)
+
+
+func _build_pistol_view_model() -> void:
+	# Временный силуэт вместо авторской модели и анимации.
+	_pistol_view_model = Node3D.new()
+	_pistol_view_model.name = "PistolPlaceholder"
+	add_child(_pistol_view_model)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.12, 0.13, 0.12)
+	material.metallic = 0.45
+	material.roughness = 0.85
+	for piece in [
+		{"at": Vector3(0, 0, -0.10), "size": Vector3(0.10, 0.10, 0.30)},
+		{"at": Vector3(0, -0.09, 0.0), "size": Vector3(0.09, 0.18, 0.10)},
+	]:
+		var part := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = piece["size"]
+		part.mesh = mesh
+		part.position = piece["at"]
+		part.material_override = material
+		part.layers = 2
+		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_pistol_view_model.add_child(part)
+	_pistol_view_model.visible = false

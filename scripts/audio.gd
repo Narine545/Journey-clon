@@ -70,6 +70,12 @@ func on_rifle_shot() -> void:
 	_shot.play()
 
 
+func on_pistol_shot() -> void:
+	# Тот же временный синтез, короче и выше; не отдельный ассет.
+	_shot.pitch_scale = randf_range(1.18, 1.28)
+	_shot.play()
+
+
 func on_bolt() -> void:
 	_bolt.play()
 

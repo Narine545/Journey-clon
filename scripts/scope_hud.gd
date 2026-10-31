@@ -44,7 +44,7 @@ func notify_batch(items: Dictionary) -> void:
 	_notice_time = 8.0
 
 
-func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind_cross: float, hit_flash: float, deflect_flash: float, ammo_type: String, regular_reserve: int, ap_reserve: int, points: int, lift_status: String, reloading: bool, delta: float) -> void:
+func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind_cross: float, hit_flash: float, deflect_flash: float, ammo_type: String, regular_reserve: int, ap_reserve: int, points: int, lift_status: String, reloading: bool, delta: float, capacity: int = 5, infinite_ammo: bool = false, is_pistol: bool = false) -> void:
 	_mask_material.set_shader_parameter("scope_amount", amount)
 	_drawing.amount = amount
 	_drawing.ammo = ammo
@@ -59,6 +59,9 @@ func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind
 	_drawing.points = points
 	_drawing.lift_status = lift_status
 	_drawing.reloading = reloading
+	_drawing.capacity = capacity
+	_drawing.infinite_ammo = infinite_ammo
+	_drawing.is_pistol = is_pistol
 	_notice_time = maxf(0.0, _notice_time - delta)
 	_drawing.notice = _notice if _notice_time > 0.0 else ""
 	_drawing.queue_redraw()
@@ -78,6 +81,9 @@ class ScopeDrawing extends Control:
 	var points := 0
 	var lift_status := ""
 	var reloading := false
+	var capacity := 5
+	var infinite_ammo := false
+	var is_pistol := false
 	var notice := ""
 
 	func _draw() -> void:
@@ -106,7 +112,7 @@ class ScopeDrawing extends Control:
 			draw_string(font, center + Vector2(-radius * 0.58, radius * 0.54), distance_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			draw_string(font, center + Vector2(-radius * 0.58, radius * 0.61), wind_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			var reserve := ap_reserve if ammo_type == "ap" else regular_reserve
-			var rounds := "%s %d/5  |  %d" % ["AP" if ammo_type == "ap" else "ОБ", ammo, reserve]
+			var rounds := "%s ∞  |  ∞" % ("AP" if ammo_type == "ap" else "ОБ") if infinite_ammo else "%s %d/%d  |  %d" % ["AP" if ammo_type == "ap" else "ОБ", ammo, capacity, reserve]
 			draw_string(font, center + Vector2(radius * 0.12, radius * 0.61), rounds, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			draw_string(font, center + Vector2(radius * 0.12, radius * 0.54), "%d ОЧК." % points, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 		if not notice.is_empty():
@@ -118,6 +124,10 @@ class ScopeDrawing extends Control:
 		if lift_status == "ГРУЗ НА ПЛОЩАДКЕ" and amount < 0.5:
 			# Ненавязчивая точка показывает центр луча только пока груз ожидает.
 			draw_circle(center, 2.0, Color(0.91, 0.85, 0.70, 0.8 * (1.0 - amount)))
+		if is_pistol and amount < 0.5:
+			var reticle_color := Color(0.94, 0.86, 0.70, 0.8)
+			draw_line(center + Vector2(-6, 0), center + Vector2(6, 0), reticle_color, 1.5)
+			draw_line(center + Vector2(0, -6), center + Vector2(0, 6), reticle_color, 1.5)
 		if hit_flash > 0.0:
 			var tick := Color(0.94, 0.82, 0.57, clampf(hit_flash, 0.0, 1.0) * 0.7)
 			draw_arc(center, maxf(7.0, radius * 0.022), 0.0, TAU, 24, tick, 1.5)
@@ -126,14 +136,16 @@ class ScopeDrawing extends Control:
 		# M5 показывает баланс, магазин и резерв, без таймеров давления.
 		var hud_alpha := 0.68 * (1.0 - amount)
 		if hud_alpha > 0.02:
-			var status := "ПЕРЕЗАРЯДКА" if reloading else ("ГОТОВА" if ready_to_fire and ammo > 0 else ("НЕТ ПАТРОНОВ" if ammo <= 0 else "ЗАТВОР"))
+			var status := "ПЕРЕЗАРЯДКА" if reloading else ("ГОТОВА" if ready_to_fire and (ammo > 0 or infinite_ammo) else ("НЕТ ПАТРОНОВ" if ammo <= 0 and not infinite_ammo else "ЗАТВОР"))
 			var reserve := ap_reserve if ammo_type == "ap" else regular_reserve
-			var text := "%d ОЧК.   %s %d/5  |  %d   %s" % [points, "AP" if ammo_type == "ap" else "ОБ", ammo, reserve, status]
+			var weapon_label := "ПСТ" if is_pistol else ("AP" if ammo_type == "ap" else "ОБ")
+			var counts := "∞  |  ∞" if infinite_ammo else "%d/%d  |  %d" % [ammo, capacity, reserve]
+			var text := "%d ОЧК.   %s %s   %s" % [points, weapon_label, counts, status]
 			draw_string(font, Vector2(size.x - 510.0, size.y - 32.0), text, HORIZONTAL_ALIGNMENT_RIGHT, 480, 18, Color(0.92, 0.84, 0.68, hud_alpha))
-			draw_string(font, Vector2(size.x - 510.0, size.y - 57.0), "TAB: ОБ / AP", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.91, 0.84, 0.68, hud_alpha))
+			draw_string(font, Vector2(size.x - 510.0, size.y - 57.0), "1: ВИНТ.  2: ПИСТОЛЕТ" if is_pistol else "1 / 2: ОРУЖИЕ    TAB: ОБ / AP", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.91, 0.84, 0.68, hud_alpha))
 			# Пять отдельных делений показывают именно магазин, а не запас.
-			for round_index in range(5):
-				var bullet_color := Color(0.91, 0.79, 0.53, hud_alpha) if round_index < ammo else Color(0.38, 0.37, 0.32, hud_alpha)
+			for round_index in range(capacity):
+				var bullet_color := Color(0.91, 0.79, 0.53, hud_alpha) if infinite_ammo or round_index < ammo else Color(0.38, 0.37, 0.32, hud_alpha)
 				draw_rect(Rect2(Vector2(size.x - 154.0 + round_index * 17.0, size.y - 57.0), Vector2(11.0, 7.0)), bullet_color)
 			var lift_hint := lift_status + ("  •  ВЗГЛЯД + E" if lift_status == "ГРУЗ НА ПЛОЩАДКЕ" else "")
 			draw_string(font, Vector2(30.0, size.y - 32.0), lift_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.82, 0.80, 0.68, hud_alpha))

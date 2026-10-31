@@ -14,6 +14,7 @@ var robots_button: Button
 var scale_button: Button
 var attack_button: Button
 var heal_button: Button
+var ammo_toggle: CheckButton
 var close_button: Button
 
 
@@ -48,10 +49,10 @@ func setup(main_ref: MainScene) -> void:
 	center.add_child(panel)
 	var margin := MarginContainer.new()
 	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		margin.add_theme_constant_override(side, 24)
+		margin.add_theme_constant_override(side, 18)
 	panel.add_child(margin)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
+	column.add_theme_constant_override("separation", 6)
 	margin.add_child(column)
 	var title := Label.new()
 	title.text = "ОТЛАДКА · F2"
@@ -65,6 +66,11 @@ func setup(main_ref: MainScene) -> void:
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.add_theme_font_size_override("font_size", 16)
 	column.add_child(info)
+	ammo_toggle = CheckButton.new()
+	ammo_toggle.text = "Бесконечные патроны (без перезарядки)"
+	ammo_toggle.add_theme_font_size_override("font_size", 18)
+	ammo_toggle.toggled.connect(_toggle_infinite_ammo)
+	column.add_child(ammo_toggle)
 	normal_button = _button(column, "Обычная игра — выключить демонстрацию")
 	normal_button.pressed.connect(_select_normal)
 	climb_button = _button(column, "Подъём с земли — пройти весь путь у опоры")
@@ -91,7 +97,7 @@ func setup(main_ref: MainScene) -> void:
 func _button(parent: VBoxContainer, text: String) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size.y = 42
+	button.custom_minimum_size.y = 36
 	button.add_theme_font_size_override("font_size", 18)
 	parent.add_child(button)
 	return button
@@ -143,6 +149,8 @@ func _refresh() -> void:
 	elif main.ambient_spawner.preview_scale:
 		mode = "СРАВНЕНИЕ РАЗМЕРОВ"
 	status.text = "Текущий режим: " + mode
+	if ammo_toggle != null:
+		ammo_toggle.set_pressed_no_signal(main.rifle.infinite_ammo)
 
 
 func _select_normal() -> void:
@@ -204,3 +212,8 @@ func _select_scale() -> void:
 	main.cam_rig.aim_offset = Vector2.ZERO
 	main.cam_rig.set_view(-PI * 0.5, -0.25)
 	set_open(false)
+
+
+func _toggle_infinite_ammo(value: bool) -> void:
+	main.rifle.set_infinite_ammo(value)
+	_refresh()

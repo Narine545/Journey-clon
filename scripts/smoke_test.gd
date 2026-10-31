@@ -599,6 +599,7 @@ func _run() -> void:
 	await _test_debug_menu(failures)
 	_test_humanoid_scale(failures)
 	await _test_contact_combat(failures)
+	await _test_pistol_and_infinite(failures)
 
 	if failures.is_empty():
 		print("[SMOKE] итог: ВСЁ ПРОШЛО")
@@ -954,6 +955,123 @@ func _test_contact_combat(failures: Array[String]) -> void:
 	main.ambient_spawner.set_process(false)
 	main.player_health.health = PlayerHealth.MAX_HEALTH
 	main.player_health.invulnerability = 0.0
+	await get_tree().process_frame
+
+
+func _test_pistol_and_infinite(failures: Array[String]) -> void:
+	var rifle := main.rifle
+	main.radio_tuner.set_tuning(false)
+	main.ambient_spawner.set_process(false)
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	main.player.velocity = Vector3.ZERO
+	rifle.set_infinite_ammo(false)
+	rifle.weapon = SniperRifle.Weapon.RIFLE
+	rifle.ammo_type = "ap"
+	rifle.ammo = 2
+	rifle.ap_reserve = 0
+	rifle.regular_reserve = 7
+	rifle.pistol_ammo = 8
+	rifle.cycle_remaining = 0.0
+	rifle.reload_remaining = 0.0
+	# Синтетический 2 проходит по тому же обработчику, что клавиатура.
+	var key_two := InputEventKey.new()
+	key_two.physical_keycode = KEY_2
+	key_two.pressed = true
+	rifle._input(key_two)
+	_check(rifle.weapon == SniperRifle.Weapon.PISTOL and rifle.current_ammo() == 8 and rifle.selected_ammo_type() == "regular", "2 выбирает пистолет с отдельным магазином и обычной пулей", failures)
+	rifle.switch_ammo()
+	_check(rifle.ammo_type == "ap" and rifle.ammo == 2 and rifle.ap_reserve == 0, "Tab в пистолете не расходует и не меняет бронебойный магазин винтовки", failures)
+	rifle._physics_process(0.0)
+	_check(rifle.hud._drawing.is_pistol and rifle.hud._drawing.capacity == 8 and rifle._pistol_view_model.visible and not rifle._view_model.visible, "HUD и болванка показывают пистолет и восемь патронов", failures)
+	# Настоящий выстрел обычной пулей: броня держит попадание пистолета.
+	var at := main.tower.global_position + Vector3(0.0, ObservationTower.DECK_HEIGHT, -1.4)
+	var armored := main.ambient_spawner.spawn_at(AmbientRobot.Kind.CARRIER, at, 4400)
+	armored.set_physics_process(false)
+	armored.global_position = at
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.refresh_pose()
+	var target := armored.global_position + Vector3.UP * armored.body_size.y * 0.5
+	var dir := (target - main.cam_rig.cam.global_position).normalized()
+	main.cam_rig.set_view(atan2(dir.x, dir.z), asin(dir.y))
+	rifle._recoil = 0.0
+	rifle._deflect_flash = 0.0
+	var before_points := Economy.points
+	await get_tree().physics_frame
+	_check(rifle.fire() and rifle.pistol_ammo == 7, "пистолет стреляет и расходует один патрон", failures)
+	var pistol_shot := main.get_node_or_null("Projectile") as RifleProjectile
+	_check(pistol_shot != null and not pistol_shot.pierce and is_equal_approx(pistol_shot.velocity.length(), float(SupplyCatalog.SETTINGS["pistol_muzzle_speed"])), "пистолет создаёт реальный обычный снаряд", failures)
+	await get_tree().create_timer(0.4).timeout
+	_check(armored.alive and Economy.points == before_points and rifle._deflect_flash > 0.0, "броня отражает выстрел пистолета без награды", failures)
+	# Переключение сохраняет собственный магазин пистолета и AP винтовки.
+	var key_one := InputEventKey.new()
+	key_one.physical_keycode = KEY_1
+	key_one.pressed = true
+	rifle._input(key_one)
+	_check(rifle.weapon == SniperRifle.Weapon.RIFLE and rifle.ammo_type == "ap" and rifle.ammo == 2 and rifle.pistol_ammo == 7, "1 возвращает винтовку с прежними AP и сохраняет пистолет", failures)
+	rifle.cycle_remaining = 0.0
+	rifle._recoil = 0.0
+	main.cam_rig.set_view(atan2(dir.x, dir.z), asin(dir.y))
+	_check(rifle.fire(), "выстрел AP после возврата к винтовке", failures)
+	await get_tree().create_timer(0.4).timeout
+	_check(not armored.alive and Economy.points == before_points + 400, "AP винтовки по-прежнему поражает броню", failures)
+	armored.free()
+	# Пистолет перезаряжается из общей обычной поставки, не из AP.
+	rifle.select_weapon(SniperRifle.Weapon.PISTOL)
+	rifle.pistol_ammo = 3
+	rifle.regular_reserve = 4
+	rifle.ap_reserve = 0
+	rifle.reload_remaining = 0.0
+	_check(rifle.start_reload(), "пистолет начинает перезарядку из обычного запаса", failures)
+	rifle._physics_process(float(SupplyCatalog.SETTINGS["pistol_reload_seconds"]))
+	_check(rifle.pistol_ammo == 7 and rifle.regular_reserve == 0 and rifle.ap_reserve == 0, "пистолет получает только реальные доступные обычные патроны", failures)
+	# Включение флажка не пополняет фактические магазины и резервы.
+	rifle.select_weapon(SniperRifle.Weapon.RIFLE)
+	rifle.ammo_type = "regular"
+	rifle.ammo = 2
+	rifle.regular_reserve = 7
+	rifle.ap_reserve = 0
+	rifle.pistol_ammo = 0
+	rifle.cycle_remaining = 0.0
+	rifle.reload_remaining = 0.0
+	main.debug_menu.set_open(true)
+	_check(not main.debug_menu.ammo_toggle.button_pressed and not rifle.infinite_ammo, "бесконечные патроны по умолчанию выключены", failures)
+	main.debug_menu.ammo_toggle.button_pressed = true
+	_check(rifle.infinite_ammo, "флажок F2 включает бесконечные патроны", failures)
+	main.debug_menu.set_open(false)
+	for shot_index in range(12):
+		_check(rifle.fire(), "бесконечный выстрел %d" % shot_index, failures)
+		rifle._physics_process(SniperRifle.CYCLE_TIME)
+	_check(rifle.ammo == 2 and rifle.regular_reserve == 7 and rifle.ap_reserve == 0 and rifle.reload_remaining == 0.0, "бесконечный режим не расходует магазин, запас и не ждёт перезарядку", failures)
+	rifle.switch_ammo()
+	_check(rifle.selected_ammo_type() == "ap" and rifle.ammo_type == "regular" and rifle.ap_reserve == 0, "бесконечный AP выбирается без покупки и изменения реального типа", failures)
+	var ap_target := main.ambient_spawner.spawn_at(AmbientRobot.Kind.CARRIER, at, 4401)
+	ap_target.set_physics_process(false)
+	ap_target.global_position = at
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.refresh_pose()
+	var ap_dir := (ap_target.global_position + Vector3.UP * ap_target.body_size.y * 0.5 - main.cam_rig.cam.global_position).normalized()
+	main.cam_rig.set_view(atan2(ap_dir.x, ap_dir.z), asin(ap_dir.y))
+	rifle.cycle_remaining = 0.0
+	rifle._recoil = 0.0
+	await get_tree().physics_frame
+	_check(rifle.fire(), "реальный выстрел бесконечным AP", failures)
+	await get_tree().create_timer(0.4).timeout
+	_check(not ap_target.alive and rifle.ap_reserve == 0, "бесконечный AP поражает броню, не добавляя патроны в запас", failures)
+	ap_target.free()
+	rifle.select_weapon(SniperRifle.Weapon.PISTOL)
+	rifle.cycle_remaining = 0.0
+	_check(rifle.pistol_ammo == 0 and rifle.fire() and rifle.pistol_ammo == 0, "бесконечный режим работает и с пустым пистолетом", failures)
+	rifle._physics_process(0.0)
+	_check(rifle.hud._drawing.infinite_ammo and rifle.hud._drawing.is_pistol, "HUD явно показывает бесконечный режим пистолета", failures)
+	main.debug_menu.set_open(true)
+	main.debug_menu.ammo_toggle.button_pressed = false
+	_check(not rifle.infinite_ammo and rifle.ammo == 2 and rifle.ammo_type == "regular" and rifle.regular_reserve == 7 and rifle.ap_reserve == 0 and rifle.pistol_ammo == 0, "выключение бесконечных патронов возвращает нетронутые реальные запасы", failures)
+	main.debug_menu.set_open(false)
+	rifle.cycle_remaining = 0.0
+	_check(not rifle.can_fire() and rifle.start_reload(), "после отключения снова нужна обычная перезарядка", failures)
+	rifle.select_weapon(SniperRifle.Weapon.RIFLE)
+	rifle.cycle_remaining = 0.0
+	rifle.reload_remaining = 0.0
 	await get_tree().process_frame
 
 

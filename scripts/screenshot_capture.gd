@@ -226,6 +226,7 @@ func _capture() -> void:
 	climber.queue_free()
 	await get_tree().process_frame
 	main.debug_menu.set_open(true)
+	main.debug_menu.ammo_toggle.button_pressed = true
 	for i in range(8):
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
@@ -236,6 +237,7 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить меню отладки")
 		get_tree().quit(1)
 		return
+	main.debug_menu.ammo_toggle.button_pressed = false
 	# Три размера рядом с игроком — полезнее, чем силуэт за 200 м.
 	main.debug_menu._select_scale()
 	for i in range(8):
@@ -274,6 +276,20 @@ func _capture() -> void:
 		attack_path = "user://attack.png"
 	if get_viewport().get_texture().get_image().save_png(attack_path) != OK:
 		printerr("[SHOT] не удалось сохранить атаку")
+		get_tree().quit(1)
+		return
+	# Пистолет — отдельный кадр без стрелкового ассета и без демо-робота.
+	main.ambient_spawner.set_debug_mode(AmbientSpawner.DebugMode.NORMAL)
+	main.rifle.select_weapon(SniperRifle.Weapon.PISTOL)
+	main.rifle._physics_process(0.016)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var pistol_path := OS.get_environment("JOURNEY_PISTOL_PATH")
+	if pistol_path.is_empty():
+		pistol_path = "user://pistol.png"
+	if get_viewport().get_texture().get_image().save_png(pistol_path) != OK:
+		printerr("[SHOT] не удалось сохранить пистолет")
 		get_tree().quit(1)
 		return
 	main.player_health.take_damage(100)

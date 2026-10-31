@@ -9,6 +9,10 @@ const SETTINGS := {
 	"muzzle_speed": 620.0,
 	"bolt_seconds": 0.38,
 	"reload_seconds": 1.8,
+	"pistol_capacity": 8,
+	"pistol_muzzle_speed": 380.0,
+	"pistol_cycle_seconds": 0.22,
+	"pistol_reload_seconds": 1.4,
 	"ap_pierce_limit": 2,
 	"target_reward": 100,
 	"robot_rewards": {"scout": 100, "walker": 250, "carrier": 400},
@@ -21,7 +25,7 @@ const SETTINGS := {
 	"crate_reach": 5.0,
 }
 const ITEMS := {
-	"ammo": {"id": "ammo", "name": "Патроны", "cost": 150, "type": "Consumable", "description_one_liner": "Пять обычных патронов в запас", "effect_payload": {"regular_ammo": 5}},
+	"ammo": {"id": "ammo", "name": "Патроны", "cost": 150, "type": "Consumable", "description_one_liner": "5 обычных патронов для обоих стволов", "effect_payload": {"regular_ammo": 5}},
 	"ap": {"id": "ap", "name": "Бронебойные", "cost": 300, "type": "Consumable", "description_one_liner": "Три патрона против брони", "effect_payload": {"ap_ammo": 3}},
 	"antenna": {"id": "antenna", "name": "Антенна", "cost": 400, "type": "Upgrade", "description_one_liner": "Усиливает приём живого эфира", "effect_payload": {"live_signal_multiplier": 1.6}},
 	"stability": {"id": "stability", "name": "Стабилизация", "cost": 500, "type": "Upgrade", "description_one_liner": "Уменьшает раскачку на 50%", "effect_payload": {"sway_multiplier": 0.5}},
