@@ -76,19 +76,6 @@ jobs:
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
-      - name: Temporary humanoid scale review
-        run: |
-          sudo apt-get install -y -qq imagemagick
-          convert robot_scale.png -resize 800x450 -quality 30 /tmp/scale.jpg
-          base64 -w 0 /tmp/scale.jpg > /tmp/scale.b64
-          split -b 3000 -d /tmp/scale.b64 /tmp/scale-part-
-          for n in $(seq -f '%02g' 0 9); do if [ -f "/tmp/scale-part-$n" ]; then echo "::notice::SCALE$n:$(cat /tmp/scale-part-$n)"; fi; done
-      - name: Temporary debug menu review
-        run: |
-          convert debug.png -resize 800x450 -quality 30 /tmp/debug.jpg
-          base64 -w 0 /tmp/debug.jpg > /tmp/debug.b64
-          split -b 3000 -d /tmp/debug.b64 /tmp/debug-part-
-          for n in $(seq -f '%02g' 0 9); do if [ -f "/tmp/debug-part-$n" ]; then echo "::notice::MENU$n:$(cat /tmp/debug-part-$n)"; fi; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
