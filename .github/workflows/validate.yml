@@ -55,7 +55,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers
-          JOURNEY_SHOT=1 JOURNEY_FRAME_PATH="$PWD/frame.png" JOURNEY_HOOK_PATH="$PWD/hook.png" JOURNEY_PISTOL_PATH="$PWD/pistol.png" JOURNEY_SCALE_PATH="$PWD/robot_scale.png" JOURNEY_ATTACK_PATH="$PWD/attack.png" JOURNEY_DEFEAT_PATH="$PWD/defeat.png" JOURNEY_DEBUG_PATH="$PWD/debug.png" JOURNEY_CLIMB_PATH="$PWD/climb.png" JOURNEY_LIFT_PATH="$PWD/lift.png" JOURNEY_SHOP_PATH="$PWD/shop.png" JOURNEY_CRATE_PATH="$PWD/crate.png" JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
+          JOURNEY_SPRING_PATH="$PWD/spring_reload.png" JOURNEY_SHOT=1 JOURNEY_FRAME_PATH="$PWD/frame.png" JOURNEY_HOOK_PATH="$PWD/hook.png" JOURNEY_PISTOL_PATH="$PWD/pistol.png" JOURNEY_SCALE_PATH="$PWD/robot_scale.png" JOURNEY_ATTACK_PATH="$PWD/attack.png" JOURNEY_DEFEAT_PATH="$PWD/defeat.png" JOURNEY_DEBUG_PATH="$PWD/debug.png" JOURNEY_CLIMB_PATH="$PWD/climb.png" JOURNEY_LIFT_PATH="$PWD/lift.png" JOURNEY_SHOP_PATH="$PWD/shop.png" JOURNEY_CRATE_PATH="$PWD/crate.png" JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
           test -s tower.png
           test -s landscape.png
           test -s scope.png
@@ -83,11 +83,11 @@ jobs:
         run: |
           sudo apt-get install -y -qq ffmpeg
           ffmpeg -v error -y -i tower.png -vf scale=800:-2 -q:v 9 /tmp/spring-tower.jpg
-          ffmpeg -v error -y -i rail.png -vf scale=800:-2 -q:v 9 /tmp/spring-rail.jpg
+          ffmpeg -v error -y -i spring_reload.png -vf scale=800:-2 -q:v 9 /tmp/spring-reload.jpg
           python3 - <<'PYCODE'
           import base64
           from pathlib import Path
-          for tag in ['rail']:
+          for tag in ['reload']:
               data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
               chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
               print('::notice::SPRING_COUNT_'+tag+'_'+str(len(chunks)))
@@ -98,7 +98,7 @@ jobs:
           python3 - <<'PYCODE'
           import base64
           from pathlib import Path
-          for tag in ['rail']:
+          for tag in ['reload']:
               data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
               chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
               for i in range(9,len(chunks)): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+chunks[i])

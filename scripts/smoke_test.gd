@@ -270,9 +270,19 @@ func _run() -> void:
 	_check(main.rifle.get_parent() == main.cam_rig.cam, "винтовка прикреплена к камере", failures)
 	_check(main.rifle._springfield_mesh != null and main.rifle._springfield_animation != null, "игровая модель Springfield с руками и скелетом загружена", failures)
 	_check(main.rifle._springfield_animation.has_animation("Kar98k_001"), "исходная анимация импортирована", failures)
+	var spring_skeletons := main.rifle._springfield_model.find_children("*", "Skeleton3D", true, false)
+	_check(not spring_skeletons.is_empty(), "скелет рук Springfield присутствует", failures)
+	var spring_skeleton := spring_skeletons[0] as Skeleton3D
+	var spring_hand := spring_skeleton.find_bone("hand.r")
+	_check(spring_hand >= 0, "кость правой руки присутствует", failures)
+	main.rifle.reload_remaining = 0.0
+	main.rifle.cycle_remaining = 0.0
+	main.rifle._update_springfield_animation()
+	var spring_hand_idle := spring_skeleton.get_bone_pose(spring_hand)
 	main.rifle.reload_remaining = SniperRifle.RELOAD_TIME * 0.5
 	main.rifle._update_springfield_animation()
 	_check(absf(main.rifle._springfield_animation.current_animation_position - 1.55) < 0.02, "пробное движение синхронизировано с перезарядкой", failures)
+	_check(not spring_hand_idle.is_equal_approx(spring_skeleton.get_bone_pose(spring_hand)), "пробное движение реально меняет позу руки", failures)
 	main.rifle.reload_remaining = 0.0
 	main.rifle._update_springfield_animation()
 	_check(main.long_target.global_position.distance_to(main.player.global_position) > 500.0, "дальняя мишень за 500 м", failures)
