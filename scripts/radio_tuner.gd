@@ -91,6 +91,12 @@ func _input(event: InputEvent) -> void:
 				KEY_X:
 					if not event.echo:
 						set_powered(not powered)
+				KEY_T:
+					if not event.echo:
+						if powered:
+							set_transmitting(not transmitting)
+						else:
+							main.audio.on_refused()
 				KEY_LEFT, KEY_A, KEY_Q:
 					set_frequency(frequency - 0.1)
 				KEY_RIGHT, KEY_D:
