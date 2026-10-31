@@ -767,7 +767,10 @@ func _test_climbing(failures: Array[String]) -> void:
 
 
 func _test_debug_menu(failures: Array[String]) -> void:
-	# Настоящее событие F2, а кнопки посылают тот же сигнал, что и клик.
+	# Настоящие события F2 и мыши при реалистичном размере окна.
+	var previous_size := get_tree().root.size
+	get_tree().root.size = Vector2i(1280, 720)
+	await get_tree().process_frame
 	_check(not main.debug_menu.is_open and main.debug_menu.hint.visible, "подсказка F2 видна без включения демонстрации", failures)
 	main.radio_tuner.set_tuning(true)
 	main.shop.set_open(true)
@@ -788,7 +791,23 @@ func _test_debug_menu(failures: Array[String]) -> void:
 	ordinary_at.y = main.coast.ground_height(ordinary_at.x, ordinary_at.z)
 	var ordinary := main.ambient_spawner.spawn_at(AmbientRobot.Kind.SCOUT, ordinary_at, 11991)
 	ordinary.set_physics_process(false)
-	main.debug_menu.top_button.pressed.emit()
+	await get_tree().process_frame
+	var button_center := main.debug_menu.top_button.get_global_rect().get_center()
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = button_center
+	click.global_position = button_center
+	click.pressed = true
+	Input.parse_input_event(click)
+	Input.flush_buffered_events()
+	click = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = button_center
+	click.global_position = button_center
+	click.pressed = false
+	Input.parse_input_event(click)
+	Input.flush_buffered_events()
+	await get_tree().process_frame
 	main.ambient_spawner.set_process(false)
 	var top_robot := main.ambient_spawner.get_node_or_null("ClimbPreviewRobot") as AmbientRobot
 	_check(not main.debug_menu.is_open and main.ambient_spawner.preview_climbing and top_robot != null and top_robot.climb_state == AmbientRobot.ClimbState.CLIMBING, "кнопка сразу показывает подъём у площадки", failures)
@@ -811,6 +830,7 @@ func _test_debug_menu(failures: Array[String]) -> void:
 	main.ambient_spawner.set_process(false)
 	_check(not main.ambient_spawner.preview_robots and not main.ambient_spawner.preview_climbing and ordinary.get_parent() == main.ambient_spawner and main.ambient_spawner.get_child_count() == 1, "обычный режим убирает только демо и возвращает обычный спавнер", failures)
 	ordinary.free()
+	get_tree().root.size = previous_size
 	await get_tree().process_frame
 
 
