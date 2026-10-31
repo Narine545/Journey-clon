@@ -26,8 +26,8 @@ func setup(main_ref: MainScene) -> void:
 	main = main_ref
 	rope = MeshInstance3D.new()
 	var cylinder := CylinderMesh.new()
-	cylinder.top_radius = 0.025
-	cylinder.bottom_radius = 0.025
+	cylinder.top_radius = 0.006
+	cylinder.bottom_radius = 0.006
 	cylinder.height = 1.0
 	cylinder.radial_segments = 6
 	rope.mesh = cylinder
