@@ -87,7 +87,7 @@ jobs:
           python3 - <<'PYCODE'
           import base64
           from pathlib import Path
-          for tag in ['tower', 'rail']:
+          for tag in ['rail']:
               data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
               chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
               print('::notice::SPRING_COUNT_'+tag+'_'+str(len(chunks)))
@@ -98,7 +98,7 @@ jobs:
           python3 - <<'PYCODE'
           import base64
           from pathlib import Path
-          for tag in ['tower', 'rail']:
+          for tag in ['rail']:
               data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
               chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
               for i in range(9,len(chunks)): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+chunks[i])
