@@ -1019,8 +1019,23 @@ func _test_pistol_and_infinite(failures: Array[String]) -> void:
 	await get_tree().create_timer(0.4).timeout
 	_check(not armored.alive and Economy.points == before_points + 400, "AP винтовки по-прежнему поражает броню", failures)
 	armored.free()
-	# Пистолет перезаряжается из общей обычной поставки, не из AP.
+	# Незащищённого робота пистолет поражает реальным снарядом с наградой.
 	rifle.select_weapon(SniperRifle.Weapon.PISTOL)
+	var scout := main.ambient_spawner.spawn_at(AmbientRobot.Kind.SCOUT, at, 4402)
+	scout.set_physics_process(false)
+	scout.global_position = at
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.refresh_pose()
+	var scout_dir := (scout.global_position + Vector3.UP * scout.body_size.y * 0.5 - main.cam_rig.cam.global_position).normalized()
+	main.cam_rig.set_view(atan2(scout_dir.x, scout_dir.z), asin(scout_dir.y))
+	rifle.cycle_remaining = 0.0
+	rifle._recoil = 0.0
+	await get_tree().physics_frame
+	_check(rifle.fire(), "физический выстрел пистолета по разведчику", failures)
+	await get_tree().create_timer(0.4).timeout
+	_check(not scout.alive and Economy.points == before_points + 500 and rifle.pistol_ammo == 6, "пистолет поражает незащищённого робота и начисляет награду", failures)
+	scout.free()
+	# Пистолет перезаряжается из общей обычной поставки, не из AP.
 	rifle.pistol_ammo = 3
 	rifle.regular_reserve = 4
 	rifle.ap_reserve = 0
