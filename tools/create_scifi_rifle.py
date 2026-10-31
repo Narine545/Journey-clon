@@ -223,7 +223,8 @@ box("Scope top marker", (0.025, 0, 0.502), (0.024, 0.004, 0.003), mat_edge, 0.00
 for side in (-1, 1):
     for x in (-0.20, 0.24, 0.48):
         bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.006, depth=0.004,
-             location=(x, side * 0.069, 0.245), rotation=(math.pi / 2, 0, 0))
+             location=(x, side * (0.056 if x == 0.48 else 0.064),
+                       0.19 if x == 0.48 else 0.245), rotation=(math.pi / 2, 0, 0))
         assign(bpy.context.object, "Fastener %.2f side %s" % (x, side), mat_metal)
     box("Armor signal %s" % side, (0.435, side * 0.058, 0.136), (0.055, 0.004, 0.009), mat_edge, 0.001)
 
