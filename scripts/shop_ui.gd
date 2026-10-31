@@ -77,7 +77,7 @@ func _input(event: InputEvent) -> void:
 func change_quantity(index: int, delta: int) -> void:
 	var id := String(SupplyCatalog.ORDER[index])
 	var data := SupplyCatalog.item(id)
-	if main.lift.is_installed(id):
+	if main.lift.is_installed(id) and (delta > 0 or not cart.has(id)):
 		feedback = "УЛУЧШЕНИЕ УЖЕ УСТАНОВЛЕНО"
 		return
 	var limit := 1 if data["type"] == "Upgrade" else 99

@@ -109,6 +109,10 @@ func _capture() -> void:
 	# Отдельно проверяем реальный текстовый терминал M5.
 	Economy.add_points(1000)
 	main.shop.set_open(true)
+	# Демонстрируем содержимое корзины и итог в CI-кадре.
+	main.shop.change_quantity(0, 2)
+	main.shop.change_quantity(1, 1)
+	main.shop.change_quantity(2, 1)
 	for i in range(8):
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
@@ -119,6 +123,7 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить терминал")
 		get_tree().quit(1)
 		return
+	main.shop.cart.clear()
 	main.shop.set_open(false)
 	main.radio_tuner.set_tuning(false)
 	# Ящик на настиле и угол взгляда, с которого его можно принять.
