@@ -344,7 +344,13 @@ func _run() -> void:
 		var dist_after_call_move := Vector2(called_robot.global_position.x - main.tower.global_position.x, called_robot.global_position.z - main.tower.global_position.z).length()
 		_check(called_robot.approaching_signal and dist_after_call_move < dist_before_call_move, "уже откликнувшийся робот продолжает путь после выключения", failures)
 		called_robot.free()
+	var existing_position := main.tower.global_position + Vector3(250.0, 0.0, 0.0)
+	existing_position.y = main.coast.ground_height(existing_position.x, existing_position.z)
+	var existing_robot := beacon_spawner.spawn_at(AmbientRobot.Kind.SCOUT, existing_position, 2193)
 	radio.set_transmitting(true)
+	beacon_spawner.advance_signal(0.0, 1)
+	_check(existing_robot.signal_called and existing_robot.approaching_signal and existing_robot.call_slot == -1, "существующий робот тоже откликается на маяк", failures)
+	existing_robot.free()
 	radio.set_powered(false)
 	_check(not radio.transmitting and not radio._beacon.playing and not radio.powered and not radio._record.playing and not radio._live.playing and not radio._noise.playing, "питание выключает передачу, записи, шум и сигнал", failures)
 	var freq_before_close := radio.frequency

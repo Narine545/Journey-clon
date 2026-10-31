@@ -14,6 +14,7 @@ var alive := true
 var _reward_claimed := false
 var preview := false
 var call_slot := -1
+var signal_called := false
 var approaching_signal := false
 var age := 0.0
 var lifetime := 480.0
@@ -98,13 +99,14 @@ func _box(at: Vector3, dimensions: Vector3, material: Material) -> void:
 
 func _choose_destination() -> void:
 	var angle := rng.randf_range(0.0, TAU)
-	var radius := rng.randf_range(8.0, PREVIEW_ROAM_RADIUS if preview or call_slot >= 0 else ROAM_RADIUS)
+	var radius := rng.randf_range(8.0, PREVIEW_ROAM_RADIUS if preview or signal_called else ROAM_RADIUS)
 	destination = Vector2(origin.x, origin.z) + Vector2(cos(angle), sin(angle)) * radius
 
 
 ## Зовущие роботы идут к подножию, а не к самому центру башни.
 func respond_to_signal(tower_position: Vector3, slot: int) -> void:
 	call_slot = slot
+	signal_called = true
 	approaching_signal = true
 	var tower_2d := Vector2(tower_position.x, tower_position.z)
 	var from_tower := Vector2(global_position.x, global_position.z) - tower_2d

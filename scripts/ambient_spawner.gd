@@ -91,7 +91,12 @@ func advance_signal(delta: float, living: int) -> void:
 	var occupied: Array[bool] = [false, false]
 	for child in get_children():
 		var robot := child as AmbientRobot
-		if robot != null and robot.alive and robot.call_slot >= 0 and robot.call_slot < MAX_ACTIVE:
+		if robot == null or not robot.alive:
+			continue
+		# Ранее встретившийся живой робот тоже слышит сигнал, а не только новые.
+		if not robot.signal_called:
+			robot.respond_to_signal(main.tower.global_position, -1)
+		if robot.call_slot >= 0 and robot.call_slot < MAX_ACTIVE:
 			occupied[robot.call_slot] = true
 	for slot in range(MAX_ACTIVE):
 		if occupied[slot]:
