@@ -1549,7 +1549,7 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(main.rifle.ammo == bullet_before_interaction and received_batches.size() == 1, "повторная E не стреляет и не выдаёт заказ повторно", failures)
 	_check(not lift.collect_crate() and not lift.request_order("ammo"), "ящик нельзя принять дважды, пока лифт не внизу", failures)
 	lift.advance(3.0)
-	_check(lift.state == SupplyLift.State.UNLOADED and main.tower.lift_access_open, "лифт не отправляется, пока игрок внутри кабины", failures)
+	_check(lift.state == SupplyLift.State.UNLOADED and main.tower.lift_access_open and lift.status_text() == "ВЫЙДИТЕ ИЗ КАБИНЫ", "лифт не отправляется, пока игрок внутри кабины, и показывает подсказку", failures)
 	main.cam_rig.set_view(PI * 0.5, 0.0)
 	Input.action_press("move_forward")
 	for frame in range(100):

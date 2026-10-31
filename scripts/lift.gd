@@ -228,5 +228,5 @@ func status_text() -> String:
 		State.IDLE: return "ЛИФТ ВНИЗУ"
 		State.CALLED, State.ASCENDING, State.DESCENDING: return "ЛИФТ В ПУТИ"
 		State.ARRIVED: return "ГРУЗ НА ПЛОЩАДКЕ" if is_instance_valid(crate) else "ЛИФТ В ПУТИ"
-		State.UNLOADED: return "ЛИФТ В ПУТИ"
+		State.UNLOADED: return "ВЫЙДИТЕ ИЗ КАБИНЫ" if _player_in_lift_or_threshold() else "ЛИФТ В ПУТИ"
 	return "ЛИФТ ВНИЗУ"
