@@ -292,6 +292,34 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить пистолет")
 		get_tree().quit(1)
 		return
+	# Вид с земли: временная верхняя рейка — цель крюка; затем сам трос.
+	var ground_pos := main.tower.global_position + Vector3(42.0, 0.0, 0.0)
+	ground_pos.y = main.coast.ground_height(ground_pos.x, ground_pos.z)
+	main.player.global_position = ground_pos
+	main.player.velocity = Vector3.ZERO
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.refresh_pose()
+	var top := main.tower.global_position + Vector3(6.6, ObservationTower.DECK_HEIGHT + 3.5, 0.0)
+	var hook_dir := (top - main.cam_rig.cam.global_position).normalized()
+	main.cam_rig.set_view(atan2(hook_dir.x, hook_dir.z), asin(hook_dir.y))
+	for i in range(12):
+		await get_tree().physics_frame
+	if not main.grapple.try_attach():
+		printerr("[SHOT] не удалось зацепить башню с земли")
+		get_tree().quit(1)
+		return
+	for i in range(20):
+		await get_tree().physics_frame
+	await RenderingServer.frame_post_draw
+	var hook_path := OS.get_environment("JOURNEY_HOOK_PATH")
+	if hook_path.is_empty():
+		hook_path = "user://hook.png"
+	if get_viewport().get_texture().get_image().save_png(hook_path) != OK:
+		printerr("[SHOT] не удалось сохранить крюк")
+		get_tree().quit(1)
+		return
+	main.grapple.detach()
+	main.debug_menu._return_player()
 	main.player_health.take_damage(100)
 	for i in range(8):
 		await get_tree().process_frame

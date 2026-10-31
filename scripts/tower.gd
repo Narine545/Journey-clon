@@ -78,9 +78,28 @@ func _build_deck_collisions() -> void:
 	anchors.collision_layer = 32
 	anchors.collision_mask = 0
 	add_child(anchors)
+	var anchor_material := StandardMaterial3D.new()
+	anchor_material.albedo_color = Color(0.72, 0.57, 0.25)
+	anchor_material.metallic = 0.45
+	anchor_material.roughness = 0.6
 	for side in [-1.0, 1.0]:
 		_add_box(anchors, Vector3(side * 6.25, DECK_HEIGHT + 3.5, 0), Vector3(0.7, 0.7, 12.5))
 		_add_box(anchors, Vector3(0, DECK_HEIGHT + 3.5, side * 6.25), Vector3(12.5, 0.7, 0.7))
+		# Тонкие временные рейки показывают, куда целиться с земли.
+		_add_anchor_visual(Vector3(side * 6.25, DECK_HEIGHT + 3.5, 0), Vector3(0.12, 0.12, 12.5), anchor_material)
+		_add_anchor_visual(Vector3(0, DECK_HEIGHT + 3.5, side * 6.25), Vector3(12.5, 0.12, 0.12), anchor_material)
+		for cross_side in [-1.0, 1.0]:
+			_add_anchor_visual(Vector3(side * 6.25, DECK_HEIGHT + 2.5, cross_side * 6.25), Vector3(0.10, 2.0, 0.10), anchor_material)
+
+
+func _add_anchor_visual(at: Vector3, size: Vector3, material: Material) -> void:
+	var visual := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	visual.mesh = box
+	visual.material_override = material
+	visual.position = at
+	add_child(visual)
 
 
 func _add_box(body: StaticBody3D, at: Vector3, size: Vector3) -> void:

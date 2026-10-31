@@ -15,6 +15,7 @@ var scale_button: Button
 var attack_button: Button
 var heal_button: Button
 var ammo_toggle: CheckButton
+var return_button: Button
 var close_button: Button
 
 
@@ -89,6 +90,8 @@ func setup(main_ref: MainScene) -> void:
 	attack_button.pressed.connect(_select_attack)
 	heal_button = _button(column, "Восстановить здоровье (отладка)")
 	heal_button.pressed.connect(_restore_health)
+	return_button = _button(column, "Вернуть игрока на площадку (отладка)")
+	return_button.pressed.connect(_return_player)
 	close_button = _button(column, "Вернуться в игру  ·  F2 / Esc")
 	close_button.pressed.connect(set_open.bind(false))
 	_refresh()
@@ -199,6 +202,17 @@ func _select_attack() -> void:
 		var target := robot.global_position + Vector3.UP * robot.body_size.y * 0.5
 		var dir := (target - main.cam_rig.cam.global_position).normalized()
 		main.cam_rig.set_view(atan2(dir.x, dir.z), asin(dir.y))
+	set_open(false)
+
+
+func _return_player() -> void:
+	if main.grapple != null:
+		main.grapple.detach()
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	main.player.velocity = Vector3.ZERO
+	main.player.terrain_grounded = false
+	main.player._update_barriers()
+	main.cam_rig.refresh_pose()
 	set_open(false)
 
 

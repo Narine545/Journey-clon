@@ -18,6 +18,7 @@ func _run() -> void:
 	old_main.rifle.set_infinite_ammo(true)
 	old_main.rifle.select_weapon(SniperRifle.Weapon.PISTOL)
 	old_main.rifle.pistol_ammo = 0
+	old_main.grapple.attached = true
 	old_main.radio_tuner.set_tuning(true)
 	old_main.radio_tuner.set_transmitting(true)
 	old_main.shop.set_open(true)
@@ -36,7 +37,7 @@ func _run() -> void:
 	await get_tree().process_frame
 	var fresh := get_tree().current_scene as MainScene
 	var wind_bus := AudioServer.get_bus_index("Wind")
-	if fresh == null or fresh.player_health.health != 100 or fresh.player_health.defeated or Economy.points != 0 or fresh.rifle.ammo != int(SupplyCatalog.SETTINGS["start_magazine"]) or fresh.rifle.pistol_ammo != int(SupplyCatalog.SETTINGS["pistol_capacity"]) or fresh.rifle.infinite_ammo or fresh.rifle.weapon != SniperRifle.Weapon.RIFLE or fresh.radio_tuner.transmitting or fresh.lift.state != SupplyLift.State.IDLE or AudioServer.get_bus_effect_count(wind_bus) != 1:
+	if fresh == null or fresh.player_health.health != 100 or fresh.player_health.defeated or Economy.points != 0 or fresh.rifle.ammo != int(SupplyCatalog.SETTINGS["start_magazine"]) or fresh.rifle.pistol_ammo != int(SupplyCatalog.SETTINGS["pistol_capacity"]) or fresh.rifle.infinite_ammo or fresh.rifle.weapon != SniperRifle.Weapon.RIFLE or fresh.grapple.attached or fresh.radio_tuner.transmitting or fresh.lift.state != SupplyLift.State.IDLE or AudioServer.get_bus_effect_count(wind_bus) != 1:
 		printerr("[RESTART] FAIL новое состояние после перезапуска")
 		get_tree().quit(1)
 		return

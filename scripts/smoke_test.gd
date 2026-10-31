@@ -979,6 +979,13 @@ func _test_grapple(failures: Array[String]) -> void:
 	await get_tree().physics_frame
 	_check(hook.attached and not main.player.safety_barriers_enabled, "G зацепляет землю и временно открывает границу", failures)
 	if hook.attached:
+		main.debug_menu.set_open(true)
+		var paused_position := main.player.global_position
+		hook._input(press_g)
+		for frame in range(8):
+			await get_tree().physics_frame
+		_check(hook.attached and main.player.global_position.distance_to(paused_position) < 0.01, "F2 останавливает движение на тросе и блокирует его переключение", failures)
+		main.debug_menu.set_open(false)
 		var rope_before := hook.rope_length
 		Input.action_press("rope_release")
 		hook.constrain_velocity(Vector3.ZERO, 0.1)
@@ -989,6 +996,11 @@ func _test_grapple(failures: Array[String]) -> void:
 		hook.constrain_velocity(Vector3.ZERO, 0.1)
 		Input.action_release("rope_reel")
 		_check(hook.rope_length < rope_before, "X вручную втягивает трос", failures)
+		Input.action_press("move_left")
+		for frame in range(60):
+			await get_tree().physics_frame
+		Input.action_release("move_left")
+		_check(absf(main.player.position.z) > 0.1, "движение в воздухе раскачивает игрока в сторону", failures)
 		# Перемещение без телепорта: пролететь край и достичь рельефа.
 		for frame in range(1250):
 			await get_tree().physics_frame
@@ -1000,6 +1012,8 @@ func _test_grapple(failures: Array[String]) -> void:
 		await get_tree().physics_frame
 		var ground_y := main.coast.ground_height(main.player.global_position.x, main.player.global_position.z)
 		_check(absf(main.player.global_position.y - ground_y) < 0.1, "игрок не проваливается под песок", failures)
+		main.cam_rig.refresh_pose()
+		_check(main.cam_rig.cam.global_position.distance_to(main.player.global_position + Vector3.UP * CameraRig.EYE) < 0.2, "камера следует за игроком за пределами башни", failures)
 		var tower_target := main.tower.global_position + Vector3(6.6, ObservationTower.DECK_HEIGHT + 3.5, 0.0)
 		main.cam_rig.aim_offset = Vector2.ZERO
 		main.cam_rig.refresh_pose()
@@ -1038,6 +1052,17 @@ func _test_grapple(failures: Array[String]) -> void:
 	var swinging := hook.constrain_velocity(Vector3(3.0, -2.0, 0.0), 1.0 / 60.0)
 	_check(absf(swinging.x - 3.0) < 0.01 and swinging.y >= 0.0, "трос сохраняет касательную скорость для раскачивания", failures)
 	hook.detach()
+	# F2 содержит явную аварийную кнопку возврата, не меняющую ресурсы.
+	var points_before := Economy.points
+	var previous_viewport := get_tree().root.size
+	get_tree().root.size = Vector2i(1280, 720)
+	main.player.position = Vector3(25, 2, 0)
+	main.player.velocity = Vector3.ZERO
+	hook.attached = true
+	main.debug_menu.set_open(true)
+	await _click_debug_control(main.debug_menu.return_button)
+	_check(not hook.attached and not main.debug_menu.is_open and main.player.position.distance_to(Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)) < 0.1 and Economy.points == points_before, "кнопка F2 возвращает игрока на площадку без сброса очков", failures)
+	get_tree().root.size = previous_viewport
 	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
 	main.player.velocity = Vector3.ZERO
 	await get_tree().physics_frame
