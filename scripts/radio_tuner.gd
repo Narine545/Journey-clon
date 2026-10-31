@@ -69,7 +69,7 @@ func _input(event: InputEvent) -> void:
 	if main == null or (main.shop != null and main.shop.is_open):
 		return
 	if event is InputEventKey and event.pressed:
-		if event.physical_keycode == KEY_R and not event.echo and (tuning or nearby()):
+		if event.physical_keycode == KEY_E and not event.echo and (tuning or nearby()):
 			set_tuning(not tuning)
 			get_viewport().set_input_as_handled()
 			return
@@ -89,7 +89,7 @@ func _input(event: InputEvent) -> void:
 						set_powered(not powered)
 				KEY_LEFT, KEY_A, KEY_Q:
 					set_frequency(frequency - 0.1)
-				KEY_RIGHT, KEY_D, KEY_E:
+				KEY_RIGHT, KEY_D:
 					set_frequency(frequency + 0.1)
 				_:
 					return
@@ -202,7 +202,7 @@ class RadioOverlay extends Control:
 		var font_size := roundi(22.0 * scale_factor)
 		var ink := Color(0.91, 0.85, 0.70, 0.94)
 		if hint:
-			draw_string(font, Vector2(center.x - 100.0 * scale_factor, size.y * 0.80), "R  ·  РАДИО", HORIZONTAL_ALIGNMENT_CENTER, 200.0 * scale_factor, font_size, ink)
+			draw_string(font, Vector2(center.x - 100.0 * scale_factor, size.y * 0.80), "E  ·  РАДИО", HORIZONTAL_ALIGNMENT_CENTER, 200.0 * scale_factor, font_size, ink)
 		if not tuning:
 			return
 		var box_size := Vector2(620.0, 280.0) * scale_factor
@@ -235,4 +235,4 @@ class RadioOverlay extends Control:
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * strength, bar.size.y)), Color(0.76, 0.64, 0.42))
 		var help_color := Color(0.77, 0.73, 0.64)
 		draw_string(font, Vector2(left, top + 205.0 * scale_factor), "← / → или колесо: частота", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
-		draw_string(font, Vector2(left, top + 235.0 * scale_factor), "B: снабжение      X: питание      R / Esc: закрыть", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
+		draw_string(font, Vector2(left, top + 235.0 * scale_factor), "B: снабжение      X: питание      E / Esc: закрыть", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)

@@ -3,6 +3,7 @@ extends Node3D
 ## Один оплаченный заказ за цикл. Состояние блокируется ДО списания,
 ## в том числе против повторного вызова из points_changed.
 signal state_changed(new_state: int)
+signal cargo_ready
 signal effect_applied(item_id: String, effect: Dictionary)
 enum State { IDLE, CALLED, ASCENDING, ARRIVED, UNLOADED, DESCENDING }
 const CRATE_SCENE := preload("res://scenes/Crate.tscn")
@@ -87,6 +88,10 @@ func advance(delta: float) -> void:
 		# затем удерживаем открытой до принятия груза.
 		var open_progress := clampf(elapsed / float(SupplyCatalog.SETTINGS["lift_open_seconds"]), 0.0, 1.0)
 		main.tower.pose_door(4.0 + open_progress)
+		# Ящик не появляется и не принимает ввод до полного открытия дверцы.
+		if open_progress >= 1.0 and not is_instance_valid(crate):
+			_spawn_crate()
+			cargo_ready.emit()
 		return
 	match state:
 		State.CALLED:
@@ -101,7 +106,6 @@ func advance(delta: float) -> void:
 			if progress >= 1.0:
 				_hum.stop()
 				_arrival_sfx.play()
-				_spawn_crate()
 				_set_state(State.ARRIVED)
 		State.UNLOADED:
 			var closing := clampf(elapsed / float(SupplyCatalog.SETTINGS["lift_unloaded_seconds"]), 0.0, 1.0)
@@ -129,7 +133,7 @@ func _set_state(next_state: State) -> void:
 func _spawn_crate() -> void:
 	crate = CRATE_SCENE.instantiate() as SupplyCrate
 	add_child(crate)
-	# С шахты груз подан на настил; игрок может подойти и нажать взглядом.
+	# После открытия груз подан на настил; игрок принимает его взглядом и E.
 	crate.position = Vector3(-4.65, ObservationTower.DECK_HEIGHT + 0.52, 3.5)
 
 
@@ -143,9 +147,6 @@ func try_collect_from_camera() -> bool:
 	var result := camera.get_world_3d().direct_space_state.intersect_ray(query)
 	if result.get("collider") != crate:
 		return false
-	# Ранний клик по грузу не стреляет, даже пока дверца открывается.
-	if elapsed < float(SupplyCatalog.SETTINGS["lift_open_seconds"]):
-		return true
 	return collect_crate()
 
 
@@ -170,6 +171,6 @@ func status_text() -> String:
 	match state:
 		State.IDLE: return "ЛИФТ ВНИЗУ"
 		State.CALLED, State.ASCENDING, State.DESCENDING: return "ЛИФТ В ПУТИ"
-		State.ARRIVED: return "ГРУЗ НА ПЛОЩАДКЕ"
+		State.ARRIVED: return "ГРУЗ НА ПЛОЩАДКЕ" if is_instance_valid(crate) else "ЛИФТ В ПУТИ"
 		State.UNLOADED: return "ЛИФТ В ПУТИ"
 	return "ЛИФТ ВНИЗУ"

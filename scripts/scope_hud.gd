@@ -95,5 +95,5 @@ class ScopeDrawing extends Control:
 			var reserve := ap_reserve if ammo_type == "ap" else regular_reserve
 			var text := "%d ОЧК.   %s %d / %d   %s" % [points, "AP" if ammo_type == "ap" else "ОБ", ammo, reserve, status]
 			draw_string(font, Vector2(size.x - 510.0, size.y - 32.0), text, HORIZONTAL_ALIGNMENT_RIGHT, 480, 18, Color(0.92, 0.84, 0.68, hud_alpha))
-			var lift_hint := lift_status + ("  •  ВЗГЛЯД + ЛКМ" if lift_status == "ГРУЗ НА ПЛОЩАДКЕ" else "")
+			var lift_hint := lift_status + ("  •  ВЗГЛЯД + E" if lift_status == "ГРУЗ НА ПЛОЩАДКЕ" else "")
 			draw_string(font, Vector2(30.0, size.y - 32.0), lift_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.82, 0.80, 0.68, hud_alpha))

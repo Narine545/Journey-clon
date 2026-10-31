@@ -267,10 +267,11 @@ func _run() -> void:
 	main.player.position = Vector3(-4.0, ObservationTower.DECK_HEIGHT, -3.9)
 	_check(radio.nearby(), "к радио можно подойти", failures)
 	var radio_key := InputEventKey.new()
-	radio_key.physical_keycode = KEY_R
+	radio_key.physical_keycode = KEY_E
 	radio_key.pressed = true
-	radio._input(radio_key)
-	_check(radio.tuning and radio.powered, "R открывает и включает приёмник", failures)
+	Input.parse_input_event(radio_key)
+	await get_tree().process_frame
+	_check(radio.tuning and radio.powered, "E открывает и включает приёмник через ввод", failures)
 	var player_before_radio := main.player.position
 	Input.action_press("move_forward")
 	main.player._physics_process(1.0)
@@ -306,7 +307,10 @@ func _run() -> void:
 	_check(is_equal_approx(radio.frequency, RadioTuner.MAX_FREQ), "шкала ограничена", failures)
 	radio.set_powered(false)
 	_check(not radio.powered and not radio._record.playing and not radio._live.playing and not radio._noise.playing, "питание выключает записи, шум и сигнал", failures)
-	radio.set_tuning(false)
+	var freq_before_close := radio.frequency
+	Input.parse_input_event(radio_key)
+	await get_tree().process_frame
+	_check(not radio.tuning and is_equal_approx(radio.frequency, freq_before_close), "E закрывает радио, не меняя частоту", failures)
 	_check(main.rifle.hud.visible, "выход из радио возвращает интерфейс винтовки", failures)
 	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	_check(not radio.nearby(), "радио не управляется с другого края площадки", failures)
@@ -483,6 +487,11 @@ func _test_m5(failures: Array[String]) -> void:
 	open_key.pressed = true
 	main.radio_tuner._input(open_key)
 	_check(main.shop.is_open and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "B на радио открывает терминал и курсор", failures)
+	var shop_interact := InputEventKey.new()
+	shop_interact.physical_keycode = KEY_E
+	shop_interact.pressed = true
+	main.radio_tuner._input(shop_interact)
+	_check(main.shop.is_open and main.radio_tuner.tuning, "E в открытом терминале не закрывает радио", failures)
 	# После показа Control получает размеры на следующем кадре.
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -529,37 +538,46 @@ func _test_m5(failures: Array[String]) -> void:
 		for corner in range(8):
 			floor_bottom = minf(floor_bottom, floor_mesh.to_global(bounds.get_endpoint(corner)).y - main.tower.global_position.y)
 	_check(absf(floor_bottom - (ObservationTower.DECK_HEIGHT - 0.05)) < 0.08, "реальный пол кабины совпадает с настилом", failures)
-	_check(not lift.collect_crate(), "ящик нельзя принять до открытия дверцы", failures)
-	main.player.position = Vector3(-3.0, ObservationTower.DECK_HEIGHT, 3.5)
-	main.cam_rig.aim_offset = Vector2.ZERO
-	var early_direction := (lift.crate.global_position - (main.player.global_position + Vector3.UP * CameraRig.EYE)).normalized()
-	main.cam_rig.set_view(atan2(early_direction.x, early_direction.z), asin(early_direction.y))
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	main.rifle.cycle_remaining = 0.0
-	var ammo_before_early_click := main.rifle.ammo
-	_check(main.rifle._primary_action() and main.rifle.ammo == ammo_before_early_click and lift.state == SupplyLift.State.ARRIVED, "ранний клик по ящику не стреляет и ждёт открытия", failures)
+	_check(not is_instance_valid(lift.crate) and lift.status_text() == "ЛИФТ В ПУТИ" and not lift.collect_crate(), "ящика и статуса груза нет до открытия дверцы", failures)
+	var interaction := InputEventKey.new()
+	interaction.physical_keycode = KEY_E
+	interaction.pressed = true
+	var ammo_before_interaction := main.rifle.ammo
+	main.rifle._input(interaction)
+	_check(main.rifle.ammo == ammo_before_interaction and lift.state == SupplyLift.State.ARRIVED, "E во время открытия не стреляет и не принимает груз", failures)
+	var readiness: Array[String] = []
+	lift.cargo_ready.connect(func() -> void: readiness.append(lift.status_text()))
+	var open_seconds := float(SupplyCatalog.SETTINGS["lift_open_seconds"])
 	var door_closed: float = door_anchor.global_position.y if door_anchor != null else 0.0
-	lift.advance(0.5)
+	lift.advance(open_seconds * 0.5)
 	_check(door_anchor != null and door_anchor.global_position.y > door_closed + 0.5, "авторская дверца открывается после прибытия", failures)
-	lift.advance(0.5)
-	_check(is_instance_valid(lift.crate) and lift.crate.scene_file_path == "res://scenes/Crate.tscn" and lift.status_text() == "ГРУЗ НА ПЛОЩАДКЕ", "после открытия доставлен ящик", failures)
+	_check(not is_instance_valid(lift.crate) and readiness.is_empty(), "на середине анимации ящик ещё не создан", failures)
+	lift.advance(open_seconds * 0.49)
+	_check(not is_instance_valid(lift.crate), "ящик не появляется до последнего кадра открытия", failures)
+	lift.advance(open_seconds * 0.02)
+	_check(is_instance_valid(lift.crate) and lift.crate.scene_file_path == "res://scenes/Crate.tscn" and lift.status_text() == "ГРУЗ НА ПЛОЩАДКЕ" and readiness == ["ГРУЗ НА ПЛОЩАДКЕ"], "после полного открытия появляется ящик и обновляется статус", failures)
 	await get_tree().physics_frame
 	main.player.position = Vector3(-3.0, ObservationTower.DECK_HEIGHT, 3.5)
 	main.cam_rig.aim_offset = Vector2.ZERO
 	var to_crate := (lift.crate.global_position - (main.player.global_position + Vector3.UP * CameraRig.EYE)).normalized()
 	main.cam_rig.set_view(atan2(to_crate.x, to_crate.z), asin(to_crate.y))
 	await get_tree().physics_frame
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	main.rifle.cycle_remaining = 0.0
-	var bullet_before_click := main.rifle.ammo
+	var bullet_before_interaction := main.rifle.ammo
 	var origin := main.cam_rig.cam.global_position
 	var direction := -main.cam_rig.cam.global_basis.z
 	var test_query := PhysicsRayQueryParameters3D.create(origin, origin + direction * float(SupplyCatalog.SETTINGS["crate_reach"]), 4)
 	var test_hit := main.cam_rig.cam.get_world_3d().direct_space_state.intersect_ray(test_query)
 	_check(test_hit.get("collider") == lift.crate, "луч камеры попадает именно в ящик", failures)
-	var collected_via_click := main.rifle._primary_action()
-	_check(collected_via_click and lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 5 and main.rifle.ammo == bullet_before_click, "путь ЛКМ принимает ящик реальным лучом без выстрела", failures)
+	interaction.echo = true
+	main.rifle._input(interaction)
+	_check(lift.state == SupplyLift.State.ARRIVED, "повтор удерживаемой E не принимает ящик", failures)
+	interaction.echo = false
+	Input.parse_input_event(interaction)
+	await get_tree().process_frame
+	_check(lift.state == SupplyLift.State.UNLOADED and main.rifle.regular_reserve == ammo_before_collect + 5 and main.rifle.ammo == bullet_before_interaction, "E принимает ящик лучом камеры без выстрела", failures)
+	main.rifle._input(interaction)
+	_check(main.rifle.ammo == bullet_before_interaction, "повторная E не стреляет", failures)
 	_check(not lift.collect_crate() and not lift.request_order("ammo"), "ящик нельзя принять дважды, пока лифт не внизу", failures)
 	lift.advance(1.0)
 	_check(lift.state == SupplyLift.State.DESCENDING and lift._hum.playing, "DESCENDING и гул", failures)

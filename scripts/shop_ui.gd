@@ -18,6 +18,7 @@ func setup(main_ref: MainScene) -> void:
 	add_child(panel)
 	Economy.points_changed.connect(_refresh_points)
 	main.lift.state_changed.connect(_refresh_state)
+	main.lift.cargo_ready.connect(_refresh_cargo)
 
 
 func _refresh_points(_points: int, _delta: int) -> void:
@@ -25,6 +26,10 @@ func _refresh_points(_points: int, _delta: int) -> void:
 
 
 func _refresh_state(_state: int) -> void:
+	panel.queue_redraw()
+
+
+func _refresh_cargo() -> void:
 	panel.queue_redraw()
 
 
