@@ -1369,6 +1369,29 @@ func _test_m5(failures: Array[String]) -> void:
 	wallet.free()
 	var lift := main.lift
 	_check(lift.state == SupplyLift.State.IDLE and lift.status_text() == "ЛИФТ ВНИЗУ", "лифт первоначально внизу", failures)
+	# Рама крюка опирается на углы настила; все четыре стойки с коллизией.
+	var supports := main.tower.find_children("GrappleFrameSupport*", "StaticBody3D", false, false)
+	var supports_connected := supports.size() == 4
+	for support_node in supports:
+		var support := support_node as StaticBody3D
+		var support_collision := support.get_child(0) as CollisionShape3D
+		var support_box := support_collision.shape as BoxShape3D
+		var lower := support.transform * Vector3(0.0, -support_box.size.y * 0.5, 0.0)
+		var upper := support.transform * Vector3(0.0, support_box.size.y * 0.5, 0.0)
+		if absf(lower.y - ObservationTower.DECK_HEIGHT - 0.1) > 0.01 or absf(upper.y - ObservationTower.DECK_HEIGHT - 3.5) > 0.01:
+			supports_connected = false
+	_check(supports_connected, "рама крюка четырьмя физическими опорами соединена с башней", failures)
+	_check(not main.tower.lift_access_open and main.tower.lift_gate.visible and not main.tower.lift_gate_shape.disabled, "когда лифт внизу, видимая калитка защищает проём", failures)
+	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, 3.5)
+	main.player.velocity = Vector3.ZERO
+	main.cam_rig.set_view(-PI * 0.5, 0.0)
+	await get_tree().physics_frame
+	Input.action_press("move_forward")
+	for frame in range(65):
+		await get_tree().physics_frame
+	Input.action_release("move_forward")
+	_check(main.player.position.x > -5.65 and main.player.position.y >= ObservationTower.DECK_HEIGHT - 0.05, "закрытое ограждение физически не пускает в пустую шахту", failures)
+	main.player.velocity = Vector3.ZERO
 	_check(lift.scene_file_path == "res://scenes/Lift.tscn" and main.shop.scene_file_path == "res://scenes/ShopUI.tscn", "лифт и магазин — отдельные сцены", failures)
 	Economy.try_spend(Economy.points)
 	_check(not lift.can_order("ammo") and not lift.request_order("ammo") and Economy.points == 0, "недостаток очков делает товар недоступным без списания", failures)
@@ -1483,8 +1506,24 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(not is_instance_valid(lift.crate), "ящик не появляется до последнего кадра открытия", failures)
 	lift.advance(open_seconds * 0.02)
 	_check(is_instance_valid(lift.crate) and lift.crate.scene_file_path == "res://scenes/Crate.tscn" and lift.status_text() == "ГРУЗ НА ПЛОЩАДКЕ" and readiness == ["ГРУЗ НА ПЛОЩАДКЕ"], "после полного открытия появляется ящик и обновляется статус", failures)
+	# Когда дверь полностью открылась, через реальный проём можно войти в кабину.
 	await get_tree().physics_frame
-	main.player.position = Vector3(-3.0, ObservationTower.DECK_HEIGHT, 3.5)
+	await get_tree().physics_frame
+	_check(main.tower.lift_access_open and not main.tower.lift_gate.visible and main.tower.lift_gate_shape.disabled, "калитка открывается только когда кабина и дверь готовы", failures)
+	lift.set_process(false) # дальше шаги закрытия управляются тестом
+	main.player.position = Vector3(-4.5, ObservationTower.DECK_HEIGHT, 3.5)
+	main.player.velocity = Vector3.ZERO
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.set_view(-PI * 0.5, 0.0)
+	await get_tree().physics_frame
+	Input.action_press("move_forward")
+	for frame in range(100):
+		await get_tree().physics_frame
+		if main.player.position.x < -6.45:
+			break
+	Input.action_release("move_forward")
+	main.player.velocity = Vector3.ZERO
+	_check(main.player.position.x < -6.35 and absf(main.player.position.y - ObservationTower.DECK_HEIGHT) < 0.08 and main.player.is_on_floor(), "игрок действительно входит в кабину и стоит на её полу: %s" % str(main.player.position), failures)
 	main.cam_rig.aim_offset = Vector2.ZERO
 	var to_crate := (lift.crate.global_position - (main.player.global_position + Vector3.UP * CameraRig.EYE)).normalized()
 	main.cam_rig.set_view(atan2(to_crate.x, to_crate.z), asin(to_crate.y))
@@ -1509,8 +1548,20 @@ func _test_m5(failures: Array[String]) -> void:
 	main.rifle._input(interaction)
 	_check(main.rifle.ammo == bullet_before_interaction and received_batches.size() == 1, "повторная E не стреляет и не выдаёт заказ повторно", failures)
 	_check(not lift.collect_crate() and not lift.request_order("ammo"), "ящик нельзя принять дважды, пока лифт не внизу", failures)
+	lift.advance(3.0)
+	_check(lift.state == SupplyLift.State.UNLOADED and main.tower.lift_access_open, "лифт не отправляется, пока игрок внутри кабины", failures)
+	main.cam_rig.set_view(PI * 0.5, 0.0)
+	Input.action_press("move_forward")
+	for frame in range(100):
+		await get_tree().physics_frame
+		if main.player.position.x > -5.0:
+			break
+	Input.action_release("move_forward")
+	main.player.velocity = Vector3.ZERO
+	_check(main.player.position.x > -5.2 and main.player.position.y >= ObservationTower.DECK_HEIGHT - 0.05, "игрок выходит из кабины обратно на настил", failures)
 	lift.advance(1.0)
-	_check(lift.state == SupplyLift.State.DESCENDING and lift._hum.playing, "DESCENDING и гул", failures)
+	_check(lift.state == SupplyLift.State.DESCENDING and lift._hum.playing and not main.tower.lift_access_open and main.tower.lift_gate.visible, "после выхода проём закрывается и лифт спускается", failures)
+	lift.set_process(true)
 	_check(door_anchor != null and absf(door_anchor.global_position.y - door_closed) < 0.1, "дверца закрылась до спуска", failures)
 	var cage_top: float = cage_anchor.global_position.y if cage_anchor != null else 0.0
 	lift.advance(float(SupplyCatalog.SETTINGS["lift_descent_seconds"]) * 0.5)

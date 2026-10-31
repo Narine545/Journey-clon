@@ -123,6 +123,7 @@ func advance(delta: float) -> void:
 		main.tower.pose_door(4.0 + open_progress)
 		# Ящик не появляется и не принимает ввод до полного открытия дверцы.
 		if open_progress >= 1.0 and not is_instance_valid(crate):
+			main.tower.set_lift_access(true)
 			_spawn_crate()
 			cargo_ready.emit()
 		return
@@ -141,6 +142,13 @@ func advance(delta: float) -> void:
 				_arrival_sfx.play()
 				_set_state(State.ARRIVED)
 		State.UNLOADED:
+			# Не закрывать проход и не отправлять кабину, пока игрок внутри или
+			# на пороге. Таймер закрытия запускается только после его выхода.
+			if _player_in_lift_or_threshold():
+				elapsed = 0.0
+				main.tower.pose_door(5.0)
+				return
+			main.tower.set_lift_access(false)
 			var closing := clampf(elapsed / float(SupplyCatalog.SETTINGS["lift_unloaded_seconds"]), 0.0, 1.0)
 			main.tower.pose_door(5.0 + closing)
 			if elapsed >= float(SupplyCatalog.SETTINGS["lift_unloaded_seconds"]):
@@ -155,6 +163,11 @@ func advance(delta: float) -> void:
 				_hum.stop()
 				pending_items.clear()
 				_set_state(State.IDLE)
+
+
+func _player_in_lift_or_threshold() -> bool:
+	var local := main.tower.to_local(main.player.global_position)
+	return local.x <= -5.20 and local.z >= ObservationTower.LIFT_OPENING_MIN_Z - 0.4 and local.z <= ObservationTower.LIFT_OPENING_MAX_Z + 0.4 and local.y >= ObservationTower.DECK_HEIGHT - 0.5 and local.y <= ObservationTower.DECK_HEIGHT + 3.0
 
 
 func _set_state(next_state: State) -> void:

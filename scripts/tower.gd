@@ -6,6 +6,8 @@ extends Node3D
 const DECK_HEIGHT := 52.0
 const HALF_DECK := 6.0
 const WALK_LIMIT := 5.35
+const LIFT_OPENING_MIN_Z := 2.4
+const LIFT_OPENING_MAX_Z := 4.6
 const MODEL := preload("res://assets/tower/tower_delivery.glb")
 # Границы авторской анимации кабины (центр якоря) и высота её пола
 # относительно якоря. Линейно сохраняем форму движения, но совмещаем
@@ -18,6 +20,10 @@ var animation: AnimationPlayer
 var cage_track := ""
 var door_track := ""
 var cage_anchor: Node3D
+var lift_gate: StaticBody3D
+var lift_gate_shape: CollisionShape3D
+var dock_body: StaticBody3D
+var lift_access_open := false
 
 
 func _ready() -> void:
@@ -25,6 +31,7 @@ func _ready() -> void:
 	model = MODEL.instantiate() as Node3D
 	model.name = "AnimatedTower"
 	add_child(model)
+	_prepare_lift_opening()
 	_build_structure_collisions()
 	cage_anchor = model.find_child("*CAGE*center*", true, false) as Node3D
 	animation = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
@@ -51,6 +58,38 @@ func _ready() -> void:
 	pose_cage(2.0)
 
 
+## Авторские сплошные прутья с северной стороны пересекали дверной проём.
+## Не меняем исходный GLB: прячем их только в игровой сцене и воссоздаём
+## обе части за пределами шахты с тем же материалом и размером.
+func _prepare_lift_opening() -> void:
+	for rail_name in ["RailX_N_0*46m", "RailX_N_1*26m"]:
+		var original := model.find_child(rail_name, true, false) as MeshInstance3D
+		if original == null:
+			push_error("Не найдены перила проёма лифта: " + rail_name)
+			continue
+		original.visible = false
+		var material := original.get_active_material(0)
+		var rail_y := original.global_position.y - global_position.y
+		_add_opening_rail("RailX_N_Opening_" + str(int(rail_y * 100)) + "_left", rail_y, -6.0, LIFT_OPENING_MIN_Z, material)
+		_add_opening_rail("RailX_N_Opening_" + str(int(rail_y * 100)) + "_right", rail_y, LIFT_OPENING_MAX_Z, 6.0, material)
+	var obstructing_post := model.find_child("RailPostX_N_3", true, false) as MeshInstance3D
+	if obstructing_post != null:
+		obstructing_post.visible = false
+	else:
+		push_error("Не найдена стойка внутри проёма лифта")
+
+
+func _add_opening_rail(part_name: String, height: float, from_z: float, to_z: float, material: Material) -> void:
+	var visual := MeshInstance3D.new()
+	visual.name = part_name
+	var box := BoxMesh.new()
+	box.size = Vector3(0.10, 0.10, to_z - from_z)
+	visual.mesh = box
+	visual.material_override = material
+	visual.position = Vector3(-5.95, height, (from_z + to_z) * 0.5)
+	model.add_child(visual)
+
+
 ## Статические детали авторского GLB: отдельные коробки по реальным AABB и
 ## трансформациям узлов, а не невидимая сплошная стена вокруг башни. Подвижную
 ## кабину/дверцу не включаем: их положение управляется отдельной анимацией.
@@ -63,7 +102,7 @@ func _build_structure_collisions() -> void:
 	var prefixes := ["Support_", "Footing_", "CrossBrace_", "SupportRing_", "LiftShaft_", "LiftCrossbar_", "DeckRim_", "RailX_", "RailZ_", "RailPostX_", "RailPostZ_"]
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		var part := node as MeshInstance3D
-		if part == null or part.mesh == null or _is_animated_cage_part(part):
+		if part == null or part.mesh == null or not part.visible or _is_animated_cage_part(part):
 			continue
 		var selected := false
 		for prefix in prefixes:
@@ -114,8 +153,13 @@ func _build_deck_collisions() -> void:
 	barriers.collision_mask = 0
 	add_child(barriers)
 	for side in [-1.0, 1.0]:
-		_add_box(barriers, Vector3(side * 5.9, DECK_HEIGHT + 2.0, 0), Vector3(0.4, 4.0, 12.0))
+		if side > 0.0:
+			_add_box(barriers, Vector3(side * 5.9, DECK_HEIGHT + 2.0, 0), Vector3(0.4, 4.0, 12.0))
+		else:
+			_add_box(barriers, Vector3(-5.9, DECK_HEIGHT + 2.0, (-6.0 + LIFT_OPENING_MIN_Z) * 0.5), Vector3(0.4, 4.0, LIFT_OPENING_MIN_Z + 6.0))
+			_add_box(barriers, Vector3(-5.9, DECK_HEIGHT + 2.0, (LIFT_OPENING_MAX_Z + 6.0) * 0.5), Vector3(0.4, 4.0, 6.0 - LIFT_OPENING_MAX_Z))
 		_add_box(barriers, Vector3(0, DECK_HEIGHT + 2.0, side * 5.9), Vector3(12.0, 4.0, 0.4))
+	_build_lift_safety()
 	_add_box(body, Vector3(-4.75, DECK_HEIGHT + 0.46, -3.9), Vector3(1.15, 0.92, 1.0))
 	# Прокси по верхнему краю для прицеливания крюком, отдельный слой не
 	# вмешивается в выстрелы и физику игрока. Чуть снаружи настила, чтобы
@@ -136,7 +180,82 @@ func _build_deck_collisions() -> void:
 		_add_anchor_visual(Vector3(side * 6.25, DECK_HEIGHT + 3.5, 0), Vector3(0.12, 0.12, 12.5), anchor_material)
 		_add_anchor_visual(Vector3(0, DECK_HEIGHT + 3.5, side * 6.25), Vector3(12.5, 0.12, 0.12), anchor_material)
 		for cross_side in [-1.0, 1.0]:
-			_add_anchor_visual(Vector3(side * 6.25, DECK_HEIGHT + 2.5, cross_side * 6.25), Vector3(0.10, 2.0, 0.10), anchor_material)
+			# От настила/угловых стоек к самой раме — без висящих в воздухе концов.
+			_add_anchor_support(Vector3(side * 5.95, DECK_HEIGHT + 0.1, cross_side * 5.95), Vector3(side * 6.25, DECK_HEIGHT + 3.5, cross_side * 6.25), anchor_material)
+
+
+## До прибытия и полного открытия двери проём защищён видимым ограждением.
+## При открытии его заменяет физический пол и ограждения стоящей кабины.
+func _build_lift_safety() -> void:
+	lift_gate = StaticBody3D.new()
+	lift_gate.name = "LiftSafetyGate"
+	lift_gate.collision_layer = 8
+	lift_gate.collision_mask = 0
+	add_child(lift_gate)
+	var gate_box := BoxShape3D.new()
+	gate_box.size = Vector3(0.18, 4.0, LIFT_OPENING_MAX_Z - LIFT_OPENING_MIN_Z)
+	lift_gate_shape = CollisionShape3D.new()
+	lift_gate_shape.shape = gate_box
+	lift_gate_shape.position = Vector3(-5.95, DECK_HEIGHT + 2.0, 3.5)
+	lift_gate.add_child(lift_gate_shape)
+	var gate_material := StandardMaterial3D.new()
+	gate_material.albedo_color = Color(0.48, 0.39, 0.24)
+	gate_material.metallic = 0.55
+	for height in [0.46, 1.26]:
+		var bar := MeshInstance3D.new()
+		var beam := BoxMesh.new()
+		beam.size = Vector3(0.12, 0.12, LIFT_OPENING_MAX_Z - LIFT_OPENING_MIN_Z)
+		bar.mesh = beam
+		bar.material_override = gate_material
+		bar.position = Vector3(-5.95, DECK_HEIGHT + height, 3.5)
+		lift_gate.add_child(bar)
+	dock_body = StaticBody3D.new()
+	dock_body.name = "DockedLiftSafety"
+	dock_body.collision_layer = 8
+	dock_body.collision_mask = 0
+	add_child(dock_body)
+	# Пол точно на высоте настила; стенки удерживают игрока в кабине.
+	_add_box(dock_body, Vector3(-7.25, DECK_HEIGHT - 0.1, 3.5), Vector3(2.9, 0.2, 2.2))
+	_add_box(dock_body, Vector3(-8.65, DECK_HEIGHT + 1.8, 3.5), Vector3(0.18, 3.6, 2.3))
+	for z in [LIFT_OPENING_MIN_Z, LIFT_OPENING_MAX_Z]:
+		_add_box(dock_body, Vector3(-7.25, DECK_HEIGHT + 1.8, z), Vector3(2.9, 3.6, 0.18))
+	for child in dock_body.get_children():
+		(child as CollisionShape3D).disabled = true
+
+
+func set_lift_access(open: bool) -> void:
+	if lift_access_open == open:
+		return
+	lift_access_open = open
+	lift_gate.visible = not open
+	# Отложенное обновление безопасно и при вызове из физического кадра.
+	lift_gate_shape.set_deferred("disabled", open)
+	for child in dock_body.get_children():
+		(child as CollisionShape3D).set_deferred("disabled", not open)
+
+
+## Опоры соединены с видимыми угловыми стойками башни и сами останавливают тело.
+func _add_anchor_support(start: Vector3, end: Vector3, material: Material) -> void:
+	var span := end - start
+	var local_transform := Transform3D(Basis(Quaternion(Vector3.UP, span.normalized())), (start + end) * 0.5)
+	var dimensions := Vector3(0.12, span.length(), 0.12)
+	var support := StaticBody3D.new()
+	support.name = "GrappleFrameSupport_%s_%s" % ["P" if start.x > 0.0 else "N", "P" if start.z > 0.0 else "N"]
+	support.collision_layer = 8
+	support.collision_mask = 0
+	support.transform = local_transform
+	add_child(support)
+	var shape := BoxShape3D.new()
+	shape.size = dimensions
+	var collider := CollisionShape3D.new()
+	collider.shape = shape
+	support.add_child(collider)
+	var mesh := BoxMesh.new()
+	mesh.size = dimensions
+	var visual := MeshInstance3D.new()
+	visual.mesh = mesh
+	visual.material_override = material
+	support.add_child(visual)
 
 
 func _add_anchor_visual(at: Vector3, size: Vector3, material: Material) -> void:
