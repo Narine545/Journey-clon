@@ -102,7 +102,7 @@ func refresh_pose() -> void:
 	var tower_pos := (player.get_parent() as Node3D).global_position
 	var desired := p + lateral
 	var local := p - tower_pos
-	if local.y >= ObservationTower.DECK_HEIGHT - 0.1 and absf(local.x) <= ObservationTower.WALK_LIMIT and absf(local.z) <= ObservationTower.WALK_LIMIT:
+	if local.y >= ObservationTower.DECK_HEIGHT - 0.1 and absf(local.x) <= ObservationTower.WALK_LIMIT + 0.01 and absf(local.z) <= ObservationTower.WALK_LIMIT + 0.01:
 		desired.x = clampf(desired.x, tower_pos.x - ObservationTower.WALK_LIMIT, tower_pos.x + ObservationTower.WALK_LIMIT)
 		desired.z = clampf(desired.z, tower_pos.z - ObservationTower.WALK_LIMIT, tower_pos.z + ObservationTower.WALK_LIMIT)
 	cam.global_position = desired + Vector3(0.0, EYE + bob, 0.0)

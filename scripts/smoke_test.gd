@@ -1000,7 +1000,7 @@ func _test_grapple(failures: Array[String]) -> void:
 		await get_tree().physics_frame
 		var ground_y := main.coast.ground_height(main.player.global_position.x, main.player.global_position.z)
 		_check(absf(main.player.global_position.y - ground_y) < 0.1, "игрок не проваливается под песок", failures)
-		var tower_target := main.tower.global_position + Vector3(6.6, ObservationTower.DECK_HEIGHT + 2.3, 0.0)
+		var tower_target := main.tower.global_position + Vector3(6.6, ObservationTower.DECK_HEIGHT + 3.5, 0.0)
 		main.cam_rig.aim_offset = Vector2.ZERO
 		main.cam_rig.refresh_pose()
 		var aim := (tower_target - main.cam_rig.cam.global_position).normalized()
@@ -1024,7 +1024,7 @@ func _test_grapple(failures: Array[String]) -> void:
 				if main.player.position.x < ObservationTower.WALK_LIMIT - 0.2 and main.player.position.y >= ObservationTower.DECK_HEIGHT - 0.1:
 					break
 			Input.action_release("move_forward")
-			_check(main.player.position.x < ObservationTower.WALK_LIMIT and main.player.position.y >= ObservationTower.DECK_HEIGHT - 0.1, "с троса можно перейти обратно на настил", failures)
+			_check(main.player.position.x < ObservationTower.WALK_LIMIT and main.player.position.y >= ObservationTower.DECK_HEIGHT - 0.1, "с троса можно перейти обратно на настил: позиция %s, скорость %s, якорь %s, длина %.2f" % [str(main.player.position), str(main.player.velocity), str(hook.anchor - main.tower.global_position), hook.rope_length], failures)
 			hook.detach()
 			for frame in range(15):
 				await get_tree().physics_frame

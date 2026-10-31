@@ -4,7 +4,7 @@ extends Node3D
 ## инерцией игрока. Зацепляются только рельеф и отдельный прокси верхней
 ## кромки башни. Линия и метка — временная геометрия, не художественный ассет.
 const MAX_RANGE := 90.0
-const MIN_LENGTH := 1.2
+const MIN_LENGTH := 1.9
 const AUTO_REEL_SPEED := 5.0
 const MANUAL_REEL_SPEED := 9.0
 const PAY_OUT_SPEED := 7.0

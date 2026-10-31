@@ -342,7 +342,7 @@ func _update_view_model() -> void:
 	var local_player := camera.global_position - main.tower.global_position
 	var safe_half := ObservationTower.HALF_DECK - RAIL_CLEARANCE
 	var clearance := minf(safe_half - absf(local_player.x), safe_half - absf(local_player.z))
-	var on_deck := local_player.y >= ObservationTower.DECK_HEIGHT and absf(local_player.x) <= ObservationTower.WALK_LIMIT and absf(local_player.z) <= ObservationTower.WALK_LIMIT
+	var on_deck := local_player.y >= ObservationTower.DECK_HEIGHT and absf(local_player.x) <= ObservationTower.WALK_LIMIT + 0.1 and absf(local_player.z) <= ObservationTower.WALK_LIMIT + 0.1
 	var model_scale := clampf(clearance / VIEW_MODEL_RADIUS, 0.1, 1.0) if on_deck else 1.0
 	_view_model.scale = Vector3.ONE * model_scale
 	var reload_drop := 0.10 * sin(PI * (1.0 - reload_remaining / RELOAD_TIME)) if reload_remaining > 0.0 else 0.0

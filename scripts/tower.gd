@@ -79,8 +79,8 @@ func _build_deck_collisions() -> void:
 	anchors.collision_mask = 0
 	add_child(anchors)
 	for side in [-1.0, 1.0]:
-		_add_box(anchors, Vector3(side * 6.25, DECK_HEIGHT + 2.3, 0), Vector3(0.7, 0.7, 12.5))
-		_add_box(anchors, Vector3(0, DECK_HEIGHT + 2.3, side * 6.25), Vector3(12.5, 0.7, 0.7))
+		_add_box(anchors, Vector3(side * 6.25, DECK_HEIGHT + 3.5, 0), Vector3(0.7, 0.7, 12.5))
+		_add_box(anchors, Vector3(0, DECK_HEIGHT + 3.5, side * 6.25), Vector3(12.5, 0.7, 0.7))
 
 
 func _add_box(body: StaticBody3D, at: Vector3, size: Vector3) -> void:
