@@ -22,6 +22,14 @@ func _ready() -> void:
 	add_child(_drawing)
 
 
+func notify_ammo_type(ammo_type: String, loaded: int) -> void:
+	if ammo_type == "ap":
+		_notice = "ВЫБРАНЫ БРОНЕБОЙНЫЕ (AP)" if loaded > 0 else "AP: НЕТ ПАТРОНОВ · ЗАКАЖИТЕ В ТЕРМИНАЛЕ"
+	else:
+		_notice = "ВЫБРАНЫ ОБЫЧНЫЕ ПАТРОНЫ" if loaded > 0 else "ОБЫЧНЫЕ: НЕТ ПАТРОНОВ"
+	_notice_time = 5.0
+
+
 func notify_delivery(item_id: String) -> void:
 	var messages := {
 		"ammo": "ДОСТАВЛЕНО: +5 ОБЫЧНЫХ ПАТРОНОВ",
@@ -118,6 +126,7 @@ class ScopeDrawing extends Control:
 			var reserve := ap_reserve if ammo_type == "ap" else regular_reserve
 			var text := "%d ОЧК.   %s %d/5  |  %d   %s" % [points, "AP" if ammo_type == "ap" else "ОБ", ammo, reserve, status]
 			draw_string(font, Vector2(size.x - 510.0, size.y - 32.0), text, HORIZONTAL_ALIGNMENT_RIGHT, 480, 18, Color(0.92, 0.84, 0.68, hud_alpha))
+			draw_string(font, Vector2(size.x - 510.0, size.y - 57.0), "TAB: ОБ / AP", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.91, 0.84, 0.68, hud_alpha))
 			# Пять отдельных делений показывают именно магазин, а не запас.
 			for round_index in range(5):
 				var bullet_color := Color(0.91, 0.79, 0.53, hud_alpha) if round_index < ammo else Color(0.38, 0.37, 0.32, hud_alpha)

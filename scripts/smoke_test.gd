@@ -87,7 +87,7 @@ func _run() -> void:
 		var mesh_piece := main.tower.model.find_child(part_pattern, true, false) as MeshInstance3D
 		_check(mesh_piece != null and mesh_piece.mesh != null and mesh_piece.mesh.get_faces().size() >= 72, "геометрия с модификаторами %s" % part_pattern, failures)
 	_check(main.player.get_parent() == main.tower, "игрок на башне", failures)
-	_check(is_equal_approx(main.player.position.y, ObservationTower.DECK_HEIGHT), "высота площадки", failures)
+	_check(absf(main.player.position.y - ObservationTower.DECK_HEIGHT) < 0.05, "высота площадки", failures)
 	_check(main.target.global_position.y < main.player.global_position.y - 20.0, "мишень внизу", failures)
 	var aim := (main.target.global_position + Vector3(0, TargetDummy.CENTER_HEIGHT, 0) - main.cam_rig.cam.global_position).normalized()
 	_check((-main.cam_rig.cam.global_basis.z).dot(aim) > 0.999, "мишень в начальном направлении взгляда", failures)
@@ -116,7 +116,7 @@ func _run() -> void:
 	var start_yaw: float = main.cam_rig.yaw
 	main.cam_rig.apply_mouse_motion(Vector2(50, 0))
 	_check(not is_equal_approx(main.cam_rig.yaw, start_yaw), "поворот мышью", failures)
-	_check(not InputMap.has_action("jump"), "спрыгнуть нельзя", failures)
+	_check(InputMap.has_action("jump") and main.player is CharacterBody3D, "прыжок доступен на физическом FPS-контроллере", failures)
 	# Окно песка по-прежнему работает, несмотря на то что ходим по настилу.
 	var sand_pos := Vector2(main.player.global_position.x, main.player.global_position.z)
 	main.sand.stamp_foot(sand_pos, Vector2.RIGHT, 0.5, 0.3, 0.1, 0.02)
@@ -184,13 +184,58 @@ func _run() -> void:
 	main.player._physics_process(1.0)
 	main.cam_rig.refresh_pose()
 	_check(absf(main.cam_rig.lean) < 0.01 and absf(main.cam_rig.bob) < 0.001, "наклон и покачивание затухают при остановке", failures)
-	# На каждой стороне и по диагонали даже большой шаг не может пересечь перила.
-	for direction in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK, Vector3(1, 8, 1), Vector3(-1, -8, -1)]:
-		main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
-		main.player.move_on_deck(direction * 1000.0)
-		var p := main.player.position
-		_check(absf(p.x) <= ObservationTower.WALK_LIMIT and absf(p.z) <= ObservationTower.WALK_LIMIT
-				and is_equal_approx(p.y, ObservationTower.DECK_HEIGHT), "граница площадки %s" % direction, failures)
+	# Прыжок, посадка и физические границы — реальными физическими кадрами.
+	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT + 0.05, 0)
+	main.player.velocity = Vector3.ZERO
+	for frame in range(12):
+		await get_tree().physics_frame
+	_check(main.player.is_on_floor(), "капсула стоит на физическом настиле", failures)
+	Input.action_press("jump")
+	var jump_peak := main.player.position.y
+	for frame in range(20):
+		await get_tree().physics_frame
+		jump_peak = maxf(jump_peak, main.player.position.y)
+	Input.action_release("jump")
+	_check(jump_peak > ObservationTower.DECK_HEIGHT + 0.5 and not main.player.is_on_floor(), "пробел запускает прыжок", failures)
+	for frame in range(70):
+		await get_tree().physics_frame
+	_check(main.player.is_on_floor() and absf(main.player.position.y - ObservationTower.DECK_HEIGHT) < 0.06, "после прыжка игрок приземляется на настил", failures)
+	main.cam_rig.set_view(0.0, 0.0)
+	for boundary in [
+		{"start": Vector3(4.9, ObservationTower.DECK_HEIGHT, 0), "action": "move_left"},
+		{"start": Vector3(-4.9, ObservationTower.DECK_HEIGHT, 0), "action": "move_right"},
+		{"start": Vector3(0, ObservationTower.DECK_HEIGHT, 4.9), "action": "move_forward"},
+		{"start": Vector3(0, ObservationTower.DECK_HEIGHT, -4.9), "action": "move_back"},
+	]:
+		main.player.position = boundary["start"]
+		main.player.velocity = Vector3.ZERO
+		Input.action_press(boundary["action"])
+		for frame in range(35):
+			await get_tree().physics_frame
+		Input.action_release(boundary["action"])
+		var player_at_wall := main.player.position
+		_check(absf(player_at_wall.x) <= ObservationTower.WALK_LIMIT + 0.06 and absf(player_at_wall.z) <= ObservationTower.WALK_LIMIT + 0.06, "капсула не проходит границу %s" % boundary["action"], failures)
+	main.player.position = Vector3(5.15, ObservationTower.DECK_HEIGHT, 0)
+	main.player.velocity = Vector3.ZERO
+	for frame in range(5):
+		await get_tree().physics_frame
+	Input.action_press("move_left")
+	Input.action_press("jump")
+	var edge_min_y := main.player.position.y
+	for frame in range(90):
+		await get_tree().physics_frame
+		edge_min_y = minf(edge_min_y, main.player.position.y)
+	Input.action_release("jump")
+	Input.action_release("move_left")
+	_check(main.player.position.x <= ObservationTower.WALK_LIMIT + 0.06 and edge_min_y >= ObservationTower.DECK_HEIGHT - 0.06, "прыжком нельзя пройти временную границу до механики спуска", failures)
+	# Радиостойка — отдельная физическая преграда, а не проходящая сквозь игрока декорация.
+	main.player.position = Vector3(-3.2, ObservationTower.DECK_HEIGHT, -3.9)
+	main.player.velocity = Vector3.ZERO
+	Input.action_press("move_right")
+	for frame in range(55):
+		await get_tree().physics_frame
+	Input.action_release("move_right")
+	_check(main.player.position.x > -3.94 and main.radio_tuner.nearby(), "радиостойка останавливает капсулу, но остаётся доступной", failures)
 	# Проверяем все углы ограничивающих коробок модели у сторон и в углах
 	# площадки, при горизонтальном и крутом взгляде вверх/вниз.
 	main.rifle.aim_requested = false
@@ -293,7 +338,7 @@ func _run() -> void:
 	# M4: радио — интерактивное и локальное, эфир не равен присутствию робота.
 	var radio := main.radio_tuner
 	_check(not radio.powered and not radio.tuning, "радио выключено по умолчанию", failures)
-	main.player.position = Vector3(-4.0, ObservationTower.DECK_HEIGHT, -3.9)
+	main.player.position = Vector3(-3.6, ObservationTower.DECK_HEIGHT, -3.9)
 	_check(radio.nearby(), "к радио можно подойти", failures)
 	var radio_key := InputEventKey.new()
 	radio_key.physical_keycode = KEY_E
@@ -581,6 +626,11 @@ func _test_reload(failures: Array[String]) -> void:
 	_check(rifle.start_reload(), "перезарядка перед сменой типа", failures)
 	rifle.switch_ammo()
 	_check(rifle.ammo_type == "ap" and rifle.ammo == 2 and rifle.regular_reserve == 6 and rifle.reload_remaining == 0.0, "смена типа отменяет перезарядку без потери патронов", failures)
+	_check("БРОНЕБОЙНЫЕ" in rifle.hud._notice, "Tab показывает выбранные бронебойные", failures)
+	rifle.switch_ammo()
+	rifle.ap_reserve = 0
+	rifle.switch_ammo()
+	_check(rifle.ammo_type == "ap" and rifle.ammo == 0 and "НЕТ ПАТРОНОВ" in rifle.hud._notice, "при пустом запасе AP показывается понятная подсказка", failures)
 
 
 func _test_piercing(failures: Array[String]) -> void:
@@ -628,7 +678,7 @@ func _test_m5(failures: Array[String]) -> void:
 	Economy.try_spend(Economy.points)
 	_check(not lift.can_order("ammo") and not lift.request_order("ammo") and Economy.points == 0, "недостаток очков делает товар недоступным без списания", failures)
 	# Радио открывает терминал; пока он открыт, оружие/ходьба блокируются.
-	main.player.position = Vector3(-4.0, ObservationTower.DECK_HEIGHT, -3.9)
+	main.player.position = Vector3(-3.6, ObservationTower.DECK_HEIGHT, -3.9)
 	main.radio_tuner.set_tuning(true)
 	var open_key := InputEventKey.new()
 	open_key.physical_keycode = KEY_B

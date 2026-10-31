@@ -21,6 +21,7 @@ var cage_anchor: Node3D
 
 
 func _ready() -> void:
+	_build_deck_collisions()
 	model = MODEL.instantiate() as Node3D
 	model.name = "AnimatedTower"
 	add_child(model)
@@ -47,6 +48,31 @@ func _ready() -> void:
 	# последней, а закрытая дверца совпадает с исходной позой.
 	pose_door(6.0)
 	pose_cage(2.0)
+
+
+## Физические прокси пока только для площадки: пол, безопасные границы и
+## радиостойка. Слои не участвуют в лучах выстрела и взаимодействия с грузом.
+func _build_deck_collisions() -> void:
+	var body := StaticBody3D.new()
+	body.name = "DeckCollisions"
+	body.collision_layer = 8
+	body.collision_mask = 0
+	add_child(body)
+	_add_box(body, Vector3(0, DECK_HEIGHT - 0.1, 0), Vector3(12.0, 0.2, 12.0))
+	# Временные высокие границы не дают выпрыгнуть за перила до этапа спуска.
+	for side in [-1.0, 1.0]:
+		_add_box(body, Vector3(side * 5.9, DECK_HEIGHT + 2.0, 0), Vector3(0.4, 4.0, 12.0))
+		_add_box(body, Vector3(0, DECK_HEIGHT + 2.0, side * 5.9), Vector3(12.0, 4.0, 0.4))
+	_add_box(body, Vector3(-4.75, DECK_HEIGHT + 0.46, -3.9), Vector3(1.15, 0.92, 1.0))
+
+
+func _add_box(body: StaticBody3D, at: Vector3, size: Vector3) -> void:
+	var shape := BoxShape3D.new()
+	shape.size = size
+	var collider := CollisionShape3D.new()
+	collider.shape = shape
+	collider.position = at
+	body.add_child(collider)
 
 
 func pose_cage(time: float) -> void:

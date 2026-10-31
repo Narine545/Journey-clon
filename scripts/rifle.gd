@@ -155,6 +155,7 @@ func switch_ammo() -> void:
 		ammo_type = "regular"
 	ammo = 0
 	_reload_selected()
+	hud.notify_ammo_type(ammo_type, ammo)
 
 
 func _reload_selected() -> void:
