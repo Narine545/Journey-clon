@@ -2,8 +2,8 @@
 """Export NZ:P's rigged first-person Springfield and its framing reference camera."""
 from pathlib import Path
 import json
-import bmesh
 import bpy
+import bmesh
 
 ROOT = Path(__file__).resolve().parents[1]
 source = ROOT / 'concepts/nzp_springfield/source'
