@@ -710,7 +710,7 @@ func _test_climbing(failures: Array[String]) -> void:
 	shot_climber._physics_process(0.5)
 	_check(shot_climber.signal_called and shot_climber.global_position.y > climb_before_cancel, "выключение маяка не останавливает подъём", failures)
 	main.radio_tuner.set_tuning(false)
-	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -4.7)
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	await get_tree().physics_frame
 	main.cam_rig.aim_offset = Vector2.ZERO
 	main.cam_rig.refresh_pose()
