@@ -11,7 +11,7 @@ const DECK_SPEED := 1.15
 const ATTACK_WINDUP := 2.0
 const ATTACK_COOLDOWN := 3.5
 const ATTACK_DAMAGE := 15
-const ARM_REACH := 2.4 # дополнительный вылет телескопического привода
+const ARM_REACH := 0.90 # досягаемость прототипного привода в масштабе человека
 const ROAM_RADIUS := 65.0
 const PREVIEW_ROAM_RADIUS := 20.0
 var kind: Kind
@@ -38,6 +38,7 @@ var fall_speed := 0.0
 var body_size := Vector3.ONE
 var visual: Node3D
 var hitbox: CollisionShape3D
+var hitbox_body: StaticBody3D
 var rng := RandomNumberGenerator.new()
 var player_ref: TowerPlayer
 var health_ref: PlayerHealth
@@ -57,13 +58,13 @@ func setup(robot_kind: Kind, coast_ref: Coast, at: Vector3, seed_value: int) -> 
 	lifetime = rng.randf_range(300.0, 600.0)
 	match kind:
 		Kind.SCOUT:
-			body_size = Vector3(3.0, 4.8, 3.0)
+			body_size = Vector3(0.70, 1.90, 0.40)
 			speed = 1.05
 		Kind.CARRIER:
-			body_size = Vector3(6.2, 4.4, 4.8)
+			body_size = Vector3(0.90, 2.10, 0.52)
 			speed = 0.42
 		Kind.WALKER:
-			body_size = Vector3(4.5, 5.6, 3.0)
+			body_size = Vector3(0.78, 2.00, 0.44)
 			speed = 0.72
 	global_position.y = support_height(global_position.x, global_position.z)
 	origin = global_position
@@ -92,27 +93,18 @@ func _build() -> void:
 	# Как и у дальней учебной мишени M3: тонкий силуэт не исчезает в тумане.
 	metal.disable_fog = true
 	var s := body_size
-	match kind:
-		Kind.SCOUT:
-			_box(Vector3(0, s.y * 0.62, 0), Vector3(s.x, s.y * 0.52, s.z), metal)
-			_box(Vector3(0, s.y * 0.94, 0), Vector3(s.x * 0.45, s.y * 0.20, s.z * 0.55), metal)
-			for side in [-1.0, 1.0]:
-				_box(Vector3(side * s.x * 0.34, s.y * 0.18, 0), Vector3(0.45, s.y * 0.36, 0.5), metal)
-		Kind.CARRIER:
-			_box(Vector3(0, s.y * 0.55, 0), Vector3(s.x, s.y * 0.55, s.z), metal)
-			_box(Vector3(0, s.y * 0.88, 0), Vector3(s.x * 0.52, s.y * 0.16, s.z * 0.65), metal)
-			for side in [-1.0, 1.0]:
-				_box(Vector3(side * s.x * 0.36, s.y * 0.15, 0), Vector3(1.0, s.y * 0.30, s.z * 0.7), metal)
-		Kind.WALKER:
-			_box(Vector3(0, s.y * 0.7, 0), Vector3(s.x, s.y * 0.34, s.z), metal)
-			_box(Vector3(0, s.y * 0.92, 0), Vector3(s.x * 0.35, s.y * 0.15, s.z * 0.55), metal)
-			for side in [-1.0, 1.0]:
-				for depth in [-0.3, 0.3]:
-					_box(Vector3(side * s.x * 0.38, s.y * 0.28, s.z * depth), Vector3(0.42, s.y * 0.56, 0.45), metal)
+	# Временная болванка, не финальный дизайн: одна голова, торс,
+	# две руки и две ноги, все детали внутри рассчитанного хитбокса.
+	_box(Vector3(0, s.y * 0.65, 0), Vector3(s.x * 0.60, s.y * 0.38, s.z * 0.78), metal, "Torso")
+	_box(Vector3(0, s.y * 0.91, 0), Vector3(s.x * 0.36, s.y * 0.18, s.z * 0.65), metal, "Head")
+	for side in [-1.0, 1.0]:
+		var side_name := "Left" if side < 0.0 else "Right"
+		_box(Vector3(side * s.x * 0.40, s.y * 0.64, 0), Vector3(s.x * 0.18, s.y * 0.40, s.z * 0.65), metal, side_name + "Arm")
+		_box(Vector3(side * s.x * 0.17, s.y * 0.23, 0), Vector3(s.x * 0.23, s.y * 0.46, s.z * 0.68), metal, side_name + "Leg")
 	# Простой выдвижной привод показывает направление и дальность удара.
 	attack_arm = MeshInstance3D.new()
 	var arm_mesh := BoxMesh.new()
-	arm_mesh.size = Vector3(0.28, 0.28, ARM_REACH)
+	arm_mesh.size = Vector3(0.10, 0.10, ARM_REACH)
 	attack_arm.mesh = arm_mesh
 	attack_arm.material_override = metal
 	attack_arm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -120,10 +112,10 @@ func _build() -> void:
 	visual.add_child(attack_arm)
 	attack_beacon = MeshInstance3D.new()
 	var lamp_mesh := SphereMesh.new()
-	lamp_mesh.radius = 0.18
-	lamp_mesh.height = 0.36
+	lamp_mesh.radius = 0.08
+	lamp_mesh.height = 0.16
 	attack_beacon.mesh = lamp_mesh
-	attack_beacon.position = Vector3(0, s.y + 0.15, 0)
+	attack_beacon.position = Vector3(0, s.y + 0.08, 0)
 	var lamp_material := StandardMaterial3D.new()
 	lamp_material.albedo_color = Color(1.0, 0.35, 0.04)
 	lamp_material.emission_enabled = true
@@ -132,21 +124,22 @@ func _build() -> void:
 	attack_beacon.material_override = lamp_material
 	attack_beacon.visible = false
 	visual.add_child(attack_beacon)
-	var body := StaticBody3D.new()
-	body.name = "Hitbox"
-	body.collision_layer = 2
-	body.collision_mask = 0
-	add_child(body)
+	hitbox_body = StaticBody3D.new()
+	hitbox_body.name = "Hitbox"
+	hitbox_body.collision_layer = 2
+	hitbox_body.collision_mask = 0
+	add_child(hitbox_body)
 	hitbox = CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = body_size
 	hitbox.shape = shape
 	hitbox.position.y = body_size.y * 0.5
-	body.add_child(hitbox)
+	hitbox_body.add_child(hitbox)
 
 
-func _box(at: Vector3, dimensions: Vector3, material: Material) -> void:
+func _box(at: Vector3, dimensions: Vector3, material: Material, part_name: String) -> void:
 	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.name = part_name
 	var mesh := BoxMesh.new()
 	mesh.size = dimensions
 	mesh_instance.mesh = mesh
@@ -224,7 +217,7 @@ func _physics_process(delta: float) -> void:
 		var next_support := here.move_toward(support_target, speed * delta)
 		var support_motion := next_support - here
 		if support_motion.length_squared() > 0.001:
-			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(support_motion.x, support_motion.y), minf(1.0, delta * 0.5))
+			_set_facing(lerp_angle(visual.rotation.y, atan2(support_motion.x, support_motion.y), minf(1.0, delta * 0.5)))
 		global_position = Vector3(next_support.x, support_height(next_support.x, next_support.y), next_support.y)
 		if next_support.distance_squared_to(support_target) < 0.001:
 			velocity = Vector2.ZERO
@@ -245,7 +238,13 @@ func _physics_process(delta: float) -> void:
 	var next := here + velocity * delta
 	global_position = Vector3(next.x, support_height(next.x, next.y), next.y)
 	if velocity.length() > 0.05:
-		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(velocity.x, velocity.y), minf(1.0, delta * 0.5))
+		_set_facing(lerp_angle(visual.rotation.y, atan2(velocity.x, velocity.y), minf(1.0, delta * 0.5)))
+
+
+## Хитбокс поворачивается вместе с болванкой, сохраняя попадания в профиль.
+func _set_facing(angle: float) -> void:
+	visual.rotation.y = angle
+	hitbox_body.rotation.y = angle
 
 
 ## На площадке нет навигационной сетки: робот направляется к игроку и
@@ -266,7 +265,7 @@ func _advance_deck(delta: float) -> void:
 	var distance := difference.length()
 	# Диагональ корпуса безопасна при его произвольном повороте.
 	var reach := Vector2(body_size.x, body_size.z).length() * 0.5 + ARM_REACH
-	var in_height := absf(player_ref.global_position.y - global_position.y) <= 3.0
+	var in_height := absf(player_ref.global_position.y - global_position.y) <= body_size.y * 0.7
 	if distance > reach + 0.08 or not in_height:
 		attack_windup = 0.0
 		_set_warning(false)
@@ -276,10 +275,10 @@ func _advance_deck(delta: float) -> void:
 			global_position.x = next.x
 			global_position.z = next.y
 		if distance > 0.01:
-			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(difference.x, difference.y), minf(1.0, delta * 2.0))
+			_set_facing(lerp_angle(visual.rotation.y, atan2(difference.x, difference.y), minf(1.0, delta * 2.0)))
 		return
 	if distance > 0.01:
-		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(difference.x, difference.y), minf(1.0, delta * 3.0))
+		_set_facing(lerp_angle(visual.rotation.y, atan2(difference.x, difference.y), minf(1.0, delta * 3.0)))
 	if attack_windup > 0.0:
 		attack_windup = maxf(0.0, attack_windup - delta)
 		_set_arm_extension(1.0 - attack_windup / ATTACK_WINDUP)

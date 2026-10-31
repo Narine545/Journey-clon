@@ -597,6 +597,7 @@ func _run() -> void:
 	await _test_climbing(failures)
 	_test_reload(failures)
 	await _test_debug_menu(failures)
+	_test_humanoid_scale(failures)
 	await _test_contact_combat(failures)
 
 	if failures.is_empty():
@@ -688,13 +689,9 @@ func _test_climbing(failures: Array[String]) -> void:
 		var top_before := climbing_robot.global_position
 		climbing_robot._physics_process(4.0)
 		_check(climbing_robot.global_position == top_before and climbing_robot.alive, "робот %d ждёт наверху без атаки" % robot_kind, failures)
-		_check(climbing_robot.apply_projectile_hit(robot_kind == AmbientRobot.Kind.CARRIER) and climbing_robot.falling, "робот %d выводится из строя наверху" % robot_kind, failures)
-		var top_y := climbing_robot.global_position.y
-		climbing_robot._physics_process(0.25)
-		_check(climbing_robot.global_position.y < top_y, "робот %d падает после поражения" % robot_kind, failures)
-		for fall_step in range(30):
-			climbing_robot._physics_process(0.25)
-		_check(not climbing_robot.falling and is_equal_approx(climbing_robot.global_position.y, climbing_robot.support_height(climbing_robot.global_position.x, climbing_robot.global_position.z)), "робот %d падает на грунт" % robot_kind, failures)
+		# Когда центр уже оказался над настилом, останки не проваливаются
+		# на грунт. Отдельно ниже проверяем падение с высоты подъёма.
+		_check(climbing_robot.apply_projectile_hit(robot_kind == AmbientRobot.Kind.CARRIER) and not climbing_robot.falling, "робот %d остаётся на настиле после выхода из строя" % robot_kind, failures)
 		climbing_robot.free()
 	# Отдельно проверяем реальный выстрел по движущемуся хитбоксу при подъёме.
 	var shot_start := center + Vector3(20.0, 0.0, -1.4)
@@ -734,6 +731,9 @@ func _test_climbing(failures: Array[String]) -> void:
 	_check(main.rifle.fire(), "реальный выстрел по поднимающемуся роботу", failures)
 	await get_tree().create_timer(0.4).timeout
 	_check(not shot_climber.alive and shot_climber.falling and Economy.points == climb_reward_before + 100, "выстрел прерывает подъём и начисляет обычную награду", failures)
+	for fall_step in range(30):
+		shot_climber._physics_process(0.25)
+	_check(not shot_climber.falling and is_equal_approx(shot_climber.global_position.y, shot_climber.support_height(shot_climber.global_position.x, shot_climber.global_position.z)), "подбитый на подъёме гуманоид падает на грунт", failures)
 	shot_climber.free()
 	# Та же проверка физическим снарядом для брони: обычная пуля не
 	# прерывает подъём, AP поражает и начисляет награду один раз.
@@ -742,7 +742,7 @@ func _test_climbing(failures: Array[String]) -> void:
 	armored_climber.respond_to_signal(center, 1)
 	for virtual_step in range(200):
 		armored_climber._physics_process(0.5)
-		if armored_climber.climb_state == AmbientRobot.ClimbState.CLIMBING and armored_climber.global_position.y >= center.y + 49.0:
+		if armored_climber.climb_state == AmbientRobot.ClimbState.CLIMBING and armored_climber.global_position.y >= center.y + 50.0:
 			break
 	_check(armored_climber.climb_state == AmbientRobot.ClimbState.CLIMBING, "бронированный робот находится на подъёме", failures)
 	main.cam_rig.refresh_pose()
@@ -837,6 +837,41 @@ func _test_debug_menu(failures: Array[String]) -> void:
 	await get_tree().process_frame
 
 
+func _test_humanoid_scale(failures: Array[String]) -> void:
+	var center := main.tower.global_position
+	for robot_kind in range(3):
+		var position := center + Vector3(0, ObservationTower.DECK_HEIGHT, 0)
+		var robot := main.ambient_spawner.spawn_at(robot_kind as AmbientRobot.Kind, position, 1420 + robot_kind)
+		robot.set_physics_process(false)
+		robot.global_position = position
+		_check(robot.body_size.y >= 1.8 and robot.body_size.y <= 2.2 and robot.body_size.x <= 1.0 and robot.body_size.z <= 0.6, "тип %d человекоподобного размера" % robot_kind, failures)
+		var shape := robot.hitbox.shape as BoxShape3D
+		_check(shape != null and shape.size == robot.body_size and absf(robot.hitbox.position.y - robot.body_size.y * 0.5) < 0.001, "тип %d имеет хитбокс по размеру болванки" % robot_kind, failures)
+		for part_name in ["Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"]:
+			var part := robot.visual.get_node_or_null(part_name) as MeshInstance3D
+			_check(part != null and part.mesh != null, "тип %d содержит %s" % [robot_kind, part_name], failures)
+		robot._set_facing(PI * 0.25)
+		_check(is_equal_approx(robot.visual.rotation.y, robot.hitbox_body.rotation.y), "поворот хитбокса типа %d совпадает с силуэтом" % robot_kind, failures)
+		robot.free()
+	# Проверка нового встроенного режима сравнения и его F4.
+	main.debug_menu.set_open(true)
+	main.debug_menu.scale_button.pressed.emit()
+	_check(main.ambient_spawner.preview_scale and not main.ambient_spawner.is_processing() and main.ambient_spawner.get_child_count() == 3, "F2 показывает три неподвижные болванки на площадке", failures)
+	for child in main.ambient_spawner.get_children():
+		var demo := child as AmbientRobot
+		if demo != null:
+			_check(demo.preview and not demo.is_physics_processing() and absf(demo.global_position.y - (center.y + ObservationTower.DECK_HEIGHT)) < 0.01, "болванка на настиле без атаки", failures)
+	var f4_scale := InputEventKey.new()
+	f4_scale.pressed = true
+	f4_scale.physical_keycode = KEY_F4
+	main.ambient_spawner._unhandled_input(f4_scale)
+	_check(main.ambient_spawner.get_child_count() == 3, "F4 восстанавливает сравнение размеров", failures)
+	main.debug_menu.set_open(true)
+	main.debug_menu.normal_button.pressed.emit()
+	main.ambient_spawner.set_process(false)
+	_check(not main.ambient_spawner.preview_scale and main.ambient_spawner.get_child_count() == 0, "выход убирает только тестовые болванки", failures)
+
+
 func _test_contact_combat(failures: Array[String]) -> void:
 	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	main.player.velocity = Vector3.ZERO
@@ -853,7 +888,10 @@ func _test_contact_combat(failures: Array[String]) -> void:
 	var start_distance := attacker.global_position.distance_to(main.player.global_position)
 	attacker._physics_process(1.0)
 	_check(attacker.global_position.distance_to(main.player.global_position) < start_distance, "робот движется к игроку по площадке", failures)
-	attacker._physics_process(0.1)
+	for approach_step in range(50):
+		attacker._physics_process(0.1)
+		if attacker.attack_windup > 0.0:
+			break
 	_check(attacker.attack_windup > 0.0 and attacker.metal.emission_enabled and attacker.attack_arm.visible and attacker.attack_beacon.visible and main.player_health.warning_time > 0.0, "перед ударом есть визуальное и текстовое предупреждение", failures)
 	var held_windup := attacker.attack_windup
 	main.debug_menu.set_open(true)

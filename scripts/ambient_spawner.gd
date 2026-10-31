@@ -18,7 +18,8 @@ var rng := RandomNumberGenerator.new()
 var preview_robots := false
 var preview_climbing := false
 var preview_attack := false
-enum DebugMode { NORMAL, CLIMB, ROBOTS, ATTACK }
+var preview_scale := false
+enum DebugMode { NORMAL, CLIMB, ROBOTS, ATTACK, SCALE }
 # Каждый свободный слот имеет собственную задержку; -1 означает незапущенный.
 var call_delays: Array[float] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
 var threat := 0.0 # 0..1: растёт только при передаче, затем плавно спадает
@@ -44,7 +45,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if main != null and main.player_health != null and main.player_health.defeated:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F4:
-		if preview_attack:
+		if preview_scale:
+			reset_scale_preview()
+		elif preview_attack:
 			reset_attack_preview()
 		elif preview_robots:
 			reset_preview()
@@ -67,13 +70,16 @@ func set_debug_mode(mode: DebugMode, near_top: bool = false) -> void:
 	preview_robots = mode == DebugMode.ROBOTS
 	preview_climbing = mode == DebugMode.CLIMB
 	preview_attack = mode == DebugMode.ATTACK
-	set_process(not preview_robots)
+	preview_scale = mode == DebugMode.SCALE
+	set_process(not preview_robots and not preview_scale)
 	if preview_robots:
 		reset_preview()
 	elif preview_climbing:
 		reset_climb_preview(near_top)
 	elif preview_attack:
 		reset_attack_preview()
+	elif preview_scale:
+		reset_scale_preview()
 
 
 func reset_preview() -> void:
@@ -100,7 +106,7 @@ func reset_climb_preview(near_top: bool = false) -> AmbientRobot:
 	test_robot.respond_to_signal(center, -1)
 	if near_top:
 		# Этот телепорт существует только по отдельной команде отладки.
-		test_robot.global_position = Vector3(test_robot.support_target.x, center.y + ObservationTower.DECK_HEIGHT - 3.0, test_robot.support_target.y)
+		test_robot.global_position = Vector3(test_robot.support_target.x, center.y + ObservationTower.DECK_HEIGHT - 0.55, test_robot.support_target.y)
 		test_robot.approaching_signal = false
 		test_robot.climb_state = AmbientRobot.ClimbState.CLIMBING
 	return test_robot
@@ -119,6 +125,21 @@ func reset_attack_preview() -> AmbientRobot:
 	robot.global_position = pos
 	robot.climb_state = AmbientRobot.ClimbState.AT_TOP
 	return robot
+
+
+## Неподвижные болванки на настиле только для визуального сравнения размеров.
+func reset_scale_preview() -> void:
+	_clear_preview()
+	var center := main.tower.global_position
+	for i in range(3):
+		var pos := center + Vector3(0.0, ObservationTower.DECK_HEIGHT, -3.0 + 1.6 * float(i))
+		var robot := spawn_at(i as AmbientRobot.Kind, pos, 9400 + i)
+		robot.name = "ScalePreview%d" % i
+		robot.preview = true
+		robot.global_position = pos
+		robot.set_physics_process(false)
+		# Смотрят к позиции игрока, но не преследуют и не атакуют.
+		robot._set_facing(PI * 0.5)
 
 
 static func chance_for(delta: float, wind_strength: float, night: float, signal_on_air: bool) -> float:
@@ -228,7 +249,7 @@ func _try_spawn(call_slot: int = -1) -> AmbientRobot:
 		var x := center.x + cos(angle) * distance
 		var z := center.z + sin(angle) * distance
 		var pos := Vector3(x, main.coast.ground_height(x, z), z)
-		var robot_center := pos + Vector3.UP * 3.0
+		var robot_center := pos + Vector3.UP * 0.95
 		# Прицел сужает frustum; также запрещаем появления перед камерой
 		# в широком секторе обычного обзора, чтобы не возникать на глазах
 		# при выходе из оптики. Y игнорируется: это запас по горизонтали.

@@ -200,9 +200,9 @@ func _capture() -> void:
 	var climber := main.ambient_spawner.spawn_at(AmbientRobot.Kind.SCOUT, climb_start, 6311)
 	climber.set_physics_process(false)
 	climber.respond_to_signal(climb_center, 0)
-	for step in range(120):
-		climber._physics_process(0.5)
-		if climber.climb_state == AmbientRobot.ClimbState.CLIMBING and climber.global_position.y >= climb_center.y + 49.0:
+	for step in range(300):
+		climber._physics_process(0.2)
+		if climber.climb_state == AmbientRobot.ClimbState.CLIMBING and climber.global_position.y >= climb_center.y + 51.0:
 			break
 	if climber.climb_state != AmbientRobot.ClimbState.CLIMBING:
 		printerr("[SHOT] робот не достиг опоры")
@@ -236,7 +236,20 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить меню отладки")
 		get_tree().quit(1)
 		return
+	# Три размера рядом с игроком — полезнее, чем силуэт за 200 м.
+	main.debug_menu._select_scale()
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var scale_path := OS.get_environment("JOURNEY_SCALE_PATH")
+	if scale_path.is_empty():
+		scale_path = "user://robot_scale.png"
+	if get_viewport().get_texture().get_image().save_png(scale_path) != OK:
+		printerr("[SHOT] не удалось сохранить сравнение размеров")
+		get_tree().quit(1)
+		return
 	# Отдельные кадры атаки и поражения: без случайного появления.
+	main.debug_menu.set_open(true)
 	main.debug_menu._select_attack()
 	var attack_robot := main.ambient_spawner.get_node_or_null("AttackPreviewRobot") as AmbientRobot
 	if attack_robot == null:
@@ -244,8 +257,15 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	attack_robot.set_physics_process(false)
-	attack_robot._physics_process(1.0)
-	attack_robot._physics_process(0.1)
+	for step in range(100):
+		attack_robot._physics_process(0.1)
+		if attack_robot.attack_windup > 0.0:
+			break
+	if attack_robot.attack_windup <= 0.0:
+		printerr("[SHOT] робот не начал подготовку удара")
+		get_tree().quit(1)
+		return
+	attack_robot._physics_process(0.8)
 	for i in range(8):
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw

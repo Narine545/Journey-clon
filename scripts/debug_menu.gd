@@ -11,6 +11,7 @@ var normal_button: Button
 var climb_button: Button
 var top_button: Button
 var robots_button: Button
+var scale_button: Button
 var attack_button: Button
 var heal_button: Button
 var close_button: Button
@@ -76,6 +77,8 @@ func setup(main_ref: MainScene) -> void:
 	column.add_child(note)
 	robots_button = _button(column, "Три типа роботов — демонстрация вдали")
 	robots_button.pressed.connect(_select_robots)
+	scale_button = _button(column, "Сравнить три размера на площадке")
+	scale_button.pressed.connect(_select_scale)
 	attack_button = _button(column, "Быстро проверить атаку на площадке")
 	attack_button.pressed.connect(_select_attack)
 	heal_button = _button(column, "Восстановить здоровье (отладка)")
@@ -137,6 +140,8 @@ func _refresh() -> void:
 		mode = "ДЕМО ТРЁХ ТИПОВ"
 	elif main.ambient_spawner.preview_attack:
 		mode = "ДЕМО АТАКИ"
+	elif main.ambient_spawner.preview_scale:
+		mode = "СРАВНЕНИЕ РАЗМЕРОВ"
 	status.text = "Текущий режим: " + mode
 
 
@@ -190,3 +195,12 @@ func _restore_health() -> void:
 		main.player_health.health = PlayerHealth.MAX_HEALTH
 		main.player_health.invulnerability = 0.0
 	_refresh()
+
+
+func _select_scale() -> void:
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	main.player.velocity = Vector3.ZERO
+	main.ambient_spawner.set_debug_mode(AmbientSpawner.DebugMode.SCALE)
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.set_view(-PI * 0.5, -0.25)
+	set_open(false)
