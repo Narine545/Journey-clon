@@ -1032,12 +1032,12 @@ func _test_grapple(failures: Array[String]) -> void:
 		var descend_start := main.player.position
 		for frame in range(90):
 			await get_tree().physics_frame
-		_check(main.player.position.distance_to(descend_start) > 10.0, "автоматическая тяга быстро перемещает игрока", failures)
+		_check(main.player.position.distance_to(descend_start) > 10.0, "автоматическая тяга быстро перемещает игрока: до %s после %s стадия %d" % [str(descend_start), str(main.player.position), hook.launch_stage], failures)
 		for frame in range(1250):
 			await get_tree().physics_frame
 			if main.player.terrain_grounded:
 				break
-		_check(main.player.terrain_grounded and main.player.position.x > ObservationTower.HALF_DECK, "крюк позволяет покинуть площадку и приземлиться на рельеф", failures)
+		_check(main.player.terrain_grounded and main.player.position.x > ObservationTower.HALF_DECK, "крюк позволяет покинуть площадку и приземлиться на рельеф: %s стадия %d прикреплён %s" % [str(main.player.position), hook.launch_stage, str(hook.attached)], failures)
 		hook.detach()
 		main.player.velocity = Vector3.ZERO
 		await get_tree().physics_frame
@@ -1067,6 +1067,7 @@ func _test_grapple(failures: Array[String]) -> void:
 			for frame in range(90):
 				await get_tree().physics_frame
 			_check(hook.arrived and main.player.global_position.distance_to(arrival_position) < 0.05 and main.player.velocity.length() < 0.1, "у точки игрок останавливается без раскручивания", failures)
+			main.cam_rig.set_view(-PI * 0.5, 0.0) # взгляд внутрь площадки
 			Input.action_press("move_forward")
 			for frame in range(240):
 				await get_tree().physics_frame

@@ -20,6 +20,7 @@ var attached := false
 var manual_control := false
 var arrived := false
 var anchor_kind := ""
+var launch_stage := 0
 var anchor := Vector3.ZERO
 var rope_length := 0.0
 var pending_toggle := false
@@ -139,6 +140,10 @@ func try_attach() -> bool:
 		return false
 	anchor = hit["position"]
 	anchor_kind = hit["kind"]
+	var local := main.player.global_position - main.tower.global_position
+	# От старта на площадке сначала поднимаемся над физическими перилами,
+	# затем пересекаем край: прямая линия вниз упиралась бы в ограждение.
+	launch_stage = 1 if anchor_kind == "ground" and local.y >= ObservationTower.DECK_HEIGHT - 0.1 and local.y < ObservationTower.DECK_HEIGHT + 1.55 and absf(local.x) < 6.0 and absf(local.z) < 6.0 else 0
 	manual_control = false
 	arrived = false
 	rope_length = maxf(MIN_LENGTH, attachment_point().distance_to(anchor))
@@ -154,6 +159,7 @@ func detach() -> void:
 	manual_control = false
 	arrived = false
 	anchor_kind = ""
+	launch_stage = 0
 	pending_toggle = false
 	candidate.clear()
 	if rope != null:
@@ -186,13 +192,28 @@ func constrain_velocity(current: Vector3, delta: float, direction: Vector3 = Vec
 			var pull := minf(MAX_PULL_SPEED, maxf(0.0, (distance - rope_length) / delta))
 			current -= outward * pull
 		return current.limit_length(20.0)
+	if launch_stage > 0:
+		var local := main.player.global_position - main.tower.global_position
+		if launch_stage == 1:
+			if local.y < ObservationTower.DECK_HEIGHT + 1.55:
+				return current.move_toward(Vector3.UP * 8.0, AUTO_ACCELERATION * delta)
+			launch_stage = 2
+		if launch_stage == 2:
+			if absf(local.x) > 6.65 or absf(local.z) > 6.65:
+				launch_stage = 0
+			else:
+				var outward := Vector3(offset.x, 0.0, offset.z).normalized()
+				return current.move_toward(outward * 14.0, AUTO_ACCELERATION * delta)
 	if arrived:
-		# Небольшое свободное движение на высоте рейки позволяет выйти на настил.
-		# За пределами окрестности якоря снова включаем тягу, а не вечный полёт.
-		if distance > 3.3:
-			arrived = false
-		else:
-			return Vector3(direction.x * ARRIVAL_MOVE_SPEED, 0.0, direction.z * ARRIVAL_MOVE_SPEED)
+		# При подходе трос не включает тягу повторно и не раскручивает игрока.
+		# Вблизи якоря можно переступить на настил; дальше ограничиваем только
+		# движение от него, не притягивая рывком обратно.
+		var movement := Vector3(direction.x * ARRIVAL_MOVE_SPEED, 0.0, direction.z * ARRIVAL_MOVE_SPEED)
+		var horizontal_out := Vector3(-offset.x, 0.0, -offset.z)
+		if horizontal_out.length() > 3.0:
+			var away := horizontal_out.normalized()
+			movement -= away * maxf(0.0, movement.dot(away))
+		return movement
 	var target_distance := GROUND_ARRIVAL_DISTANCE if anchor_kind == "ground" else ARRIVAL_DISTANCE
 	if distance <= target_distance + 0.15:
 		if anchor_kind == "ground":
