@@ -49,22 +49,6 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить вид у перил")
 		get_tree().quit(1)
 		return
-	# Временный кадр для визуальной оценки движения оружия на середине R.
-	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, -1.4)
-	main.cam_rig.set_view(PI * 0.5, -0.30)
-	main.rifle.reload_remaining = SniperRifle.RELOAD_TIME * 0.5
-	main.rifle._physics_process(0.0)
-	for i in range(2):
-		await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var spring_reload_path := OS.get_environment("JOURNEY_SPRING_PATH")
-	if not spring_reload_path.is_empty():
-		if get_viewport().get_texture().get_image().save_png(spring_reload_path) != OK:
-			printerr("[SHOT] не удалось сохранить движение Springfield")
-			get_tree().quit(1)
-			return
-	main.rifle.reload_remaining = 0.0
-	main.rifle._physics_process(0.0)
 	# Небо в оптике — отдельный регрессионный кадр Forward+.
 	main.cam_rig.set_view(PI * 0.5, 0.60)
 	main.rifle.aim_requested = true
