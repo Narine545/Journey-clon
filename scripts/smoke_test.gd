@@ -281,8 +281,15 @@ func _run() -> void:
 	var spring_hand_idle := spring_skeleton.get_bone_pose(spring_hand)
 	main.rifle.reload_remaining = SniperRifle.RELOAD_TIME * 0.5
 	main.rifle._update_springfield_animation()
-	_check(absf(main.rifle._springfield_animation.current_animation_position - 1.55) < 0.02, "пробное движение синхронизировано с перезарядкой", failures)
+	_check(absf(main.rifle._springfield_animation.current_animation_position - 1.0) < 0.02, "пробное движение синхронизировано с перезарядкой", failures)
 	_check(not spring_hand_idle.is_equal_approx(spring_skeleton.get_bone_pose(spring_hand)), "пробное движение реально меняет позу руки", failures)
+	main.rifle.reload_remaining = 0.01
+	main.rifle._update_springfield_animation()
+	_check(spring_hand_idle.origin.distance_to(spring_skeleton.get_bone_pose(spring_hand).origin) < 0.01, "движение плавно возвращается к исходной позе", failures)
+	main.rifle._recoil = 0.018
+	main.rifle._update_view_model()
+	_check(main.rifle._view_model.position.z <= 0.0, "отдача не сдвигает винтовку внутрь камеры", failures)
+	main.rifle._recoil = 0.0
 	main.rifle.reload_remaining = 0.0
 	main.rifle._update_springfield_animation()
 	_check(main.long_target.global_position.distance_to(main.player.global_position) > 500.0, "дальняя мишень за 500 м", failures)

@@ -53,6 +53,7 @@ var _pistol_view_model: Node3D
 var _springfield_model: Node3D
 var _springfield_animation: AnimationPlayer
 var _springfield_mesh: MeshInstance3D
+var _springfield_skeleton: Skeleton3D
 
 
 func setup(main_ref: MainScene) -> void:
@@ -355,26 +356,46 @@ func _update_view_model() -> void:
 	# Масштабируем ближнюю плоскость вместе с моделью: иначе у перил камера
 	# отрезает почти всю геометрию рук, несмотря на правильную проекцию.
 	camera.near = 0.02 * model_scale if weapon == Weapon.RIFLE and scope_amount < 0.45 else 0.02
-	_view_model.position = Vector3(0, 0, _recoil * 2.0) * model_scale
+	# Оружие не движется к глазу: прежний сдвиг в +Z показывал внутреннюю
+	# сторону приклада. Небольшой наклон вниз/вперёд оставляет ощущение отдачи.
+	_view_model.position = Vector3(0, -_recoil * 0.5, -_recoil * 0.4) * model_scale
 	var reload_drop := 0.10 * sin(PI * (1.0 - reload_remaining / RELOAD_TIME)) if reload_remaining > 0.0 else 0.0
 	_pistol_view_model.scale = Vector3.ONE * model_scale
 	_pistol_view_model.position = Vector3(0.25, -0.27 - reload_drop, -0.42 + _recoil * 2.0) * model_scale
 
 
 func _update_springfield_animation() -> void:
-	if _springfield_animation == null:
+	if _springfield_animation == null or _springfield_skeleton == null:
 		return
-	# В исходнике действие названо Kar98k.001, Godot заменяет точку на _. Его
-	# назначение неизвестно: это пробный фрагмент, синхронизированный только
-	# визуально, механическое время затвора/перезарядки не меняется.
-	var position_seconds := 0.1
+	# Воспроизводим укороченный фрагмент не быстрее исходных 10 кадров/с,
+	# затем плавно возвращаем каждую кость в исходную позу. Время реальной
+	# перезарядки/затвора остаётся прежним; поведение оружия не меняется.
+	var elapsed := 0.0
+	var duration := 0.0
+	var travel := 0.0
 	if weapon == Weapon.RIFLE and reload_remaining > 0.0:
-		position_seconds = lerpf(0.1, 3.0, clampf(1.0 - reload_remaining / RELOAD_TIME, 0.0, 1.0))
+		duration = RELOAD_TIME
+		travel = 1.4
+		elapsed = clampf(duration - reload_remaining, 0.0, duration)
 	elif weapon == Weapon.RIFLE and cycle_remaining > 0.0:
-		position_seconds = lerpf(0.1, 0.7, clampf(1.0 - cycle_remaining / CYCLE_TIME, 0.0, 1.0))
+		duration = CYCLE_TIME
+		travel = 0.25
+		elapsed = clampf(duration - cycle_remaining, 0.0, duration)
 	if _springfield_animation.current_animation != "Kar98k_001":
 		_springfield_animation.play("Kar98k_001")
-	_springfield_animation.seek(position_seconds, true)
+	_springfield_animation.seek(0.1 + minf(elapsed, travel), true)
+	if duration > 0.0 and elapsed > travel:
+		var raised_poses: Array[Transform3D] = []
+		for bone_index in _springfield_skeleton.get_bone_count():
+			raised_poses.append(_springfield_skeleton.get_bone_pose(bone_index))
+		_springfield_animation.seek(0.1, true)
+		var blend := clampf((elapsed - travel) / (duration - travel), 0.0, 1.0)
+		blend = blend * blend * (3.0 - 2.0 * blend) # smoothstep без резкого рывка
+		for bone_index in _springfield_skeleton.get_bone_count():
+			var pose := raised_poses[bone_index].interpolate_with(_springfield_skeleton.get_bone_pose(bone_index), blend)
+			_springfield_skeleton.set_bone_pose_position(bone_index, pose.origin)
+			_springfield_skeleton.set_bone_pose_rotation(bone_index, pose.basis.get_rotation_quaternion())
+			_springfield_skeleton.set_bone_pose_scale(bone_index, pose.basis.get_scale())
 	_springfield_animation.pause()
 
 
@@ -400,6 +421,9 @@ func _build_view_model() -> void:
 	framing.add_child(_springfield_model)
 	_springfield_animation = _springfield_model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	_springfield_mesh = _springfield_model.find_child("ArmsMesh", true, false) as MeshInstance3D
+	var skeletons := _springfield_model.find_children("*", "Skeleton3D", true, false)
+	assert(not skeletons.is_empty())
+	_springfield_skeleton = skeletons[0] as Skeleton3D
 	assert(_springfield_animation != null and _springfield_mesh != null and _springfield_animation.has_animation("Kar98k_001"))
 	_springfield_mesh.layers = 2
 	_springfield_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

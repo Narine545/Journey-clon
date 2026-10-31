@@ -49,6 +49,32 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить вид у перил")
 		get_tree().quit(1)
 		return
+	# Временная проверка максимальной отдачи у перил и руки при перезарядке.
+	main.rifle._recoil = 0.018
+	main.rifle.cycle_remaining = SniperRifle.CYCLE_TIME
+	main.rifle._physics_process(0.0)
+	for i in range(2):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var recoil_path := OS.get_environment("JOURNEY_SPRING_RECOIL")
+	if not recoil_path.is_empty() and get_viewport().get_texture().get_image().save_png(recoil_path) != OK:
+		get_tree().quit(1)
+		return
+	main.rifle._recoil = 0.0
+	main.rifle.cycle_remaining = 0.0
+	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, -1.4)
+	main.cam_rig.set_view(PI * 0.5, -0.30)
+	main.rifle.reload_remaining = SniperRifle.RELOAD_TIME * 0.5
+	main.rifle._physics_process(0.0)
+	for i in range(2):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var reload_path := OS.get_environment("JOURNEY_SPRING_RELOAD")
+	if not reload_path.is_empty() and get_viewport().get_texture().get_image().save_png(reload_path) != OK:
+		get_tree().quit(1)
+		return
+	main.rifle.reload_remaining = 0.0
+	main.rifle._physics_process(0.0)
 	# Небо в оптике — отдельный регрессионный кадр Forward+.
 	main.cam_rig.set_view(PI * 0.5, 0.60)
 	main.rifle.aim_requested = true
