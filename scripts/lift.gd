@@ -179,8 +179,9 @@ func _set_state(next_state: State) -> void:
 func _spawn_crate() -> void:
 	crate = CRATE_SCENE.instantiate() as SupplyCrate
 	add_child(crate)
-	# После открытия груз подан на настил; игрок принимает его взглядом и E.
-	crate.position = Vector3(-4.65, ObservationTower.DECK_HEIGHT + 0.52, 3.5)
+	# Груз подан сбоку от проёма, чтобы он визуально не перегораживал вход.
+	# Игрок по-прежнему принимает его взглядом и E на настиле.
+	crate.position = Vector3(-4.65, ObservationTower.DECK_HEIGHT + 0.52, 1.6)
 
 
 func try_collect_from_camera() -> bool:

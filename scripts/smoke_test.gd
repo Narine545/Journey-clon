@@ -1506,6 +1506,7 @@ func _test_m5(failures: Array[String]) -> void:
 	_check(not is_instance_valid(lift.crate), "ящик не появляется до последнего кадра открытия", failures)
 	lift.advance(open_seconds * 0.02)
 	_check(is_instance_valid(lift.crate) and lift.crate.scene_file_path == "res://scenes/Crate.tscn" and lift.status_text() == "ГРУЗ НА ПЛОЩАДКЕ" and readiness == ["ГРУЗ НА ПЛОЩАДКЕ"], "после полного открытия появляется ящик и обновляется статус", failures)
+	_check(lift.crate.position.z + 0.5 < ObservationTower.LIFT_OPENING_MIN_Z, "ящик находится сбоку и визуально не перекрывает вход в кабину", failures)
 	# Когда дверь полностью открылась, через реальный проём можно войти в кабину.
 	await get_tree().physics_frame
 	await get_tree().physics_frame

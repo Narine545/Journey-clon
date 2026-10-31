@@ -319,6 +319,24 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	main.grapple.detach()
+	# Проверка крепления рамы: вид с настила на одну из четырёх опор.
+	main.player.position = Vector3(1.5, ObservationTower.DECK_HEIGHT, 1.5)
+	main.player.velocity = Vector3.ZERO
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.refresh_pose()
+	var frame_target := main.tower.to_global(Vector3(5.95, ObservationTower.DECK_HEIGHT + 1.7, 5.95))
+	var frame_dir := (frame_target - main.cam_rig.cam.global_position).normalized()
+	main.cam_rig.set_view(atan2(frame_dir.x, frame_dir.z), asin(frame_dir.y))
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var frame_path := OS.get_environment("JOURNEY_FRAME_PATH")
+	if frame_path.is_empty():
+		frame_path = "user://frame.png"
+	if get_viewport().get_texture().get_image().save_png(frame_path) != OK:
+		printerr("[SHOT] не удалось сохранить крепление рамы")
+		get_tree().quit(1)
+		return
 	main.debug_menu._return_player()
 	main.player_health.take_damage(100)
 	for i in range(8):
