@@ -981,7 +981,7 @@ func _test_grapple(failures: Array[String]) -> void:
 	await get_tree().physics_frame
 	var blocked := main.player.move_and_collide(Vector3(-4, 0, 0))
 	_check(blocked != null and blocked.get_collider() == structure and main.player.position.x > 5.3, "капсула игрока не пролетает сквозь опору на быстром перемещении", failures)
-	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, 0.0)
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
 	main.player.velocity = Vector3.ZERO
 	main.rifle.aim_requested = false
 	main.rifle.scope_amount = 0.0
@@ -1025,7 +1025,7 @@ func _test_grapple(failures: Array[String]) -> void:
 		for frame in range(60):
 			await get_tree().physics_frame
 		Input.action_release("move_left")
-		_check(absf(main.player.position.z) > 0.1, "движение в воздухе раскачивает игрока в сторону", failures)
+		_check(absf(main.player.position.z + 1.4) > 0.1, "движение в воздухе раскачивает игрока в сторону", failures)
 		hook._input(press_v)
 		_check(not hook.manual_control, "V возвращает быструю автоматическую тягу", failures)
 		# Перемещение без телепорта: пролететь край и достичь рельефа.
@@ -1045,7 +1045,7 @@ func _test_grapple(failures: Array[String]) -> void:
 		_check(absf(main.player.global_position.y - ground_y) < 0.1, "игрок не проваливается под песок", failures)
 		main.cam_rig.refresh_pose()
 		_check(main.cam_rig.cam.global_position.distance_to(main.player.global_position + Vector3.UP * CameraRig.EYE) < 0.2, "камера следует за игроком за пределами башни", failures)
-		var tower_target := main.tower.global_position + Vector3(6.6, ObservationTower.DECK_HEIGHT + 3.5, 0.0)
+		var tower_target := main.tower.global_position + Vector3(6.6, ObservationTower.DECK_HEIGHT + 3.5, -1.4)
 		main.cam_rig.aim_offset = Vector2.ZERO
 		main.cam_rig.refresh_pose()
 		var aim := (tower_target - main.cam_rig.cam.global_position).normalized()
