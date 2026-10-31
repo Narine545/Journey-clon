@@ -40,7 +40,7 @@ jobs:
           git push origin HEAD:refs/heads/arena/4b8d381d-journey-clon
 
   test-godot:
-    if: contains(github.event.head_commit.message, '[nzp-export]')
+    if: contains(github.event.head_commit.message, '[nzp-test]')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

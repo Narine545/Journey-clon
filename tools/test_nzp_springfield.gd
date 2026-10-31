@@ -31,7 +31,7 @@ func run_test() -> void:
 		return
 	var names: PackedStringArray = player.get_animation_list()
 	print("[SPRINGFIELD] imported animations: ", names, "; bones: ", skeleton.get_bone_count())
-	for animation_name: String in ["Kar98k", "Kar98k.001", "Oldk98k"]:
+	for animation_name: String in ["Kar98k", "Kar98k_001", "Oldk98k"]:
 		if not player.has_animation(animation_name):
 			fail("Missing animation: " + animation_name)
 			return
