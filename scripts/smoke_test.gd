@@ -722,16 +722,16 @@ func _test_m5(failures: Array[String]) -> void:
 	shop_click.position = main.shop.panel.plus_button(3).get_center()
 	main.shop.panel._gui_input(shop_click)
 	main.shop.panel._gui_input(shop_click)
-	_check(main.shop.cart == {"ammo": 2, "ap": 1, "stability": 1} and Economy.points == before_order and lift.state == SupplyLift.State.IDLE, "выбор нескольких позиций и двойной пачки без списания; улучшение только одно", failures)
+	_check(main.shop.cart == {"ammo": 2, "ap": 1, "stability": 1} and Economy.points == before_order and lift.state == SupplyLift.State.IDLE, "выбор нескольких позиций: cart=%s баланс=%d/%d state=%d panel=%s row=%s plus=%s" % [str(main.shop.cart), Economy.points, before_order, lift.state, str(main.shop.panel.size), str(main.shop.panel.row(0)), str(main.shop.panel.plus_button(0))], failures)
 	shop_click.position = main.shop.panel.minus_button(0).get_center()
 	main.shop.panel._gui_input(shop_click)
-	_check(int(main.shop.cart.get("ammo", 0)) == 1, "кнопка минус уменьшает количество", failures)
+	_check(int(main.shop.cart.get("ammo", 0)) == 1, "кнопка минус уменьшает количество: %s" % str(main.shop.cart), failures)
 	main.shop.selected = 0
 	var cart_right := InputEventKey.new()
 	cart_right.physical_keycode = KEY_RIGHT
 	cart_right.pressed = true
 	main.shop._input(cart_right)
-	_check(int(main.shop.cart.get("ammo", 0)) == 2 and lift.order_total(main.shop.cart) == 1100, "стрелка увеличивает количество, сумма всей корзины верна", failures)
+	_check(int(main.shop.cart.get("ammo", 0)) == 2 and lift.order_total(main.shop.cart) == 1100, "стрелка увеличивает количество: %s total=%d" % [str(main.shop.cart), lift.order_total(main.shop.cart)], failures)
 	shop_click.position = main.shop.panel.order_button().get_center()
 	main.shop.panel._gui_input(shop_click)
 	_check(lift.state == SupplyLift.State.CALLED and lift.pending_items == {"ammo": 2, "ap": 1, "stability": 1} and main.shop.cart.is_empty(), "кнопка оформляет один заказ и сохраняет снимок содержимого", failures)
