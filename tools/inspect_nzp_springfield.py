@@ -39,7 +39,7 @@ report = {
                  'shape_key_animation': animation_info(o.data.shape_keys) if o.type == 'MESH' and o.data.shape_keys else None}
                 for o in bpy.data.objects],
     'actions': [{'name': a.name, 'frame_start': a.frame_range[0], 'frame_end': a.frame_range[1],
-                 'slots': [s.name for s in a.slots] if hasattr(a, 'slots') else []} for a in bpy.data.actions],
+                 'slots': [s.identifier for s in a.slots] if hasattr(a, 'slots') else []} for a in bpy.data.actions],
     'images': [{'name': i.name, 'filepath': i.filepath, 'exists': Path(bpy.path.abspath(i.filepath)).is_file(),
                 'packed': bool(i.packed_file), 'size': list(i.size)} for i in bpy.data.images],
     'text_blocks': [t.name for t in bpy.data.texts],
