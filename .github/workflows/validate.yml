@@ -75,19 +75,6 @@ jobs:
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
-      - name: Temporary review attack
-        run: |
-          sudo apt-get install -y -qq imagemagick
-          convert attack.png -resize 640x360 -quality 25 /tmp/attack.jpg
-          base64 -w 0 /tmp/attack.jpg > /tmp/attack.b64
-          split -b 3000 -d /tmp/attack.b64 /tmp/attack-part-
-          for n in $(seq -f '%02g' 0 9); do if [ -f "/tmp/attack-part-$n" ]; then echo "::notice::ATTACK$n:$(cat /tmp/attack-part-$n)"; fi; done
-      - name: Temporary review defeat
-        run: |
-          convert defeat.png -resize 640x360 -quality 25 /tmp/defeat.jpg
-          base64 -w 0 /tmp/defeat.jpg > /tmp/defeat.b64
-          split -b 3000 -d /tmp/defeat.b64 /tmp/defeat-part-
-          for n in $(seq -f '%02g' 0 9); do if [ -f "/tmp/defeat-part-$n" ]; then echo "::notice::DEFEAT$n:$(cat /tmp/defeat-part-$n)"; fi; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
