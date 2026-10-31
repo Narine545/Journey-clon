@@ -25,6 +25,7 @@ var _beacon: AudioStreamPlayer3D
 var _recordings: Array[AudioStream] = []
 var _packets: Array[AudioStream] = []
 var _overlay: RadioOverlay
+var antenna_upgrade: MeshInstance3D
 
 
 func setup(main_ref: MainScene) -> void:
@@ -32,6 +33,21 @@ func setup(main_ref: MainScene) -> void:
 	rng.randomize()
 	live_on_air = rng.randf() < 0.5
 	position = Vector3(-4.75, ObservationTower.DECK_HEIGHT + 1.18, -3.9)
+	# Физически заметный штырь добавляется только после приёма груза.
+	antenna_upgrade = MeshInstance3D.new()
+	antenna_upgrade.name = "AntennaUpgrade"
+	var mast := CylinderMesh.new()
+	mast.top_radius = 0.025
+	mast.bottom_radius = 0.045
+	mast.height = 2.2
+	antenna_upgrade.mesh = mast
+	antenna_upgrade.position = Vector3(0.35, 1.1, 0.0)
+	var antenna_material := StandardMaterial3D.new()
+	antenna_material.albedo_color = Color(0.66, 0.56, 0.36)
+	antenna_material.metallic = 0.65
+	antenna_upgrade.material_override = antenna_material
+	antenna_upgrade.visible = false
+	add_child(antenna_upgrade)
 	_noise = _make_player(main.audio._gen_radio_noise())
 	_record = _make_player(null)
 	_live = _make_player(null)
@@ -170,6 +186,7 @@ func update_signal() -> void:
 func apply_delivery(_item_id: String, effect: Dictionary) -> void:
 	if effect.has("live_signal_multiplier"):
 		live_signal_multiplier = float(effect["live_signal_multiplier"])
+		antenna_upgrade.visible = true
 		_live.max_distance = 18.0 * live_signal_multiplier
 		update_signal()
 

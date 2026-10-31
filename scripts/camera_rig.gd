@@ -18,6 +18,8 @@ var flash_on := false
 var yaw := PI # fwd = (sin(yaw), 0, cos(yaw))
 var pitch := 0.0
 var aim_offset := Vector2.ZERO
+var bob := 0.0
+var lean := 0.0
 var mouse_sensitivity_multiplier := 1.0
 
 var _interactive := true
@@ -94,8 +96,14 @@ func refresh_pose() -> void:
 	if player == null or cam == null:
 		return
 	var p := player.global_position
-	cam.global_position = p + Vector3(0.0, EYE, 0.0)
+	var lateral := Vector3(-cos(yaw), 0.0, sin(yaw)) * lean * 0.16
+	# Смещение головы при наклоне не должно пересекать перила.
+	var tower_pos := (player.get_parent() as Node3D).global_position
+	var desired := p + lateral
+	desired.x = clampf(desired.x, tower_pos.x - ObservationTower.WALK_LIMIT, tower_pos.x + ObservationTower.WALK_LIMIT)
+	desired.z = clampf(desired.z, tower_pos.z - ObservationTower.WALK_LIMIT, tower_pos.z + ObservationTower.WALK_LIMIT)
+	cam.global_position = desired + Vector3(0.0, EYE + bob, 0.0)
 
 	# взгляд: forward = (sin(yaw), 0, cos(yaw)) при pitch = 0
 	var b := Basis(Vector3.UP, yaw + aim_offset.x + PI) * Basis(Vector3.RIGHT, clampf(pitch + aim_offset.y, PITCH_MIN, PITCH_MAX))
-	cam.basis = b
+	cam.basis = b * Basis(Vector3.FORWARD, lean * 0.10)

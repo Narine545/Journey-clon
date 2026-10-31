@@ -42,8 +42,21 @@ func setup(robot_kind: Kind, coast_ref: Coast, at: Vector3, seed_value: int) -> 
 		Kind.WALKER:
 			body_size = Vector3(4.5, 5.6, 3.0)
 			speed = 0.72
+	global_position.y = support_height(global_position.x, global_position.z)
+	origin = global_position
 	_build()
 	_choose_destination()
+
+
+## Широкая опора: по центру и четырём углам с запасом на поворот силуэта.
+## Это не навигация по препятствиям, но не позволяет ногам проваливаться в дюну.
+func support_height(x: float, z: float) -> float:
+	var radius := maxf(body_size.x, body_size.z) * 0.5
+	var height := coast.ground_height(x, z)
+	for dx in [-radius, radius]:
+		for dz in [-radius, radius]:
+			height = maxf(height, coast.ground_height(x + dx, z + dz))
+	return height + 0.03
 
 
 func _build() -> void:
@@ -132,7 +145,7 @@ func _physics_process(delta: float) -> void:
 	# Плавный разгон, без навигационной сетки и атак; высота всегда по рельефу.
 	velocity = velocity.move_toward(to_goal.normalized() * speed, delta * 0.16)
 	var next := here + velocity * delta
-	global_position = Vector3(next.x, coast.ground_height(next.x, next.y), next.y)
+	global_position = Vector3(next.x, support_height(next.x, next.y), next.y)
 	if velocity.length() > 0.05:
 		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(velocity.x, velocity.y), minf(1.0, delta * 0.5))
 

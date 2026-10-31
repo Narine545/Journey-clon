@@ -4,6 +4,7 @@ extends CanvasLayer
 var main: MainScene
 var is_open := false
 var selected := 0
+var feedback := ""
 var previous_mouse_mode: Input.MouseMode = Input.MOUSE_MODE_CAPTURED
 var panel: ShopPanel
 
@@ -37,6 +38,8 @@ func set_open(value: bool) -> void:
 	if value == is_open:
 		return
 	is_open = value
+	if value:
+		feedback = ""
 	panel.visible = value
 	if value:
 		previous_mouse_mode = Input.mouse_mode
@@ -67,7 +70,19 @@ func _input(event: InputEvent) -> void:
 
 
 func attempt_selected() -> bool:
-	return main.lift.request_order(String(SupplyCatalog.ORDER[selected]))
+	var id := String(SupplyCatalog.ORDER[selected])
+	var data := SupplyCatalog.item(id)
+	var success := main.lift.request_order(id)
+	if success:
+		feedback = "ЗАКАЗАНО: %s · ДОЖДИТЕСЬ ЛИФТА" % data["name"]
+	elif main.lift.is_installed(id):
+		feedback = "УЖЕ УСТАНОВЛЕНО"
+	elif main.lift.state != SupplyLift.State.IDLE:
+		feedback = "ЛИФТ ЗАНЯТ · СНАЧАЛА ПОЛУЧИТЕ ГРУЗ"
+	else:
+		feedback = "НЕДОСТАТОЧНО ОЧКОВ"
+	panel.queue_redraw()
+	return success
 
 
 class ShopPanel extends Control:
@@ -119,4 +134,5 @@ class ShopPanel extends Control:
 				label += "  •  УСТАНОВЛЕНО"
 			draw_string(font, rect.position + Vector2(12, 22), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, col)
 			draw_string(font, rect.position + Vector2(12, 45), String(item["description_one_liner"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, col)
+		draw_string(font, frame.end - Vector2(frame.size.x - 24, 62), shop.feedback, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.88, 0.78, 0.49))
 		draw_string(font, frame.end - Vector2(frame.size.x - 24, 35), "ЛКМ / ↑↓ + ENTER — заказ     B / ESC — к радио", HORIZONTAL_ALIGNMENT_LEFT, -1, 15, muted)

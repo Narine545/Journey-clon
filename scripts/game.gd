@@ -26,6 +26,9 @@ func _ready() -> void:
 	_add_key_action("move_back", [KEY_S, KEY_DOWN])
 	_add_key_action("move_left", [KEY_A, KEY_LEFT])
 	_add_key_action("move_right", [KEY_D, KEY_RIGHT])
+	_add_key_action("sprint", [KEY_SHIFT])
+	_add_key_action("lean_left", [KEY_Q])
+	_add_key_action("lean_right", [KEY_C])
 
 
 func _add_key_action(action: String, keys: Array) -> void:

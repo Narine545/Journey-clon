@@ -151,10 +151,39 @@ func _run() -> void:
 		await get_tree().physics_frame
 	Input.action_release("move_left")
 	_check(main.player.position.x > before_left.x + 0.1, "A перемещает влево", failures)
-	await get_tree().physics_frame
+	# После остановки инерция и качание затухают.
+	main.player.velocity = Vector3.ZERO
+	main.player._physics_process(1.0)
+	main.cam_rig.refresh_pose()
 	_check(main.cam_rig.cam.global_position.is_equal_approx(main.player.global_position + Vector3.UP * CameraRig.EYE),
 			"камера следует за игроком", failures)
 
+	# Ускорение, бег и два направления наклона используют реальные InputMap actions.
+	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
+	main.player.velocity = Vector3.ZERO
+	Input.action_press("move_forward")
+	main.player._physics_process(0.4)
+	var walk_distance := Vector2(main.player.position.x, main.player.position.z).length()
+	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
+	main.player.velocity = Vector3.ZERO
+	Input.action_press("sprint")
+	main.player._physics_process(0.4)
+	var sprint_distance := Vector2(main.player.position.x, main.player.position.z).length()
+	_check(main.player.sprinting and sprint_distance > walk_distance * 1.5, "Shift ускоряет бег на площадке", failures)
+	Input.action_release("sprint")
+	Input.action_release("move_forward")
+	main.player.velocity = Vector3.ZERO
+	Input.action_press("lean_left")
+	main.player._physics_process(0.2)
+	_check(main.cam_rig.lean < -0.9, "Q наклоняет влево", failures)
+	Input.action_release("lean_left")
+	Input.action_press("lean_right")
+	main.player._physics_process(0.2)
+	_check(main.cam_rig.lean > 0.9, "C наклоняет вправо", failures)
+	Input.action_release("lean_right")
+	main.player._physics_process(1.0)
+	main.cam_rig.refresh_pose()
+	_check(absf(main.cam_rig.lean) < 0.01 and absf(main.cam_rig.bob) < 0.001, "наклон и покачивание затухают при остановке", failures)
 	# На каждой стороне и по диагонали даже большой шаг не может пересечь перила.
 	for direction in [Vector3.RIGHT, Vector3.LEFT, Vector3.FORWARD, Vector3.BACK, Vector3(1, 8, 1), Vector3(-1, -8, -1)]:
 		main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
@@ -409,7 +438,15 @@ func _run() -> void:
 	_check(robots[0].body_size != robots[1].body_size and robots[1].body_size != robots[2].body_size, "три разных типа роботов", failures)
 	var robot_start := robots[0].global_position
 	robots[0]._physics_process(1.0)
-	_check(robots[0].global_position.distance_to(robot_start) > 0.05 and absf(robots[0].global_position.y - main.coast.ground_height(robots[0].global_position.x, robots[0].global_position.z)) < 0.01, "робот медленно движется по рельефу", failures)
+	_check(robots[0].global_position.distance_to(robot_start) > 0.05 and absf(robots[0].global_position.y - robots[0].support_height(robots[0].global_position.x, robots[0].global_position.z)) < 0.01, "робот медленно движется по рельефу", failures)
+	var terrain_progress_start := robots[0].global_position
+	robots[0].destination = Vector2(terrain_progress_start.x + 80.0, terrain_progress_start.z + 25.0)
+	var robot_feet_clear := true
+	for terrain_step in range(40):
+		robots[0]._physics_process(0.25)
+		if robots[0].global_position.y + 0.001 < robots[0].support_height(robots[0].global_position.x, robots[0].global_position.z):
+			robot_feet_clear = false
+	_check(robot_feet_clear and robots[0].global_position.distance_to(terrain_progress_start) > 5.0, "робот проходит неровный песок без проваливания опоры", failures)
 	_check(not radio.live_on_air and robots[1].alive, "робот существует без живого сигнала", failures)
 	radio.live_on_air = true
 	_check(radio.live_on_air and main.ambient_spawner.get_child_count() > 0, "состояние эфира независимо от объектов", failures)
@@ -473,6 +510,7 @@ func _run() -> void:
 	await get_tree().process_frame
 	await _test_piercing(failures)
 	await _test_m5(failures)
+	_test_reload(failures)
 
 	if failures.is_empty():
 		print("[SMOKE] итог: ВСЁ ПРОШЛО")
@@ -480,6 +518,43 @@ func _run() -> void:
 	else:
 		printerr("[SMOKE] итог: ошибки: ", failures)
 		get_tree().quit(1)
+
+
+func _test_reload(failures: Array[String]) -> void:
+	var rifle := main.rifle
+	main.shop.set_open(false)
+	main.radio_tuner.set_tuning(false)
+	rifle.ammo_type = "regular"
+	rifle.ammo = 5
+	rifle.regular_reserve = 7
+	rifle.cycle_remaining = 0.0
+	rifle.reload_remaining = 0.0
+	for shot_number in range(5):
+		_check(rifle.fire(), "выстрел %d из пятизарядного магазина" % (shot_number + 1), failures)
+		if shot_number < 4:
+			rifle._physics_process(SniperRifle.CYCLE_TIME)
+	_check(rifle.ammo == 0 and rifle.reload_remaining > 0.0 and not rifle.can_fire() and rifle.regular_reserve == 7, "пустой магазин автоматически начинает перезарядку", failures)
+	rifle._physics_process(SniperRifle.RELOAD_TIME)
+	_check(rifle.ammo == 5 and rifle.regular_reserve == 2 and rifle.can_fire(), "автоперезарядка переносит пять патронов из запаса", failures)
+	rifle.ammo = 3
+	rifle.regular_reserve = 7
+	var reload_key := InputEventKey.new()
+	reload_key.physical_keycode = KEY_R
+	reload_key.pressed = true
+	rifle._input(reload_key)
+	_check(rifle.reload_remaining > 0.0 and rifle.ammo == 3 and not rifle.fire(), "R запускает неполную перезарядку и блокирует выстрел", failures)
+	rifle._physics_process(SniperRifle.RELOAD_TIME)
+	_check(rifle.ammo == 5 and rifle.regular_reserve == 5 and not rifle.start_reload(), "R дозаряжает до пяти без потери патронов; полный магазин не перезаряжается", failures)
+	rifle.ammo = 2
+	rifle.regular_reserve = 1
+	_check(rifle.start_reload(), "перезарядка с малым запасом разрешена", failures)
+	rifle._physics_process(SniperRifle.RELOAD_TIME)
+	_check(rifle.ammo == 3 and rifle.regular_reserve == 0 and not rifle.start_reload(), "частичный запас не создаёт лишние патроны", failures)
+	rifle.regular_reserve = 3
+	rifle.ap_reserve = 2
+	_check(rifle.start_reload(), "перезарядка перед сменой типа", failures)
+	rifle.switch_ammo()
+	_check(rifle.ammo_type == "ap" and rifle.ammo == 2 and rifle.regular_reserve == 6 and rifle.reload_remaining == 0.0, "смена типа отменяет перезарядку без потери патронов", failures)
 
 
 func _test_piercing(failures: Array[String]) -> void:
@@ -646,6 +721,13 @@ func _test_m5(failures: Array[String]) -> void:
 	for id in ["antenna", "stability", "scope", "ap"]:
 		_check(lift.request_order(id), "заказ %s" % id, failures)
 		await _deliver_test_item(failures)
+		_check(not main.rifle.hud._notice.is_empty(), "%s отображает подтверждение получения" % id, failures)
+		if id == "antenna":
+			_check(main.radio_tuner.antenna_upgrade.visible, "у радио появляется видимая антенна", failures)
+		elif id == "stability":
+			_check((main.rifle._view_model.get_node("Stabilizer") as Node3D).visible, "стабилизация видна на винтовке", failures)
+		elif id == "scope":
+			_check((main.rifle._view_model.get_node("ScopeUpgrade") as Node3D).visible, "улучшенная оптика видна на винтовке", failures)
 		if SupplyCatalog.item(id)["type"] == "Upgrade":
 			var points_before_repeat := Economy.points
 			_check(lift.is_installed(id) and not lift.request_order(id) and Economy.points == points_before_repeat, "%s установлен один раз" % id, failures)

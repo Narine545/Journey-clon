@@ -3,6 +3,8 @@ extends CanvasLayer
 ## Полноэкранная маска и тихий HUD. Текст/сетка не перехватывают ввод.
 var _mask_material: ShaderMaterial
 var _drawing: ScopeDrawing
+var _notice := ""
+var _notice_time := 0.0
 
 
 func _ready() -> void:
@@ -20,7 +22,19 @@ func _ready() -> void:
 	add_child(_drawing)
 
 
-func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind_cross: float, hit_flash: float, deflect_flash: float, ammo_type: String, regular_reserve: int, ap_reserve: int, points: int, lift_status: String) -> void:
+func notify_delivery(item_id: String) -> void:
+	var messages := {
+		"ammo": "ДОСТАВЛЕНО: +5 ОБЫЧНЫХ ПАТРОНОВ",
+		"ap": "ДОСТАВЛЕНО: +3 БРОНЕБОЙНЫХ ПАТРОНА",
+		"antenna": "АНТЕННА УСТАНОВЛЕНА · ПРИЁМ УСИЛЕН",
+		"stability": "СТАБИЛИЗАЦИЯ УСТАНОВЛЕНА · РАСКАЧКА -50%",
+		"scope": "ОПТИКА УСТАНОВЛЕНА · УВЕЛИЧЕНИЕ +50%",
+	}
+	_notice = String(messages.get(item_id, ""))
+	_notice_time = 6.0
+
+
+func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind_cross: float, hit_flash: float, deflect_flash: float, ammo_type: String, regular_reserve: int, ap_reserve: int, points: int, lift_status: String, reloading: bool, delta: float) -> void:
 	_mask_material.set_shader_parameter("scope_amount", amount)
 	_drawing.amount = amount
 	_drawing.ammo = ammo
@@ -34,6 +48,9 @@ func update_state(amount: float, ammo: int, is_ready: bool, range_m: float, wind
 	_drawing.ap_reserve = ap_reserve
 	_drawing.points = points
 	_drawing.lift_status = lift_status
+	_drawing.reloading = reloading
+	_notice_time = maxf(0.0, _notice_time - delta)
+	_drawing.notice = _notice if _notice_time > 0.0 else ""
 	_drawing.queue_redraw()
 
 
@@ -50,6 +67,8 @@ class ScopeDrawing extends Control:
 	var ap_reserve := 0
 	var points := 0
 	var lift_status := ""
+	var reloading := false
+	var notice := ""
 
 	func _draw() -> void:
 		var font := ThemeDB.fallback_font
@@ -77,9 +96,13 @@ class ScopeDrawing extends Control:
 			draw_string(font, center + Vector2(-radius * 0.58, radius * 0.54), distance_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			draw_string(font, center + Vector2(-radius * 0.58, radius * 0.61), wind_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			var reserve := ap_reserve if ammo_type == "ap" else regular_reserve
-			var rounds := "%s %d / %d" % ["AP" if ammo_type == "ap" else "ОБ", ammo, reserve]
+			var rounds := "%s %d/5  |  %d" % ["AP" if ammo_type == "ap" else "ОБ", ammo, reserve]
 			draw_string(font, center + Vector2(radius * 0.12, radius * 0.61), rounds, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
 			draw_string(font, center + Vector2(radius * 0.12, radius * 0.54), "%d ОЧК." % points, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_col)
+		if not notice.is_empty():
+			draw_string(font, Vector2(center.x - 380.0, size.y * 0.13), notice, HORIZONTAL_ALIGNMENT_CENTER, 760.0, 20, Color(0.94, 0.85, 0.63, 0.96))
+		if reloading:
+			draw_string(font, Vector2(center.x - 110.0, center.y + 72.0), "ПЕРЕЗАРЯДКА", HORIZONTAL_ALIGNMENT_CENTER, 220.0, 16, Color(0.92, 0.84, 0.68, 0.85))
 		if lift_status == "ГРУЗ НА ПЛОЩАДКЕ" and amount < 0.5:
 			# Ненавязчивая точка показывает центр луча только пока груз ожидает.
 			draw_circle(center, 2.0, Color(0.91, 0.85, 0.70, 0.8 * (1.0 - amount)))
@@ -91,9 +114,13 @@ class ScopeDrawing extends Control:
 		# M5 показывает баланс, магазин и резерв, без таймеров давления.
 		var hud_alpha := 0.68 * (1.0 - amount)
 		if hud_alpha > 0.02:
-			var status := "ГОТОВА" if ready_to_fire and ammo > 0 else ("НЕТ ПАТРОНОВ" if ammo <= 0 else "ЗАТВОР")
+			var status := "ПЕРЕЗАРЯДКА" if reloading else ("ГОТОВА" if ready_to_fire and ammo > 0 else ("НЕТ ПАТРОНОВ" if ammo <= 0 else "ЗАТВОР"))
 			var reserve := ap_reserve if ammo_type == "ap" else regular_reserve
-			var text := "%d ОЧК.   %s %d / %d   %s" % [points, "AP" if ammo_type == "ap" else "ОБ", ammo, reserve, status]
+			var text := "%d ОЧК.   %s %d/5  |  %d   %s" % [points, "AP" if ammo_type == "ap" else "ОБ", ammo, reserve, status]
 			draw_string(font, Vector2(size.x - 510.0, size.y - 32.0), text, HORIZONTAL_ALIGNMENT_RIGHT, 480, 18, Color(0.92, 0.84, 0.68, hud_alpha))
+			# Пять отдельных делений показывают именно магазин, а не запас.
+			for round_index in range(5):
+				var bullet_color := Color(0.91, 0.79, 0.53, hud_alpha) if round_index < ammo else Color(0.38, 0.37, 0.32, hud_alpha)
+				draw_rect(Rect2(Vector2(size.x - 154.0 + round_index * 17.0, size.y - 57.0), Vector2(11.0, 7.0)), bullet_color)
 			var lift_hint := lift_status + ("  •  ВЗГЛЯД + E" if lift_status == "ГРУЗ НА ПЛОЩАДКЕ" else "")
 			draw_string(font, Vector2(30.0, size.y - 32.0), lift_hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.82, 0.80, 0.68, hud_alpha))

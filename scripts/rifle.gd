@@ -1,6 +1,6 @@
 class_name SniperRifle
 extends Node3D
-## Болтовая винтовка M3. Перезарядка — цикл затвора после каждого выстрела;
+## Пятизарядная винтовка: короткий цикл между выстрелами и отдельная перезарядка;
 ## снаряд существует в мире, а очки выдаются только за видимое камерой попадание.
 signal impact_confirmed(target: TargetDummy)
 signal robot_impact_confirmed(robot: AmbientRobot)
@@ -8,6 +8,7 @@ signal reward_confirmed(amount: int)
 
 const MUZZLE_SPEED: float = SupplyCatalog.SETTINGS["muzzle_speed"]
 const CYCLE_TIME: float = SupplyCatalog.SETTINGS["bolt_seconds"]
+const RELOAD_TIME: float = SupplyCatalog.SETTINGS["reload_seconds"]
 const HIT_POINTS: int = SupplyCatalog.SETTINGS["target_reward"]
 const SCOPE_FOV := 18.0
 const RANGE_LIMIT := 1500.0
@@ -28,6 +29,7 @@ var zoom_multiplier := 1.0
 var sway_multiplier := 1.0
 var _deflect_flash := 0.0
 var cycle_remaining := 0.0
+var reload_remaining := 0.0
 var aim_requested := false
 var scope_amount := 0.0
 var range_m := -1.0
@@ -58,6 +60,10 @@ func _input(event: InputEvent) -> void:
 			if main.lift != null and main.lift.try_collect_from_camera():
 				get_viewport().set_input_as_handled()
 				return
+		elif event.physical_keycode == KEY_R:
+			start_reload()
+			get_viewport().set_input_as_handled()
+			return
 		elif event.physical_keycode == KEY_TAB:
 			switch_ammo()
 			get_viewport().set_input_as_handled()
@@ -77,10 +83,12 @@ func _physics_process(delta: float) -> void:
 	_clock += delta
 	if cycle_remaining > 0.0:
 		cycle_remaining = maxf(0.0, cycle_remaining - delta)
-		if not _cycle_bolt_played and cycle_remaining <= CYCLE_TIME - 0.65:
+		if not _cycle_bolt_played and cycle_remaining <= CYCLE_TIME * 0.5:
 			_cycle_bolt_played = true
 			audio.on_bolt()
-		if cycle_remaining <= 0.0 and ammo == 0:
+	if reload_remaining > 0.0:
+		reload_remaining = maxf(0.0, reload_remaining - delta)
+		if reload_remaining <= 0.0:
 			_reload_selected()
 	_recoil = move_toward(_recoil, 0.0, delta * 0.032)
 	_hit_flash = maxf(0.0, _hit_flash - delta * 2.5)
@@ -99,11 +107,11 @@ func _physics_process(delta: float) -> void:
 	if scope_amount > 0.5 and _range_clock <= 0.0:
 		_range_clock = 0.2
 		range_m = measure_range()
-	hud.update_state(scope_amount, ammo, can_fire(), range_m, crosswind, _hit_flash, _deflect_flash, ammo_type, regular_reserve, ap_reserve, Economy.points, main.lift.status_text() if main.lift != null else "")
+	hud.update_state(scope_amount, ammo, can_fire(), range_m, crosswind, _hit_flash, _deflect_flash, ammo_type, regular_reserve, ap_reserve, Economy.points, main.lift.status_text() if main.lift != null else "", reload_remaining > 0.0, delta)
 
 
 func can_fire() -> bool:
-	return ammo > 0 and cycle_remaining <= 0.0
+	return ammo > 0 and cycle_remaining <= 0.0 and reload_remaining <= 0.0
 
 
 func fire() -> bool:
@@ -121,10 +129,23 @@ func fire() -> bool:
 	_cycle_bolt_played = false
 	_recoil = 0.018
 	audio.on_rifle_shot()
+	if ammo == 0:
+		start_reload()
+	return true
+
+
+func start_reload() -> bool:
+	var available := regular_reserve if ammo_type == "regular" else ap_reserve
+	if reload_remaining > 0.0 or ammo >= int(SupplyCatalog.SETTINGS["magazine_capacity"]) or available <= 0:
+		return false
+	reload_remaining = RELOAD_TIME
+	audio.on_bolt()
 	return true
 
 
 func switch_ammo() -> void:
+	# Прерывание не расходует патроны; новый тип загружается из своего резерва.
+	reload_remaining = 0.0
 	# При смене типа не теряем патроны из магазина.
 	if ammo_type == "regular":
 		regular_reserve += ammo
@@ -148,15 +169,20 @@ func _reload_selected() -> void:
 
 
 ## Слот для сигнала доставки: источник не знает о винтовке напрямую.
-func apply_delivery(_item_id: String, effect: Dictionary) -> void:
+func apply_delivery(item_id: String, effect: Dictionary) -> void:
 	regular_reserve += int(effect.get("regular_ammo", 0))
 	ap_reserve += int(effect.get("ap_ammo", 0))
 	if effect.has("zoom_multiplier"):
 		zoom_multiplier = float(effect["zoom_multiplier"])
 	if effect.has("sway_multiplier"):
 		sway_multiplier = float(effect["sway_multiplier"])
-	if ammo == 0 and cycle_remaining <= 0.0:
-		_reload_selected()
+	if ammo == 0:
+		start_reload()
+	if item_id == "stability":
+		(_view_model.get_node("Stabilizer") as Node3D).visible = true
+	if item_id == "scope":
+		(_view_model.get_node("ScopeUpgrade") as Node3D).visible = true
+	hud.notify_delivery(item_id)
 
 
 func on_armor_deflect(hit_position: Vector3) -> void:
@@ -228,12 +254,13 @@ func _update_view_model() -> void:
 	# Модель и её смещение к камере масштабируются одинаково. При перспективной
 	# проекции видимый размер почти не меняется, но у самого края реальная
 	# геометрия помещается перед перилами при любом повороте камеры.
-	var local_player := main.player.position
+	var local_player := camera.global_position - main.tower.global_position
 	var safe_half := ObservationTower.HALF_DECK - RAIL_CLEARANCE
 	var clearance := minf(safe_half - absf(local_player.x), safe_half - absf(local_player.z))
 	var model_scale := clampf(clearance / VIEW_MODEL_RADIUS, 0.1, 1.0)
 	_view_model.scale = Vector3.ONE * model_scale
-	_view_model.position = Vector3(0.28, -0.25, -0.52 + _recoil * 2.0) * model_scale
+	var reload_drop := 0.10 * sin(PI * (1.0 - reload_remaining / RELOAD_TIME)) if reload_remaining > 0.0 else 0.0
+	_view_model.position = Vector3(0.28, -0.25 - reload_drop, -0.52 + _recoil * 2.0) * model_scale
 
 
 func _build_view_model() -> void:
@@ -249,10 +276,18 @@ func _build_view_model() -> void:
 	stock.roughness = 0.93
 	_box("Receiver", Vector3(0, 0, -0.20), Vector3(0.12, 0.13, 0.42), metal)
 	_box("Stock", Vector3(0, -0.055, 0.08), Vector3(0.11, 0.16, 0.35), stock)
+	_box("Magazine", Vector3(0, -0.10, -0.24), Vector3(0.09, 0.10, 0.13), metal)
 	_box("Barrel", Vector3(0, 0.015, -0.62), Vector3(0.045, 0.045, 0.65), metal)
 	_box("Scope", Vector3(0, 0.13, -0.23), Vector3(0.105, 0.095, 0.32), metal)
 	_box("ScopeMount", Vector3(0, 0.075, -0.23), Vector3(0.06, 0.08, 0.12), metal)
 	_box("Bolt", Vector3(0.09, 0.0, -0.10), Vector3(0.06, 0.035, 0.035), metal)
+	var accent := StandardMaterial3D.new()
+	accent.albedo_color = Color(0.54, 0.42, 0.21)
+	accent.metallic = 0.55
+	_box("Stabilizer", Vector3(-0.07, -0.025, -0.25), Vector3(0.025, 0.045, 0.18), accent)
+	_box("ScopeUpgrade", Vector3(0, 0.13, -0.38), Vector3(0.12, 0.11, 0.04), accent)
+	(_view_model.get_node("Stabilizer") as Node3D).visible = false
+	(_view_model.get_node("ScopeUpgrade") as Node3D).visible = false
 
 
 func _box(part_name: String, at: Vector3, dimensions: Vector3, material: Material) -> void:
