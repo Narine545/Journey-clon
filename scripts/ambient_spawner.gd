@@ -16,6 +16,7 @@ const SPAWN_RETRY_SECONDS := 2.0
 var main: MainScene
 var rng := RandomNumberGenerator.new()
 var preview_robots := false
+var preview_climbing := false
 # Каждый свободный слот имеет собственную задержку; -1 означает незапущенный.
 var call_delays: Array[float] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
 var threat := 0.0 # 0..1: растёт только при передаче, затем плавно спадает
@@ -27,16 +28,22 @@ func setup(main_ref: MainScene) -> void:
 	main = main_ref
 	rng.randomize()
 	preview_robots = bool(ProjectSettings.get_setting("journey/m4/robot_preview", false))
+	preview_climbing = bool(ProjectSettings.get_setting("journey/m6/climb_preview", false)) and not preview_robots
 	if preview_robots:
 		reset_preview()
 		set_process(false) # демонстрация вместо случайного фонового спавна
+	elif preview_climbing:
+		reset_climb_preview()
 
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Явный ручной сброс только в демонстрационном режиме, без таймера/волн.
-	if preview_robots and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F4:
-		reset_preview()
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F4:
+		if preview_robots:
+			reset_preview()
+		elif preview_climbing:
+			reset_climb_preview()
 
 
 func reset_preview() -> void:
@@ -51,6 +58,21 @@ func reset_preview() -> void:
 		# Живые демонстрационные экземпляры остаются до перезапуска/F4.
 		robot.preview = true
 		robot._choose_destination()
+
+
+## Только явная отладочная настройка: не меняет реальные задержки маяка.
+func reset_climb_preview() -> void:
+	for child in get_children():
+		if child.name == "ClimbPreviewRobot":
+			remove_child(child)
+			child.queue_free()
+	var center := main.tower.global_position
+	var at := Vector3(center.x + 20.0, 0.0, center.z - 1.4)
+	at.y = main.coast.ground_height(at.x, at.z)
+	var test_robot := spawn_at(AmbientRobot.Kind.SCOUT, at, 6311)
+	test_robot.name = "ClimbPreviewRobot"
+	test_robot.preview = true
+	test_robot.respond_to_signal(center, -1)
 
 
 static func chance_for(delta: float, wind_strength: float, night: float, signal_on_air: bool) -> float:

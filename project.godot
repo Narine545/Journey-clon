@@ -34,6 +34,7 @@ enabled=PackedStringArray()
 [journey]
 
 m4/robot_preview=false
+m6/climb_preview=false
 
 [rendering]
 

@@ -594,6 +594,7 @@ func _run() -> void:
 	await _test_piercing(failures)
 	await _test_m5(failures)
 	_test_terrain_paths(failures)
+	await _test_climbing(failures)
 	_test_reload(failures)
 
 	if failures.is_empty():
@@ -627,6 +628,109 @@ func _test_terrain_paths(failures: Array[String]) -> void:
 			var remaining := Vector2(path_robot.global_position.x - center.x, path_robot.global_position.z - center.z).length()
 			_check(feet_clear and not path_robot.approaching_signal and remaining < 21.0, "робот %d проходит песок к башне со стороны %s" % [robot_kind, heading], failures)
 			path_robot.free()
+
+
+func _test_climbing(failures: Array[String]) -> void:
+	var center := main.tower.global_position
+	# Отдельный тестовый режим не влияет на обычную игру и сбрасывается F4.
+	ProjectSettings.set_setting("journey/m6/climb_preview", true)
+	var climb_preview_spawner := AmbientSpawner.new()
+	main.add_child(climb_preview_spawner)
+	climb_preview_spawner.setup(main)
+	_check(climb_preview_spawner.preview_climbing and climb_preview_spawner.get_child_count() == 1, "демо подъёма запускает одну машину у башни", failures)
+	var reset_climb := InputEventKey.new()
+	reset_climb.physical_keycode = KEY_F4
+	reset_climb.pressed = true
+	climb_preview_spawner._unhandled_input(reset_climb)
+	_check(climb_preview_spawner.get_child_count() == 1 and (climb_preview_spawner.get_child(0) as AmbientRobot).approaching_signal, "F4 сбрасывает только демо подъёма", failures)
+	climb_preview_spawner.free()
+	ProjectSettings.set_setting("journey/m6/climb_preview", false)
+	# Проверяем четыре сектора и опоры, а не только ту, что видна в демо.
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			var corner_start := center + Vector3(sx * 15.0, 0.0, sz * 15.0)
+			corner_start.y = main.coast.ground_height(corner_start.x, corner_start.z)
+			var corner_robot := main.ambient_spawner.spawn_at(AmbientRobot.Kind.SCOUT, corner_start, 7000)
+			corner_robot.set_physics_process(false)
+			corner_robot.respond_to_signal(center, 0)
+			var target_offset := corner_robot.support_target - Vector2(center.x, center.z)
+			_check(signf(target_offset.x) == sx and signf(target_offset.y) == sz, "выбрана ближайшая опора сектора %s, %s" % [sx, sz], failures)
+			for path_step in range(200):
+				corner_robot._physics_process(0.5)
+				if corner_robot.climb_state == AmbientRobot.ClimbState.AT_TOP:
+					break
+			_check(corner_robot.climb_state == AmbientRobot.ClimbState.AT_TOP, "робот достиг вершины сектора %s, %s" % [sx, sz], failures)
+			corner_robot.free()
+	# Все три типа доходят до опоры, поднимаются, ждут и падают при попадании.
+	for robot_kind in range(3):
+		var start_at := center + Vector3(20.0, 0.0, -2.0)
+		start_at.y = main.coast.ground_height(start_at.x, start_at.z)
+		var climbing_robot := main.ambient_spawner.spawn_at(robot_kind as AmbientRobot.Kind, start_at, 8000 + robot_kind)
+		climbing_robot.set_physics_process(false)
+		climbing_robot.respond_to_signal(center, robot_kind)
+		var saw_climb := false
+		var last_y := -INF
+		var rose := false
+		for virtual_step in range(400):
+			climbing_robot._physics_process(0.5)
+			if climbing_robot.climb_state == AmbientRobot.ClimbState.CLIMBING:
+				saw_climb = true
+				if last_y > -INF and climbing_robot.global_position.y > last_y:
+					rose = true
+				last_y = climbing_robot.global_position.y
+			if climbing_robot.climb_state == AmbientRobot.ClimbState.AT_TOP:
+				break
+		_check(saw_climb and rose and climbing_robot.climb_state == AmbientRobot.ClimbState.AT_TOP and absf(climbing_robot.global_position.y - (center.y + ObservationTower.DECK_HEIGHT)) < 0.01, "робот %d поднимается и останавливается у площадки" % robot_kind, failures)
+		var top_before := climbing_robot.global_position
+		climbing_robot._physics_process(4.0)
+		_check(climbing_robot.global_position == top_before and climbing_robot.alive, "робот %d ждёт наверху без атаки" % robot_kind, failures)
+		_check(climbing_robot.apply_projectile_hit(robot_kind == AmbientRobot.Kind.CARRIER) and climbing_robot.falling, "робот %d выводится из строя наверху" % robot_kind, failures)
+		var top_y := climbing_robot.global_position.y
+		climbing_robot._physics_process(0.25)
+		_check(climbing_robot.global_position.y < top_y, "робот %d падает после поражения" % robot_kind, failures)
+		for fall_step in range(30):
+			climbing_robot._physics_process(0.25)
+		_check(not climbing_robot.falling and is_equal_approx(climbing_robot.global_position.y, climbing_robot.support_height(climbing_robot.global_position.x, climbing_robot.global_position.z)), "робот %d падает на грунт" % robot_kind, failures)
+		climbing_robot.free()
+	# Отдельно проверяем реальный выстрел по движущемуся хитбоксу при подъёме.
+	var shot_start := center + Vector3(20.0, 0.0, -1.4)
+	shot_start.y = main.coast.ground_height(shot_start.x, shot_start.z)
+	var shot_climber := main.ambient_spawner.spawn_at(AmbientRobot.Kind.SCOUT, shot_start, 9120)
+	shot_climber.set_physics_process(false)
+	shot_climber.respond_to_signal(center, 0)
+	for virtual_step in range(120):
+		shot_climber._physics_process(0.5)
+		if shot_climber.climb_state == AmbientRobot.ClimbState.CLIMBING and shot_climber.global_position.y >= center.y + 42.0:
+			break
+	_check(shot_climber.climb_state == AmbientRobot.ClimbState.CLIMBING, "мишень для теста находится на подъёме", failures)
+	main.radio_tuner.set_powered(true)
+	main.radio_tuner.set_transmitting(true)
+	main.radio_tuner.set_transmitting(false)
+	var climb_before_cancel := shot_climber.global_position.y
+	shot_climber._physics_process(0.5)
+	_check(shot_climber.signal_called and shot_climber.global_position.y > climb_before_cancel, "выключение маяка не останавливает подъём", failures)
+	main.radio_tuner.set_tuning(false)
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	await get_tree().physics_frame
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.refresh_pose()
+	var climb_hit_center := shot_climber.global_position + Vector3.UP * shot_climber.body_size.y * 0.5
+	var climb_eye := main.cam_rig.cam.global_position
+	var shot_dir := (climb_hit_center - climb_eye).normalized()
+	main.cam_rig.set_view(atan2(shot_dir.x, shot_dir.z), asin(shot_dir.y))
+	main.rifle.aim_requested = false
+	main.rifle.scope_amount = 0.0
+	main.rifle.ammo_type = "regular"
+	main.rifle.ammo = 2
+	main.rifle.cycle_remaining = 0.0
+	main.rifle.reload_remaining = 0.0
+	main.rifle._recoil = 0.0
+	var climb_reward_before := Economy.points
+	await get_tree().physics_frame
+	_check(main.rifle.fire(), "реальный выстрел по поднимающемуся роботу", failures)
+	await get_tree().create_timer(0.4).timeout
+	_check(not shot_climber.alive and shot_climber.falling and Economy.points == climb_reward_before + 100, "выстрел прерывает подъём и начисляет обычную награду", failures)
+	shot_climber.free()
 
 
 func _test_reload(failures: Array[String]) -> void:

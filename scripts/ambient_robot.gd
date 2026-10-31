@@ -1,8 +1,12 @@
 class_name AmbientRobot
 extends Node3D
-## Три мирных силуэта: обходят участок без преследования игрока.
-## Попадание гасит механизм; награда и маркер обрабатываются винтовкой.
+## Три силуэта: вызванные роботы подходят и поднимаются по опорам башни.
+## Атак пока нет; попадание гасит механизм, награду обрабатывает винтовка.
 enum Kind { SCOUT, CARRIER, WALKER }
+enum ClimbState { NONE, TO_SUPPORT, CLIMBING, AT_TOP }
+const SUPPORT_COORD := 4.8 # реальные четыре опоры пользовательской GLB-башни
+const BASE_CLIMB_SPEED := 2.2
+const FALL_GRAVITY := 20.0
 const ROAM_RADIUS := 65.0
 const PREVIEW_ROAM_RADIUS := 20.0
 var kind: Kind
@@ -20,6 +24,12 @@ var age := 0.0
 var lifetime := 480.0
 var speed := 0.8
 var signal_fast := false
+var climb_state := ClimbState.NONE
+var climb_speed := BASE_CLIMB_SPEED
+var signal_tower := Vector3.ZERO
+var support_target := Vector2.ZERO
+var falling := false
+var fall_speed := 0.0
 var body_size := Vector3.ONE
 var visual: Node3D
 var hitbox: CollisionShape3D
@@ -123,7 +133,9 @@ func configure_signal_speed(pressure: float, roll: float) -> void:
 	var level := clampf(pressure, 0.0, 1.0)
 	signal_fast = roll < lerpf(0.10, 0.60, level)
 	if signal_fast:
-		speed *= lerpf(1.15, 1.65, level)
+		var boost := lerpf(1.15, 1.65, level)
+		speed *= boost
+		climb_speed *= boost
 
 
 ## Зовущие роботы идут к подножию, а не к самому центру башни.
@@ -131,9 +143,18 @@ func respond_to_signal(tower_position: Vector3, slot: int) -> void:
 	call_slot = slot
 	signal_called = true
 	approaching_signal = true
+	signal_tower = tower_position
 	var tower_2d := Vector2(tower_position.x, tower_position.z)
 	var from_tower := Vector2(global_position.x, global_position.z) - tower_2d
+	if from_tower.is_zero_approx():
+		from_tower = Vector2.RIGHT
 	destination = tower_2d + from_tower.normalized() * 18.0
+	# Ближайший угловой столб; центр объёмного робота снаружи, чтобы
+	# его силуэт не проходил насквозь через опору. Настоящей IK-анимации нет.
+	var corner := Vector2(SUPPORT_COORD if from_tower.x >= 0.0 else -SUPPORT_COORD, SUPPORT_COORD if from_tower.y >= 0.0 else -SUPPORT_COORD)
+	var body_radius := Vector2(body_size.x, body_size.z).length() * 0.5
+	support_target = tower_2d + corner + corner.normalized() * (body_radius + 0.35)
+	climb_state = ClimbState.NONE
 
 
 func _physics_process(delta: float) -> void:
@@ -142,14 +163,42 @@ func _physics_process(delta: float) -> void:
 	age += delta
 	if not alive:
 		visual.rotation.z = move_toward(visual.rotation.z, PI * 0.5, delta * 0.45)
+		if falling:
+			# Выведенная из строя машина не зависает в воздухе.
+			fall_speed += FALL_GRAVITY * delta
+			var floor_y := support_height(global_position.x, global_position.z)
+			global_position.y = maxf(floor_y, global_position.y - fall_speed * delta)
+			if global_position.y <= floor_y:
+				falling = false
 		return
+	if climb_state == ClimbState.CLIMBING:
+		global_position.y = move_toward(global_position.y, signal_tower.y + ObservationTower.DECK_HEIGHT, climb_speed * delta)
+		if global_position.y >= signal_tower.y + ObservationTower.DECK_HEIGHT:
+			climb_state = ClimbState.AT_TOP
+		return
+	if climb_state == ClimbState.AT_TOP:
+		return # временно ждёт у края, не атакует и не входит на настил
 	var here := Vector2(global_position.x, global_position.z)
+	if climb_state == ClimbState.TO_SUPPORT:
+		# На последних метрах плавно подходим к точке, не перескакивая её
+		# при низком FPS или ускоренном тесте.
+		var next_support := here.move_toward(support_target, speed * delta)
+		var support_motion := next_support - here
+		if support_motion.length_squared() > 0.001:
+			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(support_motion.x, support_motion.y), minf(1.0, delta * 0.5))
+		global_position = Vector3(next_support.x, support_height(next_support.x, next_support.y), next_support.y)
+		if next_support.distance_squared_to(support_target) < 0.001:
+			velocity = Vector2.ZERO
+			climb_state = ClimbState.CLIMBING
+		return
 	var to_goal := destination - here
 	if to_goal.length() < 2.0:
 		if approaching_signal:
 			approaching_signal = false
 			age = 0.0
 			origin = global_position
+			climb_state = ClimbState.TO_SUPPORT
+			return
 		_choose_destination()
 		to_goal = destination - here
 	# Плавный разгон, без навигационной сетки и атак; высота всегда по рельефу.
@@ -165,6 +214,9 @@ func apply_projectile_hit(pierce: bool = false) -> bool:
 		return false
 	alive = false
 	approaching_signal = false
+	falling = climb_state == ClimbState.CLIMBING or climb_state == ClimbState.AT_TOP
+	fall_speed = 0.0
+	climb_state = ClimbState.NONE
 	velocity = Vector2.ZERO
 	age = 0.0
 	hitbox.set_deferred("disabled", true)

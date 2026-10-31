@@ -190,4 +190,39 @@ func _capture() -> void:
 		return
 	robot.queue_free()
 	await get_tree().process_frame
+	# Проверяем в рендере робота у опоры, а не только далёкий силуэт.
+	main.rifle.aim_requested = false
+	main.rifle.scope_amount = 0.0
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	var climb_center := main.tower.global_position
+	var climb_start := climb_center + Vector3(20.0, 0.0, -1.4)
+	climb_start.y = main.coast.ground_height(climb_start.x, climb_start.z)
+	var climber := main.ambient_spawner.spawn_at(AmbientRobot.Kind.SCOUT, climb_start, 6311)
+	climber.set_physics_process(false)
+	climber.respond_to_signal(climb_center, 0)
+	for step in range(120):
+		climber._physics_process(0.5)
+		if climber.climb_state == AmbientRobot.ClimbState.CLIMBING and climber.global_position.y >= climb_center.y + 43.0:
+			break
+	if climber.climb_state != AmbientRobot.ClimbState.CLIMBING:
+		printerr("[SHOT] робот не достиг опоры")
+		get_tree().quit(1)
+		return
+	var climb_eye := main.player.global_position + Vector3.UP * CameraRig.EYE
+	var climb_dir := (climber.global_position + Vector3.UP * climber.body_size.y * 0.5 - climb_eye).normalized()
+	main.cam_rig.aim_offset = Vector2.ZERO
+	main.cam_rig.set_view(atan2(climb_dir.x, climb_dir.z), asin(climb_dir.y))
+	main.rifle._physics_process(0.016)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var climb_path := OS.get_environment("JOURNEY_CLIMB_PATH")
+	if climb_path.is_empty():
+		climb_path = "user://climb.png"
+	if get_viewport().get_texture().get_image().save_png(climb_path) != OK:
+		printerr("[SHOT] не удалось сохранить подъём")
+		get_tree().quit(1)
+		return
+	climber.queue_free()
+	await get_tree().process_frame
 	get_tree().quit(0)
