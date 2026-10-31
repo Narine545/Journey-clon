@@ -58,7 +58,7 @@ func setup(main_ref: MainScene) -> void:
 	status.add_theme_font_size_override("font_size", 18)
 	column.add_child(status)
 	var info := Label.new()
-	info.text = "Выберите режим мышью. Демо-роботов можно сбросить клавишей F4.\nОбычная игра и маяк сохраняются; тестовые режимы — до перезапуска."
+	info.text = "Выберите режим мышью. Демо-роботов можно сбросить клавишей F4.\nМаяк и очки не сбрасываются. Демо трёх типов приостанавливает спавн."
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.add_theme_font_size_override("font_size", 16)
 	column.add_child(info)
