@@ -69,6 +69,8 @@ for obj in bpy.data.objects:
     if obj.type == 'MESH' and obj not in meshes:
         obj.hide_render = True
         obj.hide_set(True)
+scene.frame_start = 1
+scene.frame_end = 38
 scene.frame_set(1)
 # Pack the remapped PNGs so the derivative opens without broken Windows paths.
 bpy.ops.file.pack_all()

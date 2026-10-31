@@ -38,3 +38,26 @@ jobs:
           git add concepts/nzp_springfield/springfield_animated.glb concepts/nzp_springfield/preview_frame_01.png concepts/nzp_springfield/pose_samples.json concepts/nzp_springfield/springfield_preview.blend concepts/nzp_springfield/springfield_motion.mp4
           git commit -m 'Export standalone NZP Springfield animation trial'
           git push origin HEAD:refs/heads/arena/4b8d381d-journey-clon
+
+  test-godot:
+    if: contains(github.event.head_commit.message, '[nzp-export]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import and test the existing standalone animated GLB
+        run: |
+          curl -fL -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot-bin
+          mkdir -p /tmp/nzp-check
+          printf 'config_version=5\n[application]\nconfig/name="NZP GLB check"\n' > /tmp/nzp-check/project.godot
+          cp concepts/nzp_springfield/springfield_animated.glb /tmp/nzp-check/
+          cp tools/test_nzp_springfield.gd /tmp/nzp-check/test.gd
+          /tmp/godot-bin/Godot_v4.7.2-stable_linux.x86_64 --headless --path /tmp/nzp-check --import >/tmp/nzp-import.log 2>&1
+          set +e
+          /tmp/godot-bin/Godot_v4.7.2-stable_linux.x86_64 --headless --path /tmp/nzp-check --script res://test.gd >/tmp/nzp-test.log 2>&1
+          code=$?
+          set -e
+          while IFS= read -r line; do echo "::notice::$line"; done </tmp/nzp-test.log
+          test "$code" -eq 0
+          grep -q '\[SPRINGFIELD\] PASS' /tmp/nzp-test.log
