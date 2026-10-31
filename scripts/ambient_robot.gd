@@ -1,7 +1,7 @@
 class_name AmbientRobot
 extends Node3D
 ## Три мирных силуэта: обходят участок без преследования игрока.
-## Попадание гасит механизм и валит его без звука, наград или эффектов.
+## Попадание гасит механизм; награда и маркер обрабатываются винтовкой.
 enum Kind { SCOUT, CARRIER, WALKER }
 const ROAM_RADIUS := 65.0
 const PREVIEW_ROAM_RADIUS := 20.0
@@ -19,6 +19,7 @@ var approaching_signal := false
 var age := 0.0
 var lifetime := 480.0
 var speed := 0.8
+var signal_fast := false
 var body_size := Vector3.ONE
 var visual: Node3D
 var hitbox: CollisionShape3D
@@ -114,6 +115,15 @@ func _choose_destination() -> void:
 	var angle := rng.randf_range(0.0, TAU)
 	var radius := rng.randf_range(8.0, PREVIEW_ROAM_RADIUS if preview or signal_called else ROAM_RADIUS)
 	destination = Vector2(origin.x, origin.z) + Vector2(cos(angle), sin(angle)) * radius
+
+
+## Быстрота назначается один раз при появлении: уже видимый робот не меняет
+## скорость внезапно, в том числе при выключении маяка.
+func configure_signal_speed(pressure: float, roll: float) -> void:
+	var level := clampf(pressure, 0.0, 1.0)
+	signal_fast = roll < lerpf(0.10, 0.60, level)
+	if signal_fast:
+		speed *= lerpf(1.15, 1.65, level)
 
 
 ## Зовущие роботы идут к подножию, а не к самому центру башни.

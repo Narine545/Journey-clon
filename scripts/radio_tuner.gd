@@ -227,6 +227,7 @@ func _process(delta: float) -> void:
 	_overlay.hint = nearby() and not tuning and main.rifle.scope_amount < 0.2
 	_overlay.powered = powered
 	_overlay.transmitting = transmitting
+	_overlay.threat = main.ambient_spawner.threat if main.ambient_spawner != null else 0.0
 	_overlay.frequency = frequency
 	_overlay.strength = signal_strength if powered else 0.0
 	_overlay.station = audible_station
@@ -243,6 +244,7 @@ class RadioOverlay extends Control:
 	var hint := false
 	var powered := false
 	var transmitting := false
+	var threat := 0.0
 	var frequency := 88.5
 	var strength := 0.0
 	var station := -1
@@ -287,5 +289,8 @@ class RadioOverlay extends Control:
 		draw_rect(Rect2(bar.position, Vector2(bar.size.x * strength, bar.size.y)), Color(0.76, 0.64, 0.42))
 		var help_color := Color(0.77, 0.73, 0.64)
 		draw_string(font, Vector2(left, top + 185.0 * scale_factor), "МАЯК: %s    ·    T: включить / выключить" % ("ПЕРЕДАЁТ" if transmitting else "ВЫКЛ"), HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), ink)
-		draw_string(font, Vector2(left, top + 215.0 * scale_factor), "← / → или колесо: частота", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
+		var response := "ТИХО"
+		if threat > 0.0:
+			response = "ЗАТИХАЕТ" if not transmitting else ("ВЫСОКИЙ" if threat >= 0.67 else ("СРЕДНИЙ" if threat >= 0.33 else "СЛАБЫЙ"))
+		draw_string(font, Vector2(left, top + 215.0 * scale_factor), "ОТКЛИК: %s    ·    ← / → или колесо: частота" % response, HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)
 		draw_string(font, Vector2(left, top + 245.0 * scale_factor), "B: снабжение      X: питание      E / Esc: закрыть", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(17.0 * scale_factor), help_color)

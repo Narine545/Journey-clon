@@ -395,7 +395,7 @@ func _run() -> void:
 	beacon_spawner.advance_signal(9.9, 0)
 	_check(beacon_spawner.get_child_count() == 0, "на сигнал нет мгновенного появления", failures)
 	for attempt in range(40):
-		beacon_spawner.advance_signal(40.0 if attempt == 0 else 0.0, beacon_spawner.get_child_count())
+		beacon_spawner.advance_signal(40.0 if attempt == 0 else 2.0, beacon_spawner.get_child_count())
 		if beacon_spawner.get_child_count() >= AmbientSpawner.MAX_ACTIVE:
 			break
 	_check(beacon_spawner.get_child_count() == AmbientSpawner.MAX_ACTIVE, "сигнал вызывает роботов с общим лимитом", failures)
@@ -409,9 +409,46 @@ func _run() -> void:
 	radio.set_tuning(false)
 	_check(radio.transmitting, "маяк продолжает передачу после закрытия панели", failures)
 	radio.set_tuning(true)
+	# Уровень угрозы растёт от времени передачи и ограничивается; количество
+	# меняется по ступеням, но это не синхронные волны.
+	_check(is_equal_approx(AmbientSpawner.threat_after(0.0, true, 240.0), 0.5) and is_equal_approx(AmbientSpawner.threat_after(0.5, true, 240.0), 1.0), "рост угрозы зависит от времени маяка", failures)
+	_check(is_equal_approx(AmbientSpawner.threat_after(1.0, false, 120.0), 0.5) and is_zero_approx(AmbientSpawner.threat_after(1.0, false, 240.0)), "угроза плавно затихает и ограничена", failures)
+	_check(AmbientSpawner.capacity_for(0.0) == 2 and AmbientSpawner.capacity_for(0.5) == 5 and AmbientSpawner.capacity_for(1.0) == 8, "бюджет растёт от двух до восьми", failures)
+	_check(AmbientSpawner.delay_range_for(1.0).x < AmbientSpawner.delay_range_for(0.0).x and AmbientSpawner.delay_range_for(1.0).y < AmbientSpawner.delay_range_for(0.0).y, "с ростом угрозы задержки короче", failures)
+	var steady_pos := main.tower.global_position + Vector3(220.0, 0.0, 40.0)
+	steady_pos.y = main.coast.ground_height(steady_pos.x, steady_pos.z)
+	var steady_robot := beacon_spawner.spawn_at(AmbientRobot.Kind.SCOUT, steady_pos, 4190)
+	var fast_robot := beacon_spawner.spawn_at(AmbientRobot.Kind.SCOUT, steady_pos, 4191)
+	steady_robot.configure_signal_speed(0.0, 0.3)
+	fast_robot.configure_signal_speed(1.0, 0.3)
+	_check(not steady_robot.signal_fast and fast_robot.signal_fast and fast_robot.speed > steady_robot.speed, "высокая угроза увеличивает долю и скорость быстрых роботов", failures)
+	steady_robot.free()
+	fast_robot.free()
+	# Реальная проверка полного бюджета, не только формулы: восемь разных
+	# откликов, даже если некоторые попытки позиции с первого раза не прошли.
+	for step in range(60):
+		beacon_spawner.advance_signal(10.0, beacon_spawner.get_child_count())
+	_check(is_equal_approx(beacon_spawner.threat, 1.0) and beacon_spawner.get_child_count() == AmbientSpawner.MAX_SIGNAL_ACTIVE, "маяк постепенно вызывает до восьми роботов", failures)
+	for i in range(5):
+		beacon_spawner.get_child(beacon_spawner.get_child_count() - 1).free()
 	radio.set_transmitting(false)
-	beacon_spawner.advance_signal(100.0, beacon_spawner.get_child_count())
-	_check(not radio._beacon.playing and beacon_spawner.call_delays == [-1.0, -1.0], "отключение отменяет ожидающие вызовы", failures)
+	beacon_spawner.advance_signal(0.0, beacon_spawner.get_child_count())
+	_check(not radio._beacon.playing and is_equal_approx(beacon_spawner.threat, 1.0) and beacon_spawner.call_delays.any(func(delay: float) -> bool: return delay >= 0.0), "отключение сохраняет остаточный отклик", failures)
+	beacon_spawner.advance_signal(15.0, beacon_spawner.get_child_count())
+	for retry in range(40):
+		if beacon_spawner.get_child_count() > 3:
+			break
+		beacon_spawner.advance_signal(2.0, beacon_spawner.get_child_count())
+	_check(beacon_spawner.threat < 1.0 and beacon_spawner.threat > 0.0 and beacon_spawner.get_child_count() > 3, "после выключения ещё возможны отложенные отклики", failures)
+	var survivors_before_fade := beacon_spawner.get_child_count()
+	beacon_spawner.advance_signal(240.0, survivors_before_fade)
+	_check(is_zero_approx(beacon_spawner.threat) and beacon_spawner.get_child_count() == survivors_before_fade and not beacon_spawner.call_delays.any(func(delay: float) -> bool: return delay >= 0.0), "отклик затихает без удаления уже пришедших", failures)
+	var arrived_robot := beacon_spawner.get_child(0) as AmbientRobot
+	arrived_robot.approaching_signal = false
+	arrived_robot.age = arrived_robot.lifetime + 1.0
+	beacon_spawner._process(0.0)
+	_check(not arrived_robot.is_queued_for_deletion(), "живой робот не исчезает после прибытия и затухания", failures)
+	arrived_robot.approaching_signal = true
 	for called_child in beacon_spawner.get_children():
 		var called_robot := called_child as AmbientRobot
 		var dist_before_call_move := Vector2(called_robot.global_position.x - main.tower.global_position.x, called_robot.global_position.z - main.tower.global_position.z).length()
