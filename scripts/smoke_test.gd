@@ -961,6 +961,26 @@ func _test_contact_combat(failures: Array[String]) -> void:
 
 func _test_grapple(failures: Array[String]) -> void:
 	var hook := main.grapple
+	var structure := main.tower.get_node_or_null("TowerStructureCollisions") as StaticBody3D
+	_check(structure != null and structure.get_child_count() >= 50, "физические коллизии опор, раскосов, перил и шахты башни", failures)
+	await get_tree().physics_frame
+	var origin := main.tower.global_position
+	for ray in [
+		[Vector3(8, 19, 4.8), Vector3(3, 19, 4.8)],
+		[Vector3(0, 15.5, -8), Vector3(0, 15.5, -3)],
+		[Vector3(8, 53.26, 1.4), Vector3(5, 53.26, 1.4)],
+		[Vector3(-10, 30, 2.4), Vector3(-6, 30, 2.4)],
+	]:
+		var query := PhysicsRayQueryParameters3D.create(origin + (ray[0] as Vector3), origin + (ray[1] as Vector3), 8)
+		var hit := main.get_world_3d().direct_space_state.intersect_ray(query)
+		_check(not hit.is_empty() and hit.get("collider") == structure, "геометрия башни физически останавливает луч %s" % str(ray[0]), failures)
+	main.player.position = Vector3(8, 19, 4.8)
+	main.player.velocity = Vector3.ZERO
+	main.player.safety_barriers_enabled = false
+	main.player.collision_mask = 8
+	await get_tree().physics_frame
+	var blocked := main.player.move_and_collide(Vector3(-4, 0, 0))
+	_check(blocked != null and blocked.get_collider() == structure and main.player.position.x > 5.3, "капсула игрока не пролетает сквозь опору на быстром перемещении", failures)
 	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, 0.0)
 	main.player.velocity = Vector3.ZERO
 	main.rifle.aim_requested = false
@@ -986,6 +1006,11 @@ func _test_grapple(failures: Array[String]) -> void:
 			await get_tree().physics_frame
 		_check(hook.attached and main.player.global_position.distance_to(paused_position) < 0.01, "F2 останавливает движение на тросе и блокирует его переключение", failures)
 		main.debug_menu.set_open(false)
+		var press_v := InputEventKey.new()
+		press_v.physical_keycode = KEY_V
+		press_v.pressed = true
+		hook._input(press_v)
+		_check(hook.manual_control, "V включает ручное управление тросом", failures)
 		var rope_before := hook.rope_length
 		Input.action_press("rope_release")
 		hook.constrain_velocity(Vector3.ZERO, 0.1)
@@ -1001,7 +1026,13 @@ func _test_grapple(failures: Array[String]) -> void:
 			await get_tree().physics_frame
 		Input.action_release("move_left")
 		_check(absf(main.player.position.z) > 0.1, "движение в воздухе раскачивает игрока в сторону", failures)
+		hook._input(press_v)
+		_check(not hook.manual_control, "V возвращает быструю автоматическую тягу", failures)
 		# Перемещение без телепорта: пролететь край и достичь рельефа.
+		var descend_start := main.player.position
+		for frame in range(90):
+			await get_tree().physics_frame
+		_check(main.player.position.distance_to(descend_start) > 10.0, "автоматическая тяга быстро перемещает игрока", failures)
 		for frame in range(1250):
 			await get_tree().physics_frame
 			if main.player.terrain_grounded:
@@ -1029,9 +1060,13 @@ func _test_grapple(failures: Array[String]) -> void:
 		if hook.attached:
 			for frame in range(1500):
 				await get_tree().physics_frame
-				if main.player.position.y >= ObservationTower.DECK_HEIGHT + 0.05:
+				if hook.arrived:
 					break
-			_check(main.player.position.y >= ObservationTower.DECK_HEIGHT - 0.1, "лебёдка поднимает игрока с земли к площадке", failures)
+			_check(hook.arrived and main.player.position.y >= ObservationTower.DECK_HEIGHT + 1.3, "лебёдка поднимает игрока выше перил", failures)
+			var arrival_position := main.player.global_position
+			for frame in range(90):
+				await get_tree().physics_frame
+			_check(hook.arrived and main.player.global_position.distance_to(arrival_position) < 0.05 and main.player.velocity.length() < 0.1, "у точки игрок останавливается без раскручивания", failures)
 			Input.action_press("move_forward")
 			for frame in range(240):
 				await get_tree().physics_frame
@@ -1047,6 +1082,7 @@ func _test_grapple(failures: Array[String]) -> void:
 	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
 	main.player.velocity = Vector3.ZERO
 	hook.attached = true
+	hook.manual_control = true
 	hook.anchor = main.player.global_position + Vector3.UP * (GrappleHook.ANCHOR_HEIGHT + 10.0)
 	hook.rope_length = 10.0
 	var swinging := hook.constrain_velocity(Vector3(3.0, -2.0, 0.0), 1.0 / 60.0)

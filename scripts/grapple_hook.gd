@@ -5,7 +5,11 @@ extends Node3D
 ## кромки башни. Линия и метка — временная геометрия, не художественный ассет.
 const MAX_RANGE := 90.0
 const MIN_LENGTH := 1.9
-const AUTO_REEL_SPEED := 5.0
+const AUTO_REEL_SPEED := 18.0
+const AUTO_ACCELERATION := 55.0
+const ARRIVAL_DISTANCE := 0.9
+const GROUND_ARRIVAL_DISTANCE := 2.3
+const ARRIVAL_MOVE_SPEED := 3.0
 const MANUAL_REEL_SPEED := 9.0
 const PAY_OUT_SPEED := 7.0
 const MAX_PULL_SPEED := 8.0
@@ -13,6 +17,9 @@ const ANCHOR_HEIGHT := 1.1
 
 var main: MainScene
 var attached := false
+var manual_control := false
+var arrived := false
+var anchor_kind := ""
 var anchor := Vector3.ZERO
 var rope_length := 0.0
 var pending_toggle := false
@@ -51,9 +58,15 @@ func setup(main_ref: MainScene) -> void:
 func _input(event: InputEvent) -> void:
 	if not _controls_available():
 		return
-	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_G:
-		pending_toggle = true
-		get_viewport().set_input_as_handled()
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_G:
+			pending_toggle = true
+			get_viewport().set_input_as_handled()
+		elif event.physical_keycode == KEY_V and attached:
+			manual_control = not manual_control
+			arrived = false
+			rope_length = maxf(MIN_LENGTH, attachment_point().distance_to(anchor))
+			get_viewport().set_input_as_handled()
 
 
 func _physics_process(delta: float) -> void:
@@ -125,6 +138,9 @@ func try_attach() -> bool:
 	if hit.is_empty():
 		return false
 	anchor = hit["position"]
+	anchor_kind = hit["kind"]
+	manual_control = false
+	arrived = false
 	rope_length = maxf(MIN_LENGTH, attachment_point().distance_to(anchor))
 	attached = true
 	main.player.safety_barriers_enabled = false
@@ -135,6 +151,9 @@ func try_attach() -> bool:
 
 func detach() -> void:
 	attached = false
+	manual_control = false
+	arrived = false
+	anchor_kind = ""
 	pending_toggle = false
 	candidate.clear()
 	if rope != null:
@@ -145,31 +164,49 @@ func attachment_point() -> Vector3:
 	return main.player.global_position + Vector3.UP * ANCHOR_HEIGHT
 
 
-## Свободный маятник: убираем только составляющую скорости наружу при
-## натянутом тросе. Разница длины добавляет ограниченную тягу лебёдки;
-## тангенциальная скорость и гравитация сохраняются для раскачивания.
-func constrain_velocity(current: Vector3, delta: float) -> Vector3:
+## В авторежиме гасим поперечную скорость и ограничиваем скорость сближения
+## по тормозному пути. Это не оставляет скорости для кругового вращения у цели.
+## В ручном режиме сохраняем старый маятник и отдельное управление длиной.
+func constrain_velocity(current: Vector3, delta: float, direction: Vector3 = Vector3.ZERO) -> Vector3:
 	if not attached or delta <= 0.0:
 		return current
-	var release := Input.is_action_pressed("rope_release")
-	var reel := Input.is_action_pressed("rope_reel")
-	var change := PAY_OUT_SPEED if release and not reel else (-MANUAL_REEL_SPEED if reel and not release else -AUTO_REEL_SPEED)
-	rope_length = clampf(rope_length + change * delta, MIN_LENGTH, MAX_RANGE)
-	var offset := attachment_point() - anchor
+	var offset := anchor - attachment_point()
 	var distance := offset.length()
+	if manual_control:
+		var release := Input.is_action_pressed("rope_release")
+		var reel := Input.is_action_pressed("rope_reel")
+		var change := PAY_OUT_SPEED if release and not reel else (-MANUAL_REEL_SPEED if reel and not release else 0.0)
+		rope_length = clampf(rope_length + change * delta, MIN_LENGTH, MAX_RANGE)
+		rope_length = maxf(rope_length, distance - 0.25)
+		if distance > 0.001 and distance >= rope_length:
+			var outward := -offset / distance
+			var radial := current.dot(outward)
+			if radial > 0.0:
+				current -= outward * radial
+			var pull := minf(MAX_PULL_SPEED, maxf(0.0, (distance - rope_length) / delta))
+			current -= outward * pull
+		return current.limit_length(20.0)
+	if arrived:
+		# Небольшое свободное движение на высоте рейки позволяет выйти на настил.
+		# За пределами окрестности якоря снова включаем тягу, а не вечный полёт.
+		if distance > 3.3:
+			arrived = false
+		else:
+			return Vector3(direction.x * ARRIVAL_MOVE_SPEED, 0.0, direction.z * ARRIVAL_MOVE_SPEED)
+	var target_distance := GROUND_ARRIVAL_DISTANCE if anchor_kind == "ground" else ARRIVAL_DISTANCE
+	if distance <= target_distance + 0.15:
+		if anchor_kind == "ground":
+			detach()
+			return Vector3.ZERO
+		arrived = true
+		return Vector3.ZERO
 	if distance < 0.001:
-		return current
-	# При коллизии с настилом не накапливать метры ошибки: иначе после
-	# освобождения возникал бы мгновенный рывок или проход сквозь стены.
-	rope_length = maxf(rope_length, distance - 0.25)
-	if distance >= rope_length:
-		var outward := offset / distance
-		var radial := current.dot(outward)
-		if radial > 0.0:
-			current -= outward * radial
-		var pull := minf(MAX_PULL_SPEED, maxf(0.0, (distance - rope_length) / delta))
-		current -= outward * pull
-	return current.limit_length(20.0)
+		return Vector3.ZERO
+	# v² = 2*a*s — начинаем тормозить до цели, а не после пролёта.
+	var speed := minf(AUTO_REEL_SPEED, sqrt(2.0 * AUTO_ACCELERATION * maxf(0.0, distance - target_distance)))
+	var desired := offset / distance * speed
+	rope_length = maxf(MIN_LENGTH, distance)
+	return current.move_toward(desired, AUTO_ACCELERATION * delta)
 
 
 func _update_rope() -> void:
@@ -195,7 +232,10 @@ class HookHUD extends Control:
 		if not hook._controls_available():
 			return
 		var font := ThemeDB.fallback_font
-		var info := "G: ОТЦЕПИТЬ  ·  Z: ВЫПУСТИТЬ  ·  X: ВТЯНУТЬ" if hook.attached else "G: КРЮК  ·  НАВЕДИТЕ НА ЗЕМЛЮ ИЛИ ВЕРХ БАШНИ"
+		var info := "G: КРЮК  ·  НАВЕДИТЕ НА ЗЕМЛЮ ИЛИ ВЕРХ БАШНИ"
+		if hook.attached:
+			info = "РУЧНОЙ  ·  V: АВТО  ·  Z / X: ТРОС  ·  G: ОТЦЕПИТЬ" if hook.manual_control else "АВТОТЯГА  ·  V: РУЧНОЙ РЕЖИМ  ·  G: ОТЦЕПИТЬ"
+
 		draw_string_outline(font, Vector2(20, size.y - 58), info, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 3, Color(0.03, 0.02, 0.02, 0.9))
 		draw_string(font, Vector2(20, size.y - 58), info, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.90, 0.84, 0.68))
 		if not hook.attached and not hook.candidate.is_empty():

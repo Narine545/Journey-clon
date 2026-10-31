@@ -71,7 +71,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_accelerate(direction, SPRINT_SPEED if sprinting else WALK_SPEED, delta, was_grounded)
 	if grapple != null and grapple.attached:
-		velocity = grapple.constrain_velocity(velocity, delta)
+		velocity = grapple.constrain_velocity(velocity, delta, direction)
 	var previous := global_position
 	move_and_slide()
 	_update_terrain_floor()

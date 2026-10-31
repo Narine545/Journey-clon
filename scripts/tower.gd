@@ -25,6 +25,7 @@ func _ready() -> void:
 	model = MODEL.instantiate() as Node3D
 	model.name = "AnimatedTower"
 	add_child(model)
+	_build_structure_collisions()
 	cage_anchor = model.find_child("*CAGE*center*", true, false) as Node3D
 	animation = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if animation == null or cage_anchor == null:
@@ -48,6 +49,41 @@ func _ready() -> void:
 	# последней, а закрытая дверца совпадает с исходной позой.
 	pose_door(6.0)
 	pose_cage(2.0)
+
+
+## Статические детали авторского GLB: отдельные коробки по реальным AABB и
+## трансформациям узлов, а не невидимая сплошная стена вокруг башни. Подвижную
+## кабину/дверцу не включаем: их положение управляется отдельной анимацией.
+func _build_structure_collisions() -> void:
+	var body := StaticBody3D.new()
+	body.name = "TowerStructureCollisions"
+	body.collision_layer = 8
+	body.collision_mask = 0
+	add_child(body)
+	var prefixes := ["Support_", "Footing_", "CrossBrace_", "SupportRing_", "LiftShaft_", "LiftCrossbar_", "DeckRim_", "RailX_", "RailZ_", "RailPostX_", "RailPostZ_"]
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var part := node as MeshInstance3D
+		if part == null or part.mesh == null:
+			continue
+		var selected := false
+		for prefix in prefixes:
+			if String(part.name).begins_with(prefix):
+				selected = true
+				break
+		if not selected:
+			continue
+		var local_transform := global_transform.affine_inverse() * part.global_transform
+		var bounds := part.mesh.get_aabb()
+		var part_scale := local_transform.basis.get_scale().abs()
+		if bounds.size.x <= 0.0 or bounds.size.y <= 0.0 or bounds.size.z <= 0.0:
+			continue
+		var box := BoxShape3D.new()
+		box.size = bounds.size * part_scale
+		var collider := CollisionShape3D.new()
+		collider.name = "Collision_" + String(part.name)
+		collider.shape = box
+		collider.transform = Transform3D(local_transform.basis.orthonormalized(), local_transform * bounds.get_center())
+		body.add_child(collider)
 
 
 ## Физические прокси пока только для площадки: пол, безопасные границы и
