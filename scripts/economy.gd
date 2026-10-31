@@ -28,3 +28,10 @@ func add_points(amount: int) -> void:
 		return
 	_points += amount
 	points_changed.emit(_points, amount)
+
+
+## Начало новой попытки после поражения, без сохранения покупок и очков.
+func reset_run() -> void:
+	var old := _points
+	_points = 0
+	points_changed.emit(0, -old)

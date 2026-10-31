@@ -236,5 +236,35 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить меню отладки")
 		get_tree().quit(1)
 		return
-	main.debug_menu.set_open(false)
+	# Отдельные кадры атаки и поражения: без случайного появления.
+	main.debug_menu._select_attack()
+	var attack_robot := main.ambient_spawner.get_node_or_null("AttackPreviewRobot") as AmbientRobot
+	if attack_robot == null:
+		printerr("[SHOT] нет тестового атакующего")
+		get_tree().quit(1)
+		return
+	attack_robot.set_physics_process(false)
+	attack_robot._physics_process(1.0)
+	attack_robot._physics_process(0.1)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var attack_path := OS.get_environment("JOURNEY_ATTACK_PATH")
+	if attack_path.is_empty():
+		attack_path = "user://attack.png"
+	if get_viewport().get_texture().get_image().save_png(attack_path) != OK:
+		printerr("[SHOT] не удалось сохранить атаку")
+		get_tree().quit(1)
+		return
+	main.player_health.take_damage(100)
+	for i in range(8):
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var defeat_path := OS.get_environment("JOURNEY_DEFEAT_PATH")
+	if defeat_path.is_empty():
+		defeat_path = "user://defeat.png"
+	if get_viewport().get_texture().get_image().save_png(defeat_path) != OK:
+		printerr("[SHOT] не удалось сохранить поражение")
+		get_tree().quit(1)
+		return
 	get_tree().quit(0)

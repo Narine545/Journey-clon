@@ -41,11 +41,21 @@ jobs:
           if [ "$code" -ne 0 ]; then echo "::error::Smoke exited with code $code"; exit 1; fi
           grep -q '\[SMOKE\] итог: ВСЁ ПРОШЛО' smoke.log
           if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' smoke.log; then exit 1; fi
+      - name: Defeat and restart smoke test
+        run: |
+          set +e
+          JOURNEY_RESTART_SMOKE=1 timeout 120 ./godot --headless --path . 2>&1 | tee restart.log
+          code=${PIPESTATUS[0]}
+          set -e
+          grep -iE 'RESTART|SCRIPT ERROR|Parse Error|ERROR:' restart.log | head -20 | while IFS= read -r line; do echo "::notice::$line"; done || true
+          if [ "$code" -ne 0 ]; then echo "::error::Restart smoke exited with code $code"; exit 1; fi
+          grep -q '\[RESTART\] ВСЁ ПРОШЛО' restart.log
+          if grep -iE 'SCRIPT ERROR|Parse Error|ERROR:' restart.log; then exit 1; fi
       - name: Forward+ Vulkan render
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers
-          JOURNEY_SHOT=1 JOURNEY_DEBUG_PATH="$PWD/debug.png" JOURNEY_CLIMB_PATH="$PWD/climb.png" JOURNEY_LIFT_PATH="$PWD/lift.png" JOURNEY_SHOP_PATH="$PWD/shop.png" JOURNEY_CRATE_PATH="$PWD/crate.png" JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
+          JOURNEY_SHOT=1 JOURNEY_ATTACK_PATH="$PWD/attack.png" JOURNEY_DEFEAT_PATH="$PWD/defeat.png" JOURNEY_DEBUG_PATH="$PWD/debug.png" JOURNEY_CLIMB_PATH="$PWD/climb.png" JOURNEY_LIFT_PATH="$PWD/lift.png" JOURNEY_SHOP_PATH="$PWD/shop.png" JOURNEY_CRATE_PATH="$PWD/crate.png" JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
           test -s tower.png
           test -s landscape.png
           test -s scope.png
@@ -58,6 +68,8 @@ jobs:
           test -s lift.png
           test -s climb.png
           test -s debug.png
+          test -s attack.png
+          test -s defeat.png
           grep -q 'Vulkan.*Forward+' render.log
           if grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log; then
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
@@ -81,3 +93,5 @@ jobs:
             lift.png
             climb.png
             debug.png
+            attack.png
+            defeat.png

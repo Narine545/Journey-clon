@@ -26,6 +26,7 @@ var ambient_spawner: AmbientSpawner
 var lift: SupplyLift
 var shop: ShopUI
 var debug_menu: DebugMenu
+var player_health: PlayerHealth
 
 
 func _ready() -> void:
@@ -103,6 +104,10 @@ func _ready() -> void:
 	shop = SHOP_SCENE.instantiate() as ShopUI
 	add_child(shop)
 	shop.setup(self)
+	player_health = PlayerHealth.new()
+	add_child(player_health)
+	player_health.setup(self)
+	player.health = player_health
 	ambient_spawner = AmbientSpawner.new()
 	ambient_spawner.name = "AmbientSpawner"
 	add_child(ambient_spawner)
@@ -120,6 +125,11 @@ func _ready() -> void:
 		var smoke := SmokeTest.new()
 		add_child(smoke)
 		smoke.setup(self)
+	elif OS.get_environment("JOURNEY_RESTART_SMOKE") == "1":
+		if get_tree().root.get_node_or_null("RestartSmoke") == null:
+			var restart_test := RestartSmoke.new()
+			restart_test.name = "RestartSmoke"
+			get_tree().root.call_deferred("add_child", restart_test)
 	elif OS.get_environment("JOURNEY_SHOT") == "1":
 		var shot := ScreenshotCapture.new()
 		add_child(shot)

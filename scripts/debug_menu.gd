@@ -11,6 +11,8 @@ var normal_button: Button
 var climb_button: Button
 var top_button: Button
 var robots_button: Button
+var attack_button: Button
+var heal_button: Button
 var close_button: Button
 
 
@@ -69,11 +71,15 @@ func setup(main_ref: MainScene) -> void:
 	top_button = _button(column, "Быстро показать робота у площадки")
 	top_button.pressed.connect(_show_near_top)
 	var note := Label.new()
-	note.text = "Быстрая проверка переместит вас к краю и наведёт взгляд."
+	note.text = "Быстрые проверки переместят вас к краю и наведут взгляд."
 	note.add_theme_font_size_override("font_size", 15)
 	column.add_child(note)
 	robots_button = _button(column, "Три типа роботов — демонстрация вдали")
 	robots_button.pressed.connect(_select_robots)
+	attack_button = _button(column, "Быстро проверить атаку на площадке")
+	attack_button.pressed.connect(_select_attack)
+	heal_button = _button(column, "Восстановить здоровье (отладка)")
+	heal_button.pressed.connect(_restore_health)
 	close_button = _button(column, "Вернуться в игру  ·  F2 / Esc")
 	close_button.pressed.connect(set_open.bind(false))
 	_refresh()
@@ -89,6 +95,8 @@ func _button(parent: VBoxContainer, text: String) -> Button:
 
 
 func _input(event: InputEvent) -> void:
+	if main != null and main.player_health != null and main.player_health.defeated:
+		return
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	if event.physical_keycode == KEY_F2:
@@ -127,6 +135,8 @@ func _refresh() -> void:
 		mode = "ДЕМО ПОДЪЁМА"
 	elif main.ambient_spawner.preview_robots:
 		mode = "ДЕМО ТРЁХ ТИПОВ"
+	elif main.ambient_spawner.preview_attack:
+		mode = "ДЕМО АТАКИ"
 	status.text = "Текущий режим: " + mode
 
 
@@ -158,3 +168,25 @@ func _show_near_top() -> void:
 		var dir := (target - main.cam_rig.cam.global_position).normalized()
 		main.cam_rig.set_view(atan2(dir.x, dir.z), asin(dir.y))
 	set_open(false)
+
+
+func _select_attack() -> void:
+	# Как и предыдущая быстрая проверка, явно переносит игрока к краю.
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	main.player.velocity = Vector3.ZERO
+	main.ambient_spawner.set_debug_mode(AmbientSpawner.DebugMode.ATTACK)
+	var robot := main.ambient_spawner.get_node_or_null("AttackPreviewRobot") as AmbientRobot
+	if robot != null:
+		main.cam_rig.aim_offset = Vector2.ZERO
+		main.cam_rig.refresh_pose()
+		var target := robot.global_position + Vector3.UP * robot.body_size.y * 0.5
+		var dir := (target - main.cam_rig.cam.global_position).normalized()
+		main.cam_rig.set_view(atan2(dir.x, dir.z), asin(dir.y))
+	set_open(false)
+
+
+func _restore_health() -> void:
+	if not main.player_health.defeated:
+		main.player_health.health = PlayerHealth.MAX_HEALTH
+		main.player_health.invulnerability = 0.0
+	_refresh()

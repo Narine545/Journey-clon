@@ -17,6 +17,8 @@ var _shot: AudioStreamPlayer
 var _bolt: AudioStreamPlayer
 var _confirmation: AudioStreamPlayer
 var _refused: AudioStreamPlayer
+var _incoming: AudioStreamPlayer
+var _player_hit: AudioStreamPlayer
 
 
 func setup(game_ref: GameState, listener_ref: Node3D) -> void:
@@ -50,6 +52,8 @@ func setup(game_ref: GameState, listener_ref: Node3D) -> void:
 	_bolt = _make_effect(_gen_bolt(), -12.0)
 	_confirmation = _make_effect(_gen_confirmation(), -22.0)
 	_refused = _make_effect(_gen_refusal(), -24.0)
+	_incoming = _make_effect(_gen_bolt(), -15.0)
+	_player_hit = _make_effect(_gen_land(), -8.0)
 
 
 
@@ -75,6 +79,23 @@ func on_hit_confirmed() -> void:
 
 func on_refused() -> void:
 	_refused.play()
+
+
+func on_robot_warning() -> void:
+	_incoming.play()
+
+
+func on_player_hit() -> void:
+	_player_hit.play()
+
+
+func _exit_tree() -> void:
+	# Не накапливать фильтры ветра при перезапуске сцены после поражения.
+	var wind_bus := AudioServer.get_bus_index("Wind")
+	if wind_bus >= 0 and _wind_filter != null:
+		for i in range(AudioServer.get_bus_effect_count(wind_bus) - 1, -1, -1):
+			if AudioServer.get_bus_effect(wind_bus, i) == _wind_filter:
+				AudioServer.remove_bus_effect(wind_bus, i)
 
 
 func _ensure_bus(bus_name: String) -> void:

@@ -17,7 +17,8 @@ var main: MainScene
 var rng := RandomNumberGenerator.new()
 var preview_robots := false
 var preview_climbing := false
-enum DebugMode { NORMAL, CLIMB, ROBOTS }
+var preview_attack := false
+enum DebugMode { NORMAL, CLIMB, ROBOTS, ATTACK }
 # Каждый свободный слот имеет собственную задержку; -1 означает незапущенный.
 var call_delays: Array[float] = [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]
 var threat := 0.0 # 0..1: растёт только при передаче, затем плавно спадает
@@ -40,8 +41,12 @@ func setup(main_ref: MainScene) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Явный ручной сброс только в демонстрационном режиме, без таймера/волн.
+	if main != null and main.player_health != null and main.player_health.defeated:
+		return
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F4:
-		if preview_robots:
+		if preview_attack:
+			reset_attack_preview()
+		elif preview_robots:
 			reset_preview()
 		elif preview_climbing:
 			reset_climb_preview()
@@ -61,11 +66,14 @@ func set_debug_mode(mode: DebugMode, near_top: bool = false) -> void:
 	_clear_preview()
 	preview_robots = mode == DebugMode.ROBOTS
 	preview_climbing = mode == DebugMode.CLIMB
+	preview_attack = mode == DebugMode.ATTACK
 	set_process(not preview_robots)
 	if preview_robots:
 		reset_preview()
 	elif preview_climbing:
 		reset_climb_preview(near_top)
+	elif preview_attack:
+		reset_attack_preview()
 
 
 func reset_preview() -> void:
@@ -96,6 +104,21 @@ func reset_climb_preview(near_top: bool = false) -> AmbientRobot:
 		test_robot.approaching_signal = false
 		test_robot.climb_state = AmbientRobot.ClimbState.CLIMBING
 	return test_robot
+
+
+## Робот уже на настиле для быстрой проверки ближнего боя через F2/F4.
+func reset_attack_preview() -> AmbientRobot:
+	_clear_preview()
+	var center := main.tower.global_position
+	var pos := center + Vector3(1.2, ObservationTower.DECK_HEIGHT, -1.4)
+	var robot := spawn_at(AmbientRobot.Kind.SCOUT, pos, 9210)
+	robot.name = "AttackPreviewRobot"
+	robot.preview = true
+	robot.signal_called = true
+	robot.signal_tower = center
+	robot.global_position = pos
+	robot.climb_state = AmbientRobot.ClimbState.AT_TOP
+	return robot
 
 
 static func chance_for(delta: float, wind_strength: float, night: float, signal_on_air: bool) -> float:
@@ -239,4 +262,6 @@ func spawn_at(robot_kind: AmbientRobot.Kind, at: Vector3, seed_value: int) -> Am
 	robot.name = "WanderingRobot"
 	add_child(robot)
 	robot.setup(robot_kind, main.coast, at, seed_value)
+	robot.player_ref = main.player
+	robot.health_ref = main.player_health
 	return robot

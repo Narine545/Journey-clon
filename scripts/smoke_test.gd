@@ -597,6 +597,7 @@ func _run() -> void:
 	await _test_climbing(failures)
 	_test_reload(failures)
 	await _test_debug_menu(failures)
+	await _test_contact_combat(failures)
 
 	if failures.is_empty():
 		print("[SMOKE] итог: ВСЁ ПРОШЛО")
@@ -668,6 +669,8 @@ func _test_climbing(failures: Array[String]) -> void:
 		start_at.y = main.coast.ground_height(start_at.x, start_at.z)
 		var climbing_robot := main.ambient_spawner.spawn_at(robot_kind as AmbientRobot.Kind, start_at, 8000 + robot_kind)
 		climbing_robot.set_physics_process(false)
+		# В этой части проверяем только подъём и падение, не контактную фазу.
+		climbing_robot.health_ref = null
 		climbing_robot.respond_to_signal(center, robot_kind)
 		var saw_climb := false
 		var last_y := -INF
@@ -831,6 +834,83 @@ func _test_debug_menu(failures: Array[String]) -> void:
 	_check(not main.ambient_spawner.preview_robots and not main.ambient_spawner.preview_climbing and ordinary.get_parent() == main.ambient_spawner and main.ambient_spawner.get_child_count() == 1, "обычный режим убирает только демо и возвращает обычный спавнер", failures)
 	ordinary.free()
 	get_tree().root.size = previous_size
+	await get_tree().process_frame
+
+
+func _test_contact_combat(failures: Array[String]) -> void:
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	main.player.velocity = Vector3.ZERO
+	main.player_health.health = PlayerHealth.MAX_HEALTH
+	main.player_health.invulnerability = 0.0
+	main.debug_menu.set_open(true)
+	main.debug_menu.attack_button.pressed.emit()
+	main.ambient_spawner.set_process(false)
+	var attacker := main.ambient_spawner.get_node_or_null("AttackPreviewRobot") as AmbientRobot
+	_check(main.ambient_spawner.preview_attack and attacker != null and attacker.climb_state == AmbientRobot.ClimbState.AT_TOP, "F2 создаёт атакующего робота на площадке", failures)
+	if attacker == null:
+		return
+	attacker.set_physics_process(false)
+	var start_distance := attacker.global_position.distance_to(main.player.global_position)
+	attacker._physics_process(1.0)
+	_check(attacker.global_position.distance_to(main.player.global_position) < start_distance, "робот движется к игроку по площадке", failures)
+	attacker._physics_process(0.1)
+	_check(attacker.attack_windup > 0.0 and attacker.metal.emission_enabled and main.player_health.warning_time > 0.0, "перед ударом есть визуальное и текстовое предупреждение", failures)
+	# Уход за дистанцию в течение подготовки отменяет удар.
+	main.player.position = Vector3(-4.7, ObservationTower.DECK_HEIGHT, 4.7)
+	attacker._physics_process(0.1)
+	_check(attacker.attack_windup == 0.0 and not attacker.metal.emission_enabled and main.player_health.health == 100, "можно выйти из радиуса до удара", failures)
+	# Вернуть игрока на исходную позицию: атака сначала готовится, потом бьёт.
+	main.player.position = Vector3(4.7, ObservationTower.DECK_HEIGHT, -1.4)
+	for step in range(10):
+		attacker._physics_process(0.1)
+		if attacker.attack_windup > 0.0:
+			break
+	attacker._physics_process(AmbientRobot.ATTACK_WINDUP - 0.1)
+	_check(main.player_health.health == 100, "удар не происходит до окончания подготовки", failures)
+	attacker._physics_process(0.2)
+	_check(main.player_health.health == 85 and attacker.attack_cooldown > 0.0, "удар отнимает 15 здоровья и запускает паузу", failures)
+	_check(not main.player_health.take_damage(15) and main.player_health.health == 85, "соседние одновременные удары не накладываются", failures)
+	main.player_health._physics_process(PlayerHealth.INVULNERABILITY + 0.1)
+	_check(main.player_health.take_damage(15) and main.player_health.health == 70, "после короткой защиты урон снова возможен", failures)
+	main.debug_menu.set_open(true)
+	main.debug_menu.heal_button.pressed.emit()
+	_check(main.player_health.health == 100, "отладочная кнопка явно восстанавливает здоровье", failures)
+	main.debug_menu.set_open(false)
+	# Погибший робот не наносит удар, и тело на настиле не падает сквозь пол.
+	attacker.attack_cooldown = 0.0
+	attacker._physics_process(0.1)
+	_check(attacker.attack_windup > 0.0, "повторная атака проходит подготовку", failures)
+	_check(attacker.apply_projectile_hit(false) and not attacker.falling, "робот на настиле остаётся на настиле после поражения", failures)
+	attacker._physics_process(3.0)
+	_check(main.player_health.health == 100 and not attacker.metal.emission_enabled, "убитый робот не наносит подготовленный удар", failures)
+	var f4_attack := InputEventKey.new()
+	f4_attack.physical_keycode = KEY_F4
+	f4_attack.pressed = true
+	main.ambient_spawner._unhandled_input(f4_attack)
+	var new_attacker := main.ambient_spawner.get_node_or_null("AttackPreviewRobot") as AmbientRobot
+	_check(new_attacker != null and new_attacker.alive, "F4 восстанавливает атакующего тестового робота", failures)
+	if new_attacker != null:
+		new_attacker.set_physics_process(false)
+		main.cam_rig.aim_offset = Vector2.ZERO
+		main.cam_rig.refresh_pose()
+		var target := new_attacker.global_position + Vector3.UP * new_attacker.body_size.y * 0.5
+		var dir := (target - main.cam_rig.cam.global_position).normalized()
+		main.cam_rig.set_view(atan2(dir.x, dir.z), asin(dir.y))
+		main.rifle.ammo_type = "regular"
+		main.rifle.ammo = 2
+		main.rifle.cycle_remaining = 0.0
+		main.rifle.reload_remaining = 0.0
+		main.rifle._recoil = 0.0
+		var score_before := Economy.points
+		await get_tree().physics_frame
+		_check(main.rifle.fire(), "выстрел в атакующего на площадке", failures)
+		await get_tree().create_timer(0.4).timeout
+		_check(not new_attacker.alive and Economy.points == score_before + 100, "реальная пуля поражает атакующего и выдаёт награду", failures)
+	main.debug_menu.set_open(true)
+	main.debug_menu.normal_button.pressed.emit()
+	main.ambient_spawner.set_process(false)
+	main.player_health.health = PlayerHealth.MAX_HEALTH
+	main.player_health.invulnerability = 0.0
 	await get_tree().process_frame
 
 

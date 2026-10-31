@@ -53,6 +53,8 @@ func setup(main_ref: MainScene) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if main != null and main.player_health != null and main.player_health.defeated:
+		return
 	if main != null and main.debug_menu != null and main.debug_menu.is_open:
 		return
 	if main != null and main.radio_tuner != null and main.radio_tuner.tuning:
@@ -113,6 +115,8 @@ func _physics_process(delta: float) -> void:
 
 
 func can_fire() -> bool:
+	if main != null and main.player_health != null and main.player_health.defeated:
+		return false
 	return ammo > 0 and cycle_remaining <= 0.0 and reload_remaining <= 0.0
 
 

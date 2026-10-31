@@ -55,3 +55,12 @@ func wind_dir() -> Vector2:
 
 func wind_dir_3d() -> Vector3:
 	return Vector3(cos(wind_angle), 0.0, sin(wind_angle))
+
+
+func reset_run() -> void:
+	night01 = 0.0
+	sun_dir = Vector3(-0.55, 0.185, -0.30).normalized()
+	wind_base = 0.18
+	wind_angle = 0.18
+	wind_strength = 1.0
+	elapsed = 0.0

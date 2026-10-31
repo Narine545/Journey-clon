@@ -28,7 +28,8 @@ var _interactive := true
 func setup(main_ref) -> void:
 	player = main_ref.player
 	_interactive = OS.get_environment("JOURNEY_SMOKE") != "1" \
-		and OS.get_environment("JOURNEY_SHOT") != "1"
+		and OS.get_environment("JOURNEY_SHOT") != "1" \
+		and OS.get_environment("JOURNEY_RESTART_SMOKE") != "1"
 
 	cam = Camera3D.new()
 	add_child(cam)

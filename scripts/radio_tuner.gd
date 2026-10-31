@@ -86,7 +86,7 @@ func set_frequency(value: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if main == null or (main.shop != null and main.shop.is_open) or (main.debug_menu != null and main.debug_menu.is_open):
+	if main == null or (main.shop != null and main.shop.is_open) or (main.debug_menu != null and main.debug_menu.is_open) or (main.player_health != null and main.player_health.defeated):
 		return
 	if event is InputEventKey and event.pressed:
 		if event.physical_keycode == KEY_E and not event.echo and (tuning or nearby()):

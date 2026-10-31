@@ -1,12 +1,16 @@
 class_name AmbientRobot
 extends Node3D
 ## Три силуэта: вызванные роботы подходят и поднимаются по опорам башни.
-## Атак пока нет; попадание гасит механизм, награду обрабатывает винтовка.
+## Поднявшиеся роботы преследуют игрока и предупреждают перед ударом.
 enum Kind { SCOUT, CARRIER, WALKER }
 enum ClimbState { NONE, TO_SUPPORT, CLIMBING, AT_TOP }
 const SUPPORT_COORD := 4.8 # реальные четыре опоры пользовательской GLB-башни
 const BASE_CLIMB_SPEED := 2.2
 const FALL_GRAVITY := 20.0
+const DECK_SPEED := 1.15
+const ATTACK_WINDUP := 2.0
+const ATTACK_COOLDOWN := 3.5
+const ATTACK_DAMAGE := 15
 const ROAM_RADIUS := 65.0
 const PREVIEW_ROAM_RADIUS := 20.0
 var kind: Kind
@@ -34,6 +38,11 @@ var body_size := Vector3.ONE
 var visual: Node3D
 var hitbox: CollisionShape3D
 var rng := RandomNumberGenerator.new()
+var player_ref: TowerPlayer
+var health_ref: PlayerHealth
+var attack_windup := 0.0
+var attack_cooldown := 0.0
+var metal: StandardMaterial3D
 
 
 func setup(robot_kind: Kind, coast_ref: Coast, at: Vector3, seed_value: int) -> void:
@@ -73,7 +82,7 @@ func support_height(x: float, z: float) -> float:
 func _build() -> void:
 	visual = Node3D.new()
 	add_child(visual)
-	var metal := StandardMaterial3D.new()
+	metal = StandardMaterial3D.new()
 	metal.albedo_color = Color(0.22, 0.19, 0.16)
 	metal.metallic = 0.35
 	metal.roughness = 0.94
@@ -180,7 +189,8 @@ func _physics_process(delta: float) -> void:
 			climb_state = ClimbState.AT_TOP
 		return
 	if climb_state == ClimbState.AT_TOP:
-		return # временно ждёт у края, не атакует и не входит на настил
+		_advance_deck(delta)
+		return
 	var here := Vector2(global_position.x, global_position.z)
 	if climb_state == ClimbState.TO_SUPPORT:
 		# На последних метрах плавно подходим к точке, не перескакивая её
@@ -212,12 +222,66 @@ func _physics_process(delta: float) -> void:
 		visual.rotation.y = lerp_angle(visual.rotation.y, atan2(velocity.x, velocity.y), minf(1.0, delta * 0.5))
 
 
+## На площадке нет навигационной сетки: робот направляется к игроку и
+## останавливается на расстоянии своего корпуса, не проходя сквозь камеру.
+func _advance_deck(delta: float) -> void:
+	if player_ref == null or health_ref == null or health_ref.defeated:
+		_set_warning(false)
+		attack_windup = 0.0
+		return
+	attack_cooldown = maxf(0.0, attack_cooldown - delta)
+	var here := Vector2(global_position.x, global_position.z)
+	var target := Vector2(player_ref.global_position.x, player_ref.global_position.z)
+	var difference := target - here
+	var distance := difference.length()
+	# Диагональ корпуса безопасна при его произвольном повороте.
+	var reach := Vector2(body_size.x, body_size.z).length() * 0.5 + 0.85
+	var in_height := absf(player_ref.global_position.y - global_position.y) <= 3.0
+	if distance > reach + 0.08 or not in_height:
+		attack_windup = 0.0
+		_set_warning(false)
+		if distance > reach:
+			var step := minf(DECK_SPEED * delta, distance - reach)
+			var next := here + difference.normalized() * step
+			global_position.x = next.x
+			global_position.z = next.y
+		if distance > 0.01:
+			visual.rotation.y = lerp_angle(visual.rotation.y, atan2(difference.x, difference.y), minf(1.0, delta * 2.0))
+		return
+	if attack_windup > 0.0:
+		attack_windup = maxf(0.0, attack_windup - delta)
+		if attack_windup <= 0.0:
+			_set_warning(false)
+			health_ref.take_damage(ATTACK_DAMAGE)
+			attack_cooldown = ATTACK_COOLDOWN
+	elif attack_cooldown <= 0.0:
+		attack_windup = ATTACK_WINDUP
+		_set_warning(true)
+		health_ref.warn_attack(ATTACK_WINDUP)
+
+
+func _set_warning(active: bool) -> void:
+	if metal != null:
+		metal.emission_enabled = active
+		if active:
+			metal.emission = Color(0.65, 0.12, 0.025)
+			metal.emission_energy_multiplier = 0.8
+
+
 func apply_projectile_hit(pierce: bool = false) -> bool:
 	if not alive or (kind == Kind.CARRIER and not pierce):
 		return false
 	alive = false
 	approaching_signal = false
 	falling = climb_state == ClimbState.CLIMBING or climb_state == ClimbState.AT_TOP
+	# На самом настиле корпус остаётся на площадке, снаружи — падает на песок.
+	if climb_state == ClimbState.AT_TOP:
+		var local_x := absf(global_position.x - signal_tower.x)
+		var local_z := absf(global_position.z - signal_tower.z)
+		if local_x <= ObservationTower.HALF_DECK and local_z <= ObservationTower.HALF_DECK:
+			falling = false
+	attack_windup = 0.0
+	_set_warning(false)
 	fall_speed = 0.0
 	climb_state = ClimbState.NONE
 	velocity = Vector2.ZERO
