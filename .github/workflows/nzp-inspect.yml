@@ -22,7 +22,15 @@ jobs:
           sudo apt-get install -y -qq libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libice6 libgl1
           python -m pip install 'bpy==4.5.15'
       - name: Inspect source with script execution disabled
-        run: python tools/inspect_nzp_springfield.py
+        run: |
+          python - <<'PYCODE'
+          import runpy, traceback, sys
+          try:
+              runpy.run_path('tools/inspect_nzp_springfield.py', run_name='__main__')
+          except Exception:
+              print('::error::' + traceback.format_exc().replace('%', '%25').replace('\n', '%0A').replace('\r', '%0D'), flush=True)
+              sys.exit(1)
+          PYCODE
       - name: Publish inspection on this branch
         run: |
           git config user.name 'github-actions[bot]'
