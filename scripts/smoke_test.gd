@@ -510,6 +510,7 @@ func _run() -> void:
 	await get_tree().process_frame
 	await _test_piercing(failures)
 	await _test_m5(failures)
+	_test_terrain_paths(failures)
 	_test_reload(failures)
 
 	if failures.is_empty():
@@ -518,6 +519,31 @@ func _run() -> void:
 	else:
 		printerr("[SMOKE] итог: ошибки: ", failures)
 		get_tree().quit(1)
+
+
+func _test_terrain_paths(failures: Array[String]) -> void:
+	# Ускоренно проверяем разные подходы и все три скорости, без ожидания в реальном времени.
+	var center := main.tower.global_position
+	for robot_kind in range(3):
+		for heading in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+			var at := Vector3(center.x + heading.x * 220.0, 0.0, center.z + heading.y * 220.0)
+			at.y = main.coast.ground_height(at.x, at.z)
+			var path_robot := main.ambient_spawner.spawn_at(robot_kind as AmbientRobot.Kind, at, 973 + robot_kind)
+			path_robot.set_physics_process(false)
+			path_robot.respond_to_signal(center, 0)
+			var feet_clear := true
+			for virtual_second in range(650):
+				path_robot._physics_process(1.0)
+				var footprint_radius := Vector2(path_robot.body_size.x, path_robot.body_size.z).length() * 0.5
+				for dx in [-footprint_radius, 0.0, footprint_radius]:
+					for dz in [-footprint_radius, 0.0, footprint_radius]:
+						if path_robot.global_position.y < main.coast.ground_height(path_robot.global_position.x + dx, path_robot.global_position.z + dz):
+							feet_clear = false
+				if not path_robot.approaching_signal:
+					break
+			var remaining := Vector2(path_robot.global_position.x - center.x, path_robot.global_position.z - center.z).length()
+			_check(feet_clear and not path_robot.approaching_signal and remaining < 21.0, "робот %d проходит песок к башне со стороны %s" % [robot_kind, heading], failures)
+			path_robot.free()
 
 
 func _test_reload(failures: Array[String]) -> void:

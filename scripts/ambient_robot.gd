@@ -48,13 +48,13 @@ func setup(robot_kind: Kind, coast_ref: Coast, at: Vector3, seed_value: int) -> 
 	_choose_destination()
 
 
-## Широкая опора: по центру и четырём углам с запасом на поворот силуэта.
-## Это не навигация по препятствиям, но не позволяет ногам проваливаться в дюну.
+## Девять проб под опорой; диагональ даёт запас при повороте силуэта.
+## Это не навигация по препятствиям, но уменьшает проваливание ног в дюну.
 func support_height(x: float, z: float) -> float:
-	var radius := maxf(body_size.x, body_size.z) * 0.5
+	var radius := Vector2(body_size.x, body_size.z).length() * 0.5
 	var height := coast.ground_height(x, z)
-	for dx in [-radius, radius]:
-		for dz in [-radius, radius]:
+	for dx in [-radius, 0.0, radius]:
+		for dz in [-radius, 0.0, radius]:
 			height = maxf(height, coast.ground_height(x + dx, z + dz))
 	return height + 0.03
 
