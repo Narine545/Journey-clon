@@ -404,38 +404,47 @@ func _spring_diagnostic(main: MainScene) -> void:
 	for bind_index in range(skin.get_bind_count()):
 		if skin.get_bind_bone(bind_index) == rid or String(skin.get_bind_name(bind_index)) == "rifle":
 			print("[SPRING-DIAG] rifle bind idx=", bind_index, " bind pose=", skin.get_bind_pose(bind_index))
-	var counts := {}
-	var minimum := Vector3(INF, INF, INF)
-	var maximum := Vector3(-INF, -INF, -INF)
-	for surface in range(skin_mesh.mesh.get_surface_count()):
-		var arrays := skin_mesh.mesh.surface_get_arrays(surface)
-		var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-		var joints: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
-		var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
-		if positions.is_empty() or joints.is_empty():
-			continue
-		var influence_count := int(float(joints.size()) / float(positions.size()))
-		for vertex_index in range(positions.size()):
-			var p := Vector3.ZERO
-			var is_rifle := false
-			for j in range(influence_count):
-				var ix: int = vertex_index * influence_count + j
-				var weight: float = weights[ix]
-				if weight <= 0.0:
-					continue
-				var bind_index: int = joints[ix]
-				var bone := skin.get_bind_bone(bind_index)
-				if bone < 0:
-					bone = skel.find_bone(skin.get_bind_name(bind_index))
-				if bone < 0:
-					continue
-				if bone == rid and weight > 0.5:
-					is_rifle = true
-				p += (skel.get_bone_global_pose(bone) * skin.get_bind_pose(bind_index) * positions[vertex_index]) * weight
-			if not is_rifle:
+	var min_depth := INF
+	var max_depth := -INF
+	var closest_at := -1.0
+	var count := 0
+	for sample in range(20):
+		var elapsed := float(sample) * 0.1
+		main.rifle.reload_remaining = SniperRifle.RELOAD_TIME - minf(elapsed, SniperRifle.RELOAD_TIME - 0.001)
+		main.rifle._update_springfield_animation()
+		for surface in range(skin_mesh.mesh.get_surface_count()):
+			var arrays := skin_mesh.mesh.surface_get_arrays(surface)
+			var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var joints: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+			var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+			if positions.is_empty() or joints.is_empty():
 				continue
-			var relative := main.cam_rig.cam.to_local(skel.to_global(p))
-			minimum = minimum.min(relative)
-			maximum = maximum.max(relative)
-			counts["rifle"] = int(counts.get("rifle", 0)) + 1
-	print("[SPRING-DIAG] rifle-vertex camera bounds=", minimum, " .. ", maximum, " counts=", counts)
+			var influence_count := int(float(joints.size()) / float(positions.size()))
+			for vertex_index in range(positions.size()):
+				var p := Vector3.ZERO
+				var is_rifle := false
+				for j in range(influence_count):
+					var ix: int = vertex_index * influence_count + j
+					var weight: float = weights[ix]
+					if weight <= 0.0:
+						continue
+					var bind_index: int = joints[ix]
+					var bone := skin.get_bind_bone(bind_index)
+					if bone < 0:
+						bone = skel.find_bone(skin.get_bind_name(bind_index))
+					if bone < 0:
+						continue
+					if bone == rid and weight > 0.5:
+						is_rifle = true
+					p += (skel.get_bone_global_pose(bone) * skin.get_bind_pose(bind_index) * positions[vertex_index]) * weight
+				if not is_rifle:
+					continue
+				var depth := -main.cam_rig.cam.to_local(skel.to_global(p)).z
+				if depth < min_depth:
+					min_depth = depth
+					closest_at = elapsed
+				max_depth = maxf(max_depth, depth)
+				count += 1
+	print("[SPRING-DIAG] rifle sample depth=", min_depth, "..", max_depth, " closest at=", closest_at, " count=", count)
+	main.rifle.reload_remaining = 0.0
+	main.rifle._update_springfield_animation()
