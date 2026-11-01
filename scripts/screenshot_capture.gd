@@ -437,14 +437,12 @@ func _spring_diagnostic(main: MainScene) -> void:
 					if bone == rid and weight > 0.5:
 						is_rifle = true
 					p += (skel.get_bone_global_pose(bone) * skin.get_bind_pose(bind_index) * positions[vertex_index]) * weight
-				if not is_rifle:
-					continue
 				var depth := -main.cam_rig.cam.to_local(skel.to_global(p)).z
 				if depth < min_depth:
 					min_depth = depth
 					closest_at = elapsed
 				max_depth = maxf(max_depth, depth)
 				count += 1
-	print("[SPRING-DIAG] rifle sample depth=", min_depth, "..", max_depth, " closest at=", closest_at, " count=", count)
+	print("[SPRING-DIAG] all sample depth=", min_depth, "..", max_depth, " closest at=", closest_at, " count=", count)
 	main.rifle.reload_remaining = 0.0
 	main.rifle._update_springfield_animation()

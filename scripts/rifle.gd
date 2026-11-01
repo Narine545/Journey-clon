@@ -23,7 +23,7 @@ const SPRINGFIELD_TARGET_RADIUS := 1.30
 # По замеру скелетной сетки задняя вершина даже в покое была за камерой;
 # 0.18 м отступа держит всю винтовку перед ближней плоскостью во всех
 # используемых кадрах выстрела и перезарядки, с запасом на интерполяцию.
-const SPRINGFIELD_CAMERA_OFFSET := 0.18
+const SPRINGFIELD_CAMERA_OFFSET := 0.13
 const SPRINGFIELD_USED_MIN_SOURCE_DEPTH := -0.639585
 const SPRINGFIELD_SCENE := preload("res://assets/weapons/nzp_springfield.glb")
 const RAIL_CLEARANCE := 0.16
@@ -442,7 +442,7 @@ func _build_view_model() -> void:
 	# отдельной камеры оружия); с запасом учитываем это у перил.
 	var framing_scale := SPRINGFIELD_TARGET_RADIUS / SPRINGFIELD_SOURCE_RADIUS
 	var virtual_fov := Basis.IDENTITY.scaled(Vector3(SPRINGFIELD_SCREEN_SCALE, SPRINGFIELD_SCREEN_SCALE, 1.0) * framing_scale)
-	framing.transform = Transform3D(virtual_fov, Vector3.ZERO) * source_camera_transform.affine_inverse()
+	framing.transform = Transform3D(Basis(Vector3.UP, 0.45) * virtual_fov, Vector3.ZERO) * source_camera_transform.affine_inverse()
 	_view_model.add_child(framing)
 	framing.add_child(_springfield_model)
 	_springfield_animation = _springfield_model.find_child("AnimationPlayer", true, false) as AnimationPlayer
