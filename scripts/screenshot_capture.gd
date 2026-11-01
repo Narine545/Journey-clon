@@ -414,7 +414,7 @@ func _spring_diagnostic(main: MainScene) -> void:
 		var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
 		if positions.is_empty() or joints.is_empty():
 			continue
-		var influence_count := joints.size() / positions.size()
+		var influence_count := int(float(joints.size()) / float(positions.size()))
 		for vertex_index in range(positions.size()):
 			var p := Vector3.ZERO
 			var is_rifle := false
