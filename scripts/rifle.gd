@@ -13,8 +13,10 @@ const RELOAD_TIME: float = SupplyCatalog.SETTINGS["reload_seconds"]
 const HIT_POINTS: int = SupplyCatalog.SETTINGS["target_reward"]
 const SCOPE_FOV := 18.0
 const RANGE_LIMIT := 1500.0
-# Самая дальняя вершина оружия в локальных координатах камеры < 1.6 м.
-const VIEW_MODEL_RADIUS := 1.60
+# Радиус охватывает всю сетку даже после усиления перспективы на экране.
+const VIEW_MODEL_RADIUS := 3.50
+const PISTOL_MODEL_RADIUS := 1.60
+const SPRINGFIELD_SCREEN_SCALE := 2.4
 # Граница вычислена по всем позам исходных действий, в координатах его камеры.
 const SPRINGFIELD_SOURCE_RADIUS := 14.285921
 const SPRINGFIELD_TARGET_RADIUS := 1.30
@@ -369,7 +371,8 @@ func _update_view_model() -> void:
 	var safe_half := ObservationTower.HALF_DECK - RAIL_CLEARANCE
 	var clearance := minf(safe_half - absf(local_player.x), safe_half - absf(local_player.z))
 	var on_deck := local_player.y >= ObservationTower.DECK_HEIGHT and absf(local_player.x) <= ObservationTower.WALK_LIMIT + 0.1 and absf(local_player.z) <= ObservationTower.WALK_LIMIT + 0.1
-	var model_scale := clampf(clearance / VIEW_MODEL_RADIUS, 0.1, 1.0) if on_deck else 1.0
+	var model_scale := clampf(clearance / VIEW_MODEL_RADIUS, 0.08, 1.0) if on_deck else 1.0
+	var pistol_scale := clampf(clearance / PISTOL_MODEL_RADIUS, 0.1, 1.0) if on_deck else 1.0
 	_view_model.scale = Vector3.ONE * model_scale
 	# Масштабируем ближнюю плоскость вместе с моделью: иначе у перил камера
 	# отрезает почти всю геометрию рук, несмотря на правильную проекцию.
@@ -378,8 +381,8 @@ func _update_view_model() -> void:
 	# сторону приклада. Небольшой наклон вниз/вперёд оставляет ощущение отдачи.
 	_view_model.position = Vector3(0, -_recoil * 0.5, -SPRINGFIELD_CAMERA_OFFSET - _recoil * 0.4) * model_scale
 	var reload_drop := 0.10 * sin(PI * (1.0 - reload_remaining / RELOAD_TIME)) if reload_remaining > 0.0 else 0.0
-	_pistol_view_model.scale = Vector3.ONE * model_scale
-	_pistol_view_model.position = Vector3(0.25, -0.27 - reload_drop, -0.42 + _recoil * 2.0) * model_scale
+	_pistol_view_model.scale = Vector3.ONE * pistol_scale
+	_pistol_view_model.position = Vector3(0.25, -0.27 - reload_drop, -0.42 + _recoil * 2.0) * pistol_scale
 
 
 func _update_springfield_animation() -> void:
@@ -434,7 +437,12 @@ func _build_view_model() -> void:
 	source_camera.free()
 	var framing := Node3D.new()
 	framing.name = "SourceCameraFraming"
-	framing.transform = Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * (SPRINGFIELD_TARGET_RADIUS / SPRINGFIELD_SOURCE_RADIUS)), Vector3.ZERO) * source_camera_transform.affine_inverse()
+	# Отодвинутая модель иначе становится слишком маленькой. Увеличиваем её
+	# экранный охват по X/Y, не приближая геометрию по глубине (аналог FOV
+	# отдельной камеры оружия); с запасом учитываем это у перил.
+	var framing_scale := SPRINGFIELD_TARGET_RADIUS / SPRINGFIELD_SOURCE_RADIUS
+	var virtual_fov := Basis.IDENTITY.scaled(Vector3(SPRINGFIELD_SCREEN_SCALE, SPRINGFIELD_SCREEN_SCALE, 1.0) * framing_scale)
+	framing.transform = Transform3D(virtual_fov, Vector3.ZERO) * source_camera_transform.affine_inverse()
 	_view_model.add_child(framing)
 	framing.add_child(_springfield_model)
 	_springfield_animation = _springfield_model.find_child("AnimationPlayer", true, false) as AnimationPlayer

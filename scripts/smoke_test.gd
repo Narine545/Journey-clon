@@ -1693,7 +1693,7 @@ func _model_within_rails() -> bool:
 	# Все позы импортированной сетки ограничены сферой относительно камеры;
 	# проверяем эту консервативную границу, а не только неподвижный AABB рига.
 	var center := main.tower.to_local(main.rifle._view_model.global_position)
-	var radius := SniperRifle.SPRINGFIELD_TARGET_RADIUS * main.rifle._view_model.scale.x
+	var radius := SniperRifle.SPRINGFIELD_TARGET_RADIUS * SniperRifle.SPRINGFIELD_SCREEN_SCALE * main.rifle._view_model.scale.x
 	var max_coordinate := ObservationTower.HALF_DECK - 0.10
 	return absf(center.x) + radius <= max_coordinate and absf(center.z) + radius <= max_coordinate
 
