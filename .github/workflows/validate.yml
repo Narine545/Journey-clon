@@ -81,6 +81,7 @@ jobs:
           fi
       - name: Prepare review snapshots
         run: |
+          grep -F '[SPRING-DIAG]' render.log | while IFS= read -r line; do echo "::notice::$line"; done || true
           sudo apt-get install -y -qq ffmpeg
           for tag in rest fire reload; do ffmpeg -v error -y -i "spring_${tag}.png" -vf scale=720:-2 -q:v 10 "/tmp/spring-${tag}.jpg"; done
       - name: Review rest part 1
