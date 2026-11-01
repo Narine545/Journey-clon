@@ -55,7 +55,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb mesa-vulkan-drivers
-          JOURNEY_SPRING_REST="$PWD/spring_rest.png" JOURNEY_SPRING_FIRE="$PWD/spring_fire.png" JOURNEY_SPRING_RELOAD="$PWD/spring_reload.png" JOURNEY_SHOT=1 JOURNEY_FRAME_PATH="$PWD/frame.png" JOURNEY_HOOK_PATH="$PWD/hook.png" JOURNEY_PISTOL_PATH="$PWD/pistol.png" JOURNEY_SCALE_PATH="$PWD/robot_scale.png" JOURNEY_ATTACK_PATH="$PWD/attack.png" JOURNEY_DEFEAT_PATH="$PWD/defeat.png" JOURNEY_DEBUG_PATH="$PWD/debug.png" JOURNEY_CLIMB_PATH="$PWD/climb.png" JOURNEY_LIFT_PATH="$PWD/lift.png" JOURNEY_SHOP_PATH="$PWD/shop.png" JOURNEY_CRATE_PATH="$PWD/crate.png" JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
+          JOURNEY_SHOT=1 JOURNEY_FRAME_PATH="$PWD/frame.png" JOURNEY_HOOK_PATH="$PWD/hook.png" JOURNEY_PISTOL_PATH="$PWD/pistol.png" JOURNEY_SCALE_PATH="$PWD/robot_scale.png" JOURNEY_ATTACK_PATH="$PWD/attack.png" JOURNEY_DEFEAT_PATH="$PWD/defeat.png" JOURNEY_DEBUG_PATH="$PWD/debug.png" JOURNEY_CLIMB_PATH="$PWD/climb.png" JOURNEY_LIFT_PATH="$PWD/lift.png" JOURNEY_SHOP_PATH="$PWD/shop.png" JOURNEY_CRATE_PATH="$PWD/crate.png" JOURNEY_SHOT_PATH="$PWD/tower.png" JOURNEY_LANDSCAPE_PATH="$PWD/landscape.png" JOURNEY_SCOPE_PATH="$PWD/scope.png" JOURNEY_RADIO_PATH="$PWD/radio.png" JOURNEY_ROBOT_PATH="$PWD/robot.png" JOURNEY_SKY_PATH="$PWD/sky.png" JOURNEY_RAIL_PATH="$PWD/rail.png" timeout 600 xvfb-run -a -s '-screen 0 1280x720x24' ./godot --path . --audio-driver Dummy --rendering-method forward_plus --resolution 1280x720 2>&1 | tee render.log
           test -s tower.png
           test -s landscape.png
           test -s scope.png
@@ -79,68 +79,6 @@ jobs:
             grep -iE 'SCRIPT ERROR|Parse Error|SHADER ERROR|Failed to load|ERROR:|SHADOWED_VARIABLE_BASE_CLASS|shadowing an already-declared property in the base class|INTEGER_DIVISION|Integer division' render.log | head -30 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           fi
-      - name: Prepare review snapshots
-        run: |
-          grep -F '[SPRING-DIAG]' render.log | while IFS= read -r line; do echo "::notice::$line"; done || true
-          sudo apt-get install -y -qq ffmpeg
-          for tag in rest fire reload; do ffmpeg -v error -y -i "spring_${tag}.png" -vf scale=720:-2 -q:v 10 "/tmp/spring-${tag}.jpg"; done
-      - name: Review rest part 1
-        run: |
-          python3 - <<'PYCODE'
-          import base64
-          from pathlib import Path
-          tag='rest'; data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
-          chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
-          print('::notice::SPRING_COUNT_'+tag+'_'+str(len(chunks)))
-          for i in range(0, min(9,len(chunks))): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+chunks[i])
-          PYCODE
-      - name: Review rest part 2
-        run: |
-          python3 - <<'PYCODE'
-          import base64
-          from pathlib import Path
-          tag='rest'; data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
-          chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
-          for i in range(9, min(18,len(chunks))): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+chunks[i])
-          PYCODE
-      - name: Review fire part 1
-        run: |
-          python3 - <<'PYCODE'
-          import base64
-          from pathlib import Path
-          tag='fire'; data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
-          chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
-          print('::notice::SPRING_COUNT_'+tag+'_'+str(len(chunks)))
-          for i in range(0, min(9,len(chunks))): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+chunks[i])
-          PYCODE
-      - name: Review fire part 2
-        run: |
-          python3 - <<'PYCODE'
-          import base64
-          from pathlib import Path
-          tag='fire'; data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
-          chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
-          for i in range(9, min(18,len(chunks))): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+chunks[i])
-          PYCODE
-      - name: Review reload part 1
-        run: |
-          python3 - <<'PYCODE'
-          import base64
-          from pathlib import Path
-          tag='reload'; data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
-          chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
-          print('::notice::SPRING_COUNT_'+tag+'_'+str(len(chunks)))
-          for i in range(0, min(9,len(chunks))): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+chunks[i])
-          PYCODE
-      - name: Review reload part 2
-        run: |
-          python3 - <<'PYCODE'
-          import base64
-          from pathlib import Path
-          tag='reload'; data=base64.b64encode(Path('/tmp/spring-'+tag+'.jpg').read_bytes()).decode()
-          chunks=[data[i:i+3000] for i in range(0,len(data),3000)]
-          for i in range(9, min(18,len(chunks))): print('::notice::SPRING_'+tag+'_'+str(i)+'_'+chunks[i])
-          PYCODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:

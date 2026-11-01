@@ -289,8 +289,13 @@ func _run() -> void:
 	main.rifle._recoil = 0.018
 	main.rifle._update_view_model()
 	_check(main.rifle._view_model.position.z < -SniperRifle.SPRINGFIELD_CAMERA_OFFSET * main.rifle._view_model.scale.x, "отдача не сдвигает винтовку внутрь камеры", failures)
-	var nearest_gun_depth := SniperRifle.SPRINGFIELD_CAMERA_OFFSET + SniperRifle.SPRINGFIELD_USED_MIN_SOURCE_DEPTH * SniperRifle.SPRINGFIELD_TARGET_RADIUS / SniperRifle.SPRINGFIELD_SOURCE_RADIUS
-	_check(nearest_gun_depth > 0.07, "оружие отодвинуто от камеры с запасом для всех используемых поз", failures)
+	# Проверяем фактическую деформацию Godot, включая руки и винтовку,
+	# а не ограничивающую сферу исходной модели Blender.
+	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, 0)
+	main.cam_rig.refresh_pose()
+	main.rifle._physics_process(0.0)
+	var nearest_gun_depth := _springfield_sample_min_depth()
+	_check(nearest_gun_depth > main.cam_rig.cam.near + 0.04, "вершины оружия и рук в выборке поз перед ближней плоскостью", failures)
 	main.rifle._recoil = 0.0
 	main.rifle.reload_remaining = 0.0
 	main.rifle._update_springfield_animation()
@@ -1704,3 +1709,52 @@ func _check(ok: bool, description: String, failures: Array[String]) -> void:
 	else:
 		failures.append(description)
 		printerr("[SMOKE] FAIL ", description)
+
+
+# CPU skinning is used only by smoke tests: find the nearest animated vertex
+# in the actual imported Godot rig, after all view-model transforms.
+func _springfield_sample_min_depth() -> float:
+	var skin_mesh := main.rifle._springfield_mesh
+	var skin := skin_mesh.skin
+	var skeleton := main.rifle._springfield_skeleton
+	var closest := INF
+	for sample in range(26):
+		if sample == 0:
+			main.rifle.reload_remaining = 0.0
+			main.rifle.cycle_remaining = 0.0
+		elif sample <= 20:
+			var elapsed := float(sample - 1) * 0.1
+			main.rifle.reload_remaining = SniperRifle.RELOAD_TIME - minf(elapsed, SniperRifle.RELOAD_TIME - 0.001)
+			main.rifle.cycle_remaining = 0.0
+		else:
+			main.rifle.reload_remaining = 0.0
+			main.rifle.cycle_remaining = SniperRifle.CYCLE_TIME - minf(float(sample - 21) * 0.08, SniperRifle.CYCLE_TIME - 0.001)
+		main.rifle._update_springfield_animation()
+		for surface in range(skin_mesh.mesh.get_surface_count()):
+			var arrays := skin_mesh.mesh.surface_get_arrays(surface)
+			var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			var joints: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+			var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+			if positions.is_empty() or joints.is_empty():
+				return -INF
+			var influence_count := int(float(joints.size()) / float(positions.size()))
+			for vertex_index in range(positions.size()):
+				var position := Vector3.ZERO
+				for j in range(influence_count):
+					var ix: int = vertex_index * influence_count + j
+					var weight: float = weights[ix]
+					if weight <= 0.0:
+						continue
+					var bind_index: int = joints[ix]
+					var bone := skin.get_bind_bone(bind_index)
+					if bone < 0:
+						bone = skeleton.find_bone(skin.get_bind_name(bind_index))
+					if bone < 0:
+						return -INF
+					position += (skeleton.get_bone_global_pose(bone) * skin.get_bind_pose(bind_index) * positions[vertex_index]) * weight
+				var camera_position := main.cam_rig.cam.to_local(skeleton.to_global(position))
+				closest = minf(closest, -camera_position.z)
+	main.rifle.reload_remaining = 0.0
+	main.rifle.cycle_remaining = 0.0
+	main.rifle._update_springfield_animation()
+	return closest

@@ -49,48 +49,6 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить вид у перил")
 		get_tree().quit(1)
 		return
-	# Временная проверка F2, положения модели и ближнего среза в трёх позах.
-	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, -1.4)
-	main.cam_rig.set_view(PI * 0.5, -0.30)
-	main.rifle.set_infinite_ammo(true)
-	main.rifle.aim_requested = false
-	main.rifle.scope_amount = 0.0
-	main.rifle.cycle_remaining = 0.0
-	main.rifle._physics_process(0.0)
-	await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	_spring_diagnostic(main)
-	var rest_path := OS.get_environment("JOURNEY_SPRING_REST")
-	if not rest_path.is_empty() and get_viewport().get_texture().get_image().save_png(rest_path) != OK:
-		get_tree().quit(1)
-		return
-	if not main.rifle.fire():
-		printerr("[SHOT] отладочный выстрел недоступен")
-		get_tree().quit(1)
-		return
-	main.rifle._physics_process(0.0)
-	await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var fire_path := OS.get_environment("JOURNEY_SPRING_FIRE")
-	if not fire_path.is_empty() and get_viewport().get_texture().get_image().save_png(fire_path) != OK:
-		get_tree().quit(1)
-		return
-	if not main.rifle.start_reload():
-		printerr("[SHOT] отладочная перезарядка недоступна")
-		get_tree().quit(1)
-		return
-	main.rifle.reload_remaining = SniperRifle.RELOAD_TIME * 0.5
-	main.rifle._physics_process(0.0)
-	await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var reload_path := OS.get_environment("JOURNEY_SPRING_RELOAD")
-	if not reload_path.is_empty() and get_viewport().get_texture().get_image().save_png(reload_path) != OK:
-		get_tree().quit(1)
-		return
-	main.rifle.set_infinite_ammo(false)
-	main.rifle.cycle_remaining = 0.0
-	main.rifle._recoil = 0.0
-	main.rifle._physics_process(0.0)
 	# Небо в оптике — отдельный регрессионный кадр Forward+.
 	main.cam_rig.set_view(PI * 0.5, 0.60)
 	main.rifle.aim_requested = true
@@ -392,57 +350,3 @@ func _capture() -> void:
 		get_tree().quit(1)
 		return
 	get_tree().quit(0)
-
-
-func _spring_diagnostic(main: MainScene) -> void:
-	var skin_mesh := main.rifle._springfield_mesh
-	var skin := skin_mesh.skin
-	var skel := main.rifle._springfield_skeleton
-	print("[SPRING-DIAG] mesh=", skin_mesh.global_transform, " skeleton=", skel.global_transform, " binds=", skin.get_bind_count())
-	var rid := skel.find_bone("rifle")
-	print("[SPRING-DIAG] rifle bone=", rid, " pose=", skel.get_bone_global_pose(rid))
-	for bind_index in range(skin.get_bind_count()):
-		if skin.get_bind_bone(bind_index) == rid or String(skin.get_bind_name(bind_index)) == "rifle":
-			print("[SPRING-DIAG] rifle bind idx=", bind_index, " bind pose=", skin.get_bind_pose(bind_index))
-	var min_depth := INF
-	var max_depth := -INF
-	var closest_at := -1.0
-	var count := 0
-	for sample in range(20):
-		var elapsed := float(sample) * 0.1
-		main.rifle.reload_remaining = SniperRifle.RELOAD_TIME - minf(elapsed, SniperRifle.RELOAD_TIME - 0.001)
-		main.rifle._update_springfield_animation()
-		for surface in range(skin_mesh.mesh.get_surface_count()):
-			var arrays := skin_mesh.mesh.surface_get_arrays(surface)
-			var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-			var joints: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
-			var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
-			if positions.is_empty() or joints.is_empty():
-				continue
-			var influence_count := int(float(joints.size()) / float(positions.size()))
-			for vertex_index in range(positions.size()):
-				var p := Vector3.ZERO
-				var is_rifle := false
-				for j in range(influence_count):
-					var ix: int = vertex_index * influence_count + j
-					var weight: float = weights[ix]
-					if weight <= 0.0:
-						continue
-					var bind_index: int = joints[ix]
-					var bone := skin.get_bind_bone(bind_index)
-					if bone < 0:
-						bone = skel.find_bone(skin.get_bind_name(bind_index))
-					if bone < 0:
-						continue
-					if bone == rid and weight > 0.5:
-						is_rifle = true
-					p += (skel.get_bone_global_pose(bone) * skin.get_bind_pose(bind_index) * positions[vertex_index]) * weight
-				var depth := -main.cam_rig.cam.to_local(skel.to_global(p)).z
-				if depth < min_depth:
-					min_depth = depth
-					closest_at = elapsed
-				max_depth = maxf(max_depth, depth)
-				count += 1
-	print("[SPRING-DIAG] all sample depth=", min_depth, "..", max_depth, " closest at=", closest_at, " count=", count)
-	main.rifle.reload_remaining = 0.0
-	main.rifle._update_springfield_animation()
