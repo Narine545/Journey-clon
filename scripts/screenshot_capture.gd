@@ -49,6 +49,47 @@ func _capture() -> void:
 		printerr("[SHOT] не удалось сохранить вид у перил")
 		get_tree().quit(1)
 		return
+	# Временная проверка F2, положения модели и ближнего среза в трёх позах.
+	main.player.position = Vector3(0, ObservationTower.DECK_HEIGHT, -1.4)
+	main.cam_rig.set_view(PI * 0.5, -0.30)
+	main.rifle.set_infinite_ammo(true)
+	main.rifle.aim_requested = false
+	main.rifle.scope_amount = 0.0
+	main.rifle.cycle_remaining = 0.0
+	main.rifle._physics_process(0.0)
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var rest_path := OS.get_environment("JOURNEY_SPRING_REST")
+	if not rest_path.is_empty() and get_viewport().get_texture().get_image().save_png(rest_path) != OK:
+		get_tree().quit(1)
+		return
+	if not main.rifle.fire():
+		printerr("[SHOT] отладочный выстрел недоступен")
+		get_tree().quit(1)
+		return
+	main.rifle._physics_process(0.0)
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var fire_path := OS.get_environment("JOURNEY_SPRING_FIRE")
+	if not fire_path.is_empty() and get_viewport().get_texture().get_image().save_png(fire_path) != OK:
+		get_tree().quit(1)
+		return
+	if not main.rifle.start_reload():
+		printerr("[SHOT] отладочная перезарядка недоступна")
+		get_tree().quit(1)
+		return
+	main.rifle.reload_remaining = SniperRifle.RELOAD_TIME * 0.5
+	main.rifle._physics_process(0.0)
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var reload_path := OS.get_environment("JOURNEY_SPRING_RELOAD")
+	if not reload_path.is_empty() and get_viewport().get_texture().get_image().save_png(reload_path) != OK:
+		get_tree().quit(1)
+		return
+	main.rifle.set_infinite_ammo(false)
+	main.rifle.cycle_remaining = 0.0
+	main.rifle._recoil = 0.0
+	main.rifle._physics_process(0.0)
 	# Небо в оптике — отдельный регрессионный кадр Forward+.
 	main.cam_rig.set_view(PI * 0.5, 0.60)
 	main.rifle.aim_requested = true

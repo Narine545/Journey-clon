@@ -288,7 +288,9 @@ func _run() -> void:
 	_check(spring_hand_idle.origin.distance_to(spring_skeleton.get_bone_pose(spring_hand).origin) < 0.01, "движение плавно возвращается к исходной позе", failures)
 	main.rifle._recoil = 0.018
 	main.rifle._update_view_model()
-	_check(main.rifle._view_model.position.z <= 0.0, "отдача не сдвигает винтовку внутрь камеры", failures)
+	_check(main.rifle._view_model.position.z < -SniperRifle.SPRINGFIELD_CAMERA_OFFSET * main.rifle._view_model.scale.x, "отдача не сдвигает винтовку внутрь камеры", failures)
+	var nearest_gun_depth := SniperRifle.SPRINGFIELD_CAMERA_OFFSET + SniperRifle.SPRINGFIELD_USED_MIN_SOURCE_DEPTH * SniperRifle.SPRINGFIELD_TARGET_RADIUS / SniperRifle.SPRINGFIELD_SOURCE_RADIUS
+	_check(nearest_gun_depth > 0.07, "оружие отодвинуто от камеры с запасом для всех используемых поз", failures)
 	main.rifle._recoil = 0.0
 	main.rifle.reload_remaining = 0.0
 	main.rifle._update_springfield_animation()
@@ -1246,10 +1248,23 @@ func _test_pistol_and_infinite(failures: Array[String]) -> void:
 	await _click_debug_control(main.debug_menu.ammo_toggle)
 	_check(rifle.infinite_ammo and main.debug_menu.ammo_toggle.button_pressed, "реальный клик по флажку F2 включает бесконечные патроны", failures)
 	main.debug_menu.set_open(false)
-	for shot_index in range(12):
-		_check(rifle.fire(), "бесконечный выстрел %d" % shot_index, failures)
-		rifle._physics_process(SniperRifle.CYCLE_TIME)
-	_check(rifle.ammo == 2 and rifle.regular_reserve == 7 and rifle.ap_reserve == 0 and rifle.reload_remaining == 0.0, "бесконечный режим не расходует магазин, запас и не ждёт перезарядку", failures)
+	_check(rifle.current_ammo() == 5 and not rifle.start_reload(), "отладочный магазин начинается полным; полный магазин не перезаряжается", failures)
+	for shot_index in range(5):
+		_check(rifle.fire() and rifle.current_ammo() == 4 - shot_index, "отладочный выстрел расходует патрон %d" % shot_index, failures)
+		if shot_index < 4:
+			rifle._physics_process(SniperRifle.CYCLE_TIME)
+	_check(rifle.current_ammo() == 0 and rifle.reload_remaining > 0.0 and not rifle.can_fire(), "бесконечный запас не отменяет автоматическую перезарядку", failures)
+	rifle._physics_process(SniperRifle.RELOAD_TIME)
+	_check(rifle.current_ammo() == 5 and rifle.ammo == 2 and rifle.regular_reserve == 7 and rifle.ap_reserve == 0, "автоперезарядка бесплатная и не меняет реальные патроны", failures)
+	_check(rifle.fire() and rifle.current_ammo() == 4, "после автоматической перезарядки магазин снова расходуется", failures)
+	rifle._physics_process(SniperRifle.CYCLE_TIME)
+	var reload_key := InputEventKey.new()
+	reload_key.physical_keycode = KEY_R
+	reload_key.pressed = true
+	rifle._input(reload_key)
+	_check(rifle.reload_remaining > 0.0 and not rifle.fire(), "R запускает перезарядку неполного отладочного магазина и блокирует выстрел", failures)
+	rifle._physics_process(SniperRifle.RELOAD_TIME)
+	_check(rifle.current_ammo() == 5 and rifle.regular_reserve == 7, "R восполняет отладочный магазин из бесконечного запаса", failures)
 	rifle.apply_delivery("ammo", {"regular_ammo": 5})
 	_check(rifle.regular_reserve == 12, "реальная доставка учитывается и в бесконечном режиме", failures)
 	rifle.switch_ammo()
@@ -1270,12 +1285,15 @@ func _test_pistol_and_infinite(failures: Array[String]) -> void:
 	ap_target.free()
 	rifle.select_weapon(SniperRifle.Weapon.PISTOL)
 	rifle.cycle_remaining = 0.0
-	_check(rifle.pistol_ammo == 0 and rifle.fire() and rifle.pistol_ammo == 0, "бесконечный режим работает и с пустым пистолетом", failures)
+	_check(rifle.pistol_ammo == 0 and rifle.current_ammo() == 8 and rifle.fire() and rifle.current_ammo() == 7, "у пистолета отдельный расходуемый отладочный магазин", failures)
+	rifle._physics_process(float(SupplyCatalog.SETTINGS["pistol_cycle_seconds"]))
+	_check(rifle.start_reload() and rifle.reload_remaining > 0.0, "R доступна и пистолету при бесконечном запасе", failures)
 	rifle._physics_process(0.0)
-	_check(rifle.hud._drawing.infinite_ammo and rifle.hud._drawing.is_pistol, "HUD явно показывает бесконечный режим пистолета", failures)
+	_check(rifle.hud._drawing.infinite_ammo and rifle.hud._drawing.is_pistol and rifle.hud._drawing.ammo == 7, "HUD показывает магазин пистолета и бесконечный запас", failures)
+	# Отключение посреди бесплатной перезарядки не пополняет реальный магазин.
 	main.debug_menu.set_open(true)
 	await _click_debug_control(main.debug_menu.ammo_toggle)
-	_check(not rifle.infinite_ammo and rifle.ammo == 2 and rifle.ammo_type == "regular" and rifle.regular_reserve == 12 and rifle.ap_reserve == 0 and rifle.pistol_ammo == 0, "повторный клик возвращает нетронутые запасы и полученную доставку", failures)
+	_check(not rifle.infinite_ammo and rifle.ammo == 2 and rifle.ammo_type == "regular" and rifle.regular_reserve == 12 and rifle.ap_reserve == 0 and rifle.pistol_ammo == 0 and rifle.reload_remaining == 0.0, "повторный клик отменяет отладочную перезарядку и возвращает реальные патроны и доставку", failures)
 	main.debug_menu.set_open(false)
 	rifle.cycle_remaining = 0.0
 	_check(not rifle.can_fire() and rifle.start_reload(), "после отключения снова нужна обычная перезарядка", failures)

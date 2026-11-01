@@ -18,6 +18,11 @@ const VIEW_MODEL_RADIUS := 1.60
 # Граница вычислена по всем позам исходных действий, в координатах его камеры.
 const SPRINGFIELD_SOURCE_RADIUS := 14.285921
 const SPRINGFIELD_TARGET_RADIUS := 1.30
+# По замеру скелетной сетки задняя вершина даже в покое была за камерой;
+# 0.18 м отступа держит всю винтовку перед ближней плоскостью во всех
+# используемых кадрах выстрела и перезарядки, с запасом на интерполяцию.
+const SPRINGFIELD_CAMERA_OFFSET := 0.18
+const SPRINGFIELD_USED_MIN_SOURCE_DEPTH := -0.639585
 const SPRINGFIELD_SCENE := preload("res://assets/weapons/nzp_springfield.glb")
 const RAIL_CLEARANCE := 0.16
 
@@ -31,6 +36,8 @@ var weapon := Weapon.RIFLE
 var pistol_ammo: int = SupplyCatalog.SETTINGS["pistol_capacity"]
 var infinite_ammo := false
 var debug_ammo_type := "regular"
+var debug_rifle_ammo := 0
+var debug_pistol_ammo := 0
 var regular_reserve: int = SupplyCatalog.SETTINGS["start_regular_reserve"]
 var ap_reserve: int = SupplyCatalog.SETTINGS["start_ap_reserve"]
 var ammo_type := "regular"
@@ -141,6 +148,8 @@ func _physics_process(delta: float) -> void:
 
 
 func current_ammo() -> int:
+	if infinite_ammo:
+		return debug_pistol_ammo if weapon == Weapon.PISTOL else debug_rifle_ammo
 	return pistol_ammo if weapon == Weapon.PISTOL else ammo
 
 
@@ -157,11 +166,14 @@ func selected_ammo_type() -> String:
 func set_infinite_ammo(value: bool) -> void:
 	if value == infinite_ammo:
 		return
+	# Отладочные магазины и неограниченный резерв существуют отдельно:
+	# реальные магазины, выбранный тип и доставки не изменяются. При каждом
+	# переключении отменяем начатую перезарядку, чтобы режимы не смешивались.
+	reload_remaining = 0.0
 	if value:
-		# Настоящие магазины и резервы остаются нетронутыми; AP можно испытать
-		# даже с нулевым запасом, отдельно от сохранённого выбора патронов.
 		debug_ammo_type = ammo_type
-		reload_remaining = 0.0
+		debug_rifle_ammo = int(SupplyCatalog.SETTINGS["magazine_capacity"])
+		debug_pistol_ammo = int(SupplyCatalog.SETTINGS["pistol_capacity"])
 	infinite_ammo = value
 
 
@@ -173,14 +185,14 @@ func select_weapon(next_weapon: Weapon) -> void:
 	aim_requested = false
 	scope_amount = 0.0
 	cam_rig.aim_offset = Vector2.ZERO
-	if not infinite_ammo and current_ammo() == 0:
+	if current_ammo() == 0:
 		start_reload()
 
 
 func can_fire() -> bool:
 	if main != null and main.player_health != null and main.player_health.defeated:
 		return false
-	return (infinite_ammo or current_ammo() > 0) and cycle_remaining <= 0.0 and reload_remaining <= 0.0
+	return current_ammo() > 0 and cycle_remaining <= 0.0 and reload_remaining <= 0.0
 
 
 func fire() -> bool:
@@ -194,11 +206,15 @@ func fire() -> bool:
 	var pistol := weapon == Weapon.PISTOL
 	var muzzle := float(SupplyCatalog.SETTINGS["pistol_muzzle_speed"]) if pistol else MUZZLE_SPEED
 	projectile.setup(camera.global_position, direction, muzzle, main, self, not pistol and selected_ammo_type() == "ap")
-	if not infinite_ammo:
+	if infinite_ammo:
 		if pistol:
-			pistol_ammo -= 1
+			debug_pistol_ammo -= 1
 		else:
-			ammo -= 1
+			debug_rifle_ammo -= 1
+	elif pistol:
+		pistol_ammo -= 1
+	else:
+		ammo -= 1
 	cycle_remaining = float(SupplyCatalog.SETTINGS["pistol_cycle_seconds"]) if pistol else CYCLE_TIME
 	_cycle_bolt_played = false
 	_recoil = 0.010 if pistol else 0.018
@@ -206,16 +222,14 @@ func fire() -> bool:
 		audio.on_pistol_shot()
 	else:
 		audio.on_rifle_shot()
-	if not infinite_ammo and current_ammo() == 0:
+	if current_ammo() == 0:
 		start_reload()
 	return true
 
 
 func start_reload() -> bool:
-	if infinite_ammo:
-		return false
 	var available := regular_reserve if weapon == Weapon.PISTOL or ammo_type == "regular" else ap_reserve
-	if reload_remaining > 0.0 or current_ammo() >= magazine_capacity() or available <= 0:
+	if reload_remaining > 0.0 or current_ammo() >= magazine_capacity() or (not infinite_ammo and available <= 0):
 		return false
 	reload_remaining = float(SupplyCatalog.SETTINGS["pistol_reload_seconds"]) if weapon == Weapon.PISTOL else RELOAD_TIME
 	audio.on_bolt()
@@ -243,6 +257,10 @@ func switch_ammo() -> void:
 
 func _reload_selected() -> void:
 	if infinite_ammo:
+		if weapon == Weapon.PISTOL:
+			debug_pistol_ammo = magazine_capacity()
+		else:
+			debug_rifle_ammo = magazine_capacity()
 		return
 	if weapon == Weapon.PISTOL:
 		var pistol_loaded := mini(magazine_capacity() - pistol_ammo, regular_reserve)
@@ -358,7 +376,7 @@ func _update_view_model() -> void:
 	camera.near = 0.02 * model_scale if weapon == Weapon.RIFLE and scope_amount < 0.45 else 0.02
 	# Оружие не движется к глазу: прежний сдвиг в +Z показывал внутреннюю
 	# сторону приклада. Небольшой наклон вниз/вперёд оставляет ощущение отдачи.
-	_view_model.position = Vector3(0, -_recoil * 0.5, -_recoil * 0.4) * model_scale
+	_view_model.position = Vector3(0, -_recoil * 0.5, -SPRINGFIELD_CAMERA_OFFSET - _recoil * 0.4) * model_scale
 	var reload_drop := 0.10 * sin(PI * (1.0 - reload_remaining / RELOAD_TIME)) if reload_remaining > 0.0 else 0.0
 	_pistol_view_model.scale = Vector3.ONE * model_scale
 	_pistol_view_model.position = Vector3(0.25, -0.27 - reload_drop, -0.42 + _recoil * 2.0) * model_scale

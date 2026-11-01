@@ -68,7 +68,7 @@ func setup(main_ref: MainScene) -> void:
 	info.add_theme_font_size_override("font_size", 16)
 	column.add_child(info)
 	ammo_toggle = CheckButton.new()
-	ammo_toggle.text = "Бесконечные патроны (без перезарядки)"
+	ammo_toggle.text = "Бесконечный запас (магазин перезаряжается)"
 	ammo_toggle.add_theme_font_size_override("font_size", 18)
 	ammo_toggle.toggled.connect(_toggle_infinite_ammo)
 	column.add_child(ammo_toggle)
