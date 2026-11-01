@@ -1,5 +1,4 @@
 import runpy
-from mathutils import Vector
 r=runpy.run_path('tools/export_nzp_game_rifle.py',run_name='__main__')
 bpy=r['bpy']; rig=r['rig']; mesh=r['mesh']; cam=r['cam']; scene=r['scene']
 rig.animation_data.action=bpy.data.actions['Kar98k.001']
