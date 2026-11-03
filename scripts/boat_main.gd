@@ -85,6 +85,9 @@ func _ready() -> void:
 	water.set_param("glitter_amount", 0.05)
 	water.set_param("solar_glitter_amount", 0.018)
 	water.set_param("sun_path_amount", 0.13)
+	# GGX прямого света всё ещё давал белое пятно под лодкой даже при
+	# приглушённой нарисованной дорожке. Старая сцена сохраняет исходный свет.
+	water.set_param("direct_specular_amount", 0.07)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
 		var test := BoatSmoke.new()
 		add_child(test)

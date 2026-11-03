@@ -50,6 +50,7 @@ uniform float ripple_strength = 0.34;
 uniform float glitter_amount = 1.0; // общий мелкий глиттер поверхности
 uniform float solar_glitter_amount = 1.0; // отдельные частицы солнечной дорожки
 uniform float sun_path_amount = 1.0; // отдельный контроль широкого солнечного пятна
+uniform float direct_specular_amount = 1.0; // яркость прямого GGX-отражения солнца
 // Временный A/B-тест прямого света: Proxima diffuse + Schlick-GGX.
 // По умолчанию выключен, солнечный глиттер от него не зависит.
 uniform float proxima_test = 0.0;
@@ -417,7 +418,8 @@ void light() {
 		float burley_v = 1.0 + (fd90 - 1.0) * pow(1.0 - nv, 5.0);
 		DIFFUSE_LIGHT += radiance * ALBEDO * (1.0 / PI)
 			* burley_l * burley_v * nl;
-		SPECULAR_LIGHT += radiance * d * gl * gv * f / max(4.0 * nl * nv, 1e-3);
+		SPECULAR_LIGHT += radiance * d * gl * gv * f * direct_specular_amount
+			/ max(4.0 * nl * nv, 1e-3);
 	} else {
 	// Diffuse Proxima: Fresnel tint, retroreflection и smooth terminator.
 	float alpha = ROUGHNESS * ROUGHNESS;
@@ -454,7 +456,7 @@ void light() {
 		- proxima_r(proxima_specular_fresnel_falloff)) * (1.0 - f0) * fh;
 	vec3 fs = d * gl * gv * fresnel * nl;
 	DIFFUSE_LIGHT += radiance * fd;
-	SPECULAR_LIGHT += radiance * fs;
+	SPECULAR_LIGHT += radiance * fs * direct_specular_amount;
 	}
 	}
 }
