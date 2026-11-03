@@ -27,9 +27,9 @@ void vertex() {
 }
 
 void fragment() {
-    vec2 p = local_pos;
+    vec2 p = local_pos * 0.82;
     float t = TIME * 0.45 + seed;
-    float d = length(p + vec2(sin(t) * 0.10, cos(t * 0.8) * 0.10)) - 1.18;
+    float d = length(p + vec2(sin(t) * 0.10, cos(t * 0.8) * 0.10)) - 0.96;
     for (int i = 0; i < 4; i++) {
         float a = float(i) * 2.399963 + seed * 2.7;
         vec2 center = vec2(cos(a), sin(a)) * (0.68 + 0.15 * sin(t + float(i)));
@@ -37,6 +37,9 @@ void fragment() {
         d = smooth_union(d, lobe, 0.48);
     }
     float ripple = sin(length(p) * 11.0 - t * 3.8 + atan(p.y, p.x) * 4.0);
+    float angle = atan(p.y, p.x);
+    d += sin(angle * 5.0 + t * 0.65) * 0.08
+        + sin(angle * 9.0 - t * 0.25) * 0.035;
     d += ripple * 0.035 + (hash21(floor(p * 12.0) + floor(t * 0.2)) - 0.5) * 0.025;
     float aa = max(fwidth(d), 0.012);
     float body = 1.0 - smoothstep(-aa, aa, d);

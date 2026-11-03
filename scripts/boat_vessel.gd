@@ -118,6 +118,12 @@ func _box(at: Vector3, size: Vector3, mat: Material) -> MeshInstance3D:
 	return part
 
 
+func _triangle(tool: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
+	tool.add_vertex(a)
+	tool.add_vertex(b)
+	tool.add_vertex(c)
+
+
 func _build_appearance() -> void:
 	# Палитра: графитовый корпус, глубокий петроль, меловая каюта,
 	# медная механика и четыре чистых акцентных цвета собранных ресурсов.
@@ -130,13 +136,25 @@ func _build_appearance() -> void:
 	var dark := _material(Color("142833"), 0.55)
 	_box(Vector3(0, -0.42, 0), Vector3(3.0, 0.85, 7.1), hull)
 	_box(Vector3(0, 0.04, 0), Vector3(3.18, 0.14, 6.85), hull_edge)
-	# Заострённый нос задаёт силуэт моторного исследовательского судна.
+	# Нос треугольный В ГОРИЗОНТАЛЬНОЙ плоскости. Готовый PrismMesh
+	# после поворота давал вертикальный чёрный «парус» вместо носа.
 	var prow := MeshInstance3D.new()
-	var prism := PrismMesh.new()
-	prism.size = Vector3(3.0, 0.80, 1.9)
-	prow.mesh = prism
-	prow.position = Vector3(0.0, -0.36, -4.20)
-	prow.rotation.z = -PI * 0.5
+	var triangles := SurfaceTool.new()
+	triangles.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var lp := Vector3(-1.5, 0.02, -3.25)
+	var rp := Vector3(1.5, 0.02, -3.25)
+	var tip := Vector3(0.0, 0.02, -5.0)
+	var lp_low := lp + Vector3.DOWN * 0.75
+	var rp_low := rp + Vector3.DOWN * 0.75
+	var tip_low := tip + Vector3.DOWN * 0.75
+	_triangle(triangles, lp, rp, tip) # палуба
+	_triangle(triangles, lp_low, tip_low, rp_low) # днище
+	_triangle(triangles, lp, tip, tip_low)
+	_triangle(triangles, lp, tip_low, lp_low)
+	_triangle(triangles, rp, rp_low, tip_low)
+	_triangle(triangles, rp, tip_low, tip)
+	triangles.generate_normals()
+	prow.mesh = triangles.commit()
 	prow.material_override = hull
 	_body.add_child(prow)
 	_box(Vector3(0, 0.13, -0.4), Vector3(2.83, 0.09, 5.9), _material(Color("8d7762")))

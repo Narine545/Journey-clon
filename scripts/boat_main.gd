@@ -82,8 +82,9 @@ func _ready() -> void:
 	water.set_param("water_deep", Color("0f5668"))
 	water.set_param("horizon_col", Color("6996a0"))
 	water.set_param("sky_col", Color("447084"))
-	water.set_param("glitter_amount", 0.16)
-	water.set_param("solar_glitter_amount", 0.12)
+	water.set_param("glitter_amount", 0.05)
+	water.set_param("solar_glitter_amount", 0.018)
+	water.set_param("sun_path_amount", 0.13)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
 		var test := BoatSmoke.new()
 		add_child(test)

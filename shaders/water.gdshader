@@ -49,6 +49,7 @@ uniform float ripple_speed = 1.1;
 uniform float ripple_strength = 0.34;
 uniform float glitter_amount = 1.0; // общий мелкий глиттер поверхности
 uniform float solar_glitter_amount = 1.0; // отдельные частицы солнечной дорожки
+uniform float sun_path_amount = 1.0; // отдельный контроль широкого солнечного пятна
 // Временный A/B-тест прямого света: Proxima diffuse + Schlick-GGX.
 // По умолчанию выключен, солнечный глиттер от него не зависит.
 uniform float proxima_test = 0.0;
@@ -278,7 +279,7 @@ void fragment() {
 
 	float path_power = mix(180.0, 34.0, far_glit);
 	float path = pow(clamp(dot(N, H), 0.0, 1.0), path_power);
-	base += sun_col * path * 0.55 * (1.0 - 0.85 * near_shore);
+	base += sun_col * path * 0.55 * sun_path_amount * (1.0 - 0.85 * near_shore);
 	// СОЛНЕЧНЫЙ глиттер — не широкая полоса света: редкие отдельные
 	// отражающие «частицы» собираются только в направлении солнечной дорожки.
 	// Ячейки укрупняются вдаль, а размер искры держим в пикселях, чтобы
