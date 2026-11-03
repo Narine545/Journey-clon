@@ -20,8 +20,8 @@ func _draw() -> void:
 		draw_rect(Rect2(42, y - 15, 13, 13), ResourceSlick.COLORS[i])
 		draw_string(font, Vector2(65, y - 3), ResourceSlick.NAMES[i].to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 122, 15, ink)
 		draw_string(font, Vector2(235, y - 3), "%02d сыр.  →  %02d гот." % [main.raw[i], main.refined[i]], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, muted)
-	var name := main.boat.target_name()
-	var action := "ПРОБЕЛ — ЗАБРАТЬ: %s" % name.to_upper() if not name.is_empty() else "ИЩИТЕ СВЕТЯЩИЕСЯ ПЯТНА"
+	var resource_name := main.boat.target_name()
+	var action := "ПРОБЕЛ — ЗАБРАТЬ: %s" % resource_name.to_upper() if not resource_name.is_empty() else "ИЩИТЕ СВЕТЯЩИЕСЯ ПЯТНА"
 	var center := Vector2(size.x * 0.5 - 195.0, size.y - 134.0)
 	draw_rect(Rect2(center, Vector2(390, 38)), backdrop)
 	draw_string(font, center + Vector2(14, 26), action, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, ink)

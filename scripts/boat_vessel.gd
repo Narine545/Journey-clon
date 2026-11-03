@@ -23,8 +23,8 @@ var _hose: MeshInstance3D
 var _nozzle := Vector3(-1.65, 0.05, 0.3)
 
 
-func setup(owner: BoatMain, water_ref: WaterSurface, coast_ref: Coast) -> void:
-	main = owner
+func setup(boat_main: BoatMain, water_ref: WaterSurface, coast_ref: Coast) -> void:
+	main = boat_main
 	water = water_ref
 	coast = coast_ref
 	_body = Node3D.new()

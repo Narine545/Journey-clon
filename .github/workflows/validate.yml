@@ -52,7 +52,7 @@ jobs:
           godot_bin/godot --headless --path . --import > import.log 2>&1
           code=$?
           cat import.log
-          if grep -qE "SCRIPT ERROR|Parse Error|Parse error|SHADER ERROR|Can't load|Failed to compile|Shader" import.log; then
+          if grep -qE "SCRIPT ERROR|Parse Error|Parse error|SHADER ERROR|Can't load|Failed to compile|Shader|SHADOWED_VARIABLE_BASE_CLASS" import.log; then
             echo "::error::Ошибки при импорте (см. .ci-logs в коммите CI)"
             grep -E "SCRIPT ERROR|Parse Error|Parse error|SHADER ERROR|Can't load|Failed to compile|Shader" import.log | head -10 | while read -r line; do
               echo "::error::$line"
@@ -96,7 +96,7 @@ jobs:
           JOURNEY_BOAT_SMOKE=1 godot_bin/godot --headless --path . --quit-after 500 > boat-smoke.log 2>&1
           cat boat-smoke.log
           grep -q '\[BOAT SMOKE\] итог: ВСЁ ПРОШЛО' boat-smoke.log
-          if grep -qE 'SCRIPT ERROR|Parse Error|Invalid (get|call|set)' boat-smoke.log; then
+          if grep -qE 'SCRIPT ERROR|Parse Error|Invalid (get|call|set)|SHADOWED_VARIABLE_BASE_CLASS' boat-smoke.log; then
             exit 1
           fi
 

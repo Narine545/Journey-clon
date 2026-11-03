@@ -5,6 +5,11 @@ extends Node3D
 
 const START_Z := Coast.SPAWN_Z
 const START_SEAWARD := 95.0
+# Пул пятен остаётся постоянным, но переставляется за пределами экрана:
+# игрок не должен навсегда терять ресурсы после ухода от стартового района.
+const SLICK_RECYCLE_DISTANCE := 72.0
+const SLICK_SPAWN_MIN := 28.0
+const SLICK_SPAWN_MAX := 47.0
 
 var game: GameState
 var world: GameWorld
@@ -20,6 +25,8 @@ var refined := PackedInt32Array([0, 0, 0, 0])
 var notice := ""
 var notice_time := 0.0
 var _capture_frames := 0
+var _stream_timer := 0.0
+var _slick_rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
@@ -47,6 +54,7 @@ func _ready() -> void:
 	boat.global_position = Vector3(coast.shore_x(START_Z) - START_SEAWARD, 0.2, START_Z)
 	boat.setup(self, water, coast)
 	_build_resources()
+	_slick_rng.seed = 845239
 	camera = Camera3D.new()
 	camera.name = "IsometricCamera"
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -113,6 +121,35 @@ func _build_resources() -> void:
 		slicks.append(slick)
 
 
+func _stream_resources() -> void:
+	var center := Vector2(boat.global_position.x, boat.global_position.z)
+	for slick in slicks:
+		if slick.depleted:
+			continue # таймер повторного появления нельзя обойти перемещением
+		var current := Vector2(slick.position.x, slick.position.z)
+		if current.distance_to(center) <= SLICK_RECYCLE_DISTANCE:
+			continue
+		# Только ушедшие далеко за пределы кадра пятна получают новое место.
+		# До подхода игрока позиция остаётся постоянной (без мигания/телепорта).
+		for _attempt in range(24):
+			var angle := _slick_rng.randf_range(-PI, PI)
+			var distance := _slick_rng.randf_range(SLICK_SPAWN_MIN, SLICK_SPAWN_MAX)
+			var candidate := center + Vector2.from_angle(angle) * distance
+			if coast.water_depth(candidate.x, candidate.y) < 3.0:
+				continue
+			var clear := true
+			for other in slicks:
+				if other == slick or other.depleted:
+					continue
+				if candidate.distance_to(Vector2(other.position.x, other.position.z)) < 9.0:
+					clear = false
+					break
+			if clear:
+				slick.position = Vector3(candidate.x,
+					water.surface_height(candidate.x, candidate.y) + 0.20, candidate.y)
+				break
+
+
 func nearest_resource(at: Vector3, radius: float) -> ResourceSlick:
 	var candidate: ResourceSlick = null
 	var closest := radius * radius
@@ -166,6 +203,10 @@ func _process(delta: float) -> void:
 	camera.global_position = camera.global_position.lerp(desired, 1.0 - exp(-3.0 * delta))
 	camera.look_at(target, Vector3.UP)
 	notice_time = maxf(0.0, notice_time - delta)
+	_stream_timer -= delta
+	if _stream_timer <= 0.0:
+		_stream_timer = 0.5
+		_stream_resources()
 	hud.queue_redraw()
 	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":
 		_capture_frames += 1
