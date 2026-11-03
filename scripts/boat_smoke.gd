@@ -38,7 +38,7 @@ func _physics_process(_delta: float) -> void:
 		# в стартовом круге. Уходим в открытое море, не заходя на берег.
 		main.boat.global_position = origin + Vector3(-105.0, 0.0, 0.0)
 		main.boat.speed = 0.0
-	if ticks == 220:
+		main._stream_resources()
 		var nearby := 0
 		for slick in main.slicks:
 			if not slick.depleted and Vector2(slick.position.x, slick.position.z).distance_to(
