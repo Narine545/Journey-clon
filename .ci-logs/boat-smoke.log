@@ -8,3 +8,5 @@ WORLD: Vulkan недоступен — Compatibility-фолбэк, волюме�
 [BOAT SMOKE] PASS мотор двигает лодку
 [BOAT SMOKE] PASS насос собирает одно пятно
 [BOAT SMOKE] PASS три единицы сырья превращаются в один очищенный материал
+[BOAT SMOKE] PASS пятна появляются в новом районе после плавания
+[BOAT SMOKE] итог: ВСЁ ПРОШЛО
