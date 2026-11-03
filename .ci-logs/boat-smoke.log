@@ -1,0 +1,11 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+WORLD: Vulkan недоступен — Compatibility-фолбэк, волюметрический туман заменён плотной дымкой
+[BOAT SMOKE] PASS волны CPU + шейдерное море
+[BOAT SMOKE] PASS лодка спущена на глубокую воду
+[BOAT SMOKE] PASS SDF-пятна распределены вокруг лодки
+[BOAT SMOKE] PASS изометрическая камера
+[BOAT SMOKE] PASS мотор двигает лодку
+[BOAT SMOKE] PASS насос собирает одно пятно
+[BOAT SMOKE] PASS три единицы сырья превращаются в один очищенный материал
+[BOAT SMOKE] итог: ВСЁ ПРОШЛО
