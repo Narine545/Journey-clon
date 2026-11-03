@@ -69,7 +69,7 @@ jobs:
 
       - name: Smoke run (автотест геймплея)
         run: |
-          JOURNEY_SMOKE=1 godot_bin/godot --headless --path . --quit-after 12000 > smoke.log 2>&1
+          JOURNEY_SMOKE=1 godot_bin/godot --headless --path . res://scenes/main.tscn --quit-after 12000 > smoke.log 2>&1
           code=$?
           cat smoke.log
           if ! grep -q "SMOKE] итог" smoke.log; then
@@ -91,6 +91,15 @@ jobs:
             exit 1
           fi
 
+      - name: Boat prototype smoke test
+        run: |
+          JOURNEY_BOAT_SMOKE=1 godot_bin/godot --headless --path . --quit-after 500 > boat-smoke.log 2>&1
+          cat boat-smoke.log
+          grep -q '\[BOAT SMOKE\] итог: ВСЁ ПРОШЛО' boat-smoke.log
+          if grep -qE 'SCRIPT ERROR|Parse Error|Invalid (get|call|set)' boat-smoke.log; then
+            exit 1
+          fi
+
       # Headless (dummy-рендерер) НЕ компилирует шейдеры. Прогоняем несколько
       # кадров под xvfb + Vulkan lavapipe (софтверный) с настоящим Forward+ —
       # поймаем ошибки шейдеров и снимем кадры (проект на forward_plus).
@@ -100,11 +109,21 @@ jobs:
             echo "::warning::xvfb-run недоступен — рендер-проверка пропущена"
             exit 0
           fi
+          JOURNEY_BOAT_SHOT=1 JOURNEY_BOAT_SHOT_PATH="$PWD/boat.png" \
+            xvfb-run -a -s "-screen 0 1280x720x24" \
+            godot_bin/godot --path . --rendering-method forward_plus \
+            --resolution 1280x720 --fixed-fps 30 --quit-after 150 \
+            > boat-render.log 2>&1
+          cat boat-render.log
+          test -s boat.png
+          if grep -iE "SHADER ERROR|failed to compile|error compiling|SCRIPT ERROR" boat-render.log; then
+            exit 1
+          fi
           mkdir -p .ci-logs/shots
           rm -f .ci-logs/shots/*.png # чистим кадры прошлого прогона
           SHOT_DIR="$PWD/.ci-logs/shots" JOURNEY_SHOT=1 \
             xvfb-run -a -s "-screen 0 1280x720x24" \
-            godot_bin/godot --path . --rendering-method forward_plus \
+            godot_bin/godot --path . res://scenes/main.tscn --rendering-method forward_plus \
             --resolution 1280x720 --fixed-fps 30 --quit-after 700 \
             > render.log 2>&1 || true
           cat render.log
@@ -139,6 +158,11 @@ jobs:
           cp -f import.log .ci-logs/ 2>/dev/null || echo "import: пропущен" > .ci-logs/import.log
           cp -f smoke.log .ci-logs/ 2>/dev/null || echo "smoke: пропущен" > .ci-logs/smoke.log
           cp -f render.log .ci-logs/ 2>/dev/null || echo "render: пропущен" > .ci-logs/render.log
-                    git add .ci-logs
+          cp -f boat-smoke.log .ci-logs/ 2>/dev/null || true
+          cp -f boat-render.log .ci-logs/ 2>/dev/null || true
+          if [ -s boat.png ]; then
+            cp boat.png .ci-logs/shots/shot_boat.png
+          fi
+          git add .ci-logs
           git commit -m "ci: артефакты прогона ${GITHUB_SHA::7}" || true
           git push origin HEAD:${GITHUB_REF#refs/heads/} || true

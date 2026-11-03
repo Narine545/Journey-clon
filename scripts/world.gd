@@ -76,6 +76,9 @@ func _build_environment() -> void:
 	# Небо тоже должно уходить в дымку у горизонта. Нулевое значение делало
 	# стык неба и дюн резким и визуально выдавало пост-эффект.
 	_env.fog_sky_affect = 0.35
+	# Из ветки радиобашни: воздушная перспектива смягчает дальние планы.
+	# Высотный туман оттуда НЕ берём — он спрятал бы воду на уровне 0.
+	_env.fog_aerial_perspective = 0.25
 
 	# ВОЛЮМЕТРИЧЕСКИЙ ТУМАН (Forward+/Vulkan): настоящий 3D-объём —
 	# луч фонаря и огонь маяка видны в воздухе. Ночь пустыни: плотный
@@ -120,13 +123,15 @@ func _setup_sky_plus_material() -> void:
 	_sky_mat.set_shader_parameter("light_strength", 18.0)
 	_sky_mat.set_shader_parameter("cloud_shape_size", 3.2)
 	_sky_mat.set_shader_parameter("cloud_noise_size", 11.0)
-	_sky_mat.set_shader_parameter("cloud_noise_factor", 0.24)
+	# В ветке радиобашни убрали клеточные кольца у облаков. Для морского
+	# горизонта берём только этот выигрыш, а не игровой код того форка.
+	_sky_mat.set_shader_parameter("cloud_noise_factor", 0.14)
 	_sky_mat.set_shader_parameter("cloud_base_color", Color(0.58, 0.64, 0.76))
 	_sky_mat.set_shader_parameter("cloud_overcast_color", Color(0.16, 0.20, 0.30))
 	_sky_mat.set_shader_parameter("cloud_shape", _noise_3d(64, 2, 0.023, FastNoiseLite.TYPE_SIMPLEX_SMOOTH))
-	_sky_mat.set_shader_parameter("cloud_noise", _noise_3d(64, 19, 0.045, FastNoiseLite.TYPE_CELLULAR))
+	_sky_mat.set_shader_parameter("cloud_noise", _noise_3d(64, 19, 0.045, FastNoiseLite.TYPE_SIMPLEX_SMOOTH))
 	_sky_mat.set_shader_parameter("cloud_color_texture", _noise_2d(256, 41, 0.018, 3))
-	_sky_mat.set_shader_parameter("use_cirrus", true)
+	_sky_mat.set_shader_parameter("use_cirrus", false) # без масляных разводов на горизонте
 	_sky_mat.set_shader_parameter("cirrus_texture", _noise_2d(512, 73, 0.012, 4))
 	_sky_mat.set_shader_parameter("cirrus_distortion_texture", _noise_2d(256, 7, 0.02, 2))
 	_sky_mat.set_shader_parameter("cirrus_mask_texture", _noise_2d(256, 101, 0.008, 2))
