@@ -69,9 +69,21 @@ func _ready() -> void:
 	world.apply_night01(0.0)
 	coast.set_night01(0.0)
 	water.apply_night01(0.0)
-	world.apply_sun(game.sun_dir)
-	coast.apply_sun(game.sun_dir)
-	water.apply_sun(game.sun_dir)
+	# В архивной сцене солнце низкое и золотое. В изометрии это делало
+	# открытое море почти целиком шоколадным: поднимаем солнце и оставляем
+	# тёплые акценты на самом судне, воде даём прохладную глубину.
+	var sun := Vector3(-0.36, 0.76, -0.54).normalized()
+	game.sun_dir = sun
+	world.apply_sun(sun)
+	coast.apply_sun(sun)
+	water.apply_sun(sun)
+	water.set_param("water_shallow", Color("49a9a2"))
+	water.set_param("water_mid", Color("258b91"))
+	water.set_param("water_deep", Color("0f5668"))
+	water.set_param("horizon_col", Color("6996a0"))
+	water.set_param("sky_col", Color("447084"))
+	water.set_param("glitter_amount", 0.16)
+	water.set_param("solar_glitter_amount", 0.12)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
 		var test := BoatSmoke.new()
 		add_child(test)
@@ -137,9 +149,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			camera.size = maxf(21.0, camera.size - 2.0)
+			camera.size = maxf(16.0, camera.size - 2.0)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			camera.size = minf(52.0, camera.size + 2.0)
+			camera.size = minf(42.0, camera.size + 2.0)
 
 
 func _process(delta: float) -> void:
