@@ -1,15 +1,18 @@
 class_name BoatMain
 extends Node3D
-## Первый самостоятельный игровой срез. Старая рыбалка сохранена в main.tscn.
+## Игровой цикл «To The Light»:
+## - Сбор и переработка 4 пигментов, покупка буксируемого плашкоута
+## - Наступающие сумерки (динамический night01)
+## - Цепь из 3 Погасших Маяков с глубоководными причальными буями вдоль берега
+## - Морские рифы, прочность корпуса и 3 активные судовые системы (Сонар, Ремонт, Форсаж)
 
 const START_Z := Coast.SPAWN_Z
 const START_SEAWARD := 95.0
-# Переставляем только ушедшие за кадр пятна, чтобы в движении не было
-# многосекундной пустоты между видимой областью и дальним кольцом спавна.
 const SLICK_RECYCLE_DISTANCE := 60.0
 const SLICK_SPAWN_MIN := 38.0
 const SLICK_SPAWN_MAX := 57.0
 const TRAILER_COST := 2
+const DOCK_RANGE := 13.5
 
 var game: GameState
 var world: GameWorld
@@ -24,10 +27,21 @@ var raw := PackedInt32Array([0, 0, 0, 0])
 var refined := PackedInt32Array([0, 0, 0, 0])
 var notice := ""
 var notice_time := 0.0
+
+# Состояние игрового цикла (Маяки, Сумерки, Рифы, Сонар)
+var night01 := 0.0
+var sonar_timer := 12.0 # со старта даём краткий пеленг, чтобы игрок сразу увидел цель
+var overdrive_timer := 0.0
+var beacons: Array[Dictionary] = []
+var reefs: Array[Dictionary] = []
+var all_beacons_lit := false
+
 var _capture_frames := 0
 var _camera_focus := Vector3.ZERO
 var _stream_timer := 0.0
 var _stream_cursor := 0
+var _beacon_anim_time := 0.0
+var _atmosphere_timer := 0.0
 var _slick_rng := RandomNumberGenerator.new()
 
 
@@ -43,14 +57,11 @@ func _ready() -> void:
 	add_child(sand)
 	sand.setup(game)
 	coast.attach_sand(sand)
-	# Песок под ортографической камерой не должен менять LOD кругами
-	# вокруг её положения; режим рыбалки остаётся перспективным.
 	coast.set_sand("orthographic_glitter", 1.0)
 	water = WaterSurface.new()
 	water.shader_path = "res://shaders/water_boat.gdshader"
 	add_child(water)
 	water.setup(game, Vector2(-150.0, 20.0), Coast.SEA_LEVEL)
-	# Усиленное волнение и след — только у лодки; рыбалка не меняется.
 	water.configure_boat_waves()
 	water.set_ground(coast.height_tex, coast.grid_origin, coast.grid_cell, coast.grid_n, coast)
 	game.water = water
@@ -59,10 +70,11 @@ func _ready() -> void:
 	add_child(boat)
 	boat.global_position = Vector3(coast.shore_x(START_Z) - START_SEAWARD, 0.2, START_Z)
 	boat.setup(self, water, coast)
-	# Для CI снимок с буксируемым плашкоутом; в игре он покупается отдельно.
 	if OS.get_environment("JOURNEY_BOAT_SHOT_TRAILER") == "1":
 		boat.set_trailer_enabled(true)
 	_build_resources()
+	_build_beacons()
+	_build_reefs()
 	_slick_rng.seed = 845239
 	camera = Camera3D.new()
 	camera.name = "IsometricCamera"
@@ -86,30 +98,209 @@ func _ready() -> void:
 	_ensure_boat_input()
 	if OS.get_environment("JOURNEY_BOAT_SHOT_DRIVE") == "1":
 		Input.action_press("boat_forward")
-	world.apply_night01(0.0)
-	coast.set_night01(0.0)
-	water.apply_night01(0.0)
-	var sun := Vector3(-0.36, 0.76, -0.54).normalized()
-	game.sun_dir = sun
-	world.apply_sun(sun)
-	coast.apply_sun(sun)
-	water.apply_sun(sun)
-	water.set_param("water_shallow", Color("49a9a2"))
-	water.set_param("water_mid", Color("258b91"))
-	water.set_param("water_deep", Color("0f5668"))
-	water.set_param("horizon_col", Color("6996a0"))
-	water.set_param("sky_col", Color("447084"))
-	# 18/9.5/4.5-метровые дисперсионные волны; мелкая рябь лишь дополняет их.
-	water.set_param("mega_amp", 0.25)
-	water.set_param("ripple_strength", 0.10)
-	# Вернуть искры на ровно освещённую воду, без экранной «линзы» и LOD-колец.
-	water.set_param("glitter_amount", 0.32)
-	water.set_param("sun_path_amount", 0.09)
-	water.set_param("direct_specular_amount", 0.018)
+	_apply_atmosphere(0.0)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
 		var test := BoatSmoke.new()
 		add_child(test)
 		test.setup(self)
+
+
+func _apply_atmosphere(n01: float) -> void:
+	night01 = clampf(n01, 0.0, 0.88)
+	world.apply_night01(night01)
+	coast.set_night01(night01)
+	water.apply_night01(night01)
+	var day_sun := Vector3(-0.36, 0.76, -0.54).normalized()
+	var dusk_sun := Vector3(-0.62, 0.22, -0.75).normalized()
+	var sun := day_sun.lerp(dusk_sun, night01).normalized()
+	game.sun_dir = sun
+	world.apply_sun(sun)
+	coast.apply_sun(sun)
+	water.apply_sun(sun)
+	water.set_param("water_shallow", Color("49a9a2").lerp(Color("163d42"), night01))
+	water.set_param("water_mid", Color("258b91").lerp(Color("0b2530"), night01))
+	water.set_param("water_deep", Color("0f5668").lerp(Color("04111c"), night01))
+	water.set_param("horizon_col", Color("6996a0").lerp(Color("1d2c3b"), night01))
+	water.set_param("sky_col", Color("447084").lerp(Color("0d1624"), night01))
+	water.set_param("mega_amp", lerpf(0.25, 0.31, night01))
+	water.set_param("ripple_strength", 0.10)
+	water.set_param("glitter_amount", lerpf(0.32, 0.08, night01))
+	water.set_param("sun_path_amount", lerpf(0.09, 0.03, night01))
+	water.set_param("direct_specular_amount", 0.018)
+	if boat != null:
+		boat.update_night_lights(night01, overdrive_timer > 0.0)
+
+
+# ---------------------------------------------------------------------------
+# Постройка 3 береговых Маяков с причальными буями и морских рифов
+# ---------------------------------------------------------------------------
+
+func _mat(col: Color, metal := 0.0, glow := 0.0, rough := 0.68) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = col
+	m.metallic = metal
+	m.roughness = rough
+	if glow > 0.0:
+		m.emission_enabled = true
+		m.emission = col
+		m.emission_energy_multiplier = glow
+	return m
+
+
+func _build_beacons() -> void:
+	var specs := [
+		{
+			"name": "Южный Створ",
+			"z": START_Z - 105.0,
+			"cost": PackedInt32Array([1, 0, 1, 0]), # 1 Бирюза + 1 Янтарь
+			"color": Color("ffd485"),
+		},
+		{
+			"name": "Рифовый Мыс",
+			"z": START_Z + 18.0,
+			"cost": PackedInt32Array([1, 1, 1, 0]), # 1 Бирюза + 1 Коралл + 1 Янтарь
+			"color": Color("78f0dc"),
+		},
+		{
+			"name": "Северный Бастион",
+			"z": START_Z + 142.0,
+			"cost": PackedInt32Array([1, 1, 1, 1]), # Все 4 очищенных пигмента
+			"color": Color("f5b8ff"),
+		},
+	]
+	var stone_mat := _mat(Color("3b4247"), 0.15, 0.0, 0.82)
+	var tower_mat := _mat(Color("c9c2b4"), 0.08, 0.0, 0.68)
+	var band_mat := _mat(Color("8f4636"), 0.18, 0.0, 0.62)
+	var iron_mat := _mat(Color("1a2228"), 0.55, 0.0, 0.48)
+
+	for i in range(specs.size()):
+		var s: Dictionary = specs[i]
+		var bz: float = s["z"]
+		var shore_x := coast.shore_x(bz)
+		var tower_pos := Vector3(shore_x + 10.0, Coast.SEA_LEVEL + 1.2, bz)
+		# Ищем настоящую глубину, а не предполагаем, что 36 м от берега
+		# автоматически дают обещанные 4.5 м (обычно там лишь ~3 м).
+		var buoy_x := shore_x - 36.0
+		while coast.water_depth(buoy_x, bz) < 4.5 and buoy_x > shore_x - 110.0:
+			buoy_x -= 3.0
+		var buoy_pos := Vector3(buoy_x, Coast.SEA_LEVEL, bz)
+
+		var root := Node3D.new()
+		root.name = "CoastalBeacon%d" % i
+		add_child(root)
+
+		# Каменная башня маяка на берегу
+		var tower := Node3D.new()
+		tower.position = tower_pos
+		root.add_child(tower)
+		_add_cyl(tower, Vector3(0.0, 1.4, 0.0), 2.3, 2.8, 3.2, stone_mat)
+		_add_cyl(tower, Vector3(0.0, 5.2, 0.0), 1.45, 2.1, 4.6, tower_mat)
+		_add_cyl(tower, Vector3(0.0, 8.2, 0.0), 1.25, 1.45, 1.8, band_mat)
+		_add_cyl(tower, Vector3(0.0, 9.4, 0.0), 1.65, 1.55, 0.6, iron_mat)
+
+		# Фонарная камера маяка (гаснет/зажигается)
+		var lantern_mat := _mat(Color("26343b"), 0.2, 0.0, 0.25)
+		var lantern_mesh := _add_cyl(tower, Vector3(0.0, 10.3, 0.0), 1.15, 1.15, 1.4, lantern_mat)
+		_add_cyl(tower, Vector3(0.0, 11.4, 0.0), 0.1, 1.45, 1.0, iron_mat)
+
+		var top_light := OmniLight3D.new()
+		top_light.light_color = s["color"]
+		top_light.light_energy = 0.0
+		top_light.omni_range = 42.0
+		top_light.position = Vector3(0.0, 10.4, 0.0)
+		tower.add_child(top_light)
+
+		# Вращающийся прожекторный луч маяка
+		var beam_pivot := Node3D.new()
+		beam_pivot.position = Vector3(0.0, 10.3, 0.0)
+		tower.add_child(beam_pivot)
+		var spot := SpotLight3D.new()
+		spot.light_color = s["color"]
+		spot.light_energy = 0.0
+		spot.spot_range = 85.0
+		spot.spot_angle = 26.0
+		spot.rotation = Vector3(-0.22, PI * 0.5, 0.0)
+		beam_pivot.add_child(spot)
+
+		# Глубоководный причальный буй в море (где лодка безопасно швартуется)
+		var buoy := Node3D.new()
+		buoy.position = buoy_pos
+		root.add_child(buoy)
+		_add_cyl(buoy, Vector3(0.0, 0.15, 0.0), 1.25, 0.95, 0.55, band_mat)
+		_add_cyl(buoy, Vector3(0.0, 0.95, 0.0), 0.18, 0.45, 1.2, iron_mat)
+		var buoy_lamp_mat := _mat(Color("e88554"), 0.1, 1.4, 0.25)
+		var buoy_lamp := _add_cyl(buoy, Vector3(0.0, 1.65, 0.0), 0.22, 0.22, 0.28, buoy_lamp_mat)
+
+		beacons.append({
+			"name": s["name"],
+			"cost": s["cost"],
+			"color": s["color"],
+			"lit": false,
+			"tower_pos": tower_pos,
+			"buoy_node": buoy,
+			"buoy_pos": buoy_pos,
+			"lantern_mat": lantern_mat,
+			"lantern_mesh": lantern_mesh,
+			"buoy_lamp_mat": buoy_lamp_mat,
+			"buoy_lamp": buoy_lamp,
+			"top_light": top_light,
+			"spot": spot,
+			"beam_pivot": beam_pivot,
+		})
+
+
+func _build_reefs() -> void:
+	# Координаты скал выбраны в стороне от стартового коридора автотеста boat_smoke.gd
+	var offsets := [
+		Vector2(18.0, -34.0),
+		Vector2(-26.0, -48.0),
+		Vector2(24.0, 52.0),
+		Vector2(-38.0, 68.0),
+		Vector2(12.0, -82.0),
+		Vector2(22.0, 108.0),
+	]
+	var base := Vector2(boat.global_position.x, boat.global_position.z)
+	var rock_mat := _mat(Color("222a30"), 0.12, 0.0, 0.88)
+	var barnacle_mat := _mat(Color("3d4b4a"), 0.08, 0.0, 0.85)
+	var warn_mat := _mat(Color("f06848"), 0.1, 1.5, 0.3)
+
+	for i in range(offsets.size()):
+		var rp: Vector2 = base + offsets[i]
+		if coast.water_depth(rp.x, rp.y) < 3.5:
+			continue
+		var r_node := Node3D.new()
+		r_node.name = "SeaReef%d" % i
+		r_node.position = Vector3(rp.x, Coast.SEA_LEVEL, rp.y)
+		add_child(r_node)
+
+		# Главный скальный пик и боковые валуны
+		_add_cyl(r_node, Vector3(0.0, 0.35, 0.0), 0.45, 2.25, 1.85, rock_mat, Vector3(0.12, float(i) * 1.1, -0.08), 7)
+		_add_cyl(r_node, Vector3(1.15, 0.05, 0.65), 0.35, 1.45, 1.15, barnacle_mat, Vector3(-0.15, 0.5, 0.18), 6)
+		_add_cyl(r_node, Vector3(-1.05, -0.05, -0.55), 0.30, 1.35, 0.95, rock_mat, Vector3(0.1, -0.7, -0.14), 6)
+		# Предупреждающая навигационная веха на рифе
+		_add_cyl(r_node, Vector3(0.0, 1.55, 0.0), 0.04, 0.05, 0.95, rock_mat)
+		_add_cyl(r_node, Vector3(0.0, 2.08, 0.0), 0.10, 0.10, 0.16, warn_mat)
+
+		reefs.append({
+			"pos": rp,
+			"radius": 2.65,
+			"node": r_node,
+		})
+
+
+func _add_cyl(parent: Node3D, at: Vector3, rt: float, rb: float, h: float, mat: Material, rot := Vector3.ZERO, segs := 12) -> MeshInstance3D:
+	var inst := MeshInstance3D.new()
+	var c := CylinderMesh.new()
+	c.top_radius = rt
+	c.bottom_radius = rb
+	c.height = h
+	c.radial_segments = segs
+	inst.mesh = c
+	inst.position = at
+	inst.rotation = rot
+	inst.material_override = mat
+	parent.add_child(inst)
+	return inst
 
 
 func _build_resources() -> void:
@@ -132,20 +323,16 @@ func _build_resources() -> void:
 
 
 func _outside_boat_view(at: Vector2) -> bool:
-	# Проверяем прогнозируемый кадр вокруг лодки, а не догоняющую камеру:
-	# при резком манёвре и тестовом переносе камеры эти центры различаются.
 	var relative := Vector3(at.x - boat.global_position.x, 0.0,
 		at.y - boat.global_position.z)
 	var viewport_size := get_viewport().get_visible_rect().size
-	var half_height := camera.size * 0.5 + 4.0 # запас на радиус пятна
+	var half_height := camera.size * 0.5 + 4.0
 	var half_width := camera.size * 0.5 * viewport_size.x / maxf(viewport_size.y, 1.0) + 4.0
 	return absf(relative.dot(camera.global_transform.basis.x)) > half_width or \
 		absf(relative.dot(camera.global_transform.basis.y)) > half_height
 
 
 func _outside_camera_view(at: Vector2) -> bool:
-	# Дополнительно учитываем реальный кадр: камера с инерцией может
-	# отставать от лодки, и пятно нельзя переносить на глазах игрока.
 	var screen_pos := camera.unproject_position(Vector3(at.x, Coast.SEA_LEVEL, at.y))
 	var viewport_size := get_viewport().get_visible_rect().size
 	return not Rect2(Vector2(-64.0, -64.0),
@@ -156,15 +343,12 @@ func _stream_resources() -> void:
 	var center := Vector2(boat.global_position.x, boat.global_position.z)
 	var forward := Vector2(-boat.global_transform.basis.z.x,
 		-boat.global_transform.basis.z.z)
-	# Не переселять сразу все 12 пятен в один кадр: каждые полсекунды
-	# такой пакет блокировал главный поток и дёргал движение лодки.
 	for offset in range(slicks.size()):
 		var index := (_stream_cursor + offset) % slicks.size()
 		var slick := slicks[index]
 		if slick.depleted:
 			continue
 		var current := Vector2(slick.position.x, slick.position.z)
-		# Не трогаем видимые пятна, даже если камера сильно отстала.
 		if current.distance_to(center) <= SLICK_RECYCLE_DISTANCE or \
 				not _outside_boat_view(current) or not _outside_camera_view(current):
 			continue
@@ -172,8 +356,6 @@ func _stream_resources() -> void:
 		for attempt in range(24):
 			var angle := _slick_rng.randf_range(-PI, PI)
 			var direction := Vector2.from_angle(angle)
-			# Первые попытки — в сторону движения, чтобы пятна не оставались
-			# только позади. Запасные попытки допускают любую сторону у берега.
 			if attempt < 12 and boat.speed > 0.5 and direction.dot(forward) < -0.15:
 				continue
 			var distance := _slick_rng.randf_range(SLICK_SPAWN_MIN, SLICK_SPAWN_MAX)
@@ -192,7 +374,7 @@ func _stream_resources() -> void:
 				slick.relocate_smoothly(Vector3(candidate.x,
 					water.surface_height(candidate.x, candidate.y) + ResourceSlick.FLOAT_HEIGHT, candidate.y))
 				break
-		break # одно пятно за тик, даже если подходящее место не нашлось
+		break
 
 
 func nearest_resource(at: Vector3, radius: float) -> ResourceSlick:
@@ -261,22 +443,195 @@ func toggle_trailer_free() -> void:
 	announce("БУКСИРУЕМЫЙ ПЛАШКОУТ: %s" % ("ПРИСТЫКОВАН" if boat.has_trailer else "ОТСТЫКОВАН"))
 
 
+# ---------------------------------------------------------------------------
+# Игровые механики: Маяки и Активные умения 4 пигментов
+# ---------------------------------------------------------------------------
+
+## Тратит 1 готовый ресурс kind (или 1 Орхидею-катализатор, или 2 сырья этого типа)
+func _consume_pigment_charge(kind: int) -> bool:
+	if refined[kind] > 0:
+		refined[kind] -= 1
+		return true
+	if raw[kind] >= 2:
+		raw[kind] -= 2
+		return true
+	if refined[3] > 0: # Орхидея как универсальный катализатор
+		refined[3] -= 1
+		return true
+	return false
+
+
+## [1] БИРЮЗА — Гидроакустический сонар и пеленг Маяков
+func activate_sonar() -> void:
+	if not _consume_pigment_charge(0):
+		announce("ДЛЯ СОНАРА НУЖНА 1 ГОТ. БИРЮЗА (ИЛИ 2 СЫР. БИРЮЗЫ)")
+		return
+	sonar_timer = 20.0
+	if water != null and water.field != null and boat != null:
+		water.field.splash(Vector2(boat.global_position.x, boat.global_position.z), 2.0)
+	announce("ГИДРОЛОКАТОР АКТИВЕН: ПЕЛЕНГ НА МАЯКИ И ПЯТНА (20 С)")
+
+
+## [2] КОРАЛЛ — Аварийный ремонт обшивки корпуса
+func activate_hull_repair() -> void:
+	if boat == null:
+		return
+	if boat.hull_hp >= 99.5:
+		announce("КОРПУС СУДНА В ПОЛНОМ ПОРЯДКЕ (100%)")
+		return
+	if not _consume_pigment_charge(1):
+		announce("ДЛЯ РЕМОНТА НУЖЕН 1 ГОТ. КОРАЛЛ (ИЛИ 2 СЫР. КОРАЛЛА)")
+		return
+	boat.hull_hp = minf(100.0, boat.hull_hp + 45.0)
+	boat.trigger_refine_effect()
+	announce("ОБШИВКА ОТРЕМОНТИРОВАНА: КОРПУС %d%%" % int(round(boat.hull_hp)))
+
+
+## [3] ЯНТАРЬ — Форсаж реактора и прожектора + откат сумерек
+func activate_overdrive() -> void:
+	if not _consume_pigment_charge(2):
+		announce("ДЛЯ ФОРСАЖА НУЖЕН 1 ГОТ. ЯНТАРЬ (ИЛИ 2 СЫР. ЯНТАРЯ)")
+		return
+	overdrive_timer = 16.0
+	_apply_atmosphere(maxf(0.0, night01 - 0.22))
+	if boat != null:
+		boat.trigger_refine_effect()
+	announce("ЯНТАРНЫЙ ФОРСАЖ: +35% ХОДА И ДАЛЬНИЙ СВЕТ ПРОЖЕКТОРА!")
+
+
+func lit_beacon_count() -> int:
+	var c := 0
+	for b in beacons:
+		if b["lit"]:
+			c += 1
+	return c
+
+
+## Ближайший причальный буй Маяка (в пределах DOCK_RANGE)
+func nearby_dock_beacon() -> Dictionary:
+	if boat == null:
+		return {}
+	var boat_xz := Vector2(boat.global_position.x, boat.global_position.z)
+	for b in beacons:
+		var bp: Vector3 = b["buoy_pos"]
+		if boat_xz.distance_to(Vector2(bp.x, bp.z)) <= DOCK_RANGE:
+			return b
+	return {}
+
+
+## Следующий незажжённый Маяк для стрелки компаса
+func next_unlit_beacon() -> Dictionary:
+	if boat == null:
+		return {}
+	var boat_xz := Vector2(boat.global_position.x, boat.global_position.z)
+	var best: Dictionary = {}
+	var best_d := 1e9
+	for b in beacons:
+		if b["lit"]:
+			continue
+		var bp: Vector3 = b["buoy_pos"]
+		var d := boat_xz.distance_to(Vector2(bp.x, bp.z))
+		if d < best_d:
+			best_d = d
+			best = b
+	return best
+
+
+func format_beacon_recipe(cost: PackedInt32Array) -> String:
+	var parts: Array[String] = []
+	for i in range(cost.size()):
+		if cost[i] > 0:
+			parts.append("%d %s" % [cost[i], ResourceSlick.NAMES[i]])
+	return " + ".join(parts)
+
+
+## [E] Зажечь Маяк или отремонтироваться у зажжённого Маяка
+func interact_with_beacon() -> void:
+	var b := nearby_dock_beacon()
+	if b.is_empty():
+		var target_b := next_unlit_beacon()
+		if not target_b.is_empty():
+			var bp: Vector3 = target_b["buoy_pos"]
+			var dist := int(round(Vector2(boat.global_position.x, boat.global_position.z).distance_to(Vector2(bp.x, bp.z))))
+			announce("ДО МАЯКА «%s»: %d М (ПОДОЙДИТЕ К ПРИЧАЛЬНОМУ БУЮ)" % [target_b["name"].to_upper(), dist])
+		return
+
+	if b["lit"]:
+		if boat != null and boat.hull_hp < 100.0:
+			boat.hull_hp = 100.0
+			announce("МАЯК «%s»: КОРПУС ПОЛНОСТЬЮ ВОССТАНОВЛЕН" % b["name"].to_upper())
+		else:
+			announce("МАЯК «%s» УЖЕ СВЕТИТ В ПОЛНУЮ СИЛУ" % b["name"].to_upper())
+		return
+
+	var cost: PackedInt32Array = b["cost"]
+	for i in range(cost.size()):
+		if refined[i] < cost[i]:
+			announce("НУЖНО ДЛЯ МАЯКА: %s (НАЖМИТЕ R ДЛЯ ПЕРЕРАБОТКИ)" % format_beacon_recipe(cost).to_upper())
+			return
+
+	for i in range(cost.size()):
+		refined[i] -= cost[i]
+
+	b["lit"] = true
+	var col: Color = b["color"]
+	var l_mat: StandardMaterial3D = b["lantern_mat"]
+	l_mat.albedo_color = col
+	l_mat.emission_enabled = true
+	l_mat.emission = col
+	l_mat.emission_energy_multiplier = 3.2
+
+	var b_mat: StandardMaterial3D = b["buoy_lamp_mat"]
+	b_mat.albedo_color = Color("52f29c")
+	b_mat.emission = Color("52f29c")
+
+	var top_l: OmniLight3D = b["top_light"]
+	top_l.light_energy = 2.8
+	var spot_l: SpotLight3D = b["spot"]
+	spot_l.light_energy = 5.5
+
+	if boat != null:
+		boat.hull_hp = 100.0
+		boat.trigger_refine_effect()
+	_apply_atmosphere(maxf(0.0, night01 - 0.40))
+	sonar_timer = maxf(sonar_timer, 15.0)
+
+	if lit_beacon_count() >= beacons.size():
+		all_beacons_lit = true
+		announce("ВСЕ МАЯКИ ЗАЖЖЕНЫ! БЕРЕГ ОЗАРЁН СВЕТОМ — ПОБЕДА!")
+	else:
+		announce("ЗАЖЖЁН МАЯК «%s»! (%d / %d)" % [b["name"].to_upper(), lit_beacon_count(), beacons.size()])
+
+
 func announce(text: String) -> void:
 	notice = text
-	notice_time = 2.8
+	notice_time = 3.0
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.physical_keycode == KEY_R:
-			refine()
-			get_viewport().set_input_as_handled()
-		elif event.physical_keycode == KEY_B:
-			buy_trailer()
-			get_viewport().set_input_as_handled()
-		elif event.physical_keycode == KEY_T:
-			toggle_trailer_free()
-			get_viewport().set_input_as_handled()
+		match event.physical_keycode:
+			KEY_R:
+				refine()
+				get_viewport().set_input_as_handled()
+			KEY_B:
+				buy_trailer()
+				get_viewport().set_input_as_handled()
+			KEY_T:
+				toggle_trailer_free()
+				get_viewport().set_input_as_handled()
+			KEY_E:
+				interact_with_beacon()
+				get_viewport().set_input_as_handled()
+			KEY_1:
+				activate_sonar()
+				get_viewport().set_input_as_handled()
+			KEY_2:
+				activate_hull_repair()
+				get_viewport().set_input_as_handled()
+			KEY_3:
+				activate_overdrive()
+				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera.size = maxf(16.0, camera.size - 2.0)
@@ -287,15 +642,34 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if boat == null or camera == null:
 		return
-	# Плотная сетка моря конечна (±310 м). Переставляем её редкими
-	# шагами вдали от экрана, чтобы лодка не выходила на разреженные
-	# дальние треугольники. Шейдер и физика используют МИРОВЫЕ координаты.
+	_beacon_anim_time += delta
+	sonar_timer = maxf(0.0, sonar_timer - delta)
+	overdrive_timer = maxf(0.0, overdrive_timer - delta)
+
+	# Плавное наступление сумерек (в режиме smoke-теста оставляем яркий день)
+	if OS.get_environment("JOURNEY_BOAT_SMOKE") != "1":
+		var night_rate := 0.0015 if all_beacons_lit else (0.0055 - float(lit_beacon_count()) * 0.0012)
+		night01 = minf(0.88, night01 + night_rate * delta)
+		_atmosphere_timer -= delta
+		if _atmosphere_timer <= 0.0:
+			_atmosphere_timer = 0.15
+			_apply_atmosphere(night01)
+
+	# Качка причальных буёв и вращение лучей зажжённых Маяков
+	for b in beacons:
+		var bp: Vector3 = b["buoy_pos"]
+		var buoy_node: Node3D = b["buoy_node"]
+		buoy_node.position.y = water.surface_height(bp.x, bp.z)
+		buoy_node.rotation.z = sin(_beacon_anim_time * 2.0 + bp.z * 0.1) * 0.08
+		if b["lit"]:
+			var pivot: Node3D = b["beam_pivot"]
+			pivot.rotation.y += delta * 0.85
+
 	if absf(boat.global_position.x - water.position.x) > 100.0 or \
 			absf(boat.global_position.z - water.position.z) > 100.0:
 		water.position = Vector3(boat.global_position.x, Coast.SEA_LEVEL,
 			boat.global_position.z)
-	# Не наводить объектив на дискретную физическую высоту корпуса:
-	# при переменном FPS это выглядело как внезапный рывок лодки в кадре.
+
 	var target := boat.global_position + Vector3.UP * 0.8
 	_camera_focus = _camera_focus.lerp(target, 1.0 - exp(-4.0 * delta))
 	var desired := _camera_focus + Vector3(21.0, 26.2, 30.0)

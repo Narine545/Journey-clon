@@ -20,6 +20,14 @@ func _physics_process(_delta: float) -> void:
 		_check(main.coast.water_depth(origin.x, origin.z) > 2.0, "лодка спущена на глубокую воду")
 		_check(main.slicks.size() >= 6, "SDF-пятна распределены вокруг лодки")
 		_check(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "изометрическая камера")
+		_check(main.beacons.size() == 3 and main.reefs.size() > 0,
+			"три маяка и морские рифы созданы")
+		var safe_buoys := true
+		for beacon in main.beacons:
+			var bp: Vector3 = beacon["buoy_pos"]
+			if main.coast.water_depth(bp.x, bp.z) < 4.5:
+				safe_buoys = false
+		_check(safe_buoys, "каждый причальный буй на глубине не менее 4.5 м")
 		Input.action_press("boat_forward")
 	if ticks == 60:
 		trail_sample = main.boat._trail_buffer[2]
@@ -100,6 +108,54 @@ func _physics_process(_delta: float) -> void:
 					popped_in_view += 1
 		_check(nearby >= 4, "пятна появляются близко к лодке в новом районе")
 		_check(popped_in_view == 0, "перемещённые пятна не возникают в кадре")
+
+		# Новые способности: расходы, восстановление и изменение характеристик.
+		main.refined[0] = 1
+		main.activate_sonar()
+		_check(main.sonar_timer > 0.0 and main.refined[0] == 0,
+			"сонар расходует бирюзу и показывает пеленги")
+		main.boat.hull_hp = 40.0
+		main.raw[1] = 2
+		main.activate_hull_repair()
+		_check(is_equal_approx(main.boat.hull_hp, 85.0) and main.raw[1] == 0,
+			"ремонт восстанавливает 45% корпуса за два сырых коралла")
+		main.refined[2] = 1
+		main.activate_overdrive()
+		_check(main.overdrive_timer > 0.0 and main.refined[2] == 0 and
+			main.boat.effective_max_speed() > BoatVessel.MAX_SPEED,
+			"форсаж тратит янтарь и увеличивает скорость")
+
+		# У причального буя E не списывает материалы, пока рецепт неполный.
+		var beacon: Dictionary = main.beacons[0]
+		var bp: Vector3 = beacon["buoy_pos"]
+		main.boat.global_position = bp
+		main.interact_with_beacon()
+		_check(not beacon["lit"], "неполный рецепт не зажигает маяк")
+		var cost: PackedInt32Array = beacon["cost"]
+		for i in range(cost.size()):
+			main.refined[i] = cost[i]
+		main.interact_with_beacon()
+		_check(beacon["lit"] and main.lit_beacon_count() == 1 and
+			main.total_refined() == 0 and main.boat.hull_hp == 100.0,
+			"маяк списывает рецепт и ремонтирует лодку")
+		main.boat.hull_hp = 55.0
+		main.interact_with_beacon()
+		_check(main.boat.hull_hp == 100.0, "зажжённый маяк ремонтирует бесплатно")
+
+		# Проверяем столкновение без пропуска физики в режиме smoke.
+		var rf: Dictionary = main.reefs[0]
+		var rp: Vector2 = rf["pos"]
+		main.boat.set_trailer_enabled(false)
+		main.boat.global_position = Vector3(rp.x + float(rf["radius"]) + 1.88,
+			Coast.SEA_LEVEL, rp.y)
+		main.boat.rotation.y = PI / 2.0
+		main.boat.speed = 7.0
+		var hp_before := main.boat.hull_hp
+		main.boat._physics_process(0.1)
+		var gap := Vector2(main.boat.global_position.x, main.boat.global_position.z).distance_to(rp)
+		_check(main.boat.hull_hp < hp_before and main.boat.speed == 0.0 and
+			gap >= float(rf["radius"]) + 1.85 - 0.01,
+			"риф гасит скорость, повреждает корпус и не телепортирует его внутрь")
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))
 		get_tree().quit(0 if failures == 0 else 1)
 

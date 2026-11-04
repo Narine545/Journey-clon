@@ -2,7 +2,7 @@ class_name BoatVessel
 extends Node3D
 ## Малое научно-исследовательское судно («Приливная лаборатория»).
 ## Выверенная геометрия корпуса без выступающих планок на носу,
-## насос строго по левому борту и запись мировой траектории кильватерного следа.
+## насос строго по левому борту, прочность корпуса, прожектор и запись мировой траектории следа.
 
 const MAX_SPEED := 10.0
 const REVERSE_SPEED := 4.0
@@ -14,16 +14,15 @@ const PUMP_SECONDS := 1.4
 
 const START_WITH_TRAILER := false
 const TRAILER_DISTANCE := 9.3
-# Описанные окружности корпусов: корпус 5.4 м, плашкоут 3.35 м + зазор.
-# Кинематический контакт нужен и при заднем ходе, когда трос слабеет.
 const TRAILER_CLEARANCE := 9.15
 const TRAIL_POINTS := 20
-const TRAIL_STEP_TIME := 0.25 # 20 точек сохраняют примерно 5 секунд пути
+const TRAIL_STEP_TIME := 0.25
 
 var main: BoatMain
 var water: WaterSurface
 var coast: Coast
 var speed := 0.0
+var hull_hp := 100.0
 var has_trailer := false
 var wrong_side_target := false
 
@@ -31,13 +30,12 @@ var _pump_progress := 0.0
 var _anim_time := 0.0
 var _steer_visual := 0.0
 var _refine_flash := 0.0
+var _impact_cooldown := 0.0
 
-# Физика плавучести и качки
 var _heave_vel := 0.0
 var _pitch_vel := 0.0
 var _roll_vel := 0.0
 
-# Мировая история пути судна для честного изогнутого следа на воде
 var _trail_buffer := PackedVector4Array()
 var _trail_timer := 0.0
 var _last_trail_pos := Vector2.ZERO
@@ -48,8 +46,9 @@ var _radar: Node3D
 var _rudder: Node3D
 var _prop_l: Node3D
 var _prop_r: Node3D
+var _bow_spot: SpotLight3D
+var _deck_light: OmniLight3D
 
-# Кран-манипулятор левого борта
 var _crane_turret: Node3D
 var _crane_boom: Node3D
 var _crane_jib: Node3D
@@ -61,7 +60,6 @@ var _intake_mat: StandardMaterial3D
 var _vat_fills: Array[MeshInstance3D] = []
 var _vat_mats: Array[StandardMaterial3D] = []
 
-# Буксируемый плашкоут
 var _trailer: Node3D
 var _trailer_body: Node3D
 var _tow_cable_l: MeshInstance3D
@@ -86,7 +84,10 @@ func setup(boat_main: BoatMain, water_ref: WaterSurface, coast_ref: Coast) -> vo
 
 
 func effective_max_speed() -> float:
-	return MAX_SPEED + (2.0 if has_trailer else 0.0)
+	var base := MAX_SPEED + (2.0 if has_trailer else 0.0)
+	var hp_factor := lerpf(0.60, 1.0, clampf(hull_hp / 100.0, 0.0, 1.0))
+	var boost := 1.35 if (main != null and main.overdrive_timer > 0.0) else 1.0
+	return base * hp_factor * boost
 
 
 func effective_pump_range() -> float:
@@ -95,6 +96,15 @@ func effective_pump_range() -> float:
 
 func effective_pump_seconds() -> float:
 	return PUMP_SECONDS * (0.70 if has_trailer else 1.0)
+
+
+func update_night_lights(night01: float, overdrive: bool) -> void:
+	if _bow_spot != null:
+		var base_e := lerpf(1.8, 5.2, night01)
+		_bow_spot.light_energy = base_e * (1.75 if overdrive else 1.0)
+		_bow_spot.spot_range = lerpf(24.0, 38.0, night01) * (1.45 if overdrive else 1.0)
+	if _deck_light != null:
+		_deck_light.light_energy = lerpf(0.85, 1.85, night01)
 
 
 func set_trailer_enabled(enabled: bool) -> void:
@@ -114,7 +124,6 @@ func trigger_refine_effect() -> void:
 	_refine_flash = 1.0
 
 
-## Проверяет, находится ли пятно со стороны рабочего ЛЕВОГО борта (-X)
 func is_on_port_working_side(world_pos: Vector3) -> bool:
 	var local := to_local(world_pos)
 	return local.x < -0.30 and local.z > -4.8 and local.z < 4.8
@@ -125,6 +134,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_anim_time += delta
 	_refine_flash = maxf(0.0, _refine_flash - delta * 1.8)
+	_impact_cooldown = maxf(0.0, _impact_cooldown - delta)
 
 	var throttle := Input.get_axis("boat_reverse", "boat_forward")
 	var steer := Input.get_axis("boat_left", "boat_right")
@@ -141,17 +151,55 @@ func _physics_process(delta: float) -> void:
 	var heading := -global_transform.basis.z
 	var right := global_transform.basis.x
 	var next := global_position + heading * speed * delta
-	if coast.water_depth(next.x, next.z) > 1.7:
-		# Слабый трос не мешает идти задним ходом: корпус должен толкнуть
-		# плашкоут, а не проходить сквозь его геометрию.
-		if _make_room_for_trailer(next):
-			global_position = next
-		else:
-			speed = 0.0
-	else:
-		speed = minf(speed, 0.0)
 
-	# 5-точечный расчёт плавучести (корпус следует за волнами с физической инерцией)
+	# Проверка столкновения со скальными рифами
+	var hit_reef := false
+	if main != null:
+		var next_xz := Vector2(next.x, next.z)
+		for rf in main.reefs:
+			var r_pos: Vector2 = rf["pos"]
+			var r_rad: float = rf["radius"]
+			var clearance := r_rad + 1.85
+			if next_xz.distance_to(r_pos) < clearance:
+				hit_reef = true
+				# Не двигать корпус на фиксированные 0.45 м каждый тик: это
+				# выглядело как резкие рывки даже при неподвижном судне.
+				var away := global_position
+				var gap := Vector2(away.x, away.z) - r_pos
+				if gap.length_squared() < 0.0001:
+					gap = Vector2(-heading.x, -heading.z)
+				if gap.length() < clearance:
+					var edge := r_pos + gap.normalized() * clearance
+					away.x = edge.x
+					away.z = edge.y
+					if coast.water_depth(away.x, away.z) > 1.7 and _make_room_for_trailer(away):
+						global_position = away
+				if _impact_cooldown <= 0.0 and absf(speed) > 1.5:
+					_impact_cooldown = 1.2
+					var dmg := clampf(absf(speed) * 2.8, 6.0, 24.0)
+					hull_hp = maxf(15.0, hull_hp - dmg)
+					_roll_vel += (0.45 if _steer_visual >= 0.0 else -0.45)
+					if water.field != null:
+						water.field.splash(next_xz, 1.8)
+					main.announce("УДАР О СКАЛЬНЫЙ РИФ! КОРПУС %d%% ([2] — РЕМОНТ)" % int(round(hull_hp)))
+				# Гасим скорость, не создавая отскок в обратную сторону.
+				speed = 0.0
+				break
+
+	if not hit_reef:
+		if coast.water_depth(next.x, next.z) > 1.7:
+			if _make_room_for_trailer(next):
+				global_position = next
+			else:
+				speed = 0.0
+		else:
+			if _impact_cooldown <= 0.0 and absf(speed) > 4.5 and OS.get_environment("JOURNEY_BOAT_SMOKE") != "1":
+				_impact_cooldown = 1.2
+				hull_hp = maxf(15.0, hull_hp - 8.0)
+				main.announce("ПОСАДКА НА МЕЛЬ! КОРПУС %d%%" % int(round(hull_hp)))
+			speed = minf(speed, 0.0)
+
+	# 5-точечный расчёт плавучести
 	var bow_pt := global_position + heading * 4.4
 	var stern_pt := global_position - heading * 4.4
 	var port_pt := global_position - right * 1.55
@@ -181,7 +229,6 @@ func _physics_process(delta: float) -> void:
 	_roll_vel = (_roll_vel + roll_err * 25.0 * delta) * exp(-4.2 * delta)
 	_body.rotation.z += _roll_vel * delta
 
-	# Записываем точки мировой траектории (никаких радиальных кругов поплавка из кормы!)
 	_record_world_wake_trail(delta, heading)
 	_update_animations(delta)
 	_update_pump(delta)
@@ -225,7 +272,6 @@ func _record_world_wake_trail(delta: float, heading: Vector3) -> void:
 	var stern_world := global_position - heading * 4.2
 	var stern_xz := Vector2(stern_world.x, stern_world.z)
 	var moved := stern_xz.distance_to(_last_trail_pos)
-	# Телепортация в тестах или резкая смена района не рисует волну через весь мир.
 	if moved > 12.0:
 		_reset_trail(stern_xz)
 		moved = 0.0
@@ -235,7 +281,6 @@ func _record_world_wake_trail(delta: float, heading: Vector3) -> void:
 		_last_trail_pos = stern_xz
 		for i in range(TRAIL_POINTS - 1, 0, -1):
 			_trail_buffer[i] = _trail_buffer[i - 1]
-	# Точка 0 догоняет текущую корму; остальные остаются в мировых координатах.
 	_trail_buffer[0] = Vector4(stern_xz.x, stern_xz.y, now, absf(speed))
 
 
@@ -252,7 +297,8 @@ func _sync_water_shader() -> void:
 
 func _update_animations(delta: float) -> void:
 	if _radar != null:
-		_radar.rotation.y += delta * 2.1
+		var radar_spd := 4.2 if (main != null and main.sonar_timer > 0.0) else 2.1
+		_radar.rotation.y += delta * radar_spd
 	if _rudder != null:
 		_rudder.rotation.y = -_steer_visual * 0.48
 	var prop_spin := (speed * 2.8 + (0.4 if absf(speed) < 0.2 else 0.0)) * delta
@@ -300,7 +346,6 @@ func _update_pump(delta: float) -> void:
 
 	var drawing := Input.is_action_pressed("boat_pump") and _target != null and absf(speed) < 5.0
 
-	# Башня крана вращается ТОЛЬКО наружу через левый борт (сектор [-2.68 .. -0.36] рад)
 	if _crane_turret != null:
 		var target_yaw := -0.18
 		if _target != null:
@@ -370,8 +415,6 @@ func _update_trailer(delta: float) -> void:
 				trailer_pos.x = next_xz.x
 				trailer_pos.z = next_xz.y
 
-	# Подтягивание тросом на повороте тоже не должно втаскивать прицеп
-	# в борт. Если выталкивать его некуда (мель), оставляем прежнее место.
 	var separated := _separate_trailer_from(global_position, trailer_pos)
 	if coast != null and coast.water_depth(separated.x, separated.z) < 1.2:
 		trailer_pos = _trailer.global_position
@@ -516,7 +559,6 @@ func _loft_segment(
 	return inst
 
 
-## Строит парные бортовые стенки (фальшборт или планширь) точно по контуру бортов без поворота боксов
 func _loft_bulwark(
 		parent: Node3D,
 		z_front: float, z_back: float,
@@ -550,10 +592,6 @@ func _loft_bulwark(
 		parent.add_child(inst)
 
 
-# ---------------------------------------------------------------------------
-# Сборка корпуса и надстройки
-# ---------------------------------------------------------------------------
-
 func _build_appearance() -> void:
 	var anti_fouling := _material(Color("47241f"), 0.08, 0.0, 0.78)
 	var boot_stripe := _material(Color("12161a"), 0.15, 0.0, 0.65)
@@ -571,41 +609,34 @@ func _build_appearance() -> void:
 	var bridge_glass := _material(Color("121e24"), 0.35, 0.08, 0.18)
 	var warm_interior := _material(Color("d69e5c"), 0.10, 0.45, 0.30)
 
-	# 1. ГЛАВНЫЙ СТАЛЬНОЙ КОРПУС (4 секции от форштевня до транца)
-	# Секция A: Носовой вход (Z: -5.5 .. -3.2)
+	# 1. ГЛАВНЫЙ СТАЛЬНОЙ КОРПУС
 	_loft_segment(_body, -5.05, -5.25, -3.2, -3.2, -0.45, 0.08, 0.06, 0.12, 1.55, 1.95, anti_fouling)
 	_loft_segment(_body, -5.25, -5.32, -3.2, -3.2,  0.08, 0.24, 0.12, 0.16, 1.95, 2.15, boot_stripe)
 	_loft_segment(_body, -5.32, -5.65, -3.2, -3.2,  0.24, 0.92, 0.16, 0.28, 2.15, 2.68, hull_steel)
 
-	# Секция B: Носовая скула (Z: -3.2 .. -1.2)
 	_loft_segment(_body, -3.2, -3.2, -1.2, -1.2, -0.45, 0.08, 1.55, 1.95, 2.55, 2.95, anti_fouling)
 	_loft_segment(_body, -3.2, -3.2, -1.2, -1.2,  0.08, 0.24, 1.95, 2.15, 2.95, 3.08, boot_stripe)
 	_loft_segment(_body, -3.2, -3.2, -1.2, -1.2,  0.24, 0.92, 2.15, 2.68, 3.08, 3.36, hull_steel)
 
-	# Секция C: Цилиндрическая вставка миделя (Z: -1.2 .. +2.6)
 	_loft_segment(_body, -1.2, -1.2, 2.6, 2.6, -0.45, 0.08, 2.55, 2.95, 2.50, 2.90, anti_fouling)
 	_loft_segment(_body, -1.2, -1.2, 2.6, 2.6,  0.08, 0.24, 2.95, 3.08, 2.90, 3.04, boot_stripe)
 	_loft_segment(_body, -1.2, -1.2, 2.6, 2.6,  0.24, 0.88, 3.08, 3.36, 3.04, 3.30, hull_steel)
 
-	# Секция D: Корма и транец (Z: +2.6 .. +5.0)
 	_loft_segment(_body, 2.6, 2.6, 4.75, 4.90, -0.42, 0.08, 2.50, 2.90, 1.70, 2.25, anti_fouling)
 	_loft_segment(_body, 2.6, 2.6, 4.90, 4.95,  0.08, 0.24, 2.90, 3.04, 2.25, 2.40, boot_stripe)
 	_loft_segment(_body, 2.6, 2.6, 4.95, 5.08,  0.24, 0.88, 3.04, 3.30, 2.40, 2.68, hull_steel)
 
-	# 2. НОСОВОЙ ПОЛУБАК (Forecastle, Z: -5.65 .. -1.85) — без единого выступающего бокса!
+	# 2. НОСОВОЙ ПОЛУБАК
 	_loft_segment(_body, -5.65, -5.80, -3.2, -3.2, 0.92, 1.18, 0.28, 0.34, 2.68, 2.82, hull_steel)
 	_loft_segment(_body, -3.2,  -3.2,  -1.85,-1.85,0.92, 1.18, 2.68, 2.82, 3.36, 3.40, hull_steel)
-	# Стальная палуба полубака
 	_loft_segment(_body, -5.60, -5.60, -3.2, -3.2, 1.14, 1.19, 0.24, 0.24, 2.58, 2.58, deck_steel)
 	_loft_segment(_body, -3.2,  -3.2,  -1.85,-1.85,1.14, 1.19, 2.58, 2.58, 3.20, 3.20, deck_steel)
 
-	# Фальшборт и планширь полубака, построенные точно по точкам корпуса (0 выступающих планок)
 	_loft_bulwark(_body, -5.75, -3.20, 1.18, 1.34, 0.34, 2.82, 0.12, hull_steel)
 	_loft_bulwark(_body, -3.20, -1.85, 1.18, 1.32, 2.82, 3.40, 0.12, hull_steel)
 	_loft_bulwark(_body, -5.75, -3.20, 1.34, 1.39, 0.38, 2.88, 0.16, gunwale_steel)
 	_loft_bulwark(_body, -3.20, -1.85, 1.32, 1.37, 2.88, 3.44, 0.16, gunwale_steel)
 
-	# Якорный брашпиль и кнехты строго внутри палубы полубака
 	_box_on(_body, Vector3(0.0, 1.28, -3.75), Vector3(0.48, 0.22, 0.36), machinery)
 	_cyl_on(_body, Vector3(0.0, 1.32, -3.75), 0.12, 0.12, 0.68, dark_iron, Vector3(0.0, 0.0, PI * 0.5), 12)
 	for side in [-1.0, 1.0]:
@@ -613,7 +644,7 @@ func _build_appearance() -> void:
 		_cyl_on(_body, Vector3(side * 0.55, 1.28, -3.15), 0.045, 0.045, 0.16, dark_iron)
 		_cyl_on(_body, Vector3(side * 0.69, 1.28, -3.15), 0.045, 0.045, 0.16, dark_iron)
 
-	# 3. РАБОЧАЯ ПАЛУБА И КОРМОВОЙ ФАЛЬШБОРТ (Z: -1.85 .. +5.0)
+	# 3. РАБОЧАЯ ПАЛУБА И КОРМОВОЙ ФАЛЬШБОРТ
 	_box_on(_body, Vector3(0.0, 0.88, 1.55), Vector3(3.12, 0.06, 6.75), deck_steel)
 	for i in range(7):
 		var px := -1.20 + float(i) * 0.40
@@ -626,7 +657,6 @@ func _build_appearance() -> void:
 		_box_on(_body, Vector3(side * 1.65, 0.78, 1.15), Vector3(0.10, 0.14, 6.65), timber_fender)
 		for frame_z in [-1.4, -0.3, 0.8, 1.9, 3.0, 4.1]:
 			_box_on(_body, Vector3(side * 1.52, 1.04, frame_z), Vector3(0.08, 0.32, 0.06), gunwale_steel)
-		# Кормовые кнехты
 		_box_on(_body, Vector3(side * 1.08, 0.93, 4.75), Vector3(0.30, 0.05, 0.18), dark_iron)
 		_cyl_on(_body, Vector3(side * 1.01, 1.00, 4.75), 0.045, 0.045, 0.16, dark_iron)
 		_cyl_on(_body, Vector3(side * 1.15, 1.00, 4.75), 0.045, 0.045, 0.16, dark_iron)
@@ -635,7 +665,7 @@ func _build_appearance() -> void:
 	_box_on(_body, Vector3( 0.85, 1.06, 4.96), Vector3(0.80, 0.32, 0.10), hull_steel)
 	_cyl_on(_body, Vector3( 0.00, 0.96, 4.98), 0.09, 0.09, 0.78, aged_bronze, Vector3(0.0, 0.0, PI * 0.5), 12)
 
-	# 4. НАДСТРОЙКА И ХОДОВОЙ МОСТИК (Z: -2.42 .. +0.32)
+	# 4. НАДСТРОЙКА И ХОДОВОЙ МОСТИК
 	_box_on(_body, Vector3(0.0, 0.98, -1.05), Vector3(2.38, 0.16, 2.82), cabin_trim)
 	_loft_segment(_body, -2.42, -2.35, 0.32, 0.32, 1.06, 1.98, 2.32, 2.26, 2.32, 2.26, cabin_chalk)
 	_box_on(_body, Vector3(-0.45, 1.48, 0.33), Vector3(0.56, 0.82, 0.06), cabin_trim)
@@ -668,14 +698,14 @@ func _build_appearance() -> void:
 	# Прожектор, радар и сигнальная мачта
 	_cyl_on(_body, Vector3(0.0, 3.08, -2.28), 0.11, 0.13, 0.26, dark_iron, Vector3(PI * 0.5 - 0.28, 0.0, 0.0), 12)
 	_cyl_on(_body, Vector3(0.0, 3.12, -2.38), 0.09, 0.09, 0.06, _material(Color("ffdf9e"), 0.1, 2.0, 0.2), Vector3(PI * 0.5 - 0.28, 0.0, 0.0), 12)
-	var spot := SpotLight3D.new()
-	spot.light_color = Color("ffe8ba")
-	spot.light_energy = 2.0
-	spot.spot_range = 24.0
-	spot.spot_angle = 30.0
-	spot.position = Vector3(0.0, 3.12, -2.45)
-	spot.rotation = Vector3(-0.34, 0.0, 0.0)
-	_body.add_child(spot)
+	_bow_spot = SpotLight3D.new()
+	_bow_spot.light_color = Color("ffe8ba")
+	_bow_spot.light_energy = 2.0
+	_bow_spot.spot_range = 24.0
+	_bow_spot.spot_angle = 30.0
+	_bow_spot.position = Vector3(0.0, 3.12, -2.45)
+	_bow_spot.rotation = Vector3(-0.34, 0.0, 0.0)
+	_body.add_child(_bow_spot)
 
 	_cyl_on(_body, Vector3(0.0, 3.12, -1.35), 0.10, 0.14, 0.36, cabin_chalk)
 	_radar = Node3D.new()
@@ -688,7 +718,7 @@ func _build_appearance() -> void:
 	_cyl_on(_body, Vector3(0.0, 3.92, -0.60), 0.025, 0.025, 1.45, dark_iron, Vector3(0.0, 0.0, PI * 0.5), 8)
 	_cyl_on(_body, Vector3(0.0, 4.46, -0.62), 0.06, 0.06, 0.14, _material(Color("ffcf87"), 0.1, 1.8, 0.2))
 
-	# 5. МАШИННЫЙ КОЖУХ И ТРУБА ПО ПРАВОМУ БОРТУ (+X)
+	# 5. МАШИННЫЙ КОЖУХ И ТРУБА ПО ПРАВОМУ БОРТУ
 	_box_on(_body, Vector3(0.46, 1.36, 0.95), Vector3(1.18, 0.88, 1.25), cabin_trim)
 	var stack_node := Node3D.new()
 	stack_node.position = Vector3(0.46, 1.80, 0.95)
@@ -698,7 +728,7 @@ func _build_appearance() -> void:
 	_cyl_on(stack_node, Vector3(-0.12, 1.30, 0.22), 0.07, 0.07, 0.24, dark_iron, Vector3(0.18, 0.0, 0.0), 10)
 	_cyl_on(stack_node, Vector3( 0.12, 1.30, 0.22), 0.07, 0.07, 0.24, dark_iron, Vector3(0.18, 0.0, 0.0), 10)
 
-	# 6. КРАН-МАНИПУЛЯТОР И НАСОС СТРОГО НА ЛЕВОМ БОРТУ (-X)
+	# 6. КРАН-МАНИПУЛЯТОР И НАСОС НА ЛЕВОМ БОРТУ
 	_cyl_on(_body, Vector3(-1.22, 1.08, 0.95), 0.26, 0.30, 0.36, cabin_trim)
 	_box_on(_body, Vector3(-0.82, 1.08, 0.95), Vector3(0.56, 0.34, 0.62), machinery)
 	_cyl_on(_body, Vector3(-0.55, 1.12, 1.55), 0.06, 0.06, 1.25, dark_iron, Vector3(PI * 0.5, 0.0, 0.0), 10)
@@ -764,12 +794,12 @@ func _build_appearance() -> void:
 	_prop_l = _build_propeller(Vector3(-0.65, -0.15, 4.72), aged_bronze)
 	_prop_r = _build_propeller(Vector3( 0.65, -0.15, 4.72), aged_bronze)
 
-	var deck_light := OmniLight3D.new()
-	deck_light.light_color = Color("ffd296")
-	deck_light.light_energy = 0.90
-	deck_light.omni_range = 9.5
-	deck_light.position = Vector3(0.0, 2.35, 2.40)
-	_body.add_child(deck_light)
+	_deck_light = OmniLight3D.new()
+	_deck_light.light_color = Color("ffd296")
+	_deck_light.light_energy = 0.90
+	_deck_light.omni_range = 9.5
+	_deck_light.position = Vector3(0.0, 2.35, 2.40)
+	_body.add_child(_deck_light)
 
 	_hose = MeshInstance3D.new()
 	var tube := CylinderMesh.new()
