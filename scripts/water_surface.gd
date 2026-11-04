@@ -64,6 +64,16 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 	field._push_uniforms() # сразу нулевые кольца, чтобы шейдер не ждал 1/30 с
 
 
+## Усиленное CPU-зеркало волн только для изометрической лодочной сцены.
+## Режим рыбалки остаётся на исходных значениях WaterField.
+func configure_boat_waves() -> void:
+	field.ring_amp = 0.095
+	field.wake_interval = 0.12
+	field.wake_strength = 0.45
+	field.swell_time_rate = 0.55
+	field.chop_strength = 0.22
+
+
 ## Высота поверхности моря в мировой точке (уровень + дыхание + кольца).
 func surface_height(x: float, z: float) -> float:
 	if field == null:

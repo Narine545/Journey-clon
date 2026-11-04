@@ -44,11 +44,7 @@ func _ready() -> void:
 	add_child(water)
 	water.setup(game, Vector2(-150.0, 20.0), Coast.SEA_LEVEL)
 	# Усиленное волнение и след — только у лодки; рыбалка не меняется.
-	water.field.ring_amp = 0.095
-	water.field.wake_interval = 0.12
-	water.field.wake_strength = 0.45
-	water.field.swell_time_rate = 0.55
-	water.field.chop_strength = 0.22
+	water.configure_boat_waves()
 	water.set_ground(coast.height_tex, coast.grid_origin, coast.grid_cell, coast.grid_n, coast)
 	game.water = water
 	boat = BoatVessel.new()
