@@ -165,4 +165,10 @@ jobs:
           fi
           git add .ci-logs
           git commit -m "ci: артефакты прогона ${GITHUB_SHA::7}" || true
-          git push origin HEAD:${GITHUB_REF#refs/heads/} || true
+          # GitHub периодически отвечает HTTP 500 на первый push; не теряем кадр.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:${GITHUB_REF#refs/heads/}; then
+              break
+            fi
+            sleep 5
+          done
