@@ -436,13 +436,12 @@ func _build_appearance() -> void:
 
 	# 2. БОКОВЫЕ ГИДРО-ПОНТОНЫ (Аутригеры для устойчивости лаборатории)
 	for side in [-1.0, 1.0]:
-		var px := side * 2.42
-		# Носовой конус, середина и корма понтона
-		_loft_segment(_body, -2.3, -2.1, -1.1, -1.1, -0.18, 0.42, 0.08, 0.12, 0.58, 0.68, hull_boot)
-		# Смещаем понтон по X через дочерний узел
+		var px: float = float(side) * 2.42
+		# Каждый понтон строится внутри своего смещённого узла, не в центре корпуса.
 		var pontoon := Node3D.new()
 		pontoon.position = Vector3(px, 0.0, 0.4)
 		_body.add_child(pontoon)
+		_loft_segment(pontoon, -2.3, -2.1, -1.1, -1.1, -0.18, 0.42, 0.08, 0.12, 0.58, 0.68, hull_boot)
 		_loft_segment(pontoon, -2.4, -2.1, -1.1, -1.1, -0.18, 0.45, 0.08, 0.10, 0.56, 0.66, hull_dark)
 		_loft_segment(pontoon, -1.1, -1.1,  1.6,  1.6, -0.18, 0.45, 0.56, 0.66, 0.56, 0.66, hull_dark)
 		_loft_segment(pontoon,  1.6,  1.6,  2.7,  2.5, -0.18, 0.45, 0.56, 0.66, 0.12, 0.16, hull_dark)
