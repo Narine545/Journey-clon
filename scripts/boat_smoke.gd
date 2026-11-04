@@ -21,8 +21,9 @@ func _physics_process(_delta: float) -> void:
 		_check(main.slicks.size() >= 6, "SDF-пятна распределены вокруг лодки")
 		_check(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "изометрическая камера")
 		_check(is_zero_approx(main.boat._window_light.light_energy) and
-			main.boat._window_glass_mat.emission_energy_multiplier < 0.2,
-			"днём окна не освещают рубку")
+			not main.boat._window_glass_mat.emission_enabled and
+			main.boat._window_glass_mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA,
+			"днём видны тёмные стёкла, а не светящаяся картонка")
 		var yaw := main.boat.rotation.y
 		var view_right := main.camera.global_transform.basis.x
 		var heading := -main.boat.global_transform.basis.z
@@ -95,6 +96,51 @@ func _physics_process(_delta: float) -> void:
 		_check(main.boat.effective_max_speed() > 10.0 and
 			main.boat.effective_pump_range() > BoatVessel.PUMP_RANGE,
 			"прицеп усиливает мотор и насос")
+		# Изолируем рабочую зону прицепа от стартовых пятен и проверяем
+		# настоящий сбор по обе стороны через тот же ресурсный цикл.
+		main.boat.global_position = origin + Vector3(-220.0, 0.0, 0.0)
+		main.boat.rotation.y = 0.0
+		main.boat.speed = 0.0
+		main.boat._trailer.global_position = main.boat.global_position + Vector3(0.0, 0.0, 9.3)
+		main.boat._trailer.rotation.y = 0.0
+		var trailer_node := main.boat._trailer
+		_check(not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(0.0, 0.0, 0.3))) and
+			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(0.0, 0.0, -2.2))) and
+			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(-3.0, 0.0, 0.3))) and
+			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(3.0, 0.0, 0.3))),
+			"рука прицепа доступна по обоим бортам, но не в центре и не у носа")
+		for side in [-1.0, 1.0]:
+			var sample_pos: Vector3 = trailer_node.to_global(Vector3(side * 3.0, 0.0, 0.3))
+			var sample := ResourceSlick.new()
+			main.add_child(sample)
+			sample.setup(main.water, Vector2(sample_pos.x, sample_pos.z), 0, 0.0)
+			main.slicks.append(sample)
+			var raw_before := main.raw[0]
+			main.boat._update_pump(0.01)
+			_check(main.boat._target == sample and main.boat.target_from_trailer(),
+				"прицеп выбирает пятно с борта %s" % ("левого" if side < 0.0 else "правого"))
+			Input.action_press("boat_pump")
+			main.boat._update_pump(main.boat.effective_pump_seconds() + 0.01)
+			Input.action_release("boat_pump")
+			_check(sample.depleted and main.raw[0] == raw_before + 1 and
+				main.boat._trailer_hose.visible and not main.boat._hose.visible,
+				"прицеп собирает пятно с борта %s своей рукой" % ("левого" if side < 0.0 else "правого"))
+			main.slicks.erase(sample)
+			sample.queue_free()
+		var blocked := ResourceSlick.new()
+		main.add_child(blocked)
+		main.slicks.append(blocked)
+		for local_at in [Vector3(0.0, 0.0, 0.3), Vector3(0.0, 0.0, -2.2)]:
+			var blocked_at: Vector3 = trailer_node.to_global(local_at)
+			if blocked._mat == null:
+				blocked.setup(main.water, Vector2(blocked_at.x, blocked_at.z), 0, 0.0)
+			else:
+				blocked.global_position = blocked_at
+			main.boat._update_pump(0.01)
+			_check(main.boat._target != blocked,
+				"прицеп не собирает пятно по центру или перед носом")
+		main.slicks.erase(blocked)
+		blocked.queue_free()
 		main.toggle_trailer_free()
 		_check(not main.boat.has_trailer, "тестовая клавиша отключает прицеп")
 		# В новом районе пятна должны появляться снова, не оставаясь навсегда
@@ -203,10 +249,10 @@ func _physics_process(_delta: float) -> void:
 		var before_ssao := main.world._env.ssao_light_affect
 		var before_sky := float(main.world._sky_mat.get_shader_parameter("daylight_scatter"))
 		var spot := main.boat._bow_spot
-		_check(spot != null and spot.light_energy > 11.9 and
+		_check(spot != null and spot.light_energy > 18.0 and
 			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
-			"ночной прожектор стал вдвое ярче, оставаясь локальным")
-		_check(main.boat._window_glass_mat.emission_energy_multiplier > 2.5 and
+			"ночной прожектор усилен, оставаясь локальным")
+		_check(main.boat._window_interior_mat.emission_energy_multiplier > 2.4 and
 			main.boat._window_light.light_energy > 0.8 and
 			main.boat._window_light.omni_range < 4.0 and
 			main.boat._deck_light.light_energy > 0.4 and
@@ -238,8 +284,10 @@ func _physics_process(_delta: float) -> void:
 		_check(main.refined[0] == before_grant + 3 and main.refined[3] >= 3,
 			"[4] выдаёт готовые материалы для быстрой проверки")
 		main.debug_cycle_night()
-		_check(main.debug_night_paused and is_equal_approx(main.night01, 0.45),
-			"[5] фиксирует сумерки")
+		_check(main.debug_night_paused and is_equal_approx(main.night01, 0.45) and
+			is_zero_approx(main.boat._window_light.light_energy) and
+			main.boat._window_interior_mat.emission_energy_multiplier < 0.05,
+			"при 45% окна остаются стеклянными, без белого свечения")
 		main.debug_cycle_night()
 		_check(is_equal_approx(main.night01, 0.88), "[5] фиксирует тёмную ночь")
 		main.debug_warp_to_beacon()

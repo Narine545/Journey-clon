@@ -451,7 +451,7 @@ func buy_trailer() -> void:
 		if remaining <= 0:
 			break
 	boat.set_trailer_enabled(true)
-	announce("ПРИСТЫКОВАН БУКСИРУЕМЫЙ ПЛАШКОУТ! (+СКОРОСТЬ, ПЕРЕРАБОТКА 2→1)")
+	announce("ПЛАШКОУТ ПРИСТЫКОВАН: НАСОС С ДВУХ БОРТОВ, +СКОРОСТЬ, ПЕРЕРАБОТКА 2→1")
 
 
 func toggle_trailer_free() -> void:

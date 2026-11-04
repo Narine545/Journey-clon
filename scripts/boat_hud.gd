@@ -39,7 +39,7 @@ func _draw() -> void:
 		draw_rect(Rect2(252, y + 2, 160.0 * clampf(float(main.raw[i]) / float(required), 0.0, 1.0), 4),
 			ResourceSlick.COLORS[i])
 
-	var trailer_status := "ПЛАШКОУТ: НА БУКСИРЕ (2 сыр. → 1 гот.)" if main.boat.has_trailer else "ПЛАШКОУТ: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
+	var trailer_status := "ПЛАШКОУТ: 2 БОРТА НАСОСА  •  2 СЫР. → 1 ГОТ." if main.boat.has_trailer else "ПЛАШКОУТ: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
 	draw_string(font, Vector2(42, 236), trailer_status, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, accent if main.boat.has_trailer else muted)
 
 	# Блок экспедиционной цели (Маяки побережья)
@@ -124,10 +124,13 @@ func _draw() -> void:
 			action = "E — ЗАЖЕЧЬ МАЯК «%s» (%s)" % [dock_b["name"].to_upper(), main.format_beacon_recipe(dock_b["cost"]).to_upper()]
 			action_col = warn
 	elif not resource_name.is_empty():
-		action = "ПРОБЕЛ — ЗАБРАТЬ (ЛЕВ. БОРТ): %s" % resource_name.to_upper()
+		action = "ПРОБЕЛ — ЗАБРАТЬ (%s): %s" % [
+			"БОРТ ПРИЦЕПА" if main.boat.target_from_trailer() else "ЛЕВ. БОРТ",
+			resource_name.to_upper()]
 		action_col = accent
 	elif main.boat.wrong_side_target:
-		action = "ПОВЕРНИТЕСЬ ЛЕВЫМ БОРТОМ К ПЯТНУ"
+		action = "ПОДВЕДИТЕ ЛЕВЫЙ БОРТ ИЛИ БОРТ ПРИЦЕПА" if main.boat.has_trailer else \
+			"ПОВЕРНИТЕСЬ ЛЕВЫМ БОРТОМ К ПЯТНУ"
 		action_col = warn
 	elif not next_b.is_empty():
 		var destination: Vector3 = next_b["buoy_pos"]
