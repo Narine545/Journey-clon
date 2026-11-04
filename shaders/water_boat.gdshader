@@ -20,8 +20,6 @@ uniform vec2 wind_dir = vec2(0.32, -0.95);
 uniform float wind_power = 1.0;
 uniform float mega_amp = 0.15;
 
-uniform float ripple_freq = 1.35;
-uniform float ripple_speed = 1.1;
 uniform float ripple_strength = 0.38;
 uniform float glitter_amount = 1.0;
 uniform float sun_path_amount = 1.0;
@@ -93,7 +91,10 @@ float vnoise(vec2 p) {
 float ground_at(vec2 wp) {
 	vec2 uv = (wp - ground_origin) / (ground_cell * (ground_n - 1.0));
 	if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) {
-		return -6.0;
+		// За краем 900-метровой карты море должно оставаться ГЛУБОКИМ.
+		// -6 м попадало в середину градиента цвета, давая резкую
+		// диагональную границу, когда лодка выходила за карту дна.
+		return -100.0;
 	}
 	return texture(ground_tex, uv).r;
 }
@@ -140,7 +141,6 @@ void vertex() {
 void fragment() {
 	vec2 wp = w_pos.xz;
 	vec2 wdir = normalize(wind_dir);
-	vec2 wperp = vec2(-wdir.y, wdir.x);
 
 	float ground = ground_at(wp);
 	float depth_m = w_pos.y - ground;
@@ -153,30 +153,27 @@ void fragment() {
 	vec3 N = vec3(0.0, 1.0, 0.0);
 
 	float dist = length(CAMERA_POSITION_WORLD - w_pos);
-	// У ортографической камеры размер пикселя одинаков во всём кадре:
-	// затухание ряби от расстояния создавало круги и неравномерный свет.
-	float detail = 1.0;
 
 	// Дисперсионные волны: нормаль — производная тех же высот, что у вершин.
 	vec2 wave_grad = spectrum_gradient(wp, u_time, wind_dir, mega_amp, wind_power);
 	N = normalize(N - vec3(wave_grad.x, 0.0, wave_grad.y)
 		* (1.0 - 0.92 * near_shore));
 
-	// ---------- слой 1: перекрёстная ветровая рябь ----------
-	float n1 = vnoise(wp * 0.33);
-	float n2 = vnoise(wp * 0.90 + vec2(17.0, 9.0));
-	vec2 d1 = wdir;
-	vec2 d2 = normalize(wdir + vec2(0.62, -0.55));
-	vec2 d3 = normalize(wdir + vec2(-0.78, -0.30));
-	float ph1 = dot(wp, d1) * ripple_freq + n1 * 5.0 + u_time * ripple_speed;
-	float ph2 = dot(wp, d2) * ripple_freq * 1.9 + n2 * 4.0 + u_time * ripple_speed * 1.5;
-	float ph3 = dot(wp, d3) * ripple_freq * 3.4 + n1 * 3.0 + u_time * ripple_speed * 2.3;
-	vec2 wgrad = d1 * cos(ph1) * 0.55 + d2 * cos(ph2) * 0.36
-		+ d3 * cos(ph3) * 0.24;
-	float amp = 0.40 + 0.60 * vnoise(wp * 0.11 + vec2(3.7, 1.3));
-	wgrad *= ripple_strength * wind_power * detail * amp
-		* (1.0 - 0.88 * near_shore);
-	N = normalize(N - vec3(wgrad.x, 0.0, wgrad.y) * 0.44);
+	// ---------- локальная микрорябь без песчаных «сканлайнов» ----------
+	// Три параллельных cos(dot(wp, wind)) из старой воды образовывали
+	// бегущие светлые полосы. Вместо них — градиент двумерного шума в
+	// МИРОВЫХ координатах: он адвектируется ветром, но не создаёт гребней.
+	// Крупные волны остаются в spectrum_height/gradient и CPU-плавучести.
+	vec2 flow_a = wp * 0.48 + wdir * u_time * 0.18;
+	vec2 flow_b = wp * 1.70 - wdir * u_time * 0.32 + vec2(17.0, 9.0);
+	float na = vnoise(flow_a);
+	float nb = vnoise(flow_b);
+	vec2 micro_grad = vec2(vnoise(flow_a + vec2(0.18, 0.0)) - na,
+		vnoise(flow_a + vec2(0.0, 0.18)) - na) * 4.0;
+	micro_grad += vec2(vnoise(flow_b + vec2(0.18, 0.0)) - nb,
+		vnoise(flow_b + vec2(0.0, 0.18)) - nb) * 1.7;
+	micro_grad *= ripple_strength * wind_power * (1.0 - 0.88 * near_shore);
+	N = normalize(N - vec3(micro_grad.x, 0.0, micro_grad.y) * 0.44);
 
 	// ---------- точечные кольца событий (только от сбора пятен) ----------
 	float rk = PI_2 / ring_len;
@@ -341,11 +338,10 @@ void fragment() {
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);
 	ALBEDO = mix(base, fcol, fog);
 
-	// Спектральная нормаль в прямом свете давала повторяющиеся светлые
-	// «сканлайны» даже после выравнивания отражения неба. Для освещения
-	// усредняем её, не затрагивая геометрию волны и нормаль глиттера.
-	vec3 N_lit = normalize(mix(vec3(0.0, 1.0, 0.0), N, 0.22));
-	NORMAL = normalize((VIEW_MATRIX * vec4(N_lit, 0.0)).xyz);
+	// Прямое освещение равномерно: периодическая нормаль спектра раньше
+	// давала «сканлайны» даже при малом весе. Полная N остаётся в
+	// микробликах, высота волн — в геометрии, пена — в цвете.
+	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
 	float rough = mix(0.29, 0.55, near_shore); // зыбь не должна давать белые зеркальные прямоугольники
 	ROUGHNESS = mix(rough, 0.88, foam);
 	SPECULAR = mix(0.55, 0.18, near_shore);

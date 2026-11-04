@@ -247,6 +247,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if boat == null or camera == null:
 		return
+	# Плотная сетка моря конечна (±310 м). Переставляем её редкими
+	# шагами вдали от экрана, чтобы лодка не выходила на разреженные
+	# дальние треугольники. Шейдер и физика используют МИРОВЫЕ координаты.
+	if absf(boat.global_position.x - water.position.x) > 100.0 or \
+			absf(boat.global_position.z - water.position.z) > 100.0:
+		water.position = Vector3(boat.global_position.x, Coast.SEA_LEVEL,
+			boat.global_position.z)
 	var target := boat.global_position + Vector3.UP * 0.8
 	var desired := target + Vector3(21.0, 27.0, 30.0)
 	camera.global_position = camera.global_position.lerp(desired, 1.0 - exp(-3.0 * delta))
