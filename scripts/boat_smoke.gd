@@ -34,6 +34,20 @@ func _physics_process(_delta: float) -> void:
 		main.receive_resource(0)
 		_check(main.refine() == 1 and main.refined[0] == 1 and main.raw[0] == 0,
 			"три единицы сырья превращаются в один очищенный материал")
+		_check(not main.boat.has_trailer and main.boat.effective_max_speed() == 10.0,
+			"прицеп изначально не куплен")
+		main.refined[1] = 1
+		main.buy_trailer()
+		_check(main.boat.has_trailer and main.total_refined() == 0,
+			"прицеп покупается за два готовых материала")
+		main.raw[2] = 2
+		_check(main.refine() == 1 and main.refined[2] == 1 and main.raw[2] == 0,
+			"прицеп снижает цену переработки до двух единиц сырья")
+		_check(main.boat.effective_max_speed() > 10.0 and
+			main.boat.effective_pump_range() > BoatVessel.PUMP_RANGE,
+			"прицеп усиливает мотор и насос")
+		main.toggle_trailer_free()
+		_check(not main.boat.has_trailer, "тестовая клавиша отключает прицеп")
 		# В новом районе пятна должны появляться снова, не оставаясь навсегда
 		# в стартовом круге. Уходим в открытое море, не заходя на берег.
 		main.boat.global_position = origin + Vector3(-105.0, 0.0, 0.0)

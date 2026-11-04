@@ -5,11 +5,10 @@ extends Node3D
 
 const START_Z := Coast.SPAWN_Z
 const START_SEAWARD := 95.0
-# Пул пятен остаётся постоянным, но переставляется за пределами экрана:
-# игрок не должен навсегда терять ресурсы после ухода от стартового района.
 const SLICK_RECYCLE_DISTANCE := 72.0
 const SLICK_SPAWN_MIN := 28.0
 const SLICK_SPAWN_MAX := 47.0
+const TRAILER_COST := 2
 
 var game: GameState
 var world: GameWorld
@@ -34,8 +33,6 @@ func _ready() -> void:
 	world = GameWorld.new()
 	add_child(world)
 	world.setup(game)
-	# Из ветки башни взяты более мягкие облака и воздушная перспектива,
-	# но не её высотный туман: он скрывал бы поверхность у уровня моря.
 	coast = Coast.new()
 	add_child(coast)
 	coast.setup(game)
@@ -53,6 +50,9 @@ func _ready() -> void:
 	add_child(boat)
 	boat.global_position = Vector3(coast.shore_x(START_Z) - START_SEAWARD, 0.2, START_Z)
 	boat.setup(self, water, coast)
+	# CI снимает вариант с прицепом; обычная новая игра начинается без него.
+	if OS.get_environment("JOURNEY_BOAT_SHOT_TRAILER") == "1":
+		boat.set_trailer_enabled(true)
 	_build_resources()
 	_slick_rng.seed = 845239
 	camera = Camera3D.new()
@@ -77,9 +77,6 @@ func _ready() -> void:
 	world.apply_night01(0.0)
 	coast.set_night01(0.0)
 	water.apply_night01(0.0)
-	# В архивной сцене солнце низкое и золотое. В изометрии это делало
-	# открытое море почти целиком шоколадным: поднимаем солнце и оставляем
-	# тёплые акценты на самом судне, воде даём прохладную глубину.
 	var sun := Vector3(-0.36, 0.76, -0.54).normalized()
 	game.sun_dir = sun
 	world.apply_sun(sun)
@@ -93,8 +90,6 @@ func _ready() -> void:
 	water.set_param("glitter_amount", 0.05)
 	water.set_param("solar_glitter_amount", 0.018)
 	water.set_param("sun_path_amount", 0.13)
-	# GGX прямого света всё ещё давал белое пятно под лодкой даже при
-	# приглушённой нарисованной дорожке. Старая сцена сохраняет исходный свет.
 	water.set_param("direct_specular_amount", 0.07)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
 		var test := BoatSmoke.new()
@@ -125,12 +120,10 @@ func _stream_resources() -> void:
 	var center := Vector2(boat.global_position.x, boat.global_position.z)
 	for slick in slicks:
 		if slick.depleted:
-			continue # таймер повторного появления нельзя обойти перемещением
+			continue
 		var current := Vector2(slick.position.x, slick.position.z)
 		if current.distance_to(center) <= SLICK_RECYCLE_DISTANCE:
 			continue
-		# Только ушедшие далеко за пределы кадра пятна получают новое место.
-		# До подхода игрока позиция остаётся постоянной (без мигания/телепорта).
 		for _attempt in range(24):
 			var angle := _slick_rng.randf_range(-PI, PI)
 			var distance := _slick_rng.randf_range(SLICK_SPAWN_MIN, SLICK_SPAWN_MAX)
@@ -168,15 +161,52 @@ func receive_resource(kind: int) -> void:
 	announce("СОБРАНО: %s" % ResourceSlick.NAMES[kind].to_upper())
 
 
+func total_refined() -> int:
+	var sum := 0
+	for count in refined:
+		sum += count
+	return sum
+
+
 func refine() -> int:
+	var needed := 2 if (boat != null and boat.has_trailer) else 3
 	var produced := 0
 	for i in range(raw.size()):
-		var batches := int(raw[i] / 3.0)
-		raw[i] -= batches * 3
+		var batches := int(raw[i] / float(needed))
+		raw[i] -= batches * needed
 		refined[i] += batches
 		produced += batches
-	announce("ПЕРЕРАБОТАНО: %d" % produced if produced > 0 else "НУЖНО ТРИ ПЯТНА ОДНОГО ЦВЕТА")
+	if produced > 0 and boat != null:
+		boat.trigger_refine_effect()
+	announce("ПЕРЕРАБОТАНО: %d" % produced if produced > 0 else ("НУЖНО %d ПЯТНА ОДНОГО ЦВЕТА" % needed))
 	return produced
+
+
+func buy_trailer() -> void:
+	if boat == null:
+		return
+	if boat.has_trailer:
+		announce("ПРИЦЕП-ЛАБОРАТОРИЯ УЖЕ ПРИСТЫКОВАН")
+		return
+	if total_refined() < TRAILER_COST:
+		announce("ДЛЯ ПРИЦЕПА НУЖНО 2 ГОТ. МАТЕРИАЛА (ИЛИ НАЖМИТЕ T ДЛЯ ТЕСТА)")
+		return
+	var remaining := TRAILER_COST
+	for i in range(refined.size()):
+		var take := mini(refined[i], remaining)
+		refined[i] -= take
+		remaining -= take
+		if remaining <= 0:
+			break
+	boat.set_trailer_enabled(true)
+	announce("КУПЛЕН ПРИЦЕП-ОРАНЖЕРЕЯ! (+СКОРОСТЬ, +НАСОС, ПЕРЕРАБОТКА 2→1)")
+
+
+func toggle_trailer_free() -> void:
+	if boat == null:
+		return
+	boat.set_trailer_enabled(not boat.has_trailer)
+	announce("ПРИЦЕП-ОРАНЖЕРЕЯ: %s" % ("ПРИСТЫКОВАН" if boat.has_trailer else "ОТСТЫКОВАН"))
 
 
 func announce(text: String) -> void:
@@ -185,9 +215,16 @@ func announce(text: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_R:
-		refine()
-		get_viewport().set_input_as_handled()
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_R:
+			refine()
+			get_viewport().set_input_as_handled()
+		elif event.physical_keycode == KEY_B:
+			buy_trailer()
+			get_viewport().set_input_as_handled()
+		elif event.physical_keycode == KEY_T:
+			toggle_trailer_free()
+			get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera.size = maxf(16.0, camera.size - 2.0)
