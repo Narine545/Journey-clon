@@ -106,7 +106,7 @@ func update_night_lights(night01: float, overdrive: bool) -> void:
 	# Прожектор — короткий локальный луч перед носом, не замена лунному
 	# или фоновому свету всей сцены. [H] отключает его для честного A/B.
 	if _bow_spot != null:
-		_bow_spot.light_energy = lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
+		_bow_spot.light_energy = 2.0 * lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
 		_bow_spot.spot_range = lerpf(18.0, 28.0, night01) * (1.20 if overdrive else 1.0)
 	if _deck_light != null:
 		_deck_light.light_energy = lerpf(0.10, 0.30, night01)
@@ -708,7 +708,7 @@ func _build_appearance() -> void:
 	_cyl_on(_body, Vector3(0.0, 3.12, -2.38), 0.09, 0.09, 0.06, _material(Color("ffdf9e"), 0.1, 2.0, 0.2), Vector3(PI * 0.5 - 0.28, 0.0, 0.0), 12)
 	_bow_spot = SpotLight3D.new()
 	_bow_spot.light_color = Color("ffe8ba")
-	_bow_spot.light_energy = 2.0
+	_bow_spot.light_energy = 4.0
 	_bow_spot.spot_range = 24.0
 	_bow_spot.spot_angle = 30.0
 	_bow_spot.light_volumetric_fog_energy = 1.3
