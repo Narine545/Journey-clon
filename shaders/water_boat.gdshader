@@ -346,7 +346,7 @@ void fragment() {
 	// Для PBR используем лишь малую часть уже рассчитанного рельефа.
 	// Полная спектральная нормаль прежде рисовала сканлайны; плоская
 	// полностью лишала воду реакции на свет и тени. Френель и глиттер выше
-	// остаются прежними, а режим легко сравнить в игре клавишей L.
+	// остаются прежними; [L] меняет только тонмаппер.
 	vec3 lighting_normal = normalize(mix(vec3(0.0, 1.0, 0.0), N, surface_light_detail));
 	NORMAL = normalize((VIEW_MATRIX * vec4(lighting_normal, 0.0)).xyz);
 	float rough = mix(0.29, 0.55, near_shore); // зыбь не должна давать белые зеркальные прямоугольники
@@ -401,6 +401,10 @@ void light() {
 	float nh = clamp(dot(h, n), 0.0, 1.0);
 	float hl = clamp(dot(h, l), 0.0, 1.0);
 	vec3 radiance = LIGHT_COLOR * ATTENUATION;
+	// У воды тёмный запечённый ALBEDO и малая доля реальной нормали.
+	// Только локальный свет (прожектор/маяк) усиливает диффузную
+	// читаемость пятна. Солнце, френель, глиттер и specular не меняем.
+	float local_diffuse = LIGHT_IS_DIRECTIONAL ? 1.0 : 2.0;
 
 	if (proxima_test < 0.5) {
 		float a = max(ROUGHNESS * ROUGHNESS, 0.002);
@@ -416,7 +420,7 @@ void light() {
 		float burley_l = 1.0 + (fd90 - 1.0) * pow(1.0 - nl, 5.0);
 		float burley_v = 1.0 + (fd90 - 1.0) * pow(1.0 - nv, 5.0);
 		DIFFUSE_LIGHT += radiance * ALBEDO * (1.0 / PI)
-			* burley_l * burley_v * nl;
+			* burley_l * burley_v * nl * local_diffuse;
 		SPECULAR_LIGHT += radiance * d * gl * gv * f * direct_specular_amount
 			/ max(4.0 * nl * nv, 1e-3);
 	} else {
@@ -452,7 +456,7 @@ void light() {
 	vec3 fresnel = f0 + proxima_t(2.0
 		- proxima_r(proxima_specular_fresnel_falloff)) * (1.0 - f0) * fh;
 	vec3 fs = d * gl * gv * fresnel * nl;
-	DIFFUSE_LIGHT += radiance * fd;
+	DIFFUSE_LIGHT += radiance * fd * local_diffuse;
 	SPECULAR_LIGHT += radiance * fs * direct_specular_amount;
 	}
 	}

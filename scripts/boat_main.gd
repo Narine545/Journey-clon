@@ -41,6 +41,7 @@ var debug_panel_visible := true
 var debug_night_paused := false
 var debug_night_fill := 0.18
 var debug_lighting_profile := true
+var debug_headlight_enabled := true
 var _debug_night_step := 0
 
 var _capture_frames := 0
@@ -657,6 +658,12 @@ func debug_toggle_lighting() -> void:
 		"AgX" if debug_lighting_profile else "Filmic"))
 
 
+func debug_toggle_headlight() -> void:
+	debug_headlight_enabled = not debug_headlight_enabled
+	boat._bow_spot.visible = debug_headlight_enabled
+	announce("ТЕСТ: НОСОВОЙ ПРОЖЕКТОР %s" % ("ВКЛ" if debug_headlight_enabled else "ВЫКЛ"))
+
+
 func debug_adjust_fill(change: float) -> void:
 	debug_night_fill = clampf(debug_night_fill + change, 0.02, 0.42)
 	_apply_atmosphere(night01)
@@ -732,6 +739,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_L:
 				debug_toggle_lighting()
+				get_viewport().set_input_as_handled()
+			KEY_H:
+				debug_toggle_headlight()
 				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:

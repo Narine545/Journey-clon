@@ -103,11 +103,11 @@ func effective_pump_seconds() -> float:
 
 
 func update_night_lights(night01: float, overdrive: bool) -> void:
-	# Локальное освещение — лишь тёплый навигационный акцент. Общий свет
-	# от луны теперь освещает и море, и берег, и судно одновременно.
+	# Прожектор — короткий локальный луч перед носом, не замена лунному
+	# или фоновому свету всей сцены. [H] отключает его для честного A/B.
 	if _bow_spot != null:
-		_bow_spot.light_energy = lerpf(0.12, 0.95, night01) * (1.6 if overdrive else 1.0)
-		_bow_spot.spot_range = lerpf(18.0, 27.0, night01) * (1.35 if overdrive else 1.0)
+		_bow_spot.light_energy = lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
+		_bow_spot.spot_range = lerpf(18.0, 28.0, night01) * (1.20 if overdrive else 1.0)
 	if _deck_light != null:
 		_deck_light.light_energy = lerpf(0.10, 0.30, night01)
 		_deck_light.omni_range = 5.5
@@ -711,8 +711,11 @@ func _build_appearance() -> void:
 	_bow_spot.light_energy = 2.0
 	_bow_spot.spot_range = 24.0
 	_bow_spot.spot_angle = 30.0
+	_bow_spot.light_volumetric_fog_energy = 1.3
 	_bow_spot.position = Vector3(0.0, 3.12, -2.45)
-	_bow_spot.rotation = Vector3(-0.34, 0.0, 0.0)
+	# -Z вдоль курса, наклон вниз: пятно на воде в нескольких метрах
+	# перед носом, а не вдали под туманом.
+	_bow_spot.rotation = Vector3(-0.48, 0.0, 0.0)
 	_body.add_child(_bow_spot)
 
 	_cyl_on(_body, Vector3(0.0, 3.12, -1.35), 0.10, 0.14, 0.36, cabin_chalk)

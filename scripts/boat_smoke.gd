@@ -191,6 +191,16 @@ func _physics_process(_delta: float) -> void:
 		var before_ambient := main.world._env.ambient_light_energy
 		var before_ssao := main.world._env.ssao_light_affect
 		var before_sky := float(main.world._sky_mat.get_shader_parameter("daylight_scatter"))
+		var spot := main.boat._bow_spot
+		_check(spot != null and spot.light_energy > 2.5 and
+			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
+			"ночной прожектор направлен на ближнюю воду и остаётся локальным")
+		main.debug_toggle_headlight()
+		_check(not spot.visible and is_equal_approx(main.world._sun.light_energy, before_light) and
+			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
+			"[H] отключает прожектор без изменения фона и глиттера")
+		main.debug_toggle_headlight()
+		_check(spot.visible, "[H] возвращает прожектор")
 		main.debug_toggle_lighting()
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_FILMIC and
 			is_equal_approx(main.world._sun.light_energy, before_light) and
