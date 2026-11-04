@@ -26,6 +26,9 @@ uniform float ripple_strength = 0.38;
 uniform float glitter_amount = 1.0;
 uniform float sun_path_amount = 1.0;
 uniform float direct_specular_amount = 1.0;
+// Небольшая доля рассчитанной нормали волн в реальном освещении.
+// 0 = прежний плоский PBR, 0.16 = мягкая форма без светлых полос.
+uniform float surface_light_detail = 0.0;
 
 uniform float proxima_test = 0.0;
 uniform float proxima_specular_strength = 0.55;
@@ -340,7 +343,12 @@ void fragment() {
 	// Прямое освещение равномерно: периодическая нормаль спектра раньше
 	// давала «сканлайны» даже при малом весе. Полная N остаётся в
 	// микробликах, высота волн — в геометрии, пена — в цвете.
-	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+	// Для PBR используем лишь малую часть уже рассчитанного рельефа.
+	// Полная спектральная нормаль прежде рисовала сканлайны; плоская
+	// полностью лишала воду реакции на свет и тени. Френель и глиттер выше
+	// остаются прежними, а режим легко сравнить в игре клавишей L.
+	vec3 lighting_normal = normalize(mix(vec3(0.0, 1.0, 0.0), N, surface_light_detail));
+	NORMAL = normalize((VIEW_MATRIX * vec4(lighting_normal, 0.0)).xyz);
 	float rough = mix(0.29, 0.55, near_shore); // зыбь не должна давать белые зеркальные прямоугольники
 	ROUGHNESS = mix(rough, 0.88, foam);
 	SPECULAR = mix(0.55, 0.18, near_shore);

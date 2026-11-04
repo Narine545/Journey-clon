@@ -12,6 +12,7 @@ var _env: Environment
 var _using_sky_plus := false
 var _cloud_drift := 7.0
 var compat_fallback := false # Vulkan не поднялся → Godot ушёл в Compatibility
+var boat_lighting_profile := false
 
 
 func setup(game_ref) -> void:
@@ -284,16 +285,37 @@ func apply_sun(dir: Vector3) -> void:
 	_sun.light_color = daylight.lerp(Color(0.59, 0.72, 0.91), game.night01)
 
 
+## Профиль лодки: реальные отношения направленного/фонового света, AgX,
+## локальный SSAO и SSIL. Не включаем дорогой SDFGI в динамической сцене.
+## Можно сравнить с прежним Filmic через [L], не затрагивая старую рыбалку.
+func configure_boat_lighting(enabled: bool) -> void:
+	boat_lighting_profile = enabled
+	_env.tonemap_mode = Environment.TONE_MAPPER_AGX if enabled else Environment.TONE_MAPPER_FILMIC
+	_env.adjustment_enabled = enabled
+	_env.adjustment_contrast = 1.12 if enabled else 1.0
+	_env.adjustment_saturation = 1.08 if enabled else 1.0
+	_env.ambient_light_sky_contribution = 0.80 if enabled else 1.0
+	_env.ambient_light_color = Color(0.20, 0.27, 0.36) if enabled else Color.WHITE
+	_env.ssao_radius = 1.35 if enabled else 3.0
+	_env.ssao_intensity = 1.8 if enabled else 2.0
+	_env.ssao_direct_light_affect = 0.32 if enabled else 0.0
+	_env.ssao_ao_channel_affect = 0.45 if enabled else 0.0
+	_env.ssil_intensity = 0.95 if enabled else 0.85
+	_sun.directional_shadow_max_distance = 100.0 if enabled else 180.0
+
+
 ## Только лодочный режим: диск солнца и дорожка исчезают, но оставляем
 ## очень слабый направленный свет неба, чтобы тени и рельеф не стали плоскими.
 ## Никакого локального «лунного прожектора» или повышения экспозиции.
 func fade_boat_sun(n: float, fill_energy: float) -> void:
 	var sunset := clampf((n - 0.18) / 0.60, 0.0, 1.0)
-	_sun.light_energy = lerpf(0.85, fill_energy, sunset)
+	# При том же низком общем уровне света усиливаем разницу между
+	# направленным ключом и небесной заливкой: форма читается за счёт теней,
+	# а не завышенной экспозиции/белого прожектора.
+	var key := minf(0.42, fill_energy + 0.08) if boat_lighting_profile else fill_energy
+	_sun.light_energy = lerpf(0.85, key, sunset)
 	_sun.light_volumetric_fog_energy = 0.75 * (1.0 - sunset)
-	# Тёмный небесный фон + слабый боковой свет дают форму корпусу и
-	# рифам; повышение общей экспозиции лишь делало всё одинаково серым.
-	_env.ambient_light_energy = lerpf(0.72, 0.34, n)
+	_env.ambient_light_energy = lerpf(0.72, 0.25 if boat_lighting_profile else 0.34, n)
 	_env.tonemap_exposure = lerpf(0.95, 1.05, n)
 	_env.fog_density = lerpf(0.0011, 0.006, n) if not compat_fallback \
 		else lerpf(0.0011, 0.012, n)

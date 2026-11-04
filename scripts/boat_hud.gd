@@ -82,8 +82,8 @@ func _draw() -> void:
 	# Отладка всегда доступна в лодочном режиме; [0] прячет только панель.
 	if main.debug_panel_visible:
 		var dbg := Vector2(size.x - 355.0, 22.0)
-		draw_rect(Rect2(dbg, Vector2(333, 191)), backdrop)
-		draw_rect(Rect2(dbg, Vector2(333, 191)), Color("548c89"), false, 1.0)
+		draw_rect(Rect2(dbg, Vector2(333, 214)), backdrop)
+		draw_rect(Rect2(dbg, Vector2(333, 214)), Color("548c89"), false, 1.0)
 		draw_string(font, dbg + Vector2(12, 23), "БЫСТРАЯ ПРОВЕРКА  •  %d FPS" % Engine.get_frames_per_second(),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 14, accent)
 		draw_string(font, dbg + Vector2(12, 47), "[0] — СКРЫТЬ / ПОКАЗАТЬ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
@@ -92,7 +92,10 @@ func _draw() -> void:
 		draw_string(font, dbg + Vector2(12, 116), "[6] — К СЛЕДУЮЩЕМУ БУЮ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
 		draw_string(font, dbg + Vector2(12, 139), "[7] — ПРОДОЛЖИТЬ ВРЕМЯ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
 		draw_string(font, dbg + Vector2(12, 162), "[8] / [9] — НОЧНОЙ ОБЪЁМ - / +", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
-		draw_string(font, dbg + Vector2(12, 184),
+		draw_string(font, dbg + Vector2(12, 185), "[L] — СВЕТ AgX / FILMIC: %s" % (
+			"AgX" if main.debug_lighting_profile else "FILMIC"),
+			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
+		draw_string(font, dbg + Vector2(12, 207),
 			"НОЧЬ %d%%  %s  •  СВЕТ %.2f  ТУМАН %.3f" % [int(main.night01 * 100.0),
 				"ПАУЗА" if main.debug_night_paused else "ИДЁТ",
 				main.debug_night_fill, main.world._env.fog_density],

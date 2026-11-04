@@ -176,13 +176,21 @@ func _physics_process(_delta: float) -> void:
 			gap >= float(rf["radius"]) + 1.85 - 0.01,
 			"риф гасит скорость, повреждает корпус и не телепортирует его внутрь")
 		main._apply_atmosphere(0.88)
-		_check(main.world._sun.light_energy > 0.14 and main.world._sun.light_energy < 0.20 and
+		_check(main.world._sun.light_energy > 0.23 and main.world._sun.light_energy < 0.29 and
 			float(main.water.material().get_shader_parameter("sun_path_amount")) < 0.001 and
 			main.world._env.volumetric_fog_density > 0.013,
 			"ночью нет световой дорожки, а слабый свет сохраняет объём в тумане")
 		var night_glitter := float(main.water.material().get_shader_parameter("glitter_amount"))
+		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_AGX and
+			is_equal_approx(float(main.water.material().get_shader_parameter("surface_light_detail")), 0.16),
+			"лодочный профиль включает AgX и мягкое освещение волн")
+		main.debug_toggle_lighting()
+		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_FILMIC and
+			is_zero_approx(float(main.water.material().get_shader_parameter("surface_light_detail"))),
+			"[L] возвращает прежнее освещение для сравнения")
+		main.debug_toggle_lighting()
 		main.debug_adjust_fill(0.04)
-		_check(main.world._sun.light_energy > 0.21 and
+		_check(main.world._sun.light_energy > 0.29 and
 			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
 			"[9] добавляет объёмный свет, не изменяя глиттер")
 		main.debug_adjust_fill(-0.04)

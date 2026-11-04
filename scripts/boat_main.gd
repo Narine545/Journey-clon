@@ -40,6 +40,7 @@ var all_beacons_lit := false
 var debug_panel_visible := true
 var debug_night_paused := false
 var debug_night_fill := 0.18
+var debug_lighting_profile := true
 var _debug_night_step := 0
 
 var _capture_frames := 0
@@ -56,6 +57,7 @@ func _ready() -> void:
 	world = GameWorld.new()
 	add_child(world)
 	world.setup(game)
+	world.configure_boat_lighting(debug_lighting_profile)
 	coast = Coast.new()
 	add_child(coast)
 	coast.setup(game)
@@ -139,6 +141,7 @@ func _apply_atmosphere(n01: float) -> void:
 	# Плавно убрать её до наступления полной темноты.
 	water.set_param("sun_path_amount", 0.09 * (1.0 - clampf((night01 - 0.25) / 0.53, 0.0, 1.0)))
 	water.set_param("direct_specular_amount", 0.018)
+	water.set_param("surface_light_detail", 0.16 if debug_lighting_profile else 0.0)
 	if boat != null:
 		boat.update_night_lights(night01, overdrive_timer > 0.0)
 
@@ -646,6 +649,14 @@ func debug_cycle_night() -> void:
 	announce("ТЕСТ: ВРЕМЯ СУТОК %d%% (ЗАФИКСИРОВАНО; [7] — ПРОДОЛЖИТЬ)" % int(round(night01 * 100.0)))
 
 
+func debug_toggle_lighting() -> void:
+	debug_lighting_profile = not debug_lighting_profile
+	world.configure_boat_lighting(debug_lighting_profile)
+	_apply_atmosphere(night01)
+	announce("ТЕСТ: СВЕТ %s (AgX + КОНТАКТНЫЕ ТЕНИ / FILMIC)" % (
+		"НОВЫЙ" if debug_lighting_profile else "СТАРЫЙ"))
+
+
 func debug_adjust_fill(change: float) -> void:
 	debug_night_fill = clampf(debug_night_fill + change, 0.02, 0.42)
 	_apply_atmosphere(night01)
@@ -718,6 +729,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_9:
 				debug_adjust_fill(0.04)
+				get_viewport().set_input_as_handled()
+			KEY_L:
+				debug_toggle_lighting()
 				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
