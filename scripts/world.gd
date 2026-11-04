@@ -300,9 +300,6 @@ func configure_boat_lighting() -> void:
 	_env.ssao_light_affect = 0.32
 	_env.ssao_ao_channel_affect = 0.45
 	_env.ssil_intensity = 0.95
-	# Изометрическая камера смотрит на прожектор сзади/сбоку: при 0.72
-	# туман рассеивает свет почти только вперёд, луч с камеры не читается.
-	_env.volumetric_fog_anisotropy = 0.30
 	_sun.directional_shadow_max_distance = 100.0
 
 
@@ -325,15 +322,7 @@ func fade_boat_sun(n: float, fill_energy: float) -> void:
 	_env.tonemap_exposure = lerpf(0.95, 1.05, n)
 	_env.fog_density = lerpf(0.0011, 0.006, n) if not compat_fallback \
 		else lerpf(0.0011, 0.012, n)
-	# Прежние 0.016 в тёмной сцене почти только гасили кадр:
-	# солнце не светит в туман ночью, а слабый ambient не компенсировал
-	# поглощение. Держим фон разреженным, локальную дымку даёт FogVolume.
-	_env.volumetric_fog_density = lerpf(0.0016, 0.0075, n)
-	_env.volumetric_fog_albedo = Color(0.69, 0.73, 0.79)
-	_env.volumetric_fog_ambient_inject = 0.55
-	# Короткая дистанция при той же сетке froxel даёт больше выборок
-	# на 7-метровом луче; дальний план оставляем обычной дымке.
-	_env.volumetric_fog_length = 80.0
+	_env.volumetric_fog_density = lerpf(0.0016, 0.016, n)
 	_env.fog_aerial_perspective = lerpf(0.25, 0.42, n)
 	# Sky++ раньше оставлял дневное рассеяние при нулевом солнечном диске;
 	# fallback тоже сохранял часть многократного рассеяния. Не меняем

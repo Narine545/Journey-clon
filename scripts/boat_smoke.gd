@@ -20,8 +20,6 @@ func _physics_process(_delta: float) -> void:
 		_check(main.coast.water_depth(origin.x, origin.z) > 2.0, "лодка спущена на глубокую воду")
 		_check(main.slicks.size() >= 6, "SDF-пятна распределены вокруг лодки")
 		_check(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "изометрическая камера")
-		_check(is_zero_approx((main.boat._bow_fog.material as FogMaterial).density),
-			"днём локальный туман прожектора выключен")
 		var yaw := main.boat.rotation.y
 		var view_right := main.camera.global_transform.basis.x
 		var heading := -main.boat.global_transform.basis.z
@@ -180,10 +178,8 @@ func _physics_process(_delta: float) -> void:
 		main._apply_atmosphere(0.88)
 		_check(main.world._sun.light_energy > 0.23 and main.world._sun.light_energy < 0.29 and
 			float(main.water.material().get_shader_parameter("sun_path_amount")) < 0.001 and
-			main.world._env.volumetric_fog_density > 0.006 and
-			main.world._env.volumetric_fog_density < 0.009 and
-			is_equal_approx(main.world._env.volumetric_fog_length, 80.0),
-			"ночью нет световой дорожки; разреженный туман не затемняет весь кадр")
+			main.world._env.volumetric_fog_density > 0.013,
+			"ночью нет световой дорожки, а слабый свет сохраняет объём в тумане")
 		var night_glitter := float(main.water.material().get_shader_parameter("glitter_amount"))
 		main.debug_toggle_volumetric_fog()
 		_check(not main.world._env.volumetric_fog_enabled and
@@ -205,15 +201,8 @@ func _physics_process(_delta: float) -> void:
 		_check(spot != null and spot.light_energy > 2.5 and
 			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
 			"ночной прожектор направлен на ближнюю воду и остаётся локальным")
-		_check(main.boat._bow_fog.get_parent() == spot and
-			main.boat._bow_fog.shape == RenderingServer.FOG_VOLUME_SHAPE_CONE and
-			(main.boat._bow_fog.material as FogMaterial).density > 0.035 and
-			spot.light_volumetric_fog_energy >= 7.0 and
-			main.world._env.volumetric_fog_anisotropy < 0.5,
-			"ночью настоящий прожектор рассеивается в локальном объёмном тумане")
 		main.debug_toggle_headlight()
-		_check(not spot.visible and not main.boat._bow_fog.is_visible_in_tree() and
-			is_equal_approx(main.world._sun.light_energy, before_light) and
+		_check(not spot.visible and is_equal_approx(main.world._sun.light_energy, before_light) and
 			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
 			"[H] отключает прожектор без изменения фона и глиттера")
 		main.debug_toggle_headlight()
