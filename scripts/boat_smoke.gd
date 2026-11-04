@@ -24,9 +24,14 @@ func _physics_process(_delta: float) -> void:
 		Input.action_release("boat_forward")
 		_check(main.boat.global_position.distance_to(origin) > 1.0, "мотор двигает лодку")
 		var first := main.slicks[0]
-		main.boat.global_position = first.global_position + Vector3(0.0, 0.0, 4.0)
+		main.boat.global_position = first.global_position - Vector3(4.0, 0.0, 1.0)
 		main.boat.speed = 0.0
 		Input.action_press("boat_pump")
+	if ticks == 73:
+		_check(main.boat.wrong_side_target and main.raw[0] == 0 and
+			main.boat.pump_fraction() == 0.0, "насос не проходит через правый борт")
+		var first := main.slicks[0]
+		main.boat.global_position = first.global_position + Vector3(4.0, 0.0, 1.0)
 	if ticks == 185:
 		Input.action_release("boat_pump")
 		_check(main.raw[0] == 1 and main.slicks[0].depleted, "насос собирает одно пятно")

@@ -1,7 +1,6 @@
 class_name BoatMain
 extends Node3D
 ## Первый самостоятельный игровой срез. Старая рыбалка сохранена в main.tscn.
-## Небо/атмосфера, песчаный берег, вода и её CPU-зеркало волн — из проекта.
 
 const START_Z := Coast.SPAWN_Z
 const START_SEAWARD := 95.0
@@ -41,8 +40,15 @@ func _ready() -> void:
 	sand.setup(game)
 	coast.attach_sand(sand)
 	water = WaterSurface.new()
+	water.shader_path = "res://shaders/water_boat.gdshader"
 	add_child(water)
 	water.setup(game, Vector2(-150.0, 20.0), Coast.SEA_LEVEL)
+	# Усиленное волнение и след — только у лодки; рыбалка не меняется.
+	water.field.ring_amp = 0.095
+	water.field.wake_interval = 0.12
+	water.field.wake_strength = 0.45
+	water.field.swell_time_rate = 0.55
+	water.field.chop_strength = 0.22
 	water.set_ground(coast.height_tex, coast.grid_origin, coast.grid_cell, coast.grid_n, coast)
 	game.water = water
 	boat = BoatVessel.new()
@@ -50,7 +56,7 @@ func _ready() -> void:
 	add_child(boat)
 	boat.global_position = Vector3(coast.shore_x(START_Z) - START_SEAWARD, 0.2, START_Z)
 	boat.setup(self, water, coast)
-	# CI снимает вариант с прицепом; обычная новая игра начинается без него.
+	# Для CI снимок с буксируемым плашкоутом; в игре он покупается отдельно.
 	if OS.get_environment("JOURNEY_BOAT_SHOT_TRAILER") == "1":
 		boat.set_trailer_enabled(true)
 	_build_resources()
@@ -87,6 +93,7 @@ func _ready() -> void:
 	water.set_param("water_deep", Color("0f5668"))
 	water.set_param("horizon_col", Color("6996a0"))
 	water.set_param("sky_col", Color("447084"))
+	water.set_param("mega_amp", 0.22)
 	water.set_param("glitter_amount", 0.05)
 	water.set_param("solar_glitter_amount", 0.018)
 	water.set_param("sun_path_amount", 0.13)
@@ -186,10 +193,10 @@ func buy_trailer() -> void:
 	if boat == null:
 		return
 	if boat.has_trailer:
-		announce("ПРИЦЕП-ЛАБОРАТОРИЯ УЖЕ ПРИСТЫКОВАН")
+		announce("ПЛАШКОУТ УЖЕ НА БУКСИРЕ")
 		return
 	if total_refined() < TRAILER_COST:
-		announce("ДЛЯ ПРИЦЕПА НУЖНО 2 ГОТ. МАТЕРИАЛА (ИЛИ НАЖМИТЕ T ДЛЯ ТЕСТА)")
+		announce("ДЛЯ ПЛАШКОУТА НУЖНО 2 ГОТ. МАТЕРИАЛА (ИЛИ НАЖМИТЕ T ДЛЯ ТЕСТА)")
 		return
 	var remaining := TRAILER_COST
 	for i in range(refined.size()):
@@ -199,14 +206,14 @@ func buy_trailer() -> void:
 		if remaining <= 0:
 			break
 	boat.set_trailer_enabled(true)
-	announce("КУПЛЕН ПРИЦЕП-ОРАНЖЕРЕЯ! (+СКОРОСТЬ, +НАСОС, ПЕРЕРАБОТКА 2→1)")
+	announce("ПРИСТЫКОВАН БУКСИРУЕМЫЙ ПЛАШКОУТ! (+СКОРОСТЬ, ПЕРЕРАБОТКА 2→1)")
 
 
 func toggle_trailer_free() -> void:
 	if boat == null:
 		return
 	boat.set_trailer_enabled(not boat.has_trailer)
-	announce("ПРИЦЕП-ОРАНЖЕРЕЯ: %s" % ("ПРИСТЫКОВАН" if boat.has_trailer else "ОТСТЫКОВАН"))
+	announce("БУКСИРУЕМЫЙ ПЛАШКОУТ: %s" % ("ПРИСТЫКОВАН" if boat.has_trailer else "ОТСТЫКОВАН"))
 
 
 func announce(text: String) -> void:

@@ -36,6 +36,12 @@ var mat: ShaderMaterial # куда пушим кольца (назначает W
 var wind_dir := Vector2(0.32, -0.95)
 var wind_power := 1.0
 var mega_amp := 0.055 # дыхание моря — синхронно с uniform-ом шейдера
+# Только лодочная сцена переопределяет эти параметры для штормового моря.
+var ring_amp := RING_AMP
+var wake_interval := 0.33
+var wake_strength := 0.30
+var swell_time_rate := 0.25
+var chop_strength := 0.0
 
 var _pos := PackedVector2Array()
 var _t0 := PackedFloat32Array()
@@ -72,10 +78,10 @@ func nibble(pos: Vector2) -> void:
 
 ## След в воде: подмотка поплавка, брод путника. Тротлится по времени.
 func wake(pos: Vector2, strength := 1.0) -> void:
-	if t - _last_wake < 0.33:
+	if t - _last_wake < wake_interval:
 		return
 	_last_wake = t
-	_add_ring(pos, 0.30 * clampf(strength, 0.0, 2.0))
+	_add_ring(pos, wake_strength * clampf(strength, 0.0, 2.0))
 
 
 ## Высота воды в точке СЕЙЧАС: дыхание (мега-рябь) + все живые кольца.
@@ -97,7 +103,7 @@ func height_at(x: float, z: float) -> float:
 		var env := exp(-xx * xx)
 		var ph := TAU / RING_WAVELEN * (dd - rf)
 		var dec := exp(-age * RING_TAU) / sqrt(maxf(rf, 0.6))
-		h += RING_AMP * a * env * cos(ph) * dec
+		h += ring_amp * a * env * cos(ph) * dec
 	return h
 
 
@@ -173,7 +179,8 @@ func _mega_h_cpu(x: float, z: float) -> float:
 	var rn := _vnoise(wp * 0.15)
 	var rn2 := _vnoise(wp * 0.07 + Vector2(9.1, 3.3))
 
-	var mph := v * 0.70 + u * 0.16 + rn * 2.6 + rn2 * 3.4 + t * 0.25
-
-	return (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
-			+ cos(mph * 0.47 + 0.8) * 0.22) * mega_amp * wind_power # ровно как в шейдере
+	var mph := v * 0.70 + u * 0.16 + rn * 2.6 + rn2 * 3.4 + t * swell_time_rate
+	var chop_ph := u * 1.15 - v * 0.45 + t * 1.65
+	var primary := cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
+		+ cos(mph * 0.47 + 0.8) * 0.22
+	return (primary + sin(chop_ph) * chop_strength) * mega_amp * wind_power

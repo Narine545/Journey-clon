@@ -14,6 +14,9 @@ extends MeshInstance3D
 ## к рельефу и без висящей плёнки. Градиент прозрачности сглаживает кромку.
 
 const SHADER_PATH := "res://shaders/water.gdshader"
+# Выбирается до setup(): архивная рыбалка использует прежний шейдер,
+# лодочная сцена — отдельный вариант с волнами от корпуса и винтов.
+var shader_path := SHADER_PATH
 
 const DENSE_SPAN := 620.0 # однородная зона вокруг берега, м
 const DENSE_CELL := 1.25 # ячейка в ней, м
@@ -38,7 +41,7 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 	_build_mesh()
 
 	_mat = ShaderMaterial.new()
-	_mat.shader = load(SHADER_PATH)
+	_mat.shader = load(shader_path)
 	if game != null:
 		_mat.set_shader_parameter("sun_dir", game.sun_dir)
 		_mat.set_shader_parameter("fog_distance", game.FOG_DISTANCE)
