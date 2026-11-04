@@ -183,6 +183,12 @@ func _physics_process(_delta: float) -> void:
 			main.world._env.volumetric_fog_density > 0.013,
 			"ночью нет световой дорожки, а слабый свет сохраняет объём в тумане")
 		var night_glitter := float(main.water.material().get_shader_parameter("glitter_amount"))
+		main.debug_toggle_volumetric_fog()
+		_check(not main.world._env.volumetric_fog_enabled and
+			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
+			"[G] выключает только объёмный туман")
+		main.debug_toggle_volumetric_fog()
+		_check(main.world._env.volumetric_fog_enabled, "[G] возвращает объёмный туман")
 		_check(is_equal_approx(float(main.world._sky_mat.get_shader_parameter("daylight_scatter")), 0.16),
 			"ночное небо снижает дневное рассеяние, не меняя глиттер")
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_AGX and

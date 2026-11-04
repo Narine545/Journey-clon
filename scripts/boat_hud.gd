@@ -82,8 +82,8 @@ func _draw() -> void:
 	# Отладка всегда доступна в лодочном режиме; [0] прячет только панель.
 	if main.debug_panel_visible:
 		var dbg := Vector2(size.x - 355.0, 22.0)
-		draw_rect(Rect2(dbg, Vector2(333, 238)), backdrop)
-		draw_rect(Rect2(dbg, Vector2(333, 238)), Color("548c89"), false, 1.0)
+		draw_rect(Rect2(dbg, Vector2(333, 263)), backdrop)
+		draw_rect(Rect2(dbg, Vector2(333, 263)), Color("548c89"), false, 1.0)
 		draw_string(font, dbg + Vector2(12, 23), "БЫСТРАЯ ПРОВЕРКА  •  %d FPS" % Engine.get_frames_per_second(),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 14, accent)
 		draw_string(font, dbg + Vector2(12, 47), "[0] — СКРЫТЬ / ПОКАЗАТЬ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
@@ -102,6 +102,12 @@ func _draw() -> void:
 			"НОЧЬ %d%%  %s  •  СВЕТ %.2f  ТУМАН %.3f" % [int(main.night01 * 100.0),
 				"ПАУЗА" if main.debug_night_paused else "ИДЁТ",
 				main.debug_night_fill, main.world._env.fog_density],
+			HORIZONTAL_ALIGNMENT_LEFT, 309, 11, muted)
+		draw_string(font, dbg + Vector2(12, 253),
+			"[G] ОБЪЁМ %s  •  RD %s  •  ПЛОТН. %.3f" % [
+				"ВКЛ" if main.world._env.volumetric_fog_enabled else "ВЫКЛ",
+				"ДА" if RenderingServer.get_rendering_device() != null else "НЕТ",
+				main.world._env.volumetric_fog_density],
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 11, muted)
 
 	# 3. КОНТЕКСТНАЯ ПОДСКАЗКА ДЕЙСТВИЯ ВНИЗУ ЭКРАНА

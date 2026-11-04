@@ -664,6 +664,13 @@ func debug_toggle_headlight() -> void:
 	announce("ТЕСТ: НОСОВОЙ ПРОЖЕКТОР %s" % ("ВКЛ" if debug_headlight_enabled else "ВЫКЛ"))
 
 
+func debug_toggle_volumetric_fog() -> void:
+	world._env.volumetric_fog_enabled = not world._env.volumetric_fog_enabled
+	announce("ТЕСТ: ОБЪЁМНЫЙ ТУМАН %s (RD: %s)" % [
+		"ВКЛ" if world._env.volumetric_fog_enabled else "ВЫКЛ",
+		"ДА" if RenderingServer.get_rendering_device() != null else "НЕТ"])
+
+
 func debug_adjust_fill(change: float) -> void:
 	debug_night_fill = clampf(debug_night_fill + change, 0.02, 0.42)
 	_apply_atmosphere(night01)
@@ -742,6 +749,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_H:
 				debug_toggle_headlight()
+				get_viewport().set_input_as_handled()
+			KEY_G:
+				debug_toggle_volumetric_fog()
 				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
