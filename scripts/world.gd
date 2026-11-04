@@ -1,6 +1,6 @@
 class_name GameWorld
 extends Node3D
-## Небо, луна, волюметрический туман (Forward+/Vulkan), виньетка.
+## Небо, луна и волюметрический туман (Forward+/Vulkan).
 ## Всё строится кодом в setup(). Горизонт закрыт настоящими дальними
 ## дюнами — карта террейна расширена (см. Coast), никаких подставок.
 
@@ -18,7 +18,6 @@ func setup(game_ref) -> void:
 	game = game_ref
 	_build_environment()
 	_build_sun()
-	_build_vignette()
 
 
 func _build_environment() -> void:
@@ -199,20 +198,6 @@ func _process(_delta: float) -> void:
 		_sky_mat.set_shader_parameter("cloud_shape_offset", drift)
 		_sky_mat.set_shader_parameter("cloud_noise_offset", -drift * 1.7)
 		_sky_mat.set_shader_parameter("cirrus_offset", Vector2(drift.x, drift.z) * 0.35)
-
-
-## Виньетка: лёгкое затемнение углов — собирает кадр, работает в любом
-## рендерере (обычный Control поверх 3D, текстура генерируется кодом).
-func _build_vignette() -> void:
-	var rect := TextureRect.new()
-	rect.texture = ProcTextures.vignette(512, 0.34)
-	rect.stretch_mode = TextureRect.STRETCH_SCALE
-	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var layer := CanvasLayer.new()
-	layer.layer = 10
-	layer.add_child(rect)
-	add_child(layer)
 
 
 # ---------------------------------------------------------------------------

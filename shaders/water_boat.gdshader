@@ -154,7 +154,9 @@ void fragment() {
 	vec3 N = vec3(0.0, 1.0, 0.0);
 
 	float dist = length(CAMERA_POSITION_WORLD - w_pos);
-	float detail = exp(-dist * 0.030);
+	// У ортографической камеры размер пикселя одинаков во всём кадре:
+	// затухание ряби от расстояния создавало круги и неравномерный свет.
+	float detail = 1.0;
 
 	// Дисперсионные волны: нормаль — производная тех же высот, что у вершин.
 	vec2 wave_grad = spectrum_gradient(wp, u_time, wind_dir, mega_amp, wind_power);
@@ -284,10 +286,10 @@ void fragment() {
 	base = mix(base, water_shallow * 1.22, near_shore * 0.45);
 	base = mix(base, water_shallow * 1.28, clamp(trail_aerated, 0.0, 0.55));
 
-	// Широкие полосы — отражение неба на периодических склонах спектра.
-	// Крупные волны по-прежнему двигают вершины, но цвет неба берём по
-	// сглаженной нормали; мелкие блики и кильватер используют полную N.
-	vec3 N_ambient = normalize(mix(vec3(0.0, 1.0, 0.0), N, 0.16));
+	// Периодические склоны волн НЕ должны полосами перекрашивать небо.
+	// Ровный базовый свет; полный наклон волн остаётся для мелких бликов
+	// и кильватера, а геометрия и CPU-плавучесть не меняются.
+	vec3 N_ambient = vec3(0.0, 1.0, 0.0);
 	float ndl = clamp(dot(N_ambient, L) * 0.5 + 0.5, 0.0, 1.0);
 	base *= 0.80 + 0.32 * ndl;
 
@@ -305,7 +307,9 @@ void fragment() {
 
 	// ---------- солнечный глиттер ----------
 	vec3 H = normalize(V + L);
-	float far_glit = smoothstep(120.0, 900.0, dist);
+	// Крупные вспышки раньше выключались вблизи и появлялись только вдали.
+	// Постоянный масштаб и интенсивность без границы «линзы».
+	float far_glit = 0.22;
 	// Плотность мировых ячеек постоянна на экране ортографической камеры:
 	// ступенчатый LOD по расстоянию рисовал заметные концентрические зоны.
 	float density = 4.0;
@@ -319,7 +323,7 @@ void fragment() {
 	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(24.0, 80.0, cellc));
 	float glit_chance = glitter_amount * 0.28;
 	float glint = step(1.0 - glit_chance, cellid);
-	float glit_fade = 0.44 * (1.0 - 0.92 * near_shore);
+	float glit_fade = 0.78 * (1.0 - 0.72 * near_shore);
 	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26) * glint * glit_fade;
 
 	float path_power = mix(180.0, 34.0, far_glit);
@@ -338,7 +342,7 @@ void fragment() {
 	vec2 spark_jitter = vec2(hash12(spark_cell + vec2(5.7, 2.3)),
 		hash12(spark_cell + vec2(1.9, 8.1))) - vec2(0.5);
 	vec2 spark_pos = (spark_local - spark_jitter * 0.54) * spark_cell_size;
-	float pixel_world = max(0.35, dist * 2.0
+	float pixel_world = max(0.04, 2.0
 		/ max(VIEWPORT_SIZE.y * PROJECTION_MATRIX[1][1], 1.0));
 	float spark_radius = max(0.55, pixel_world * 0.95);
 	float spark_core = 1.0 - smoothstep(spark_radius * 0.30, spark_radius,
@@ -365,10 +369,10 @@ void fragment() {
 	// ---------- пена прибоя + мировая кильватерная пена ----------
 	float fn = vnoise(vec2(wp.x * 0.85 + u_time * 0.10, wp.y * 1.55));
 	float fn2 = vnoise(vec2(wp.x * 3.2 - u_time * 0.38, wp.y * 2.35));
-	float edge = exp(-pow((depth_m - 0.014 - 0.014 * sin(wp.x * 0.9 + u_time * 1.3)) / 0.075, 2.0));
-	float edge2 = exp(-pow((depth_m - 0.17 - 0.03 * sin(wp.y * 0.21 + u_time * 1.15)) / 0.08, 2.0));
-	float foam = edge * smoothstep(0.02, 0.40, fn) * (0.72 + 0.28 * fn2);
-	foam += edge2 * smoothstep(0.45, 0.85, fn2) * 0.55;
+	// Одна мягкая шумовая кайма вместо двух параллельных синусоидальных
+	// полос: узкий второй гребень превращался в пунктир на диагональном урезе.
+	float edge = exp(-pow((depth_m - 0.025) / 0.13, 2.0));
+	float foam = edge * smoothstep(0.20, 0.68, fn * 0.70 + fn2 * 0.30) * 0.38;
 	foam = clamp(max(foam, ship_wake_foam), 0.0, 1.0);
 	base = mix(base, foam_col * (0.82 + 0.18 * ndl), foam * 0.92);
 
@@ -379,7 +383,11 @@ void fragment() {
 	ALBEDO = mix(base - distant_glitter, fcol, fog);
 	EMISSION = distant_glitter;
 
-	NORMAL = normalize((VIEW_MATRIX * vec4(N.x, N.y, N.z, 0.0)).xyz);
+	// Спектральная нормаль в прямом свете давала повторяющиеся светлые
+	// «сканлайны» даже после выравнивания отражения неба. Для освещения
+	// усредняем её, не затрагивая геометрию волны и нормаль глиттера.
+	vec3 N_lit = normalize(mix(vec3(0.0, 1.0, 0.0), N, 0.22));
+	NORMAL = normalize((VIEW_MATRIX * vec4(N_lit, 0.0)).xyz);
 	float rough = mix(0.29, 0.55, near_shore); // зыбь не должна давать белые зеркальные прямоугольники
 	ROUGHNESS = mix(rough, 0.88, foam);
 	SPECULAR = mix(0.55, 0.18, near_shore);

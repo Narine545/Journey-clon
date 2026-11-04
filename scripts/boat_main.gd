@@ -96,8 +96,11 @@ func _ready() -> void:
 	# 18/9.5/4.5-метровые дисперсионные волны; мелкая рябь лишь дополняет их.
 	water.set_param("mega_amp", 0.25)
 	water.set_param("ripple_strength", 0.10)
-	water.set_param("glitter_amount", 0.05)
-	water.set_param("solar_glitter_amount", 0.018)
+	# Вернуть искры на ровно освещённую воду, без экранной «линзы» и LOD-колец.
+	water.set_param("glitter_amount", 0.15)
+	water.set_param("solar_glitter_amount", 0.10)
+	# Сгладить пересечение двух сеток на диагональном урезе берега.
+	water.set_param("shore_fade", 0.45)
 	water.set_param("sun_path_amount", 0.09)
 	water.set_param("direct_specular_amount", 0.018)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
