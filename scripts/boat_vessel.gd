@@ -16,7 +16,8 @@ const SHIP_EMISSION_BOOST := 2.0
 const START_WITH_TRAILER := false
 const TRAILER_DISTANCE := 9.3
 const TRAILER_CLEARANCE := 9.15
-const TRAILER_PUMP_RANGE := 5.3
+const TRAILER_PUMP_RANGE := 11.0 # больше ручного насоса лодки даже с прицепом (9 м)
+const TRAILER_PUMP_SECONDS := 0.8
 const TRAIL_POINTS := 20
 const TRAIL_STEP_TIME := 0.25
 
@@ -42,8 +43,9 @@ var _trail_buffer := PackedVector4Array()
 var _trail_timer := 0.0
 var _last_trail_pos := Vector2.ZERO
 
-var _target: ResourceSlick
-var _target_from_trailer := false
+var _target: ResourceSlick # ручной насос лодки
+var _trailer_target: ResourceSlick # независимый автоматический насос
+var _trailer_pump_progress := 0.0
 var _body: Node3D
 var _radar: Node3D
 var _rudder: Node3D
@@ -52,7 +54,6 @@ var _prop_r: Node3D
 var _bow_spot: SpotLight3D
 var _deck_light: OmniLight3D
 var _window_glass_mat: StandardMaterial3D
-var _window_interior_mat: StandardMaterial3D
 var _window_light: OmniLight3D
 
 var _crane_turret: Node3D
@@ -122,11 +123,11 @@ func update_night_lights(night01: float, overdrive: bool) -> void:
 	if _deck_light != null:
 		_deck_light.light_energy = lerpf(0.10, 0.55, night01)
 		_deck_light.omni_range = 5.5
-	# Тёплый интерьер за прозрачными окнами загорается уже в сумерках;
-	# само стекло не становится непрозрачной светлой пластиной.
+	# Светится ВСЯ прозрачная поверхность окон, а не отдельные кусочки
+	# за ней. Сдержанный янтарный цвет вместо белой непрозрачной пластины.
 	var window_on := smoothstep(0.25, 0.82, night01)
-	if _window_interior_mat != null:
-		_window_interior_mat.emission_energy_multiplier = lerpf(0.02, 3.2, window_on)
+	if _window_glass_mat != null:
+		_window_glass_mat.emission_energy_multiplier = 1.4 * window_on
 	if _window_light != null:
 		_window_light.light_energy = 0.85 * window_on
 
@@ -139,10 +140,8 @@ func set_trailer_enabled(enabled: bool) -> void:
 		_trailer.global_position = global_position - heading * TRAILER_DISTANCE
 		_trailer.global_rotation = Vector3(0.0, rotation.y, 0.0)
 	if not enabled:
-		if _target_from_trailer:
-			_target = null
-			_target_from_trailer = false
-			_pump_progress = 0.0
+		_trailer_target = null
+		_trailer_pump_progress = 0.0
 		if _trailer_hose != null:
 			_trailer_hose.visible = false
 		if _trailer_head != null:
@@ -368,97 +367,115 @@ func is_on_trailer_working_side(world_pos: Vector3) -> bool:
 
 
 func _update_pump(delta: float) -> void:
+	# Ручной насос лодки по-прежнему работает только с левого борта.
 	var p_range := effective_pump_range()
-	var p_secs := effective_pump_seconds()
 	var previous := _target
-	var previous_trailer := _target_from_trailer
 	_target = null
-	_target_from_trailer = false
 	wrong_side_target = false
-	var best_d2 := INF
+	var best_d2 := p_range * p_range
 	for slick in main.slicks:
-		if slick.depleted:
+		if slick.depleted or not is_on_port_working_side(slick.global_position):
 			continue
 		var at := slick.global_position
-		var boat_d2 := Vector2(global_position.x, global_position.z).distance_squared_to(Vector2(at.x, at.z))
-		if boat_d2 < p_range * p_range and is_on_port_working_side(at) and boat_d2 < best_d2:
-			best_d2 = boat_d2
+		var d2 := Vector2(global_position.x, global_position.z).distance_squared_to(Vector2(at.x, at.z))
+		if d2 < best_d2:
+			best_d2 = d2
 			_target = slick
-			_target_from_trailer = false
-		if has_trailer and _trailer != null and is_on_trailer_working_side(at):
-			var trailer_d2 := Vector2(_trailer.global_position.x, _trailer.global_position.z).distance_squared_to(Vector2(at.x, at.z))
-			if trailer_d2 < best_d2:
-				best_d2 = trailer_d2
-				_target = slick
-				_target_from_trailer = true
 	if _target == null:
 		wrong_side_target = main.nearest_resource(global_position, p_range) != null
-	if _target != previous or _target_from_trailer != previous_trailer:
+	if _target != previous:
 		_pump_progress = 0.0
 
 	var drawing := Input.is_action_pressed("boat_pump") and _target != null and absf(speed) < 5.0
-
 	if _crane_turret != null:
 		var target_yaw := -0.18
-		if _target != null and not _target_from_trailer:
+		if _target != null:
 			var local_t := _body.to_local(_target.global_position)
 			var rel := local_t - _crane_turret.position
-			var raw_yaw := atan2(rel.x, rel.z)
-			target_yaw = clampf(raw_yaw, -2.68, -0.36)
+			target_yaw = clampf(atan2(rel.x, rel.z), -2.68, -0.36)
 		_crane_turret.rotation.y = lerp_angle(_crane_turret.rotation.y, target_yaw, minf(1.0, delta * 5.0))
-
 	if _crane_boom != null and _crane_jib != null:
-		var main_target := _target != null and not _target_from_trailer
-		var boom_pitch := -0.25 if drawing and main_target else (0.05 if main_target else 0.22)
-		var jib_pitch := 0.55 if drawing and main_target else (0.35 if main_target else 0.72)
+		var boom_pitch := -0.25 if drawing else (0.05 if _target != null else 0.22)
+		var jib_pitch := 0.55 if drawing else (0.35 if _target != null else 0.72)
 		_crane_boom.rotation.x = lerpf(_crane_boom.rotation.x, boom_pitch, minf(1.0, delta * 5.5))
 		_crane_jib.rotation.x = lerpf(_crane_jib.rotation.x, jib_pitch, minf(1.0, delta * 5.5))
 
-	if _trailer_arm_pivot != null:
-		var arm_yaw := 0.0
-		if _target != null and _target_from_trailer:
-			var rel := _trailer_body.to_local(_target.global_position) - _trailer_arm_pivot.position
-			arm_yaw = atan2(-rel.x, -rel.z)
-		_trailer_arm_pivot.rotation.y = lerp_angle(_trailer_arm_pivot.rotation.y, arm_yaw, minf(1.0, delta * 5.0))
-
 	_hose.visible = false
 	_intake_head.visible = false
-	_trailer_hose.visible = false
-	_trailer_head.visible = false
 	if drawing:
 		_pump_progress += delta
 		var to := _target.global_position + Vector3.UP * 0.10
 		var pigment_col := ResourceSlick.COLORS[_target.kind]
+		var tip := _crane_jib.to_global(Vector3(0.0, -0.12, 1.05))
+		_hose_mat.albedo_color = pigment_col.darkened(0.35)
+		_hose_mat.emission = pigment_col
+		_hose_mat.emission_energy_multiplier = SHIP_EMISSION_BOOST * (0.65 + 0.35 * sin(_anim_time * 10.0))
+		_intake_mat.albedo_color = pigment_col.darkened(0.15)
+		_intake_mat.emission = pigment_col
+		_hose.visible = true
+		_place_cable(_hose, tip, to)
+		_intake_head.visible = true
+		_intake_head.global_position = to
 		var pulse_s := 1.0 + 0.10 * sin(_anim_time * 8.0)
-		if _target_from_trailer:
-			var tip := _trailer_arm_pivot.to_global(Vector3(0.0, -0.02, -2.95))
-			_trailer_hose_mat.albedo_color = pigment_col.darkened(0.35)
-			_trailer_hose_mat.emission = pigment_col
-			_trailer_hose.visible = true
-			_place_cable(_trailer_hose, tip, to)
-			_trailer_head_mat.albedo_color = pigment_col.darkened(0.15)
-			_trailer_head_mat.emission = pigment_col
-			_trailer_head.visible = true
-			_trailer_head.global_position = to
-			_trailer_head.scale = Vector3(pulse_s, 1.0, pulse_s)
-		else:
-			var tip := _crane_jib.to_global(Vector3(0.0, -0.12, 1.05))
-			_hose_mat.albedo_color = pigment_col.darkened(0.35)
-			_hose_mat.emission = pigment_col
-			_hose_mat.emission_energy_multiplier = SHIP_EMISSION_BOOST * (0.65 + 0.35 * sin(_anim_time * 10.0))
-			_intake_mat.albedo_color = pigment_col.darkened(0.15)
-			_intake_mat.emission = pigment_col
-			_hose.visible = true
-			_place_cable(_hose, tip, to)
-			_intake_head.visible = true
-			_intake_head.global_position = to
-			_intake_head.scale = Vector3(pulse_s, 1.0, pulse_s)
-		if _pump_progress >= p_secs:
+		_intake_head.scale = Vector3(pulse_s, 1.0, pulse_s)
+		if _pump_progress >= effective_pump_seconds():
 			main.receive_resource(_target.kind)
 			_target.collect()
 			_pump_progress = 0.0
 	else:
 		_pump_progress = maxf(0.0, _pump_progress - delta * 2.0)
+
+	_update_trailer_pump(delta)
+
+
+func _update_trailer_pump(delta: float) -> void:
+	# Самостоятельная рука: обе стороны, без ПРОБЕЛА; работает на малом
+	# ходу, пока пятно проходит вдоль борта. Смена цели обнуляет прогресс.
+	var previous := _trailer_target
+	_trailer_target = null
+	_trailer_hose.visible = false
+	_trailer_head.visible = false
+	if has_trailer and _trailer != null and absf(speed) < 5.0:
+		var best_d2 := TRAILER_PUMP_RANGE * TRAILER_PUMP_RANGE
+		for slick in main.slicks:
+			if slick.depleted or (slick == _target and Input.is_action_pressed("boat_pump")):
+				continue
+			var at := slick.global_position
+			if not is_on_trailer_working_side(at):
+				continue
+			var d2 := Vector2(_trailer.global_position.x, _trailer.global_position.z).distance_squared_to(Vector2(at.x, at.z))
+			if d2 < best_d2:
+				best_d2 = d2
+				_trailer_target = slick
+	if _trailer_target != previous:
+		_trailer_pump_progress = 0.0
+
+	var arm_yaw := 0.0
+	if _trailer_target != null:
+		var rel := _trailer_body.to_local(_trailer_target.global_position) - _trailer_arm_pivot.position
+		arm_yaw = atan2(-rel.x, -rel.z)
+	_trailer_arm_pivot.rotation.y = lerp_angle(_trailer_arm_pivot.rotation.y, arm_yaw, minf(1.0, delta * 5.0))
+	if _trailer_target == null:
+		return
+
+	_trailer_pump_progress += delta
+	var to := _trailer_target.global_position + Vector3.UP * 0.10
+	var pigment_col := ResourceSlick.COLORS[_trailer_target.kind]
+	var tip := _trailer_arm_pivot.to_global(Vector3(0.0, -0.02, -2.95))
+	_trailer_hose_mat.albedo_color = pigment_col.darkened(0.35)
+	_trailer_hose_mat.emission = pigment_col
+	_trailer_hose.visible = true
+	_place_cable(_trailer_hose, tip, to)
+	_trailer_head_mat.albedo_color = pigment_col.darkened(0.15)
+	_trailer_head_mat.emission = pigment_col
+	_trailer_head.visible = true
+	_trailer_head.global_position = to
+	var pulse_s := 1.0 + 0.10 * sin(_anim_time * 8.0)
+	_trailer_head.scale = Vector3(pulse_s, 1.0, pulse_s)
+	if _trailer_pump_progress >= TRAILER_PUMP_SECONDS:
+		main.receive_resource(_trailer_target.kind)
+		_trailer_target.collect()
+		_trailer_pump_progress = 0.0
 
 
 func _update_trailer(delta: float) -> void:
@@ -524,11 +541,15 @@ func pump_fraction() -> float:
 
 
 func target_name() -> String:
-	return ResourceSlick.NAMES[_target.kind] if _target != null else ""
+	return ResourceSlick.NAMES[_target.kind] if _target != null and not _target.depleted else ""
 
 
-func target_from_trailer() -> bool:
-	return _target != null and _target_from_trailer
+func trailer_target_name() -> String:
+	return ResourceSlick.NAMES[_trailer_target.kind] if _trailer_target != null and not _trailer_target.depleted else ""
+
+
+func trailer_pump_fraction() -> float:
+	return clampf(_trailer_pump_progress / TRAILER_PUMP_SECONDS, 0.0, 1.0)
 
 
 # ---------------------------------------------------------------------------
@@ -676,12 +697,14 @@ func _build_appearance() -> void:
 	var machinery := _material(Color("334042"), 0.42, 0.0, 0.55)
 	var dark_iron := _material(Color("161c20"), 0.55, 0.0, 0.50)
 	var aged_bronze := _material(Color("7d6340"), 0.62, 0.0, 0.45)
-	# Само стекло не эмиттер: сквозь него виден отдельно освещённый интерьер.
+	# Одно стекло для ВСЕХ окон: прозрачное, тёмное днём, ночью целиком
+	# светится янтарным, не становясь белой непрозрачной панелью.
 	var bridge_glass := _material(Color(0.04, 0.09, 0.12, 0.24), 0.15, 0.0, 0.22)
 	bridge_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bridge_glass.emission_enabled = true
+	bridge_glass.emission = Color("b8652b")
+	bridge_glass.emission_energy_multiplier = 0.0
 	_window_glass_mat = bridge_glass
-	_window_interior_mat = _material(Color("30251e"), 0.0, 0.01, 0.90)
-	_window_interior_mat.emission = Color("ffc078")
 	var warm_interior := _material(Color("d69e5c"), 0.10, 0.0, 0.30)
 
 	# 1. ГЛАВНЫЙ СТАЛЬНОЙ КОРПУС
@@ -767,16 +790,6 @@ func _build_appearance() -> void:
 		_box_on(_body, Vector3(side * 1.02, 2.48, -1.32), Vector3(0.06, 0.44, 1.52), bridge_glass)
 		_box_on(_body, Vector3(side * 1.03, 2.48, -1.32), Vector3(0.07, 0.48, 0.06), cabin_trim)
 	_box_on(_body, Vector3(-0.48, 2.48, -0.29), Vector3(0.72, 0.42, 0.06), bridge_glass)
-	# Светлые детали стоят непосредственно ЗА стёклами и разделены
-	# рамами; не окрашиваем всё окно одним непрозрачным прямоугольником.
-	for wx in [-0.56, 0.0, 0.56]:
-		_box_on(_body, Vector3(wx, 2.49, -2.17),
-			Vector3(0.37, 0.18, 0.025), _window_interior_mat)
-	for side in [-1.0, 1.0]:
-		_box_on(_body, Vector3(side * 0.99, 2.48, -1.32),
-			Vector3(0.025, 0.19, 1.04), _window_interior_mat)
-	_box_on(_body, Vector3(-0.48, 2.48, -0.36),
-		Vector3(0.52, 0.19, 0.025), _window_interior_mat)
 	_window_light = OmniLight3D.new()
 	_window_light.light_color = Color("ffd49a")
 	_window_light.light_energy = 0.0

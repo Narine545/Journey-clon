@@ -39,7 +39,7 @@ func _draw() -> void:
 		draw_rect(Rect2(252, y + 2, 160.0 * clampf(float(main.raw[i]) / float(required), 0.0, 1.0), 4),
 			ResourceSlick.COLORS[i])
 
-	var trailer_status := "ПЛАШКОУТ: 2 БОРТА НАСОСА  •  2 СЫР. → 1 ГОТ." if main.boat.has_trailer else "ПЛАШКОУТ: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
+	var trailer_status := "ПЛАШКОУТ: АВТОСБОР С 2 БОРТОВ  •  РАДИУС 11 М" if main.boat.has_trailer else "ПЛАШКОУТ: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
 	draw_string(font, Vector2(42, 236), trailer_status, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, accent if main.boat.has_trailer else muted)
 
 	# Блок экспедиционной цели (Маяки побережья)
@@ -113,6 +113,7 @@ func _draw() -> void:
 	# 3. КОНТЕКСТНАЯ ПОДСКАЗКА ДЕЙСТВИЯ ВНИЗУ ЭКРАНА
 	var dock_b := main.nearby_dock_beacon()
 	var resource_name := main.boat.target_name()
+	var trailer_resource := main.boat.trailer_target_name()
 	var action := "ИЩИТЕ СВЕТЯЩИЕСЯ ПЯТНА И ЗАЖИГАЙТЕ МАЯКИ НА БЕРЕГУ"
 	var action_col := ink
 
@@ -123,10 +124,11 @@ func _draw() -> void:
 		else:
 			action = "E — ЗАЖЕЧЬ МАЯК «%s» (%s)" % [dock_b["name"].to_upper(), main.format_beacon_recipe(dock_b["cost"]).to_upper()]
 			action_col = warn
+	elif not trailer_resource.is_empty():
+		action = "ПРИЦЕП — АВТОСБОР С БОРТА: %s" % trailer_resource.to_upper()
+		action_col = accent
 	elif not resource_name.is_empty():
-		action = "ПРОБЕЛ — ЗАБРАТЬ (%s): %s" % [
-			"БОРТ ПРИЦЕПА" if main.boat.target_from_trailer() else "ЛЕВ. БОРТ",
-			resource_name.to_upper()]
+		action = "ПРОБЕЛ — ЗАБРАТЬ (ЛЕВ. БОРТ): %s" % resource_name.to_upper()
 		action_col = accent
 	elif main.boat.wrong_side_target:
 		action = "ПОДВЕДИТЕ ЛЕВЫЙ БОРТ ИЛИ БОРТ ПРИЦЕПА" if main.boat.has_trailer else \
@@ -143,8 +145,9 @@ func _draw() -> void:
 	draw_rect(Rect2(center, Vector2(490, 38)), backdrop)
 	draw_rect(Rect2(center, Vector2(490, 38)), Color("548c89"), false, 1.0)
 	draw_string(font, center + Vector2(14, 25), action, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, action_col)
-	if main.boat.pump_fraction() > 0.0:
-		draw_rect(Rect2(center + Vector2(0, 35), Vector2(490.0 * main.boat.pump_fraction(), 3)), accent)
+	var pump_fraction := maxf(main.boat.pump_fraction(), main.boat.trailer_pump_fraction())
+	if pump_fraction > 0.0:
+		draw_rect(Rect2(center + Vector2(0, 35), Vector2(490.0 * pump_fraction, 3)), accent)
 
 	var controls := "W/S — ХОД   A/D — РУЛЬ   ПРОБЕЛ — НАСОС   R — ПЕРЕРАБОТКА   E — МАЯК   1/2/3 — СОНАР/РЕМОНТ/ФОРСАЖ   B/T — ПЛАШКОУТ"
 	draw_string(font, Vector2(28, size.y - 28), controls, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, ink)

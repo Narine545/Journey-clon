@@ -21,9 +21,9 @@ func _physics_process(_delta: float) -> void:
 		_check(main.slicks.size() >= 6, "SDF-пятна распределены вокруг лодки")
 		_check(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "изометрическая камера")
 		_check(is_zero_approx(main.boat._window_light.light_energy) and
-			not main.boat._window_glass_mat.emission_enabled and
+			is_zero_approx(main.boat._window_glass_mat.emission_energy_multiplier) and
 			main.boat._window_glass_mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA,
-			"днём видны тёмные стёкла, а не светящаяся картонка")
+			"днём весь прозрачный стеклопакет остаётся тёмным")
 		var yaw := main.boat.rotation.y
 		var view_right := main.camera.global_transform.basis.x
 		var heading := -main.boat.global_transform.basis.z
@@ -111,22 +111,24 @@ func _physics_process(_delta: float) -> void:
 			"длинная рука установлена в центре прицепа")
 		_check(not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(0.0, 0.0, 0.3))) and
 			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(0.0, 0.0, -2.2))) and
-			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(-3.0, 0.0, 0.3))) and
-			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(3.0, 0.0, 0.3))),
+			BoatVessel.TRAILER_PUMP_RANGE > main.boat.effective_pump_range() and
+			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(-10.0, 0.0, 0.3))) and
+			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(10.0, 0.0, 0.3))) and
+			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(11.5, 0.0, 0.3))),
 			"рука прицепа доступна по обоим бортам, но не в центре и не у носа")
 		for side in [-1.0, 1.0]:
-			var sample_pos: Vector3 = trailer_node.to_global(Vector3(side * 3.0, 0.0, 0.3))
+			var sample_pos: Vector3 = trailer_node.to_global(Vector3(side * 10.0, 0.0, 0.3))
 			var sample := ResourceSlick.new()
 			main.add_child(sample)
 			sample.setup(main.water, Vector2(sample_pos.x, sample_pos.z), 0, 0.0)
 			main.slicks.append(sample)
 			var raw_before := main.raw[0]
 			main.boat._update_pump(0.01)
-			_check(main.boat._target == sample and main.boat.target_from_trailer(),
-				"прицеп выбирает пятно с борта %s" % ("левого" if side < 0.0 else "правого"))
-			Input.action_press("boat_pump")
-			main.boat._update_pump(main.boat.effective_pump_seconds() + 0.01)
-			Input.action_release("boat_pump")
+			_check(main.boat._trailer_target == sample and
+				main.boat.trailer_pump_fraction() > 0.0 and
+				not Input.is_action_pressed("boat_pump"),
+				"прицеп сам выбирает дальнее пятно с борта %s" % ("левого" if side < 0.0 else "правого"))
+			main.boat._update_pump(BoatVessel.TRAILER_PUMP_SECONDS + 0.01)
 			_check(sample.depleted and main.raw[0] == raw_before + 1 and
 				main.boat._trailer_hose.visible and not main.boat._hose.visible,
 				"прицеп собирает пятно с борта %s своей рукой" % ("левого" if side < 0.0 else "правого"))
@@ -142,12 +144,14 @@ func _physics_process(_delta: float) -> void:
 			else:
 				blocked.global_position = blocked_at
 			main.boat._update_pump(0.01)
-			_check(main.boat._target != blocked,
-				"прицеп не собирает пятно по центру или перед носом")
+			_check(main.boat._trailer_target != blocked and not blocked.depleted,
+				"автоматический насос не собирает пятно по центру или перед носом")
 		main.slicks.erase(blocked)
 		blocked.queue_free()
 		main.toggle_trailer_free()
-		_check(not main.boat.has_trailer, "тестовая клавиша отключает прицеп")
+		_check(not main.boat.has_trailer and main.boat._trailer_target == null and
+			is_zero_approx(main.boat.trailer_pump_fraction()),
+			"отстыковка прицепа отключает автоматический насос")
 		# В новом районе пятна должны появляться снова, не оставаясь навсегда
 		# в стартовом круге. Уходим в открытое море, не заходя на берег.
 		main.boat.global_position = origin + Vector3(-220.0, 0.0, 0.0)
@@ -257,7 +261,8 @@ func _physics_process(_delta: float) -> void:
 		_check(spot != null and spot.light_energy > 18.0 and
 			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
 			"ночной прожектор усилен, оставаясь локальным")
-		_check(main.boat._window_interior_mat.emission_energy_multiplier > 3.0 and
+		_check(main.boat._window_glass_mat.emission_energy_multiplier > 1.35 and
+			main.boat._window_glass_mat.emission.r > main.boat._window_glass_mat.emission.b * 2.0 and
 			main.boat._window_light.light_energy > 0.8 and
 			main.boat._window_light.omni_range < 4.0 and
 			main.boat._deck_light.light_energy > 0.4 and
@@ -291,10 +296,10 @@ func _physics_process(_delta: float) -> void:
 		main.debug_cycle_night()
 		_check(main.debug_night_paused and is_equal_approx(main.night01, 0.45) and
 			main.boat._window_light.light_energy > 0.15 and
-			main.boat._window_interior_mat.emission_energy_multiplier > 0.6 and
-			main.boat._window_interior_mat.emission_energy_multiplier < 1.6 and
-			not main.boat._window_glass_mat.emission_enabled,
-			"при 45% тёплый свет виден за стеклом, само стекло не светится")
+			main.boat._window_glass_mat.emission_energy_multiplier > 0.25 and
+			main.boat._window_glass_mat.emission_energy_multiplier < 0.6 and
+			main.boat._window_glass_mat.albedo_color.a < 0.5,
+			"при 45% вся поверхность окон мягко светится янтарным и остаётся прозрачной")
 		main.debug_cycle_night()
 		_check(is_equal_approx(main.night01, 0.88), "[5] фиксирует тёмную ночь")
 		main.debug_warp_to_beacon()
