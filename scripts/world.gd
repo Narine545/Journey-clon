@@ -300,6 +300,10 @@ func configure_boat_lighting() -> void:
 	_env.ssao_light_affect = 0.32
 	_env.ssao_ao_channel_affect = 0.45
 	_env.ssil_intensity = 0.95
+	# В лодочной сцене объём сейчас лишь затемняет кадр без видимого
+	# рассеяния. Не держим дорогой эффект включённым по умолчанию;
+	# [G] позволяет проверить его отдельно, не меняя обычную дымку.
+	_env.volumetric_fog_enabled = false
 	_sun.directional_shadow_max_distance = 100.0
 
 
