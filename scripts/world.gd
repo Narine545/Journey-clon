@@ -300,6 +300,9 @@ func configure_boat_lighting() -> void:
 	_env.ssao_light_affect = 0.32
 	_env.ssao_ao_channel_affect = 0.45
 	_env.ssil_intensity = 0.95
+	# Изометрическая камера смотрит на прожектор сзади/сбоку: при 0.72
+	# туман рассеивает свет почти только вперёд, луч с камеры не читается.
+	_env.volumetric_fog_anisotropy = 0.30
 	_sun.directional_shadow_max_distance = 100.0
 
 

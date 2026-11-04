@@ -47,8 +47,7 @@ var _rudder: Node3D
 var _prop_l: Node3D
 var _prop_r: Node3D
 var _bow_spot: SpotLight3D
-var _bow_beam: MeshInstance3D
-var _bow_beam_mat: ShaderMaterial
+var _bow_fog: FogVolume
 var _deck_light: OmniLight3D
 
 var _crane_turret: Node3D
@@ -110,9 +109,9 @@ func update_night_lights(night01: float, overdrive: bool) -> void:
 	if _bow_spot != null:
 		_bow_spot.light_energy = lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
 		_bow_spot.spot_range = lerpf(18.0, 28.0, night01) * (1.20 if overdrive else 1.0)
-	if _bow_beam_mat != null:
-		# Днём конус не рисуем; ночью он остаётся дочерним объектом [H].
-		_bow_beam_mat.set_shader_parameter("beam_strength", clampf((night01 - 0.32) / 0.50, 0.0, 1.0))
+	if _bow_fog != null:
+		# Днём локальной дымки нет, ночью она рассеивает настоящий SpotLight.
+		(_bow_fog.material as FogMaterial).density = 0.060 * clampf((night01 - 0.32) / 0.50, 0.0, 1.0)
 	if _deck_light != null:
 		_deck_light.light_energy = lerpf(0.10, 0.30, night01)
 		_deck_light.omni_range = 5.5
@@ -716,33 +715,28 @@ func _build_appearance() -> void:
 	_bow_spot.light_energy = 2.0
 	_bow_spot.spot_range = 24.0
 	_bow_spot.spot_angle = 30.0
-	_bow_spot.light_volumetric_fog_energy = 1.3
+	_bow_spot.light_volumetric_fog_energy = 3.0
 	_bow_spot.position = Vector3(0.0, 3.12, -2.45)
 	# -Z вдоль курса, наклон вниз: пятно на воде в нескольких метрах
 	# перед носом, а не вдали под туманом.
 	_bow_spot.rotation = Vector3(-0.48, 0.0, 0.0)
 	_body.add_child(_bow_spot)
 
-	# Тонкая видимая сердцевина луча, а не второй источник света.
-	# Радиус меньше угла SpotLight; конец над водой при обычной качке.
-	# Дочерний узел наследует качку корпуса и выключение [H].
-	var beam_mesh := CylinderMesh.new()
-	beam_mesh.top_radius = 0.02
-	beam_mesh.bottom_radius = 0.75
-	beam_mesh.height = 5.0
-	beam_mesh.radial_segments = 24
-	beam_mesh.rings = 8
-	beam_mesh.cap_top = false
-	beam_mesh.cap_bottom = false
-	_bow_beam_mat = ShaderMaterial.new()
-	_bow_beam_mat.shader = load("res://shaders/boat_headlight_beam.gdshader")
-	_bow_beam = MeshInstance3D.new()
-	_bow_beam.mesh = beam_mesh
-	_bow_beam.material_override = _bow_beam_mat
-	_bow_beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_bow_beam.rotation.x = PI * 0.5
-	_bow_beam.position.z = -2.5
-	_bow_spot.add_child(_bow_beam)
+	# Это настоящий объёмный туман (Forward+), а НЕ emissive mesh:
+	# сам по себе не светится, свет рассеивается только от SpotLight.
+	# Короткая область с плавным краем экономнее глобального плотного тумана.
+	# Cone ориентирован вдоль +Y (узкий верх), поворачиваем в сторону -Z.
+	var beam_fog := FogMaterial.new()
+	beam_fog.density = 0.0 # update_night_lights выставит плотность по времени суток
+	beam_fog.albedo = Color(0.78, 0.82, 0.90)
+	beam_fog.edge_fade = 0.55
+	_bow_fog = FogVolume.new()
+	_bow_fog.shape = RenderingServer.FOG_VOLUME_SHAPE_CONE
+	_bow_fog.size = Vector3(3.0, 7.0, 3.0)
+	_bow_fog.material = beam_fog
+	_bow_fog.rotation.x = PI * 0.5
+	_bow_fog.position.z = -3.5
+	_bow_spot.add_child(_bow_fog)
 
 	_cyl_on(_body, Vector3(0.0, 3.12, -1.35), 0.10, 0.14, 0.36, cabin_chalk)
 	_radar = Node3D.new()
