@@ -122,11 +122,11 @@ func update_night_lights(night01: float, overdrive: bool) -> void:
 	if _deck_light != null:
 		_deck_light.light_energy = lerpf(0.10, 0.55, night01)
 		_deck_light.omni_range = 5.5
-	# Не красим само стекло белым: после сумерек за тёмным стеклом
-	# загорается интерьер. На 45% окна ещё обычные, не картонные.
-	var window_on := smoothstep(0.55, 0.82, night01)
+	# Тёплый интерьер за прозрачными окнами загорается уже в сумерках;
+	# само стекло не становится непрозрачной светлой пластиной.
+	var window_on := smoothstep(0.25, 0.82, night01)
 	if _window_interior_mat != null:
-		_window_interior_mat.emission_energy_multiplier = lerpf(0.02, 2.5, window_on)
+		_window_interior_mat.emission_energy_multiplier = lerpf(0.02, 3.2, window_on)
 	if _window_light != null:
 		_window_light.light_energy = 0.85 * window_on
 
@@ -431,7 +431,7 @@ func _update_pump(delta: float) -> void:
 		var pigment_col := ResourceSlick.COLORS[_target.kind]
 		var pulse_s := 1.0 + 0.10 * sin(_anim_time * 8.0)
 		if _target_from_trailer:
-			var tip := _trailer_arm_pivot.to_global(Vector3(0.0, 0.08, -1.45))
+			var tip := _trailer_arm_pivot.to_global(Vector3(0.0, -0.02, -2.95))
 			_trailer_hose_mat.albedo_color = pigment_col.darkened(0.35)
 			_trailer_hose_mat.emission = pigment_col
 			_trailer_hose.visible = true
@@ -677,12 +677,12 @@ func _build_appearance() -> void:
 	var dark_iron := _material(Color("161c20"), 0.55, 0.0, 0.50)
 	var aged_bronze := _material(Color("7d6340"), 0.62, 0.0, 0.45)
 	# Само стекло не эмиттер: сквозь него виден отдельно освещённый интерьер.
-	var bridge_glass := _material(Color(0.04, 0.09, 0.12, 0.62), 0.15, 0.0, 0.22)
+	var bridge_glass := _material(Color(0.04, 0.09, 0.12, 0.24), 0.15, 0.0, 0.22)
 	bridge_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_window_glass_mat = bridge_glass
 	_window_interior_mat = _material(Color("30251e"), 0.0, 0.01, 0.90)
 	_window_interior_mat.emission = Color("ffc078")
-	var warm_interior := _material(Color("d69e5c"), 0.10, 0.45, 0.30)
+	var warm_interior := _material(Color("d69e5c"), 0.10, 0.0, 0.30)
 
 	# 1. ГЛАВНЫЙ СТАЛЬНОЙ КОРПУС
 	_loft_segment(_body, -5.05, -5.25, -3.2, -3.2, -0.45, 0.08, 0.06, 0.12, 1.55, 1.95, anti_fouling)
@@ -767,11 +767,16 @@ func _build_appearance() -> void:
 		_box_on(_body, Vector3(side * 1.02, 2.48, -1.32), Vector3(0.06, 0.44, 1.52), bridge_glass)
 		_box_on(_body, Vector3(side * 1.03, 2.48, -1.32), Vector3(0.07, 0.48, 0.06), cabin_trim)
 	_box_on(_body, Vector3(-0.48, 2.48, -0.29), Vector3(0.72, 0.42, 0.06), bridge_glass)
-	# Тонкие поверхности ЗА окнами вместо белой эмиссии по всему стеклу.
-	_box_on(_body, Vector3(0.0, 2.48, -2.07), Vector3(1.55, 0.26, 0.04), _window_interior_mat)
+	# Светлые детали стоят непосредственно ЗА стёклами и разделены
+	# рамами; не окрашиваем всё окно одним непрозрачным прямоугольником.
+	for wx in [-0.56, 0.0, 0.56]:
+		_box_on(_body, Vector3(wx, 2.49, -2.17),
+			Vector3(0.37, 0.18, 0.025), _window_interior_mat)
 	for side in [-1.0, 1.0]:
-		_box_on(_body, Vector3(side * 0.92, 2.48, -1.32),
-			Vector3(0.04, 0.23, 1.10), _window_interior_mat)
+		_box_on(_body, Vector3(side * 0.99, 2.48, -1.32),
+			Vector3(0.025, 0.19, 1.04), _window_interior_mat)
+	_box_on(_body, Vector3(-0.48, 2.48, -0.36),
+		Vector3(0.52, 0.19, 0.025), _window_interior_mat)
 	_window_light = OmniLight3D.new()
 	_window_light.light_color = Color("ffd49a")
 	_window_light.light_energy = 0.0
@@ -978,13 +983,18 @@ func _build_trailer() -> void:
 	# Одна поворотная рука обслуживает оба борта прицепа; центр и нос
 	# намеренно не входят в рабочую зону (is_on_trailer_working_side).
 	_trailer_arm_pivot = Node3D.new()
-	_trailer_arm_pivot.position = Vector3(0.0, 1.45, 0.65)
+	# Поворотный шарнир в геометрическом центре палубы, выше крыши
+	# надстройки; длинная стрела физически дотягивается до обоих бортов.
+	_trailer_arm_pivot.position = Vector3(0.0, 1.72, 0.0)
 	_trailer_body.add_child(_trailer_arm_pivot)
-	_cyl_on(_trailer_arm_pivot, Vector3.ZERO, 0.18, 0.22, 0.32, dark_iron)
-	_box_on(_trailer_arm_pivot, Vector3(0.0, 0.12, -0.72),
-		Vector3(0.18, 0.16, 1.45), cable_steel)
-	_cyl_on(_trailer_arm_pivot, Vector3(0.0, 0.10, -1.44),
-		0.13, 0.13, 0.16, dark_iron)
+	_cyl_on(_trailer_arm_pivot, Vector3(0.0, -0.12, 0.0),
+		0.32, 0.36, 0.54, dark_iron)
+	_box_on(_trailer_arm_pivot, Vector3(0.0, 0.12, -1.45),
+		Vector3(0.32, 0.24, 2.90), cable_steel)
+	_box_on(_trailer_arm_pivot, Vector3(0.0, -0.10, -2.43),
+		Vector3(0.20, 0.20, 0.95), gunwale_steel)
+	_cyl_on(_trailer_arm_pivot, Vector3(0.0, -0.02, -2.95),
+		0.21, 0.21, 0.24, dark_iron)
 	_trailer_hose_mat = _material(Color("459990"), 0.15, 0.9, 0.45)
 	_trailer_hose = MeshInstance3D.new()
 	var hose_mesh := CylinderMesh.new()

@@ -104,6 +104,11 @@ func _physics_process(_delta: float) -> void:
 		main.boat._trailer.global_position = main.boat.global_position + Vector3(0.0, 0.0, 9.3)
 		main.boat._trailer.rotation.y = 0.0
 		var trailer_node := main.boat._trailer
+		var arm_mesh: BoxMesh = (main.boat._trailer_arm_pivot.get_child(1) as MeshInstance3D).mesh as BoxMesh
+		_check(is_equal_approx(main.boat._trailer_arm_pivot.position.z, 0.0) and
+			is_equal_approx(main.boat._trailer_arm_pivot.position.x, 0.0) and
+			arm_mesh.size.z > 2.8,
+			"длинная рука установлена в центре прицепа")
 		_check(not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(0.0, 0.0, 0.3))) and
 			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(0.0, 0.0, -2.2))) and
 			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(-3.0, 0.0, 0.3))) and
@@ -252,7 +257,7 @@ func _physics_process(_delta: float) -> void:
 		_check(spot != null and spot.light_energy > 18.0 and
 			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
 			"ночной прожектор усилен, оставаясь локальным")
-		_check(main.boat._window_interior_mat.emission_energy_multiplier > 2.4 and
+		_check(main.boat._window_interior_mat.emission_energy_multiplier > 3.0 and
 			main.boat._window_light.light_energy > 0.8 and
 			main.boat._window_light.omni_range < 4.0 and
 			main.boat._deck_light.light_energy > 0.4 and
@@ -285,9 +290,11 @@ func _physics_process(_delta: float) -> void:
 			"[4] выдаёт готовые материалы для быстрой проверки")
 		main.debug_cycle_night()
 		_check(main.debug_night_paused and is_equal_approx(main.night01, 0.45) and
-			is_zero_approx(main.boat._window_light.light_energy) and
-			main.boat._window_interior_mat.emission_energy_multiplier < 0.05,
-			"при 45% окна остаются стеклянными, без белого свечения")
+			main.boat._window_light.light_energy > 0.15 and
+			main.boat._window_interior_mat.emission_energy_multiplier > 0.6 and
+			main.boat._window_interior_mat.emission_energy_multiplier < 1.6 and
+			not main.boat._window_glass_mat.emission_enabled,
+			"при 45% тёплый свет виден за стеклом, само стекло не светится")
 		main.debug_cycle_night()
 		_check(is_equal_approx(main.night01, 0.88), "[5] фиксирует тёмную ночь")
 		main.debug_warp_to_beacon()
