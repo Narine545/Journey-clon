@@ -180,8 +180,10 @@ func _physics_process(_delta: float) -> void:
 		main._apply_atmosphere(0.88)
 		_check(main.world._sun.light_energy > 0.23 and main.world._sun.light_energy < 0.29 and
 			float(main.water.material().get_shader_parameter("sun_path_amount")) < 0.001 and
-			main.world._env.volumetric_fog_density > 0.013,
-			"ночью нет световой дорожки, а слабый свет сохраняет объём в тумане")
+			main.world._env.volumetric_fog_density > 0.006 and
+			main.world._env.volumetric_fog_density < 0.009 and
+			is_equal_approx(main.world._env.volumetric_fog_length, 80.0),
+			"ночью нет световой дорожки; разреженный туман не затемняет весь кадр")
 		var night_glitter := float(main.water.material().get_shader_parameter("glitter_amount"))
 		main.debug_toggle_volumetric_fog()
 		_check(not main.world._env.volumetric_fog_enabled and
@@ -205,7 +207,8 @@ func _physics_process(_delta: float) -> void:
 			"ночной прожектор направлен на ближнюю воду и остаётся локальным")
 		_check(main.boat._bow_fog.get_parent() == spot and
 			main.boat._bow_fog.shape == RenderingServer.FOG_VOLUME_SHAPE_CONE and
-			(main.boat._bow_fog.material as FogMaterial).density > 0.05 and
+			(main.boat._bow_fog.material as FogMaterial).density > 0.035 and
+			spot.light_volumetric_fog_energy >= 7.0 and
 			main.world._env.volumetric_fog_anisotropy < 0.5,
 			"ночью настоящий прожектор рассеивается в локальном объёмном тумане")
 		main.debug_toggle_headlight()

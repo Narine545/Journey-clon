@@ -111,7 +111,7 @@ func update_night_lights(night01: float, overdrive: bool) -> void:
 		_bow_spot.spot_range = lerpf(18.0, 28.0, night01) * (1.20 if overdrive else 1.0)
 	if _bow_fog != null:
 		# Днём локальной дымки нет, ночью она рассеивает настоящий SpotLight.
-		(_bow_fog.material as FogMaterial).density = 0.060 * clampf((night01 - 0.32) / 0.50, 0.0, 1.0)
+		(_bow_fog.material as FogMaterial).density = 0.040 * clampf((night01 - 0.32) / 0.50, 0.0, 1.0)
 	if _deck_light != null:
 		_deck_light.light_energy = lerpf(0.10, 0.30, night01)
 		_deck_light.omni_range = 5.5
@@ -715,7 +715,8 @@ func _build_appearance() -> void:
 	_bow_spot.light_energy = 2.0
 	_bow_spot.spot_range = 24.0
 	_bow_spot.spot_angle = 30.0
-	_bow_spot.light_volumetric_fog_energy = 3.0
+	# Реальный вклад SpotLight в рассеяние, НЕ emissive-фигура.
+	_bow_spot.light_volumetric_fog_energy = 7.0
 	_bow_spot.position = Vector3(0.0, 3.12, -2.45)
 	# -Z вдоль курса, наклон вниз: пятно на воде в нескольких метрах
 	# перед носом, а не вдали под туманом.
