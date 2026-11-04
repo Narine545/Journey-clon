@@ -115,21 +115,23 @@ func _apply_atmosphere(n01: float) -> void:
 	var sun := day_sun.lerp(dusk_sun, night01).normalized()
 	game.sun_dir = sun
 	world.apply_sun(sun)
-	world.apply_boat_moonlight(night01)
+	world.fade_boat_sun(night01)
 	coast.apply_sun(sun)
 	water.apply_sun(sun)
-	# Луна освещает всё море одним холодным направленным светом. Не
-	# оставляем на ночной воде золотые солнечные искры из шейдера.
-	water.set_param("water_shallow", Color("49a9a2").lerp(Color("32606d"), night01))
-	water.set_param("water_mid", Color("258b91").lerp(Color("254553"), night01))
-	water.set_param("water_deep", Color("0f5668").lerp(Color("172e42"), night01))
-	water.set_param("horizon_col", Color("6996a0").lerp(Color("456078"), night01))
-	water.set_param("sky_col", Color("447084").lerp(Color("293b56"), night01))
+	# Уходит дневной свет, а не включается отдельная луна. Оставляем
+	# тёмную воду и цвет тумана, не меняя настройки микробликов.
+	water.set_param("water_shallow", Color("49a9a2").lerp(Color("163d42"), night01))
+	water.set_param("water_mid", Color("258b91").lerp(Color("0b2530"), night01))
+	water.set_param("water_deep", Color("0f5668").lerp(Color("04111c"), night01))
+	water.set_param("horizon_col", Color("6996a0").lerp(Color("1d2c3b"), night01))
+	water.set_param("sky_col", Color("447084").lerp(Color("0d1624"), night01))
 	water.set_param("sun_col", Color("ffcc85").lerp(Color("a8c9e3"), night01))
 	water.set_param("mega_amp", lerpf(0.25, 0.31, night01))
 	water.set_param("ripple_strength", 0.10)
 	water.set_param("glitter_amount", lerpf(0.32, 0.18, night01))
-	water.set_param("sun_path_amount", lerpf(0.09, 0.05, night01))
+	# Это широкая искусственная дорожка, НЕ отдельные искры-глиттер.
+	# Плавно убрать её до наступления полной темноты.
+	water.set_param("sun_path_amount", 0.09 * (1.0 - clampf((night01 - 0.25) / 0.53, 0.0, 1.0)))
 	water.set_param("direct_specular_amount", 0.018)
 	if boat != null:
 		boat.update_night_lights(night01, overdrive_timer > 0.0)
@@ -210,7 +212,7 @@ func _build_beacons() -> void:
 		var top_light := OmniLight3D.new()
 		top_light.light_color = s["color"]
 		top_light.light_energy = 0.0
-		top_light.omni_range = 42.0
+		top_light.omni_range = 28.0
 		top_light.position = Vector3(0.0, 10.4, 0.0)
 		tower.add_child(top_light)
 
@@ -221,8 +223,9 @@ func _build_beacons() -> void:
 		var spot := SpotLight3D.new()
 		spot.light_color = s["color"]
 		spot.light_energy = 0.0
-		spot.spot_range = 85.0
-		spot.spot_angle = 26.0
+		spot.spot_range = 58.0
+		spot.spot_angle = 20.0
+		spot.light_volumetric_fog_energy = 0.45
 		spot.rotation = Vector3(-0.22, PI * 0.5, 0.0)
 		beam_pivot.add_child(spot)
 
@@ -497,8 +500,9 @@ func activate_overdrive() -> void:
 		announce("ДЛЯ ФОРСАЖА НУЖЕН 1 ГОТ. ЯНТАРЬ (ИЛИ 2 СЫР. ЯНТАРЯ)")
 		return
 	overdrive_timer = 16.0
-	_apply_atmosphere(maxf(0.0, night01 - 0.22))
+	# Форсаж усиливает только судно, но не отматывает время суток назад.
 	if boat != null:
+		boat.update_night_lights(night01, true)
 		boat.trigger_refine_effect()
 	announce("ЯНТАРНЫЙ ФОРСАЖ: +35% ХОДА И ДАЛЬНИЙ СВЕТ ПРОЖЕКТОРА!")
 
@@ -598,14 +602,15 @@ func interact_with_beacon() -> void:
 	b_mat.emission = Color("52f29c")
 
 	var top_l: OmniLight3D = b["top_light"]
-	top_l.light_energy = 2.8
+	top_l.light_energy = 1.4
 	var spot_l: SpotLight3D = b["spot"]
-	spot_l.light_energy = 5.5
+	spot_l.light_energy = 1.8
 
 	if boat != null:
 		boat.hull_hp = 100.0
 		boat.trigger_refine_effect()
-	_apply_atmosphere(maxf(0.0, night01 - 0.40))
+	# Свет локального маяка и указатели видны в тумане, но ночь и всё
+	# освещение мира НЕ становятся светлее при нажатии [E].
 	sonar_timer = maxf(sonar_timer, 15.0)
 
 	if lit_beacon_count() >= beacons.size():

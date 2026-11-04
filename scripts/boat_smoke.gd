@@ -119,11 +119,15 @@ func _physics_process(_delta: float) -> void:
 		main.activate_hull_repair()
 		_check(is_equal_approx(main.boat.hull_hp, 85.0) and main.raw[1] == 0,
 			"ремонт восстанавливает 45% корпуса за два сырых коралла")
+		main._apply_atmosphere(0.70)
+		var dusk_before := main.night01
+		var glitter_before := float(main.water.material().get_shader_parameter("glitter_amount"))
 		main.refined[2] = 1
 		main.activate_overdrive()
 		_check(main.overdrive_timer > 0.0 and main.refined[2] == 0 and
-			main.boat.effective_max_speed() > BoatVessel.MAX_SPEED,
-			"форсаж тратит янтарь и увеличивает скорость")
+			main.boat.effective_max_speed() > BoatVessel.MAX_SPEED and
+			is_equal_approx(main.night01, dusk_before),
+			"форсаж ускоряет судно, но не превращает ночь в день")
 
 		# У причального буя E не списывает материалы, пока рецепт неполный.
 		var beacon: Dictionary = main.beacons[0]
@@ -139,8 +143,9 @@ func _physics_process(_delta: float) -> void:
 		main.interact_with_beacon()
 		_check(beacon["lit"] and main.lit_beacon_count() == 1 and
 			main.total_refined() == 0 and main.raw[0] == 0 and main.raw[2] == 0 and
-			main.boat.hull_hp == 100.0,
-			"маяк автоматически перерабатывает сырьё по рецепту и ремонтирует лодку")
+			main.boat.hull_hp == 100.0 and is_equal_approx(main.night01, dusk_before) and
+			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), glitter_before),
+			"маяк питается по рецепту, не подсвечивает весь мир и не меняет глиттер")
 		main.boat.hull_hp = 55.0
 		main.interact_with_beacon()
 		_check(main.boat.hull_hp == 100.0, "зажжённый маяк ремонтирует бесплатно")
@@ -159,6 +164,11 @@ func _physics_process(_delta: float) -> void:
 		_check(main.boat.hull_hp < hp_before and main.boat.speed == 0.0 and
 			gap >= float(rf["radius"]) + 1.85 - 0.01,
 			"риф гасит скорость, повреждает корпус и не телепортирует его внутрь")
+		main._apply_atmosphere(0.88)
+		_check(main.world._sun.light_energy < 0.001 and
+			float(main.water.material().get_shader_parameter("sun_path_amount")) < 0.001 and
+			main.world._env.volumetric_fog_density > 0.014,
+			"ночью нет лунной дорожки и направленной луны, но есть плотный туман")
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))
 		get_tree().quit(0 if failures == 0 else 1)
 
