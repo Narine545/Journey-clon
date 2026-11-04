@@ -47,6 +47,8 @@ var _rudder: Node3D
 var _prop_l: Node3D
 var _prop_r: Node3D
 var _bow_spot: SpotLight3D
+var _bow_beam: MeshInstance3D
+var _bow_beam_mat: ShaderMaterial
 var _deck_light: OmniLight3D
 
 var _crane_turret: Node3D
@@ -108,6 +110,9 @@ func update_night_lights(night01: float, overdrive: bool) -> void:
 	if _bow_spot != null:
 		_bow_spot.light_energy = lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
 		_bow_spot.spot_range = lerpf(18.0, 28.0, night01) * (1.20 if overdrive else 1.0)
+	if _bow_beam_mat != null:
+		# Днём конус не рисуем; ночью он остаётся дочерним объектом [H].
+		_bow_beam_mat.set_shader_parameter("beam_strength", clampf((night01 - 0.32) / 0.50, 0.0, 1.0))
 	if _deck_light != null:
 		_deck_light.light_energy = lerpf(0.10, 0.30, night01)
 		_deck_light.omni_range = 5.5
@@ -717,6 +722,27 @@ func _build_appearance() -> void:
 	# перед носом, а не вдали под туманом.
 	_bow_spot.rotation = Vector3(-0.48, 0.0, 0.0)
 	_body.add_child(_bow_spot)
+
+	# Тонкая видимая сердцевина луча, а не второй источник света.
+	# Радиус меньше угла SpotLight; конец над водой при обычной качке.
+	# Дочерний узел наследует качку корпуса и выключение [H].
+	var beam_mesh := CylinderMesh.new()
+	beam_mesh.top_radius = 0.02
+	beam_mesh.bottom_radius = 0.75
+	beam_mesh.height = 5.0
+	beam_mesh.radial_segments = 24
+	beam_mesh.rings = 8
+	beam_mesh.cap_top = false
+	beam_mesh.cap_bottom = false
+	_bow_beam_mat = ShaderMaterial.new()
+	_bow_beam_mat.shader = load("res://shaders/boat_headlight_beam.gdshader")
+	_bow_beam = MeshInstance3D.new()
+	_bow_beam.mesh = beam_mesh
+	_bow_beam.material_override = _bow_beam_mat
+	_bow_beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_bow_beam.rotation.x = PI * 0.5
+	_bow_beam.position.z = -2.5
+	_bow_spot.add_child(_bow_beam)
 
 	_cyl_on(_body, Vector3(0.0, 3.12, -1.35), 0.10, 0.14, 0.36, cabin_chalk)
 	_radar = Node3D.new()

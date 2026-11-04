@@ -20,6 +20,8 @@ func _physics_process(_delta: float) -> void:
 		_check(main.coast.water_depth(origin.x, origin.z) > 2.0, "лодка спущена на глубокую воду")
 		_check(main.slicks.size() >= 6, "SDF-пятна распределены вокруг лодки")
 		_check(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "изометрическая камера")
+		_check(is_zero_approx(float(main.boat._bow_beam_mat.get_shader_parameter("beam_strength"))),
+			"днём видимый луч выключен")
 		var yaw := main.boat.rotation.y
 		var view_right := main.camera.global_transform.basis.x
 		var heading := -main.boat.global_transform.basis.z
@@ -195,8 +197,13 @@ func _physics_process(_delta: float) -> void:
 		_check(spot != null and spot.light_energy > 2.5 and
 			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
 			"ночной прожектор направлен на ближнюю воду и остаётся локальным")
+		_check(main.boat._bow_beam.get_parent() == spot and
+			main.boat._bow_beam.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF and
+			float(main.boat._bow_beam_mat.get_shader_parameter("beam_strength")) > 0.9,
+			"видимый ночной конус следует за прожектором и не отбрасывает тень")
 		main.debug_toggle_headlight()
-		_check(not spot.visible and is_equal_approx(main.world._sun.light_energy, before_light) and
+		_check(not spot.visible and not main.boat._bow_beam.is_visible_in_tree() and
+			is_equal_approx(main.world._sun.light_energy, before_light) and
 			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
 			"[H] отключает прожектор без изменения фона и глиттера")
 		main.debug_toggle_headlight()
