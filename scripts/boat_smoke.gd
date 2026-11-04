@@ -5,6 +5,7 @@ var main: BoatMain
 var ticks := 0
 var origin := Vector3.ZERO
 var failures := 0
+var trail_sample := Vector4.ZERO
 
 
 func setup(boat_main: BoatMain) -> void:
@@ -20,6 +21,18 @@ func _physics_process(_delta: float) -> void:
 		_check(main.slicks.size() >= 6, "SDF-пятна распределены вокруг лодки")
 		_check(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "изометрическая камера")
 		Input.action_press("boat_forward")
+	if ticks == 60:
+		trail_sample = main.boat._trail_buffer[2]
+		main.boat.rotation.y += 0.35
+	if ticks == 61:
+		var kept := false
+		for i in range(2, BoatVessel.TRAIL_POINTS):
+			var old: Vector4 = main.boat._trail_buffer[i]
+			if Vector2(old.x, old.y).distance_to(Vector2(trail_sample.x, trail_sample.y)) < 0.001:
+				kept = true
+				break
+		_check(kept and trail_sample.z > 0.0,
+			"старый участок кильватера остаётся в мировых координатах при повороте")
 	if ticks == 70:
 		Input.action_release("boat_forward")
 		_check(main.boat.global_position.distance_to(origin) > 1.0, "мотор двигает лодку")
@@ -55,13 +68,13 @@ func _physics_process(_delta: float) -> void:
 		_check(not main.boat.has_trailer, "тестовая клавиша отключает прицеп")
 		# В новом районе пятна должны появляться снова, не оставаясь навсегда
 		# в стартовом круге. Уходим в открытое море, не заходя на берег.
-		main.boat.global_position = origin + Vector3(-105.0, 0.0, 0.0)
+		main.boat.global_position = origin + Vector3(-220.0, 0.0, 0.0)
 		main.boat.speed = 0.0
 		main._stream_resources()
 		var nearby := 0
 		for slick in main.slicks:
 			if not slick.depleted and Vector2(slick.position.x, slick.position.z).distance_to(
-				Vector2(main.boat.global_position.x, main.boat.global_position.z)) < 52.0:
+				Vector2(main.boat.global_position.x, main.boat.global_position.z)) < 108.0:
 				nearby += 1
 		_check(nearby >= 4, "пятна появляются в новом районе после плавания")
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))

@@ -109,7 +109,7 @@ jobs:
             echo "::warning::xvfb-run недоступен — рендер-проверка пропущена"
             exit 0
           fi
-          JOURNEY_BOAT_SHOT=1 JOURNEY_BOAT_SHOT_TRAILER=1 JOURNEY_BOAT_SHOT_PATH="$PWD/boat.png" \
+          JOURNEY_BOAT_SHOT=1 JOURNEY_BOAT_SHOT_DRIVE=1 JOURNEY_BOAT_SHOT_TRAILER=1 JOURNEY_BOAT_SHOT_PATH="$PWD/boat.png" \
             xvfb-run -a -s "-screen 0 1280x720x24" \
             godot_bin/godot --path . --rendering-method forward_plus \
             --resolution 1280x720 --fixed-fps 30 --quit-after 150 \

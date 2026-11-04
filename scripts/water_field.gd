@@ -42,6 +42,7 @@ var wake_interval := 0.33
 var wake_strength := 0.30
 var swell_time_rate := 0.25
 var chop_strength := 0.0
+var use_spectrum := false # лодочное море: дисперсионные волны вместо песчаного шума
 
 var _pos := PackedVector2Array()
 var _t0 := PackedFloat32Array()
@@ -88,7 +89,7 @@ func wake(pos: Vector2, strength := 1.0) -> void:
 ## Зеркало шейдерной математики (mega_phase + кольца) — поплавок и физика
 ## качаются ровно на той воде, которую рисует шейдер.
 func height_at(x: float, z: float) -> float:
-	var h := _mega_h_cpu(x, z)
+	var h := _spectrum_height(x, z) if use_spectrum else _mega_h_cpu(x, z)
 	for i in range(MAX_RINGS):
 		var a := _amp[i]
 		if a < 0.0005:
@@ -167,6 +168,24 @@ func _vnoise(p: Vector2) -> float:
 	var c := _hash12(i + Vector2(0.0, 1.0))
 	var d := _hash12(i + Vector2(1.0, 1.0))
 	return lerpf(lerpf(a, b, f.x), lerpf(c, d, f.x), f.y)
+
+
+## Линейная дисперсия глубоководных волн omega²=g*k; коэффициенты
+## повторяют boat_wave_spectrum.gdshaderinc для плавучести и пятен.
+func _spectrum_height(x: float, z: float) -> float:
+	var d1 := wind_dir.normalized()
+	var d2 := Vector2(d1.x * 0.80 - d1.y * 0.60,
+		d1.x * 0.60 + d1.y * 0.80).normalized()
+	var d3 := Vector2(d1.x * 0.52 + d1.y * 0.85,
+		-d1.x * 0.85 + d1.y * 0.52).normalized()
+	var p := Vector2(x, z)
+	var k1 := TAU / 18.0
+	var k2 := TAU / 9.5
+	var k3 := TAU / 4.5
+	return mega_amp * wind_power * (
+		0.75 * cos(k1 * p.dot(d1) - sqrt(9.81 * k1) * t)
+		+ 0.45 * cos(k2 * p.dot(d2) - sqrt(9.81 * k2) * t + 1.7)
+		+ 0.22 * cos(k3 * p.dot(d3) - sqrt(9.81 * k3) * t + 3.1))
 
 
 func _mega_h_cpu(x: float, z: float) -> float:

@@ -4,9 +4,11 @@ extends Node3D
 
 const START_Z := Coast.SPAWN_Z
 const START_SEAWARD := 95.0
-const SLICK_RECYCLE_DISTANCE := 72.0
-const SLICK_SPAWN_MIN := 28.0
-const SLICK_SPAWN_MAX := 47.0
+# Переставляем только давно ушедшие за кадр пятна; новые возникают
+# за пределами ортографической камеры и позже приплывают в область обзора.
+const SLICK_RECYCLE_DISTANCE := 110.0
+const SLICK_SPAWN_MIN := 85.0
+const SLICK_SPAWN_MAX := 105.0
 const TRAILER_COST := 2
 
 var game: GameState
@@ -76,6 +78,8 @@ func _ready() -> void:
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hud)
 	_ensure_boat_input()
+	if OS.get_environment("JOURNEY_BOAT_SHOT_DRIVE") == "1":
+		Input.action_press("boat_forward")
 	world.apply_night01(0.0)
 	coast.set_night01(0.0)
 	water.apply_night01(0.0)
@@ -89,9 +93,9 @@ func _ready() -> void:
 	water.set_param("water_deep", Color("0f5668"))
 	water.set_param("horizon_col", Color("6996a0"))
 	water.set_param("sky_col", Color("447084"))
-	# Динамичнее исходных 5 см, но без белых полос от слишком крутых нормалей.
-	water.set_param("mega_amp", 0.14)
-	water.set_param("ripple_strength", 0.29)
+	# 18/9.5/4.5-метровые дисперсионные волны; мелкая рябь лишь дополняет их.
+	water.set_param("mega_amp", 0.25)
+	water.set_param("ripple_strength", 0.10)
 	water.set_param("glitter_amount", 0.05)
 	water.set_param("solar_glitter_amount", 0.018)
 	water.set_param("sun_path_amount", 0.09)
@@ -143,8 +147,8 @@ func _stream_resources() -> void:
 					clear = false
 					break
 			if clear:
-				slick.position = Vector3(candidate.x,
-					water.surface_height(candidate.x, candidate.y) + ResourceSlick.FLOAT_HEIGHT, candidate.y)
+				slick.relocate_smoothly(Vector3(candidate.x,
+					water.surface_height(candidate.x, candidate.y) + ResourceSlick.FLOAT_HEIGHT, candidate.y))
 				break
 
 
@@ -252,7 +256,12 @@ func _process(delta: float) -> void:
 	hud.queue_redraw()
 	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":
 		_capture_frames += 1
-		if _capture_frames == 35:
+		var drive_shot := OS.get_environment("JOURNEY_BOAT_SHOT_DRIVE") == "1"
+		if drive_shot and _capture_frames == 35:
+			Input.action_press("boat_right")
+		if drive_shot and _capture_frames == 72:
+			Input.action_release("boat_right")
+		if _capture_frames == (110 if drive_shot else 35):
 			var output := OS.get_environment("JOURNEY_BOAT_SHOT_PATH")
 			if output.is_empty():
 				output = "user://boat.png"

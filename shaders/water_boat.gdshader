@@ -1,8 +1,7 @@
 shader_type spatial;
-// МОРЕ С ГИДРОДИНАМИКОЙ СУДНА:
-// - Двухслойное волнение (длинная зыбь + ветровая толчея) синхронно с WaterField
-// - 3D носовой бурун, волны Кельвина (V-клин), кильватерная струя винтов и пена обтекания корпуса
-// - Честная глубина уреза по карте высот берега
+// МОРЕ С ИСТОРИЧЕСКОЙ ТРАЕКТОРИЕЙ КИЛЬВАТЕРНОГО СЛЕДА В МИРОВЫХ КООРДИНАТАХ:
+// - Кильватерная струя и волны Кельвина строятся вдоль кривой u_wake_trail[20],
+//   поэтому след остаётся в мировых координатах воды и плавно изгибается при поворотах.
 
 render_mode diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_always;
 
@@ -19,7 +18,7 @@ uniform float fog_distance = 340.0;
 
 uniform vec2 wind_dir = vec2(0.32, -0.95);
 uniform float wind_power = 1.0;
-uniform float mega_amp = 0.22;
+uniform float mega_amp = 0.15;
 
 uniform float ripple_freq = 1.35;
 uniform float ripple_speed = 1.1;
@@ -43,13 +42,13 @@ uniform float proxima_specular_fresnel_falloff = 0.5;
 uniform float proxima_smooth_terminator = 0.0;
 uniform float proxima_smooth_terminator_length = 0.5;
 
-uniform float ring_amp = 0.095;
+uniform float ring_amp = 0.065;
 uniform float ring_speed = 1.5;
 uniform float ring_len = 0.85;
 uniform float ring_tau = 0.55;
 uniform float ring_w0 = 0.30;
 uniform float ring_wg = 0.18;
-uniform float ring_boost = 1.8;
+uniform float ring_boost = 1.4;
 
 uniform float u_time = 0.0;
 
@@ -63,9 +62,10 @@ uniform float shore_fade = 0.03;
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;
 uniform vec4 u_rings[24];
 
-// Состояние корабля (x, z, rotation_y, speed) и прицепа (x, z, rotation_y, active_01)
+// Текущее положение корпуса (x, z, yaw, speed) и массив мировых точек траектории
 uniform vec4 u_vessel_state = vec4(0.0, 0.0, 0.0, 0.0);
 uniform vec4 u_trailer_state = vec4(0.0, 0.0, 0.0, 0.0);
+uniform vec4 u_wake_trail[20]; // xy = world_xz, z = birth_time, w = speed_at_birth
 
 varying vec3 w_pos;
 
@@ -89,20 +89,7 @@ float vnoise(vec2 p) {
 	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-float mega_phase(vec2 wp, vec2 wdir, vec2 wperp) {
-	float u = dot(wp, wdir);
-	float v = dot(wp, wperp);
-	float rn = vnoise(wp * 0.15);
-	float rn2 = vnoise(wp * 0.07 + vec2(9.1, 3.3));
-	return v * 0.70 + u * 0.16 + rn * 2.6 + rn2 * 3.4 + u_time * 0.55;
-}
-
-float swell_of(float mph, vec2 wp, vec2 wdir, vec2 wperp) {
-	float primary = cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30 + cos(mph * 0.47 + 0.8) * 0.22;
-	float chop_ph = dot(wp, wdir) * 1.15 - dot(wp, wperp) * 0.45 + u_time * 1.65;
-	float chop = sin(chop_ph) * 0.22;
-	return primary + chop;
-}
+#include "res://shaders/boat_wave_spectrum.gdshaderinc"
 
 float ground_at(vec2 wp) {
 	vec2 uv = (wp - ground_origin) / (ground_cell * (ground_n - 1.0));
@@ -112,7 +99,6 @@ float ground_at(vec2 wp) {
 	return texture(ground_tex, uv).r;
 }
 
-// Перевод мировой точки XZ в локальные координаты корабля (-Z нос, +Z корма)
 vec2 to_ship_local(vec2 wp, vec2 center, float yaw) {
 	vec2 d = wp - center;
 	float c = cos(yaw);
@@ -120,9 +106,7 @@ vec2 to_ship_local(vec2 wp, vec2 center, float yaw) {
 	return vec2(d.x * c - d.y * s, d.x * s + d.y * c);
 }
 
-// Знаковое расстояние (SDF) до контура ватерлинии корабля
 float hull_sdf(vec2 lp) {
-	// Длина от -5.3 до +5.0, сужение к носу (-Z)
 	float z_norm = clamp((lp.y + 5.3) / 10.3, 0.0, 1.0);
 	float half_w = mix(0.12, 1.62, pow(sin(z_norm * 2.65), 0.65));
 	if (lp.y > 1.5) {
@@ -134,33 +118,22 @@ float hull_sdf(vec2 lp) {
 
 void vertex() {
 	w_pos = (MODEL_MATRIX * vec4(VERTEX.x, VERTEX.y, VERTEX.z, 1.0)).xyz;
-	vec2 wdir_v = normalize(wind_dir);
-	vec2 wperp_v = vec2(-wdir_v.y, wdir_v.x);
-
 	float ground = ground_at(w_pos.xz);
 	float shore_depth = max(sea_level - ground, 0.0);
 	float shore_t = clamp(shore_depth / 4.0, 0.0, 1.0);
 	float shore_wave_fade = shore_t * shore_t * (3.0 - 2.0 * shore_t);
-	float hrip = swell_of(mega_phase(w_pos.xz, wdir_v, wperp_v), w_pos.xz, wdir_v, wperp_v)
-		* mega_amp * wind_power * shore_wave_fade;
+	float hrip = spectrum_height(w_pos.xz, u_time, wind_dir, mega_amp, wind_power)
+		* shore_wave_fade;
 
-	// Деформация поверхности воды самим кораблём (носовой бурун и волна Кельвина)
+	// Локальный бурун непосредственно перед носом судна и вытеснение внутри корпуса
 	vec2 ship_lp = to_ship_local(w_pos.xz, u_vessel_state.xy, u_vessel_state.z);
 	float spd01 = clamp(abs(u_vessel_state.w) / 10.0, 0.0, 1.2);
-	float d_bow = length(ship_lp - vec2(0.0, -5.1));
-	float bow_crest = exp(-d_bow * d_bow * 0.45) * 0.24 * spd01;
-
-	// Расходящийся V-образный гребень за носом
-	float wake_z = max(0.0, ship_lp.y + 4.8);
-	float wake_arm = abs(abs(ship_lp.x) - (0.35 + wake_z * 0.34));
-	float kelvin_h = sin(wake_arm * 4.5 - u_time * 5.0) * exp(-wake_arm * 1.1) * exp(-wake_z * 0.11) * 0.14 * spd01;
-
-	// Вытеснение воды внутри самого контура корпуса, чтобы вода не пробивала палубу
+	float d_bow = length(ship_lp - vec2(0.0, -5.2));
+	float bow_crest = exp(-d_bow * d_bow * 0.55) * 0.18 * spd01;
 	float d_hull = hull_sdf(ship_lp);
-	// smoothstep требует возрастающие границы; внутри корпуса опускаем воду.
-	float hull_cut = -(1.0 - smoothstep(-0.35, 0.25, d_hull)) * 0.35;
+	float hull_cut = -(1.0 - smoothstep(-0.35, 0.20, d_hull)) * 0.30;
 
-	float y = hrip + bow_crest + kelvin_h + hull_cut;
+	float y = hrip + bow_crest + hull_cut;
 	VERTEX.y += y;
 	w_pos.y += y;
 }
@@ -176,7 +149,6 @@ void fragment() {
 		discard;
 	}
 	float near_shore = 1.0 - smoothstep(-0.08, 0.9, depth_m);
-	float mph = mega_phase(wp, wdir, wperp);
 
 	vec3 L = normalize(sun_dir);
 	vec3 N = vec3(0.0, 1.0, 0.0);
@@ -184,20 +156,12 @@ void fragment() {
 	float dist = length(CAMERA_POSITION_WORLD - w_pos);
 	float detail = exp(-dist * 0.030);
 
-	// ---------- слой 2: дыхание моря + второй каскад волн ----------
-	float ms1 = sin(mph);
-	float ms2 = sin(mph * 2.63 + 1.7);
-	float ms3 = sin(mph * 0.47 + 0.8);
-	float mdv = (-0.62 * 0.70 * ms1 - 0.30 * 2.63 * 0.70 * ms2
-		- 0.22 * 0.47 * 0.70 * ms3) * mega_amp;
-	float mdu = (-0.62 * 0.16 * ms1 - 0.30 * 2.63 * 0.16 * ms2
-		- 0.22 * 0.47 * 0.16 * ms3) * mega_amp;
-	vec2 mgrad = (wperp * mdv + wdir * mdu) * wind_power;
-	float mega_fade = mix(0.30, 1.0, exp(-dist * 0.010));
-	N = normalize(N - vec3(mgrad.x, 0.0, mgrad.y) * 0.55
-		* (1.0 - 0.92 * near_shore) * mega_fade);
+	// Дисперсионные волны: нормаль — производная тех же высот, что у вершин.
+	vec2 wave_grad = spectrum_gradient(wp, u_time, wind_dir, mega_amp, wind_power);
+	N = normalize(N - vec3(wave_grad.x, 0.0, wave_grad.y)
+		* (1.0 - 0.92 * near_shore));
 
-	// ---------- слой 1: ветровая рябь из трёх поездов ----------
+	// ---------- слой 1: перекрёстная ветровая рябь ----------
 	float n1 = vnoise(wp * 0.33);
 	float n2 = vnoise(wp * 0.90 + vec2(17.0, 9.0));
 	vec2 d1 = wdir;
@@ -211,12 +175,11 @@ void fragment() {
 	float amp = 0.40 + 0.60 * vnoise(wp * 0.11 + vec2(3.7, 1.3));
 	wgrad *= ripple_strength * wind_power * detail * amp
 		* (1.0 - 0.88 * near_shore);
-	N = normalize(N - vec3(wgrad.x, 0.0, wgrad.y) * 0.46);
+	N = normalize(N - vec3(wgrad.x, 0.0, wgrad.y) * 0.44);
 
-	// ---------- кольца событий (с видимой пеной на гребнях) ----------
+	// ---------- точечные кольца событий (только от сбора пятен) ----------
 	float rk = PI_2 / ring_len;
 	vec2 rgrad = vec2(0.0);
-	float ring_foam_acc = 0.0;
 	for (int i = 0; i < 24; i++) {
 		vec4 rg = u_rings[i];
 		if (rg.w < 0.0005) {
@@ -237,60 +200,89 @@ void fragment() {
 		float a = ring_amp * rg.w * dec;
 		float dhdd = a * (env * (-2.0 * x / bw) * cos(ph) - env * sin(ph) * rk);
 		rgrad += (d / dd) * dhdd;
-		ring_foam_acc += max(0.0, cos(ph)) * env * dec * rg.w * 0.28;
 	}
 	N = normalize(N - vec3(rgrad.x * ring_boost, 0.0, rgrad.y * ring_boost));
 
-	// ---------- ГИДРОДИНАМИЧЕСКИЙ СЛЕД КОРАБЛЯ И ПРИЦЕПА ----------
+	// ---------- МИРОВОЙ КИЛЬВАТЕРНЫЙ СЛЕД ПО ИСТОРИЧЕСКОЙ ТРАЕКТОРИИ ----------
 	vec2 ship_lp = to_ship_local(wp, u_vessel_state.xy, u_vessel_state.z);
 	float spd01 = clamp(abs(u_vessel_state.w) / 10.0, 0.0, 1.25);
 	float d_hull = hull_sdf(ship_lp);
-	float turb_noise = vnoise(wp * 2.8 + vec2(0.0, -u_time * 2.4));
-	float fine_noise = vnoise(wp * 6.5 + vec2(u_time * 1.3, -u_time * 3.1));
+	float turb_noise = vnoise(wp * 2.6 + vec2(0.0, -u_time * 1.8));
+	float fine_noise = vnoise(wp * 6.2 + vec2(u_time * 1.1, -u_time * 2.4));
 
-	// 1. Пенный воротник обтекания вокруг ватерлинии корабля
-	float hull_collar = exp(-pow((d_hull - 0.12) / (0.22 + 0.14 * spd01), 2.0)) * step(-0.08, d_hull);
-	hull_collar *= smoothstep(0.18, 0.72, turb_noise * 0.65 + fine_noise * 0.35);
+	// 1. Пенное обтекание непосредственно вдоль бортов корпуса и носового буруна
+	float hull_collar = exp(-pow((d_hull - 0.10) / (0.18 + 0.12 * spd01), 2.0)) * step(-0.06, d_hull);
+	hull_collar *= smoothstep(0.22, 0.75, turb_noise * 0.65 + fine_noise * 0.35);
 
-	// 2. Носовой бурун и усы расходящейся волны Кельвина (V-Wake)
-	float wake_z = max(0.0, ship_lp.y + 5.1);
-	float arm_width = 0.28 + wake_z * 0.33;
-	float arm_dist = abs(abs(ship_lp.x) - arm_width);
-	float arm_env = exp(-arm_dist * arm_dist / (0.18 + wake_z * 0.045)) * exp(-wake_z * 0.095) * step(-5.1, ship_lp.y);
-	float arm_phase = (abs(ship_lp.x) - arm_width) * 5.2 - u_time * 5.5;
-	// Наклон нормалей воды на усах волны Кельвина
-	float kelvin_slope = -sin(arm_phase) * arm_env * spd01 * 0.65;
-	vec2 local_kgrad = vec2(sign(ship_lp.x) * kelvin_slope, -kelvin_slope * 0.33);
-	float cy = cos(u_vessel_state.z);
-	float sy = sin(u_vessel_state.z);
-	vec2 world_kgrad = vec2(local_kgrad.x * cy + local_kgrad.y * sy, -local_kgrad.x * sy + local_kgrad.y * cy);
-	N = normalize(N - vec3(world_kgrad.x, 0.0, world_kgrad.y));
+	// 2. Поиск ближайшей точки на мировой кривой пути u_wake_trail[20]
+	float best_d2 = 1e9;
+	float best_age = 100.0;
+	float best_spd = 0.0;
+	vec2 best_normal_xz = vec2(0.0);
 
-	float kelvin_foam = max(0.0, cos(arm_phase)) * arm_env * spd01 * smoothstep(0.25, 0.78, turb_noise);
+	for (int i = 0; i < 19; i++) {
+		vec4 p0 = u_wake_trail[i];
+		vec4 p1 = u_wake_trail[i + 1];
+		float age0 = u_time - p0.z;
+		float age1 = u_time - p1.z;
+		if (age0 < 0.0 || age0 > 5.5 || age1 > 6.0) {
+			continue;
+		}
+		vec2 seg = p1.xy - p0.xy;
+		float seg_len2 = dot(seg, seg);
+		float h_proj = (seg_len2 > 0.0001) ? clamp(dot(wp - p0.xy, seg) / seg_len2, 0.0, 1.0) : 0.0;
+		vec2 closest = p0.xy + seg * h_proj;
+		vec2 diff = wp - closest;
+		float d2 = dot(diff, diff);
+		if (d2 < best_d2) {
+			best_d2 = d2;
+			best_age = mix(age0, age1, h_proj);
+			best_spd = mix(p0.w, p1.w, h_proj);
+			best_normal_xz = (d2 > 1e-5) ? (diff / sqrt(d2)) : vec2(0.0);
+		}
+	}
 
-	// 3. Кильватерная турбулентная струя от двух винтов за кормой (Propeller Wash)
-	float stern_z = max(0.0, ship_lp.y - 4.85);
-	float wash_half_w = 0.65 + stern_z * 0.13;
-	float wash_mask = exp(-pow(ship_lp.x / wash_half_w, 2.0)) * exp(-stern_z / (3.5 + 16.0 * spd01)) * step(4.8, ship_lp.y);
-	float prop_foam = wash_mask * spd01 * smoothstep(0.22, 0.80, fine_noise * 0.6 + turb_noise * 0.5);
+	float trail_foam = 0.0;
+	float trail_aerated = 0.0;
+	if (best_age < 5.2 && best_spd > 0.4) {
+		float perp_d = sqrt(best_d2);
+		float local_spd01 = clamp(best_spd / 10.0, 0.0, 1.2);
+		float age_fade = exp(-best_age * 0.55) * local_spd01;
 
-	// 4. Взаимодействие с буксируемым плашкоутом (если прицеплен)
+		// Центральная турбулентная струя от винтов (расширяется со временем вдоль кривой пути)
+		float wash_w = 0.55 + best_age * 0.36;
+		float wash_env = exp(-pow(perp_d / wash_w, 2.0)) * age_fade;
+		trail_foam += wash_env * smoothstep(0.24, 0.78, fine_noise * 0.55 + turb_noise * 0.45) * 0.90;
+		trail_aerated = wash_env * 0.55;
+
+		// Расходящиеся боковые волны Кельвина (фронт уходит в стороны от мировой траектории со скоростью волны)
+		float kelvin_front = 0.65 + best_age * (1.25 + local_spd01 * 0.95);
+		float d_front = perp_d - kelvin_front;
+		float k_band = 0.45 + best_age * 0.22;
+		float k_env = exp(-pow(d_front / k_band, 2.0)) * age_fade;
+		float k_phase = d_front * 4.6;
+		// Наклон нормалей воды на расходящихся волнах
+		float k_slope = -sin(k_phase) * k_env * 0.58;
+		N = normalize(N - vec3(best_normal_xz.x * k_slope, 0.0, best_normal_xz.y * k_slope));
+		trail_foam += max(0.0, cos(k_phase)) * k_env * smoothstep(0.28, 0.76, turb_noise) * 0.72;
+	}
+
+	// 3. Обтекание буксируемого плашкоута (если прицеплен)
 	float trailer_foam = 0.0;
 	if (u_trailer_state.w > 0.5) {
 		vec2 tr_lp = to_ship_local(wp, u_trailer_state.xy, u_trailer_state.z);
 		vec2 tq = abs(tr_lp) - vec2(1.32, 3.0);
 		float d_tr = length(max(tq, 0.0)) + min(max(tq.x, tq.y), 0.0);
-		trailer_foam = exp(-pow((d_tr - 0.10) / 0.22, 2.0)) * step(-0.05, d_tr) * smoothstep(0.25, 0.75, turb_noise);
+		trailer_foam = exp(-pow((d_tr - 0.10) / 0.20, 2.0)) * step(-0.05, d_tr) * smoothstep(0.25, 0.75, turb_noise);
 	}
 
-	float ship_wake_foam = clamp(hull_collar * (0.75 + 0.45 * spd01) + kelvin_foam * 0.90 + prop_foam * 0.95 + trailer_foam * 0.75 + ring_foam_acc, 0.0, 1.0);
+	float ship_wake_foam = clamp(hull_collar * (0.65 + 0.45 * spd01) + trail_foam + trailer_foam * 0.70, 0.0, 1.0);
 
 	// ---------- цвет воды ----------
 	vec3 base = mix(water_shallow, water_mid, smoothstep(0.0, 3.0, depth_m));
 	base = mix(base, water_deep, smoothstep(1.0, 12.0, depth_m));
 	base = mix(base, water_shallow * 1.22, near_shore * 0.45);
-	// Аэрированная бирюзовая вода в кильватерной струе
-	base = mix(base, water_shallow * 1.30, clamp(( wash_mask * spd01 * 0.55 + arm_env * spd01 * 0.25 ), 0.0, 0.65));
+	base = mix(base, water_shallow * 1.28, clamp(trail_aerated, 0.0, 0.55));
 
 	float ndl = clamp(dot(N, L) * 0.5 + 0.5, 0.0, 1.0);
 	base *= 0.80 + 0.32 * ndl;
@@ -365,7 +357,7 @@ void fragment() {
 		* 9.0 * (1.0 - 0.70 * near_shore);
 	base += distant_glitter;
 
-	// ---------- пена прибоя + кильватерная пена судна ----------
+	// ---------- пена прибоя + мировая кильватерная пена ----------
 	float fn = vnoise(vec2(wp.x * 0.85 + u_time * 0.10, wp.y * 1.55));
 	float fn2 = vnoise(vec2(wp.x * 3.2 - u_time * 0.38, wp.y * 2.35));
 	float edge = exp(-pow((depth_m - 0.014 - 0.014 * sin(wp.x * 0.9 + u_time * 1.3)) / 0.075, 2.0));

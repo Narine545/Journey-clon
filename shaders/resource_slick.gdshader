@@ -8,7 +8,13 @@ uniform vec3 pigment : source_color = vec3(0.20, 0.80, 0.77);
 uniform float seed = 0.0;
 uniform float pulse = 0.0;
 uniform float fade = 1.0;
+uniform float wave_time = 0.0;
+uniform float wave_amp = 0.25;
+uniform float wave_power = 1.0;
+uniform vec2 wave_wind = vec2(0.32, -0.95);
 varying vec2 local_pos;
+
+#include "res://shaders/boat_wave_spectrum.gdshaderinc"
 
 float hash21(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -23,7 +29,12 @@ float smooth_union(float a, float b, float k) {
 }
 
 void vertex() {
-    local_pos = VERTEX.xz;
+	local_pos = VERTEX.xz;
+	// Сетка пятна повторяет тот же дисперсионный спектр, что и море.
+	vec2 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
+	vec2 center = MODEL_MATRIX[3].xz;
+	VERTEX.y += spectrum_height(wp, wave_time, wave_wind, wave_amp, wave_power)
+		- spectrum_height(center, wave_time, wave_wind, wave_amp, wave_power);
 }
 
 void fragment() {

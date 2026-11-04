@@ -67,11 +67,12 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 ## Усиленное CPU-зеркало волн только для изометрической лодочной сцены.
 ## Режим рыбалки остаётся на исходных значениях WaterField.
 func configure_boat_waves() -> void:
-	field.ring_amp = 0.095
+	field.ring_amp = 0.065
 	field.wake_interval = 0.12
 	field.wake_strength = 0.45
 	field.swell_time_rate = 0.55
-	field.chop_strength = 0.22
+	field.chop_strength = 0.0
+	field.use_spectrum = true
 
 
 ## Высота поверхности моря в мировой точке (уровень + дыхание + кольца).
