@@ -3,6 +3,9 @@ extends MeshInstance3D
 ## Отдельный SDF-материал на каждый цветной метабол.
 
 const SHADER := preload("res://shaders/resource_slick.gdshader")
+# Квад не повторяет волну в каждой вершине: запас над водой не даёт её
+# гребням скрывать края пятна при движении камеры и усиленной зыби.
+const FLOAT_HEIGHT := 0.34
 const COLORS: Array[Color] = [
 	Color("31c2bd"), # приливная бирюза
 	Color("f07b62"), # коралл
@@ -22,7 +25,7 @@ var _respawn := 0.0
 func setup(water: WaterSurface, at: Vector2, resource_kind: int, variation: float) -> void:
 	_water = water
 	kind = resource_kind % COLORS.size()
-	position = Vector3(at.x, water.level_y + 0.20, at.y)
+	position = Vector3(at.x, water.surface_height(at.x, at.y) + FLOAT_HEIGHT, at.y)
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(5.6, 5.6)
 	mesh = plane
@@ -45,7 +48,7 @@ func _process(delta: float) -> void:
 		return
 	if _water != null:
 		# Поле волн работает на CPU и GPU — пятно следует той же поверхности.
-		position.y = _water.surface_height(position.x, position.z) + 0.20
+		position.y = _water.surface_height(position.x, position.z) + FLOAT_HEIGHT
 	if _mat != null:
 		_mat.set_shader_parameter("pulse", 0.5 + 0.5 * sin(_age * 2.2))
 

@@ -89,11 +89,13 @@ func _ready() -> void:
 	water.set_param("water_deep", Color("0f5668"))
 	water.set_param("horizon_col", Color("6996a0"))
 	water.set_param("sky_col", Color("447084"))
-	water.set_param("mega_amp", 0.22)
+	# Динамичнее исходных 5 см, но без белых полос от слишком крутых нормалей.
+	water.set_param("mega_amp", 0.14)
+	water.set_param("ripple_strength", 0.29)
 	water.set_param("glitter_amount", 0.05)
 	water.set_param("solar_glitter_amount", 0.018)
-	water.set_param("sun_path_amount", 0.13)
-	water.set_param("direct_specular_amount", 0.07)
+	water.set_param("sun_path_amount", 0.09)
+	water.set_param("direct_specular_amount", 0.045)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
 		var test := BoatSmoke.new()
 		add_child(test)
@@ -142,7 +144,7 @@ func _stream_resources() -> void:
 					break
 			if clear:
 				slick.position = Vector3(candidate.x,
-					water.surface_height(candidate.x, candidate.y) + 0.20, candidate.y)
+					water.surface_height(candidate.x, candidate.y) + ResourceSlick.FLOAT_HEIGHT, candidate.y)
 				break
 
 
