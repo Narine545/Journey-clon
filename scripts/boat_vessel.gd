@@ -11,6 +11,7 @@ const DRAG := 1.8
 const TURN_RATE := 0.95
 const PUMP_RANGE := 6.5
 const PUMP_SECONDS := 1.4
+const SHIP_EMISSION_BOOST := 2.0
 
 const START_WITH_TRAILER := false
 const TRAILER_DISTANCE := 9.3
@@ -48,6 +49,8 @@ var _prop_l: Node3D
 var _prop_r: Node3D
 var _bow_spot: SpotLight3D
 var _deck_light: OmniLight3D
+var _window_glass_mat: StandardMaterial3D
+var _window_light: OmniLight3D
 
 var _crane_turret: Node3D
 var _crane_boom: Node3D
@@ -106,11 +109,19 @@ func update_night_lights(night01: float, overdrive: bool) -> void:
 	# Прожектор — короткий локальный луч перед носом, не замена лунному
 	# или фоновому свету всей сцены. [H] отключает его для честного A/B.
 	if _bow_spot != null:
-		_bow_spot.light_energy = 2.0 * lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
+		_bow_spot.light_energy = 4.0 * lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
 		_bow_spot.spot_range = lerpf(18.0, 28.0, night01) * (1.20 if overdrive else 1.0)
 	if _deck_light != null:
-		_deck_light.light_energy = lerpf(0.10, 0.30, night01)
+		_deck_light.light_energy = lerpf(0.10, 0.55, night01)
 		_deck_light.omni_range = 5.5
+	# Окна остаются тёмными днём; к ночи тёплое свечение за стеклом
+	# сопровождается небольшим настоящим светом только вокруг рубки.
+	var window_on := clampf((night01 - 0.30) / 0.52, 0.0, 1.0)
+	if _window_glass_mat != null:
+		_window_glass_mat.emission = Color("121e24").lerp(Color("ffd49a"), window_on)
+		_window_glass_mat.emission_energy_multiplier = lerpf(0.08 * SHIP_EMISSION_BOOST, 2.8, window_on)
+	if _window_light != null:
+		_window_light.light_energy = 0.85 * window_on
 
 
 func set_trailer_enabled(enabled: bool) -> void:
@@ -323,7 +334,7 @@ func _update_animations(delta: float) -> void:
 			mesh_node.scale.y = lerpf(mesh_node.scale.y, fill, minf(1.0, delta * 5.0))
 			mesh_node.position.y = 1.06 + mesh_node.scale.y * 0.34
 			var mat := _vat_mats[i]
-			mat.emission_energy_multiplier = 0.35 + fill * 0.85 + _refine_flash * 1.5
+			mat.emission_energy_multiplier = SHIP_EMISSION_BOOST * (0.35 + fill * 0.85 + _refine_flash * 1.5)
 			if has_trailer and i < _trailer_sight_fills.size():
 				var t_fill := clampf(0.12 + float(main.refined[i]) * 0.28, 0.12, 1.0)
 				var tf := _trailer_sight_fills[i]
@@ -377,7 +388,7 @@ func _update_pump(delta: float) -> void:
 
 		_hose_mat.albedo_color = pigment_col.darkened(0.35)
 		_hose_mat.emission = pigment_col
-		_hose_mat.emission_energy_multiplier = 0.65 + 0.35 * sin(_anim_time * 10.0)
+		_hose_mat.emission_energy_multiplier = SHIP_EMISSION_BOOST * (0.65 + 0.35 * sin(_anim_time * 10.0))
 		_intake_mat.albedo_color = pigment_col.darkened(0.15)
 		_intake_mat.emission = pigment_col
 
@@ -481,7 +492,7 @@ func _material(color: Color, metal := 0.0, glow := 0.0, rough := 0.68) -> Standa
 	if glow > 0.0:
 		mat.emission_enabled = true
 		mat.emission = color
-		mat.emission_energy_multiplier = glow
+		mat.emission_energy_multiplier = glow * SHIP_EMISSION_BOOST
 	return mat
 
 
@@ -615,6 +626,7 @@ func _build_appearance() -> void:
 	var dark_iron := _material(Color("161c20"), 0.55, 0.0, 0.50)
 	var aged_bronze := _material(Color("7d6340"), 0.62, 0.0, 0.45)
 	var bridge_glass := _material(Color("121e24"), 0.35, 0.08, 0.18)
+	_window_glass_mat = bridge_glass
 	var warm_interior := _material(Color("d69e5c"), 0.10, 0.45, 0.30)
 
 	# 1. ГЛАВНЫЙ СТАЛЬНОЙ КОРПУС
@@ -700,6 +712,12 @@ func _build_appearance() -> void:
 		_box_on(_body, Vector3(side * 1.02, 2.48, -1.32), Vector3(0.06, 0.44, 1.52), bridge_glass)
 		_box_on(_body, Vector3(side * 1.03, 2.48, -1.32), Vector3(0.07, 0.48, 0.06), cabin_trim)
 	_box_on(_body, Vector3(-0.48, 2.48, -0.29), Vector3(0.72, 0.42, 0.06), bridge_glass)
+	_window_light = OmniLight3D.new()
+	_window_light.light_color = Color("ffd49a")
+	_window_light.light_energy = 0.0
+	_window_light.omni_range = 3.8
+	_window_light.position = Vector3(0.0, 2.40, -1.35)
+	_body.add_child(_window_light)
 
 	_loft_segment(_body, -2.62, -2.52, -0.18, -0.22, 2.82, 2.94, 2.28, 2.14, 2.16, 2.04, roof_ochre)
 
@@ -708,7 +726,7 @@ func _build_appearance() -> void:
 	_cyl_on(_body, Vector3(0.0, 3.12, -2.38), 0.09, 0.09, 0.06, _material(Color("ffdf9e"), 0.1, 2.0, 0.2), Vector3(PI * 0.5 - 0.28, 0.0, 0.0), 12)
 	_bow_spot = SpotLight3D.new()
 	_bow_spot.light_color = Color("ffe8ba")
-	_bow_spot.light_energy = 4.0
+	_bow_spot.light_energy = 8.0
 	_bow_spot.spot_range = 24.0
 	_bow_spot.spot_angle = 30.0
 	_bow_spot.light_volumetric_fog_energy = 1.3

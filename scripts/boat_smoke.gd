@@ -20,6 +20,9 @@ func _physics_process(_delta: float) -> void:
 		_check(main.coast.water_depth(origin.x, origin.z) > 2.0, "лодка спущена на глубокую воду")
 		_check(main.slicks.size() >= 6, "SDF-пятна распределены вокруг лодки")
 		_check(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "изометрическая камера")
+		_check(is_zero_approx(main.boat._window_light.light_energy) and
+			main.boat._window_glass_mat.emission_energy_multiplier < 0.2,
+			"днём окна не освещают рубку")
 		var yaw := main.boat.rotation.y
 		var view_right := main.camera.global_transform.basis.x
 		var heading := -main.boat.global_transform.basis.z
@@ -200,9 +203,15 @@ func _physics_process(_delta: float) -> void:
 		var before_ssao := main.world._env.ssao_light_affect
 		var before_sky := float(main.world._sky_mat.get_shader_parameter("daylight_scatter"))
 		var spot := main.boat._bow_spot
-		_check(spot != null and spot.light_energy > 2.5 and
+		_check(spot != null and spot.light_energy > 11.9 and
 			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
-			"ночной прожектор направлен на ближнюю воду и остаётся локальным")
+			"ночной прожектор стал вдвое ярче, оставаясь локальным")
+		_check(main.boat._window_glass_mat.emission_energy_multiplier > 2.5 and
+			main.boat._window_light.light_energy > 0.8 and
+			main.boat._window_light.omni_range < 4.0 and
+			main.boat._deck_light.light_energy > 0.4 and
+			main.boat._vat_mats[0].emission_energy_multiplier > 0.7,
+			"ночью светятся окна, рубка и приборы без глобальной засветки")
 		main.debug_toggle_headlight()
 		_check(not spot.visible and is_equal_approx(main.world._sun.light_energy, before_light) and
 			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
