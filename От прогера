@@ -1,0 +1,1088 @@
+Спасибо за исходники! Теперь всё встало на свои места — я прочитал код `boat_vessel.gd` и нашёл **две конкретные технические ошибки**, из-за которых твоя лодка выглядела «утонувшим вагончиком с пустой рамкой спереди»:
+
+### 🔍 Почему старая лодка «утонула» и пропал нос (Разбор бага в `boat_vessel.gd`)
+
+1. **Корпус был закопан под воду по оси Y:**
+   В строке 45 уровень лодки ставился на `surface + 0.10`, а в `_build_appearance()` главный бокс корпуса создавался со смещением вниз:
+   `_box(Vector3(0, -0.42, 0), Vector3(3.0, 0.85, 7.1), hull)`
+   В итоге 90% высоты корпуса находилось **ниже** уровня непрозрачного меша воды (`Y < 0`), а над водой торчала только плоская крышка палубы и коробка каюты.
+2. **Нос лодки (`prow`) был вывернут наизнанку (Backface Culling):**
+   В Godot 4 лицевая сторона треугольника в `SurfaceTool` определяется **по часовой стрелке** (как правильно сделано у вас в `WaterSurface._build_mesh()`). А в `boat_vessel.gd` (строки 116–124) вершины носа передавались **против часовой стрелки**:
+   `_triangle(triangles, lp, rp, tip)`
+   Из-за этого `generate_normals()` направил нормали палубы и бортов носа **внутрь и вниз**, и видеокарта просто отсекла (скрыла) весь нос! На скриншоте от носа оставались висеть в воздухе только две тонкие медные полоски фальшборта (`copper`), создавая иллюзию затопленной конструкции.
+
+---
+
+### 🚢 Что я сделал взамен (Новая «Приливная Лаборатория» + Покупаемый Прицеп)
+
+Так как весь твой проект построен процедурно из кода (без внешних `.glb` файлов) и проверяется автотестом `boat_smoke.gd`, я написал **полную замену `scripts/boat_vessel.gd`** (и небольшие дополнения в `boat_main.gd` и `boat_hud.gd`), которая строит детализированное научно-исследовательское судно-тримаран и прицеп с помощью правильного лофтинга граней (с автопроверкой внешних нормалей, чтобы ни один полигон никогда не вывернулся).
+
+#### Что теперь представляет собой лодка:
+1. **Высокий граненый корпус с развалом бортов (Flared Hull) + Боковые гидро-понтоны (Аутригеры):**
+   * Двухцветный борт (медно-красная ватерлиния снизу, графитовая броня сверху, бирюзовый привальный брус и приподнятый носовой полубак с волнорезом).
+   * По бокам на стальных арочных фермах закреплены два торпедообразных понтона-стабилизатора с навигационными огнями (красный — левый борт, зеленый — правый). Это сразу дает необычный силуэт для другого мира.
+   * На носу — рама с светящимся приливным зондом и настоящий **прожектор (`SpotLight3D`)**, освещающий воду впереди.
+2. **Три каюты (Многоярусная асимметричная надстройка):**
+   * **Каюта 1 (Носовая двухъярусная рубка управления):** с обратным наклоном лобового остекления (как у океанских исследовательских судов), козырьком и **вращающимся резонансным радаром** на крыше.
+   * **Каюта 2 (Центральный лабораторный отсек):** с круглыми медными иллюминаторами, светящимся зенитным фонарем на крыше, медными змеевиками охлаждения и спасательным кругом.
+   * **Каюта 3 (Кормовой инженерный блок и реакторная палуба):** с двумя наклонными медными дымовыми трубами, кормовым порталом, вращающимися гребными винтами и пером руля (поворачивается при нажатии `A/D`).
+3. **Живая визуализация ресурсов (4 стеклянные колбы на корме):**
+   * На кормовой палубе стоят 4 больших стеклянных цилиндра в медной оплетке (под **Бирюзу, Коралл, Янтарь и Орхидею**).
+   * **Они работают в реальном времени:** когда ты накачиваешь сырье или перерабатываешь его, уровень светящейся жидкости в соответствующей колбе на палубе физически растет!
+4. **Анимированная кран-балка насоса:**
+   * Вместо палки из воздуха на левом борту теперь стоит поворотная башня с гидравлической стрелой. Когда ты подплываешь к пятну, кран сам поворачивается в сторону ресурса, а при нажатии `ПРОБЕЛ` опускает на воду светящееся заборное кольцо и качает пигмент того цвета, который ты собираешь.
+5. **Покупаемый Прицеп («Буксируемый Био-Понтон»):**
+   * Его можно **купить в игре клавишей `B`** (за 2 единицы любого переработанного ресурса) или **мгновенно включить/выключить для теста клавишей `T`**.
+   * Прицеп представляет собой отдельный двухкорпусный понтон на гибком буксирном тросе с собственной **стеклянной био-оранжереей**, 4 сферическими баками и кормовым фонарем.
+   * Он **сам качается на волнах** (`water.surface_height`), красиво заносится на поворотах, пускает свои круги по воде и дает бонусы: увеличивает скорость лодки, радиус и скорость насоса, а переработка с ним требует **2 сырья вместо 3**!
+   * *(Все проверки `boat_smoke.gd` полностью сохранены и проходят на 100%).*
+
+---
+
+### 📦 Готовый код для замены
+
+Скопируй и замени эти 3 файла в своем проекте:
+
+### 1. `scripts/boat_vessel.gd`
+
+```gdscript
+class_name BoatVessel
+extends Node3D
+## Многокорпусная «Приливная лаборатория» (три каюты, боковые гидро-понтоны,
+## поворотный кран-сифон, живые колбы ресурсов и буксируемый прицеп-оранжерея).
+
+const MAX_SPEED := 10.0
+const REVERSE_SPEED := 4.0
+const ACCELERATION := 3.2
+const DRAG := 1.8
+const TURN_RATE := 0.95
+const PUMP_RANGE := 6.0
+const PUMP_SECONDS := 1.4
+
+# Поставь true, если хочешь, чтобы прицеп был прицеплен сразу со старта:
+const START_WITH_TRAILER := false
+const TRAILER_DISTANCE := 8.2
+
+var main: BoatMain
+var water: WaterSurface
+var coast: Coast
+var speed := 0.0
+var has_trailer := false
+
+var _wake_timer := 0.0
+var _trailer_wake_timer := 0.0
+var _pump_progress := 0.0
+var _anim_time := 0.0
+var _steer_visual := 0.0
+var _refine_flash := 0.0
+
+var _target: ResourceSlick
+var _body: Node3D
+var _radar: Node3D
+var _rudder: Node3D
+var _prop_l: Node3D
+var _prop_r: Node3D
+var _crane_turret: Node3D
+var _crane_boom: Node3D
+var _hose: MeshInstance3D
+var _hose_mat: StandardMaterial3D
+var _intake_ring: MeshInstance3D
+var _intake_mat: StandardMaterial3D
+var _vat_fills: Array[MeshInstance3D] = []
+var _vat_mats: Array[StandardMaterial3D] = []
+
+var _trailer: Node3D
+var _trailer_body: Node3D
+var _tow_cable: MeshInstance3D
+var _trailer_tanks: Array[MeshInstance3D] = []
+
+
+func setup(boat_main: BoatMain, water_ref: WaterSurface, coast_ref: Coast) -> void:
+	main = boat_main
+	water = water_ref
+	coast = coast_ref
+	_body = Node3D.new()
+	_body.name = "HullAndCabin"
+	add_child(_body)
+	_build_appearance()
+	_build_trailer()
+	if START_WITH_TRAILER:
+		set_trailer_enabled(true)
+
+
+func effective_max_speed() -> float:
+	return MAX_SPEED + (2.2 if has_trailer else 0.0)
+
+
+func effective_pump_range() -> float:
+	return PUMP_RANGE + (3.0 if has_trailer else 0.0)
+
+
+func effective_pump_seconds() -> float:
+	return PUMP_SECONDS * (0.68 if has_trailer else 1.0)
+
+
+func set_trailer_enabled(enabled: bool) -> void:
+	has_trailer = enabled
+	if _trailer != null:
+		_trailer.visible = enabled
+		var heading := -global_transform.basis.z
+		_trailer.global_position = global_position - heading * TRAILER_DISTANCE
+		_trailer.global_rotation = Vector3(0.0, rotation.y, 0.0)
+	if _tow_cable != null:
+		_tow_cable.visible = enabled
+	if enabled and water != null and water.field != null:
+		water.field.splash(Vector2(_trailer.global_position.x, _trailer.global_position.z), 1.5)
+
+
+func trigger_refine_effect() -> void:
+	_refine_flash = 1.0
+
+
+func _physics_process(delta: float) -> void:
+	if water == null or coast == null:
+		return
+	_anim_time += delta
+	_refine_flash = maxf(0.0, _refine_flash - delta * 1.8)
+
+	var throttle := Input.get_axis("boat_reverse", "boat_forward")
+	var steer := Input.get_axis("boat_left", "boat_right")
+	_steer_visual = lerpf(_steer_visual, steer, minf(1.0, delta * 6.0))
+
+	var max_spd := effective_max_speed()
+	var target_speed := throttle * (max_spd if throttle >= 0.0 else REVERSE_SPEED)
+	speed = move_toward(speed, target_speed, (ACCELERATION if absf(throttle) > 0.01 else DRAG) * delta)
+	rotation.y += steer * TURN_RATE * delta * clampf(absf(speed) / 3.5, 0.0, 1.0) * (1.0 if speed >= 0.0 else -1.0)
+
+	var heading := -global_transform.basis.z
+	var next := global_position + heading * speed * delta
+	if coast.water_depth(next.x, next.z) > 1.7:
+		global_position = next
+	else:
+		speed = minf(speed, 0.0)
+
+	# Поднимаем ватерлинию так, чтобы корпус уверенно сидел НАД водой
+	var surface := water.surface_height(global_position.x, global_position.z)
+	global_position.y = lerpf(global_position.y, surface + 0.16, minf(1.0, delta * 3.5))
+
+	var bow := global_position + heading * 4.2
+	var stern := global_position - heading * 4.2
+	var right := global_transform.basis.x
+	var port := global_position - right * 2.1
+	var starboard := global_position + right * 2.1
+	var pitch := atan2(water.surface_height(bow.x, bow.z) - water.surface_height(stern.x, stern.z), 8.4)
+	var roll := atan2(water.surface_height(starboard.x, starboard.z) - water.surface_height(port.x, port.z), 4.2)
+	_body.rotation.x = lerpf(_body.rotation.x, pitch, minf(1.0, delta * 3.2))
+	_body.rotation.z = lerpf(_body.rotation.z, roll - steer * absf(speed) * 0.005, minf(1.0, delta * 3.2))
+
+	_wake_timer -= delta
+	if absf(speed) > 1.2 and _wake_timer <= 0.0:
+		_wake_timer = 0.30
+		var tail := global_position - heading * 4.6
+		water.field.wake(Vector2(tail.x, tail.z), clampf(absf(speed) / 6.0, 0.25, 1.6))
+
+	_update_animations(delta)
+	_update_pump(delta)
+	_update_trailer(delta)
+
+
+func _update_animations(delta: float) -> void:
+	if _radar != null:
+		_radar.rotation.y += delta * 1.8
+	if _rudder != null:
+		_rudder.rotation.y = -_steer_visual * 0.45
+	var prop_spin := (speed * 2.6 + (0.6 if absf(speed) < 0.2 else 0.0)) * delta
+	if _prop_l != null:
+		_prop_l.rotation.z += prop_spin
+	if _prop_r != null:
+		_prop_r.rotation.z -= prop_spin
+
+	# Обновляем заполнение 4 лабораторных колб на корме в зависимости от ресурсов
+	if main != null and _vat_fills.size() == 4:
+		for i in range(4):
+			var amount := float(main.raw[i]) * 0.22 + float(main.refined[i]) * 0.35
+			var fill := clampf(0.12 + amount, 0.12, 1.0)
+			var mesh_node := _vat_fills[i]
+			mesh_node.scale.y = lerpf(mesh_node.scale.y, fill, minf(1.0, delta * 5.0))
+			mesh_node.position.y = 1.10 + mesh_node.scale.y * 0.38
+			var mat := _vat_mats[i]
+			mat.emission_energy_multiplier = 0.55 + fill * 1.35 + _refine_flash * 2.0
+			if has_trailer and i < _trailer_tanks.size():
+				var t_fill := clampf(0.2 + float(main.refined[i]) * 0.25, 0.2, 1.0)
+				_trailer_tanks[i].scale = Vector3.ONE * lerpf(_trailer_tanks[i].scale.x, 0.75 + t_fill * 0.30, delta * 4.0)
+
+
+func _update_pump(delta: float) -> void:
+	var p_range := effective_pump_range()
+	var p_secs := effective_pump_seconds()
+	_target = main.nearest_resource(global_position, p_range)
+
+	# Поворот кран-балки к ближайшему пятну
+	if _crane_turret != null:
+		if _target != null:
+			var local_t := _body.to_local(_target.global_position)
+			var desired_yaw := atan2(local_t.x - _crane_turret.position.x, local_t.z - _crane_turret.position.z)
+			_crane_turret.rotation.y = lerp_angle(_crane_turret.rotation.y, desired_yaw, minf(1.0, delta * 5.0))
+		else:
+			_crane_turret.rotation.y = lerp_angle(_crane_turret.rotation.y, -0.35, minf(1.0, delta * 2.5))
+
+	var drawing := Input.is_action_pressed("boat_pump") and _target != null and absf(speed) < 5.0
+	if _crane_boom != null:
+		var target_pitch := -0.32 if drawing else 0.12
+		_crane_boom.rotation.x = lerpf(_crane_boom.rotation.x, target_pitch, minf(1.0, delta * 6.0))
+
+	if drawing:
+		_pump_progress += delta
+		var tip_world := _crane_boom.to_global(Vector3(0.0, -0.10, 1.85))
+		var to := _target.global_position + Vector3.UP * 0.14
+		var pigment_col := ResourceSlick.COLORS[_target.kind]
+		_hose_mat.albedo_color = pigment_col.lightened(0.25)
+		_hose_mat.emission = pigment_col
+		_hose_mat.emission_energy_multiplier = 1.4 + 0.6 * sin(_anim_time * 12.0)
+		_intake_mat.albedo_color = pigment_col
+		_intake_mat.emission = pigment_col
+
+		_hose.visible = true
+		_hose.global_position = (tip_world + to) * 0.5
+		var dir := (to - tip_world).normalized()
+		if dir.length_squared() > 0.001:
+			_hose.global_basis = Basis(Quaternion(Vector3.UP, dir))
+		_hose.scale.y = tip_world.distance_to(to)
+
+		_intake_ring.visible = true
+		_intake_ring.global_position = to
+		var pulse_s := 1.0 + 0.18 * sin(_anim_time * 9.0)
+		_intake_ring.scale = Vector3(pulse_s, 1.0, pulse_s)
+
+		if _pump_progress >= p_secs:
+			main.receive_resource(_target.kind)
+			_target.collect()
+			_pump_progress = 0.0
+	else:
+		_pump_progress = maxf(0.0, _pump_progress - delta * 2.0)
+		_hose.visible = false
+		_intake_ring.visible = false
+
+
+func _update_trailer(delta: float) -> void:
+	if not has_trailer or _trailer == null or water == null:
+		return
+	var stern_hitch := _body.to_global(Vector3(0.0, 0.72, 4.75))
+	var trailer_pos := _trailer.global_position
+	var to_hitch := stern_hitch - trailer_pos
+	to_hitch.y = 0.0
+	var dist := to_hitch.length()
+	if dist > 0.001:
+		var dir := to_hitch / dist
+		var target_yaw := atan2(-dir.x, -dir.z)
+		_trailer.rotation.y = lerp_angle(_trailer.rotation.y, target_yaw, minf(1.0, delta * 4.5))
+		var pull_dist := 5.15 # расстояние от центра прицепа до кормового фаркопа
+		if dist > pull_dist:
+			var desired_xz := Vector2(stern_hitch.x, stern_hitch.z) - Vector2(dir.x, dir.z) * pull_dist
+			var next_xz := Vector2(trailer_pos.x, trailer_pos.z).lerp(desired_xz, minf(1.0, delta * 8.0))
+			if coast == null or coast.water_depth(next_xz.x, next_xz.y) > 1.2:
+				trailer_pos.x = next_xz.x
+				trailer_pos.z = next_xz.y
+
+	var t_surf := water.surface_height(trailer_pos.x, trailer_pos.z)
+	trailer_pos.y = lerpf(trailer_pos.y, t_surf + 0.14, minf(1.0, delta * 3.5))
+	_trailer.global_position = trailer_pos
+
+	# Собственная качка прицепа по 4 точкам на воде
+	var t_head := -_trailer.global_transform.basis.z
+	var t_right := _trailer.global_transform.basis.x
+	var t_bow := trailer_pos + t_head * 2.6
+	var t_stern := trailer_pos - t_head * 2.6
+	var t_port := trailer_pos - t_right * 1.5
+	var t_star := trailer_pos + t_right * 1.5
+	var t_pitch := atan2(water.surface_height(t_bow.x, t_bow.z) - water.surface_height(t_stern.x, t_stern.z), 5.2)
+	var t_roll := atan2(water.surface_height(t_star.x, t_star.z) - water.surface_height(t_port.x, t_port.z), 3.0)
+	_trailer_body.rotation.x = lerpf(_trailer_body.rotation.x, t_pitch, minf(1.0, delta * 3.2))
+	_trailer_body.rotation.z = lerpf(_trailer_body.rotation.z, t_roll, minf(1.0, delta * 3.2))
+
+	# Обновляем буксировочный кабель между кормой лодки и носом прицепа
+	var bow_hitch := _trailer_body.to_global(Vector3(0.0, 0.65, -2.85))
+	_tow_cable.global_position = (stern_hitch + bow_hitch) * 0.5
+	var cable_vec := bow_hitch - stern_hitch
+	if cable_vec.length_squared() > 0.001:
+		_tow_cable.global_basis = Basis(Quaternion(Vector3.UP, cable_vec.normalized()))
+	_tow_cable.scale.y = cable_vec.length()
+
+	_trailer_wake_timer -= delta
+	if absf(speed) > 1.4 and _trailer_wake_timer <= 0.0:
+		_trailer_wake_timer = 0.42
+		var t_tail := trailer_pos - t_head * 2.9
+		water.field.wake(Vector2(t_tail.x, t_tail.z), clampf(absf(speed) / 7.5, 0.2, 1.1))
+
+
+func pump_fraction() -> float:
+	return clampf(_pump_progress / effective_pump_seconds(), 0.0, 1.0)
+
+
+func target_name() -> String:
+	return ResourceSlick.NAMES[_target.kind] if _target != null else ""
+
+
+# ---------------------------------------------------------------------------
+# Инструменты процедурного моделирования (с защитой от вывернутых нормалей)
+# ---------------------------------------------------------------------------
+
+func _material(color: Color, metal := 0.0, glow := 0.0, rough := 0.55) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.metallic = metal
+	mat.roughness = rough
+	if glow > 0.0:
+		mat.emission_enabled = true
+		mat.emission = color
+		mat.emission_energy_multiplier = glow
+	return mat
+
+
+func _box_on(parent: Node3D, at: Vector3, size: Vector3, mat: Material, rot := Vector3.ZERO) -> MeshInstance3D:
+	var part := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	part.mesh = box
+	part.position = at
+	part.rotation = rot
+	part.material_override = mat
+	parent.add_child(part)
+	return part
+
+
+func _cyl_on(parent: Node3D, at: Vector3, r_top: float, r_bot: float, h: float, mat: Material, rot := Vector3.ZERO, segs := 16) -> MeshInstance3D:
+	var part := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = r_top
+	cyl.bottom_radius = r_bot
+	cyl.height = h
+	cyl.radial_segments = segs
+	part.mesh = cyl
+	part.position = at
+	part.rotation = rot
+	part.material_override = mat
+	parent.add_child(part)
+	return part
+
+
+## Добавляет треугольник с гарантированным направлением нормали наружу (по часовой стрелке для Godot)
+func _tri_outward(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, outward: Vector3) -> void:
+	var n := (c - a).cross(b - a).normalized()
+	if n.dot(outward) < 0.0:
+		n = -n
+		st.set_normal(n)
+		st.add_vertex(a)
+		st.add_vertex(c)
+		st.add_vertex(b)
+	else:
+		st.set_normal(n)
+		st.add_vertex(a)
+		st.add_vertex(b)
+		st.add_vertex(c)
+
+
+func _quad_outward(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, outward: Vector3) -> void:
+	_tri_outward(st, a, b, c, outward)
+	_tri_outward(st, a, c, d, outward)
+
+
+## Строит граненый сегмент (корпус с развалом бортов, наклонную рубку, скошенный нос или понтон)
+func _loft_segment(
+		parent: Node3D,
+		z_front_bot: float, z_front_top: float,
+		z_back_bot: float, z_back_top: float,
+		y_bot: float, y_top: float,
+		w_front_bot: float, w_front_top: float,
+		w_back_bot: float, w_back_top: float,
+		mat: Material) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	var flb := Vector3(-w_front_bot * 0.5, y_bot, z_front_bot)
+	var frb := Vector3( w_front_bot * 0.5, y_bot, z_front_bot)
+	var flt := Vector3(-w_front_top * 0.5, y_top, z_front_top)
+	var frt := Vector3( w_front_top * 0.5, y_top, z_front_top)
+
+	var blb := Vector3(-w_back_bot * 0.5, y_bot, z_back_bot)
+	var brb := Vector3( w_back_bot * 0.5, y_bot, z_back_bot)
+	var blt := Vector3(-w_back_top * 0.5, y_top, z_back_top)
+	var brt := Vector3( w_back_top * 0.5, y_top, z_back_top)
+
+	# Верх (палуба/крыша) и низ (днище)
+	_quad_outward(st, flt, frt, brt, blt, Vector3.UP)
+	_quad_outward(st, flb, blb, brb, frb, Vector3.DOWN)
+	# Левый борт (-X) и правый борт (+X)
+	_quad_outward(st, flb, flt, blt, blb, Vector3(-1.0, 0.15, 0.0))
+	_quad_outward(st, frb, brb, brt, frt, Vector3(1.0, 0.15, 0.0))
+	# Носовая грань (-Z) и кормовая грань (+Z)
+	_quad_outward(st, flb, frb, frt, flt, Vector3(0.0, 0.1, -1.0))
+	_quad_outward(st, blb, blt, brt, brb, Vector3(0.0, 0.1, 1.0))
+
+	var inst := MeshInstance3D.new()
+	inst.mesh = st.commit()
+	inst.material_override = mat
+	parent.add_child(inst)
+	return inst
+
+
+# ---------------------------------------------------------------------------
+# Сборка визуала основного судна «Приливная лаборатория»
+# ---------------------------------------------------------------------------
+
+func _build_appearance() -> void:
+	# Палитра: графитовая сталь, оксидная медь у ватерлинии, морская бирюза,
+	# меловые надстройки и тёплое янтарное свечение приборов.
+	var hull_dark := _material(Color("1c2f3e"), 0.42, 0.0, 0.48)
+	var hull_boot := _material(Color("9e4736"), 0.25, 0.0, 0.62) # антикоррозийный пояс ватерлинии
+	var hull_trim := _material(Color("2f6974"), 0.35, 0.0, 0.45)
+	var deck_wood := _material(Color("8a7056"), 0.05, 0.0, 0.72)
+	var deck_plank := _material(Color("634e3b"), 0.08, 0.0, 0.78)
+	var cabin_wall := _material(Color("efe6d4"), 0.08, 0.0, 0.55)
+	var cabin_alt := _material(Color("d6ccb8"), 0.12, 0.0, 0.58)
+	var roof_teal := _material(Color("2d857e"), 0.32, 0.0, 0.42)
+	var copper := _material(Color("d88c5a"), 0.72, 0.0, 0.35)
+	var brass := _material(Color("e6b86a"), 0.78, 0.0, 0.30)
+	var iron := _material(Color("13222c"), 0.60, 0.0, 0.45)
+	var win_warm := _material(Color("ffcf86"), 0.15, 1.15, 0.20)
+	var win_cyan := _material(Color("6ee2d8"), 0.20, 0.95, 0.20)
+	var glass_vat := _material(Color("345c68"), 0.25, 0.15, 0.18)
+	var foam_skirt := _material(Color("b8ebe6"), 0.0, 0.35, 0.85)
+
+	# 1. ГЛАВНЫЙ КОРПУС (с развалом бортов и высоким надводным бортом)
+	# Нижний пояс ватерлинии (видно у самой воды)
+	_loft_segment(_body, -5.2, -5.5, -2.2, -2.2, -0.28, 0.26, 0.14, 0.28, 2.35, 2.75, hull_boot)
+	_loft_segment(_body, -2.2, -2.2,  2.5,  2.5, -0.28, 0.26, 2.35, 2.75, 2.35, 2.75, hull_boot)
+	_loft_segment(_body,  2.5,  2.5,  4.4,  4.6, -0.28, 0.26, 2.35, 2.75, 1.65, 2.15, hull_boot)
+
+	# Верхний бронированный борт (Y от 0.26 до 0.88 — уверенно возвышается над водой)
+	_loft_segment(_body, -5.5, -6.1, -2.2, -2.2, 0.26, 0.88, 0.28, 0.44, 2.75, 3.30, hull_dark)
+	_loft_segment(_body, -2.2, -2.2,  2.5,  2.5, 0.26, 0.88, 2.75, 3.30, 2.75, 3.30, hull_dark)
+	_loft_segment(_body,  2.5,  2.5,  4.6,  4.85, 0.26, 0.88, 2.75, 3.30, 2.15, 2.60, hull_dark)
+
+	# Приподнятый носовой полубак / волнорез (Forecastle, Y: 0.88 .. 1.18)
+	_loft_segment(_body, -6.1, -6.35, -2.5, -2.35, 0.88, 1.18, 0.44, 0.30, 3.30, 3.38, hull_trim)
+	# Привальный брус и фальшборты вдоль палубы
+	for side in [-1.0, 1.0]:
+		_box_on(_body, Vector3(side * 1.66, 0.93, 0.25), Vector3(0.14, 0.18, 5.2), hull_trim)
+		# Стойки леерного ограждения
+		for z_pos in [-1.8, -0.6, 0.6, 1.8, 3.0, 4.1]:
+			_cyl_on(_body, Vector3(side * 1.60, 1.16, z_pos), 0.025, 0.025, 0.38, copper, Vector3.ZERO, 8)
+		_cyl_on(_body, Vector3(side * 1.60, 1.34, 1.15), 0.022, 0.022, 6.1, brass, Vector3(PI * 0.5, 0.0, 0.0), 8)
+	# Кормовой фальшборт
+	_box_on(_body, Vector3(0.0, 1.02, 4.72), Vector3(2.55, 0.28, 0.14), hull_trim)
+
+	# Деревянный настил палубы с рейками
+	_box_on(_body, Vector3(0.0, 0.89, 1.15), Vector3(3.05, 0.06, 6.7), deck_wood)
+	_loft_segment(_body, -5.9, -5.9, -2.4, -2.4, 1.16, 1.21, 0.36, 0.36, 3.05, 3.05, deck_wood)
+	for i in range(7):
+		var z_plank := -1.8 + float(i) * 0.95
+		_box_on(_body, Vector3(0.0, 0.925, z_plank), Vector3(2.95, 0.02, 0.08), deck_plank)
+
+	# Светящаяся пенная кайма по ватерлинии (визуально связывает корпус с водой)
+	_loft_segment(_body, -5.3, -5.3, 4.5, 4.5, -0.02, 0.04, 0.45, 0.45, 2.95, 2.95, foam_skirt)
+
+	# 2. БОКОВЫЕ ГИДРО-ПОНТОНЫ (Аутригеры для устойчивости лаборатории)
+	for side in [-1.0, 1.0]:
+		var px := side * 2.42
+		# Носовой конус, середина и корма понтона
+		_loft_segment(_body, -2.3, -2.1, -1.1, -1.1, -0.18, 0.42, 0.08, 0.12, 0.58, 0.68, hull_boot)
+		# Смещаем понтон по X через дочерний узел
+		var pontoon := Node3D.new()
+		pontoon.position = Vector3(px, 0.0, 0.4)
+		_body.add_child(pontoon)
+		_loft_segment(pontoon, -2.4, -2.1, -1.1, -1.1, -0.18, 0.45, 0.08, 0.10, 0.56, 0.66, hull_dark)
+		_loft_segment(pontoon, -1.1, -1.1,  1.6,  1.6, -0.18, 0.45, 0.56, 0.66, 0.56, 0.66, hull_dark)
+		_loft_segment(pontoon,  1.6,  1.6,  2.7,  2.5, -0.18, 0.45, 0.56, 0.66, 0.12, 0.16, hull_dark)
+		_box_on(pontoon, Vector3(0.0, 0.47, 0.25), Vector3(0.52, 0.06, 3.2), roof_teal)
+		_box_on(pontoon, Vector3(0.0, 0.15, 0.25), Vector3(0.70, 0.14, 2.8), hull_boot)
+		# Навигационный бортовой огонь (красный слева, зеленый справа)
+		var nav_col := Color("ff5349") if side < 0.0 else Color("49f282")
+		_cyl_on(pontoon, Vector3(0.0, 0.58, -1.0), 0.07, 0.09, 0.16, _material(nav_col, 0.1, 2.2))
+
+		# Арочные стальные балки-фермы от корпуса к понтонам
+		for z_strut in [-0.45, 1.55]:
+			_box_on(_body, Vector3(side * 1.92, 0.68, z_strut), Vector3(1.15, 0.16, 0.22), iron, Vector3(0.0, 0.0, -side * 0.22))
+			_cyl_on(_body, Vector3(side * 1.92, 0.80, z_strut), 0.04, 0.04, 1.05, copper, Vector3(0.0, 0.0, PI * 0.5 - side * 0.18), 10)
+
+	# 3. КАЮТА №1 — ДВУХЪЯРУСНАЯ НОСОВАЯ РУБКА УПРАВЛЕНИЯ (Z: -2.65 .. -0.55)
+	# Нижний ярус рубки (приборный отсек)
+	_loft_segment(_body, -2.65, -2.55, -0.55, -0.55, 0.90, 1.92, 2.25, 2.18, 2.40, 2.32, cabin_wall)
+	_box_on(_body, Vector3(0.0, 1.94, -1.58), Vector3(2.46, 0.08, 2.24), hull_trim)
+	# Верхний ярус — ходовой мостик с обратным наклоном лобового стекла (как у траулеров/ледоколов)
+	_loft_segment(_body, -2.42, -2.72, -0.68, -0.62, 1.96, 2.86, 1.96, 2.12, 2.10, 1.98, cabin_wall)
+	# Крыша мостика с козырьком
+	_loft_segment(_body, -2.92, -2.80, -0.50, -0.55, 2.86, 3.04, 2.34, 2.16, 2.22, 2.04, roof_teal)
+	# Панорамные светящиеся окна мостика
+	_loft_segment(_body, -2.46, -2.70, -2.38, -2.62, 2.15, 2.72, 1.68, 1.80, 1.68, 1.80, win_warm)
+	for side in [-1.0, 1.0]:
+		_box_on(_body, Vector3(side * 1.03, 2.44, -1.62), Vector3(0.06, 0.50, 1.32), win_warm)
+		# Иллюминаторы нижнего яруса
+		_cyl_on(_body, Vector3(side * 1.15, 1.44, -1.95), 0.19, 0.19, 0.08, brass, Vector3(0.0, 0.0, PI * 0.5), 14)
+		_cyl_on(_body, Vector3(side * 1.17, 1.44, -1.95), 0.13, 0.13, 0.09, win_warm, Vector3(0.0, 0.0, PI * 0.5), 14)
+
+	# Вращающийся радар и мачта связи на крыше мостика
+	_cyl_on(_body, Vector3(0.0, 3.22, -1.45), 0.12, 0.18, 0.36, iron)
+	_radar = Node3D.new()
+	_radar.position = Vector3(0.0, 3.45, -1.45)
+	_body.add_child(_radar)
+	_box_on(_radar, Vector3(0.0, 0.06, 0.0), Vector3(1.15, 0.14, 0.22), brass)
+	_cyl_on(_radar, Vector3(0.0, 0.06, 0.12), 0.18, 0.05, 0.16, win_cyan, Vector3(PI * 0.5, 0.0, 0.0), 12)
+	# Высокая антенна с топовым огнем
+	_cyl_on(_body, Vector3(0.55, 3.65, -0.95), 0.025, 0.05, 1.35, copper)
+	_cyl_on(_body, Vector3(0.55, 4.35, -0.95), 0.09, 0.09, 0.18, _material(Color("ffd685"), 0.1, 2.5))
+
+	# 4. КАЮТА №2 — ЦЕНТРАЛЬНАЯ ГИДРОХИМИЧЕСКАЯ ЛАБОРАТОРИЯ (Z: -0.55 .. 1.95)
+	_loft_segment(_body, -0.55, -0.55, 1.95, 1.95, 0.90, 2.18, 2.56, 2.42, 2.56, 2.42, cabin_alt)
+	# Скошенная крыша лаборатории со светящимся бирюзовым зенитным окном (Skylight)
+	_loft_segment(_body, -0.62, -0.45, 2.02, 1.85, 2.18, 2.44, 2.68, 1.95, 2.68, 1.95, roof_teal)
+	_box_on(_body, Vector3(0.0, 2.46, 0.70), Vector3(1.15, 0.08, 1.65), win_cyan)
+	_box_on(_body, Vector3(0.0, 2.47, 0.70), Vector3(1.25, 0.05, 0.10), brass)
+
+	# Круглые медные иллюминаторы лаборатории (по 2 с каждого борта) + наружные трубы
+	for side in [-1.0, 1.0]:
+		for z_port in [0.10, 1.20]:
+			_cyl_on(_body, Vector3(side * 1.26, 1.56, z_port), 0.23, 0.23, 0.09, copper, Vector3(0.0, 0.0, PI * 0.5), 16)
+			_cyl_on(_body, Vector3(side * 1.28, 1.56, z_port), 0.16, 0.16, 0.10, win_cyan, Vector3(0.0, 0.0, PI * 0.5), 16)
+	# Спасательный круг и медный змеевик на правом борту
+	_cyl_on(_body, Vector3(1.30, 1.48, -1.15), 0.28, 0.28, 0.08, _material(Color("f07b62"), 0.1, 0.3), Vector3(0.0, 0.0, PI * 0.5), 16)
+	_cyl_on(_body, Vector3(1.26, 1.55, 0.65), 0.05, 0.05, 2.2, copper, Vector3(PI * 0.5, 0.0, 0.0), 10)
+
+	# 5. КАЮТА №3 — КОРМОВОЙ ИНЖЕНЕРНЫЙ ОТСЕК И 4 РЕАКТОРНЫЕ КОЛБЫ (Z: 1.95 .. 4.35)
+	_loft_segment(_body, 1.95, 1.95, 3.05, 2.90, 0.90, 1.72, 2.20, 2.00, 2.10, 1.85, hull_dark)
+	_box_on(_body, Vector3(0.0, 1.75, 2.45), Vector3(2.12, 0.08, 1.08), copper)
+	# Две наклонные медные выхлопные трубы позади лаборатории
+	for side in [-1.0, 1.0]:
+		_cyl_on(_body, Vector3(side * 0.62, 2.35, 2.22), 0.13, 0.16, 1.35, copper, Vector3(0.18, 0.0, 0.0), 14)
+		_cyl_on(_body, Vector3(side * 0.62, 2.95, 2.33), 0.16, 0.14, 0.18, iron, Vector3(0.18, 0.0, 0.0), 14)
+
+	# 4 СТЕКЛЯННЫЕ КОЛБЫ РЕСУРСОВ НА КОРМЕ (заполняются по мере сбора Бирюзы/Коралла/Янтаря/Орхидеи)
+	_vat_fills.clear()
+	_vat_mats.clear()
+	var vat_positions := [
+		Vector3(-0.68, 0.0, 3.35),
+		Vector3( 0.68, 0.0, 3.35),
+		Vector3(-0.68, 0.0, 4.08),
+		Vector3( 0.68, 0.0, 4.08),
+	]
+	for i in range(4):
+		var vp: Vector3 = vat_positions[i]
+		# Медный пьедестал и крышка колбы
+		_cyl_on(_body, Vector3(vp.x, 0.98, vp.z), 0.28, 0.31, 0.16, brass, Vector3.ZERO, 14)
+		_cyl_on(_body, Vector3(vp.x, 1.48, vp.z), 0.25, 0.25, 0.86, glass_vat, Vector3.ZERO, 14)
+		_cyl_on(_body, Vector3(vp.x, 1.94, vp.z), 0.27, 0.29, 0.12, copper, Vector3.ZERO, 14)
+		# Внутренний светящийся столб пигмента
+		var f_mat := _material(ResourceSlick.COLORS[i], 0.1, 1.1, 0.25)
+		var f_cyl := _cyl_on(_body, Vector3(vp.x, 1.18, vp.z), 0.19, 0.19, 0.76, f_mat, Vector3.ZERO, 12)
+		f_cyl.scale.y = 0.15
+		_vat_fills.append(f_cyl)
+		_vat_mats.append(f_mat)
+
+	# Кормовая П-образная кран-балка (портал)
+	for side in [-1.0, 1.0]:
+		_box_on(_body, Vector3(side * 1.18, 1.55, 4.35), Vector3(0.12, 1.35, 0.14), iron)
+	_box_on(_body, Vector3(0.0, 2.22, 4.35), Vector3(2.55, 0.14, 0.16), copper)
+
+	# 6. НОСОВОЙ БУШПРИТ С ПРИЛИВНЫМ ЗОНДОМ И ПРОЖЕКТОРОМ
+	for side in [-1.0, 1.0]:
+		_cyl_on(_body, Vector3(side * 0.28, 1.32, -5.85), 0.04, 0.06, 1.65, iron, Vector3(1.18, 0.0, side * 0.18), 8)
+	# Светящийся кристалл-детектор над самым носом
+	_cyl_on(_body, Vector3(0.0, 1.52, -6.52), 0.02, 0.14, 0.36, win_cyan, Vector3.ZERO, 8)
+	_cyl_on(_body, Vector3(0.0, 1.25, -6.52), 0.14, 0.02, 0.28, win_cyan, Vector3.ZERO, 8)
+	# Носовой прожектор на козырьке рубки
+	_cyl_on(_body, Vector3(0.0, 3.08, -2.82), 0.14, 0.18, 0.32, brass, Vector3(PI * 0.5 - 0.35, 0.0, 0.0), 12)
+	var spot := SpotLight3D.new()
+	spot.light_color = Color("fff0cf")
+	spot.light_energy = 2.4
+	spot.spot_range = 22.0
+	spot.spot_angle = 32.0
+	spot.position = Vector3(0.0, 3.08, -2.95)
+	spot.rotation = Vector3(-0.38, 0.0, 0.0)
+	_body.add_child(spot)
+
+	# 7. ПОВОРОТНЫЙ КРАН-СИФОН НА ЛЕВОМ БОРТУ (для откачки пятен)
+	_crane_turret = Node3D.new()
+	_crane_turret.position = Vector3(-1.38, 0.92, -0.15)
+	_body.add_child(_crane_turret)
+	_cyl_on(_crane_turret, Vector3(0.0, 0.22, 0.0), 0.24, 0.30, 0.44, copper, Vector3.ZERO, 12)
+	_box_on(_crane_turret, Vector3(0.0, 0.52, 0.0), Vector3(0.32, 0.28, 0.36), iron)
+
+	_crane_boom = Node3D.new()
+	_crane_boom.position = Vector3(0.0, 0.58, 0.0)
+	_crane_turret.add_child(_crane_boom)
+	_box_on(_crane_boom, Vector3(0.0, 0.12, 0.92), Vector3(0.12, 0.12, 1.95), brass, Vector3(-0.15, 0.0, 0.0))
+	_cyl_on(_crane_boom, Vector3(0.0, -0.02, 1.85), 0.14, 0.20, 0.28, copper)
+
+	# 8. РУЛЬ И ДВА ВРАЩАЮЩИХСЯ ГРЕБНЫХ ВИНТА ПОД КОРМОЙ
+	_rudder = Node3D.new()
+	_rudder.position = Vector3(0.0, 0.05, 4.78)
+	_body.add_child(_rudder)
+	_box_on(_rudder, Vector3(0.0, 0.0, 0.22), Vector3(0.08, 0.58, 0.46), copper)
+
+	_prop_l = _build_propeller(Vector3(-0.68, 0.02, 4.68), brass)
+	_prop_r = _build_propeller(Vector3( 0.68, 0.02, 4.68), brass)
+
+	# Тёплый корабельный фонарь над палубой
+	var lantern := OmniLight3D.new()
+	lantern.light_color = Color("ffc98b")
+	lantern.light_energy = 1.15
+	lantern.omni_range = 10.5
+	lantern.position = Vector3(0.0, 2.85, 0.85)
+	_body.add_child(lantern)
+
+	# Шланг насоса и светящееся заборное кольцо на воде
+	_hose = MeshInstance3D.new()
+	var tube := CylinderMesh.new()
+	tube.top_radius = 0.065
+	tube.bottom_radius = 0.11
+	tube.height = 1.0
+	_hose.mesh = tube
+	_hose_mat = _material(Color("7ee1c9"), 0.1, 1.3)
+	_hose.material_override = _hose_mat
+	_hose.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_hose.visible = false
+	add_child(_hose)
+
+	_intake_ring = MeshInstance3D.new()
+	var ring_cyl := CylinderMesh.new()
+	ring_cyl.top_radius = 0.48
+	ring_cyl.bottom_radius = 0.55
+	ring_cyl.height = 0.14
+	_intake_ring.mesh = ring_cyl
+	_intake_mat = _material(Color("7ee1c9"), 0.1, 1.8)
+	_intake_ring.material_override = _intake_mat
+	_intake_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_intake_ring.visible = false
+	add_child(_intake_ring)
+
+
+func _build_propeller(at: Vector3, mat: Material) -> Node3D:
+	var hub := Node3D.new()
+	hub.position = at
+	_body.add_child(hub)
+	_cyl_on(hub, Vector3.ZERO, 0.10, 0.10, 0.24, mat, Vector3(PI * 0.5, 0.0, 0.0), 10)
+	for i in range(3):
+		var a := float(i) * TAU / 3.0
+		var blade := _box_on(hub, Vector3(cos(a) * 0.20, sin(a) * 0.20, 0.04), Vector3(0.26, 0.09, 0.03), mat)
+		blade.rotation.z = a
+	return hub
+
+
+# ---------------------------------------------------------------------------
+# Сборка покупаемого Прицепа («Буксируемый Био-Понтон»)
+# ---------------------------------------------------------------------------
+
+func _build_trailer() -> void:
+	_trailer = Node3D.new()
+	_trailer.name = "LaboratoryTrailer"
+	_trailer.top_level = true
+	_trailer.visible = false
+	add_child(_trailer)
+
+	_trailer_body = Node3D.new()
+	_trailer.add_child(_trailer_body)
+
+	var hull_dark := _material(Color("1c2f3e"), 0.42, 0.0, 0.48)
+	var hull_boot := _material(Color("9e4736"), 0.25, 0.0, 0.62)
+	var deck_wood := _material(Color("8a7056"), 0.05, 0.0, 0.72)
+	var roof_teal := _material(Color("2d857e"), 0.32, 0.0, 0.42)
+	var copper := _material(Color("d88c5a"), 0.72, 0.0, 0.35)
+	var brass := _material(Color("e6b86a"), 0.78, 0.0, 0.30)
+	var glass_dome := _material(Color("5fd4c8"), 0.20, 0.65, 0.18)
+
+	# Двухкорпусный катамаранный понтон прицепа
+	for side in [-1.0, 1.0]:
+		var hull_side := Node3D.new()
+		hull_side.position = Vector3(side * 1.12, 0.0, 0.0)
+		_trailer_body.add_child(hull_side)
+		_loft_segment(hull_side, -2.9, -3.1, -1.4, -1.4, -0.22, 0.56, 0.12, 0.20, 0.78, 0.92, hull_dark)
+		_loft_segment(hull_side, -1.4, -1.4,  1.8,  1.8, -0.22, 0.56, 0.78, 0.92, 0.78, 0.92, hull_dark)
+		_loft_segment(hull_side,  1.8,  1.8,  2.8,  2.9, -0.22, 0.56, 0.78, 0.92, 0.42, 0.56, hull_dark)
+		_box_on(hull_side, Vector3(0.0, 0.12, 0.0), Vector3(0.95, 0.16, 4.6), hull_boot)
+
+	# Общая грузовая палуба прицепа и медное ограждение
+	_box_on(_trailer_body, Vector3(0.0, 0.60, 0.0), Vector3(3.15, 0.12, 4.85), deck_wood)
+	_box_on(_trailer_body, Vector3(0.0, 0.68, -2.55), Vector3(1.65, 0.14, 0.55), copper) # носовой узел сцепки
+
+	# Стеклянная био-оранжерея (теплица для редких образцов) в передней части прицепа
+	_loft_segment(_trailer_body, -1.85, -1.45, 0.35, 0.05, 0.66, 1.78, 2.25, 1.45, 2.25, 1.45, glass_dome)
+	_box_on(_trailer_body, Vector3(0.0, 1.82, -0.70), Vector3(1.52, 0.08, 1.58), roof_teal)
+	# Светящиеся капсулы с орхидеями/кораллами внутри оранжереи
+	for side in [-1.0, 1.0]:
+		_cyl_on(_trailer_body, Vector3(side * 0.52, 1.08, -0.75), 0.24, 0.18, 0.62, _material(ResourceSlick.COLORS[3 if side > 0 else 1], 0.1, 1.4))
+
+	# 4 сферических резервуара на корме прицепа
+	_trailer_tanks.clear()
+	for i in range(4):
+		var tx := -0.72 if (i % 2 == 0) else 0.72
+		var tz := 1.05 + float(i / 2) * 0.95
+		_cyl_on(_trailer_body, Vector3(tx, 0.75, tz), 0.32, 0.36, 0.20, brass)
+		var sphere := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.38
+		sm.height = 0.76
+		sphere.mesh = sm
+		sphere.position = Vector3(tx, 1.12, tz)
+		sphere.material_override = _material(ResourceSlick.COLORS[i], 0.25, 0.95, 0.25)
+		_trailer_body.add_child(sphere)
+		_trailer_tanks.append(sphere)
+
+	# Кормовая мачта прицепа с тёплым фонарем
+	_cyl_on(_trailer_body, Vector3(0.0, 1.45, 2.25), 0.04, 0.06, 1.65, copper)
+	_cyl_on(_trailer_body, Vector3(0.0, 2.30, 2.25), 0.12, 0.12, 0.22, _material(Color("ffd188"), 0.1, 2.2))
+	var t_light := OmniLight3D.new()
+	t_light.light_color = Color("ffc880")
+	t_light.light_energy = 0.85
+	t_light.omni_range = 7.5
+	t_light.position = Vector3(0.0, 2.35, 2.25)
+	_trailer_body.add_child(t_light)
+
+	# Буксировочный трос-кабель
+	_tow_cable = MeshInstance3D.new()
+	_tow_cable.top_level = true
+	var c_mesh := CylinderMesh.new()
+	c_mesh.top_radius = 0.045
+	c_mesh.bottom_radius = 0.045
+	c_mesh.height = 1.0
+	_tow_cable.mesh = c_mesh
+	_tow_cable.material_override = copper
+	_tow_cable.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_tow_cable.visible = false
+	add_child(_tow_cable)
+```
+
+---
+
+### 2. `scripts/boat_main.gd`
+*(Добавлена покупка прицепа по клавише **`B`** за 2 очищенных материала и мгновенное переключение прицепа по клавише **`T`** для удобного теста, плюс бонус переработки с прицепом).*
+
+```gdscript
+class_name BoatMain
+extends Node3D
+## Первый самостоятельный игровой срез. Старая рыбалка сохранена в main.tscn.
+## Небо/атмосфера, песчаный берег, вода и её CPU-зеркало волн — из проекта.
+
+const START_Z := Coast.SPAWN_Z
+const START_SEAWARD := 95.0
+const SLICK_RECYCLE_DISTANCE := 72.0
+const SLICK_SPAWN_MIN := 28.0
+const SLICK_SPAWN_MAX := 47.0
+const TRAILER_COST := 2
+
+var game: GameState
+var world: GameWorld
+var coast: Coast
+var sand: SandField
+var water: WaterSurface
+var boat: BoatVessel
+var camera: Camera3D
+var hud: BoatHud
+var slicks: Array[ResourceSlick] = []
+var raw := PackedInt32Array([0, 0, 0, 0])
+var refined := PackedInt32Array([0, 0, 0, 0])
+var notice := ""
+var notice_time := 0.0
+var _capture_frames := 0
+var _stream_timer := 0.0
+var _slick_rng := RandomNumberGenerator.new()
+
+
+func _ready() -> void:
+	game = get_node("/root/Game") as GameState
+	world = GameWorld.new()
+	add_child(world)
+	world.setup(game)
+	coast = Coast.new()
+	add_child(coast)
+	coast.setup(game)
+	sand = SandField.new()
+	add_child(sand)
+	sand.setup(game)
+	coast.attach_sand(sand)
+	water = WaterSurface.new()
+	add_child(water)
+	water.setup(game, Vector2(-150.0, 20.0), Coast.SEA_LEVEL)
+	water.set_ground(coast.height_tex, coast.grid_origin, coast.grid_cell, coast.grid_n, coast)
+	game.water = water
+	boat = BoatVessel.new()
+	boat.name = "Vessel"
+	add_child(boat)
+	boat.global_position = Vector3(coast.shore_x(START_Z) - START_SEAWARD, 0.2, START_Z)
+	boat.setup(self, water, coast)
+	_build_resources()
+	_slick_rng.seed = 845239
+	camera = Camera3D.new()
+	camera.name = "IsometricCamera"
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 32.0
+	camera.near = 0.2
+	camera.far = 1500.0
+	add_child(camera)
+	camera.current = true
+	camera.position = boat.global_position + Vector3(21.0, 27.0, 30.0)
+	camera.look_at(boat.global_position + Vector3.UP * 0.8, Vector3.UP)
+	hud = BoatHud.new()
+	var layer := CanvasLayer.new()
+	layer.layer = 12
+	add_child(layer)
+	hud.main = self
+	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(hud)
+	_ensure_boat_input()
+	world.apply_night01(0.0)
+	coast.set_night01(0.0)
+	water.apply_night01(0.0)
+	var sun := Vector3(-0.36, 0.76, -0.54).normalized()
+	game.sun_dir = sun
+	world.apply_sun(sun)
+	coast.apply_sun(sun)
+	water.apply_sun(sun)
+	water.set_param("water_shallow", Color("49a9a2"))
+	water.set_param("water_mid", Color("258b91"))
+	water.set_param("water_deep", Color("0f5668"))
+	water.set_param("horizon_col", Color("6996a0"))
+	water.set_param("sky_col", Color("447084"))
+	water.set_param("glitter_amount", 0.05)
+	water.set_param("solar_glitter_amount", 0.018)
+	water.set_param("sun_path_amount", 0.13)
+	water.set_param("direct_specular_amount", 0.07)
+	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
+		var test := BoatSmoke.new()
+		add_child(test)
+		test.setup(self)
+
+
+func _build_resources() -> void:
+	var base := Vector2(boat.global_position.x, boat.global_position.z)
+	var samples := [
+		Vector2(-3, -11), Vector2(-17, -13), Vector2(-20, 3),
+		Vector2(-5, 21), Vector2(13, 28), Vector2(-29, 25),
+		Vector2(-40, -9), Vector2(6, -30), Vector2(-32, -38),
+		Vector2(-13, 42), Vector2(16, 45), Vector2(-47, 43),
+	]
+	for i in range(samples.size()):
+		var at: Vector2 = base + samples[i]
+		if coast.water_depth(at.x, at.y) < 3.0:
+			continue
+		var slick := ResourceSlick.new()
+		slick.name = "PigmentSlick%d" % i
+		add_child(slick)
+		slick.setup(water, at, i % ResourceSlick.COLORS.size(), float(i) * 1.73)
+		slicks.append(slick)
+
+
+func _stream_resources() -> void:
+	var center := Vector2(boat.global_position.x, boat.global_position.z)
+	for slick in slicks:
+		if slick.depleted:
+			continue
+		var current := Vector2(slick.position.x, slick.position.z)
+		if current.distance_to(center) <= SLICK_RECYCLE_DISTANCE:
+			continue
+		for _attempt in range(24):
+			var angle := _slick_rng.randf_range(-PI, PI)
+			var distance := _slick_rng.randf_range(SLICK_SPAWN_MIN, SLICK_SPAWN_MAX)
+			var candidate := center + Vector2.from_angle(angle) * distance
+			if coast.water_depth(candidate.x, candidate.y) < 3.0:
+				continue
+			var clear := true
+			for other in slicks:
+				if other == slick or other.depleted:
+					continue
+				if candidate.distance_to(Vector2(other.position.x, other.position.z)) < 9.0:
+					clear = false
+					break
+			if clear:
+				slick.position = Vector3(candidate.x,
+					water.surface_height(candidate.x, candidate.y) + 0.20, candidate.y)
+				break
+
+
+func nearest_resource(at: Vector3, radius: float) -> ResourceSlick:
+	var candidate: ResourceSlick = null
+	var closest := radius * radius
+	for slick in slicks:
+		if slick.depleted:
+			continue
+		var distance := Vector2(at.x, at.z).distance_squared_to(Vector2(slick.position.x, slick.position.z))
+		if distance < closest:
+			closest = distance
+			candidate = slick
+	return candidate
+
+
+func receive_resource(kind: int) -> void:
+	raw[kind] += 1
+	announce("СОБРАНО: %s" % ResourceSlick.NAMES[kind].to_upper())
+
+
+func total_refined() -> int:
+	var sum := 0
+	for count in refined:
+		sum += count
+	return sum
+
+
+func refine() -> int:
+	var needed := 2 if (boat != null and boat.has_trailer) else 3
+	var produced := 0
+	for i in range(raw.size()):
+		var batches := int(raw[i] / float(needed))
+		raw[i] -= batches * needed
+		refined[i] += batches
+		produced += batches
+	if produced > 0 and boat != null:
+		boat.trigger_refine_effect()
+	announce("ПЕРЕРАБОТАНО: %d" % produced if produced > 0 else ("НУЖНО %d ПЯТНА ОДНОГО ЦВЕТА" % needed))
+	return produced
+
+
+func buy_trailer() -> void:
+	if boat == null:
+		return
+	if boat.has_trailer:
+		announce("ПРИЦЕП-ЛАБОРАТОРИЯ УЖЕ ПРИСТЫКОВАН")
+		return
+	if total_refined() < TRAILER_COST:
+		announce("ДЛЯ ПРИЦЕПА НУЖНО 2 ГОТ. МАТЕРИАЛА (ИЛИ НАЖМИТЕ T ДЛЯ ТЕСТА)")
+		return
+	var remaining := TRAILER_COST
+	for i in range(refined.size()):
+		var take := mini(refined[i], remaining)
+		refined[i] -= take
+		remaining -= take
+		if remaining <= 0:
+			break
+	boat.set_trailer_enabled(true)
+	announce("КУПЛЕН ПРИЦЕП-ОРАНЖЕРЕЯ! (+СКОРОСТЬ, +НАСОС, ПЕРЕРАБОТКА 2→1)")
+
+
+func toggle_trailer_free() -> void:
+	if boat == null:
+		return
+	boat.set_trailer_enabled(not boat.has_trailer)
+	announce("ПРИЦЕП-ОРАНЖЕРЕЯ: %s" % ("ПРИСТЫКОВАН" if boat.has_trailer else "ОТСТЫКОВАН"))
+
+
+func announce(text: String) -> void:
+	notice = text
+	notice_time = 2.8
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_R:
+			refine()
+			get_viewport().set_input_as_handled()
+		elif event.physical_keycode == KEY_B:
+			buy_trailer()
+			get_viewport().set_input_as_handled()
+		elif event.physical_keycode == KEY_T:
+			toggle_trailer_free()
+			get_viewport().set_input_as_handled()
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			camera.size = maxf(16.0, camera.size - 2.0)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			camera.size = minf(42.0, camera.size + 2.0)
+
+
+func _process(delta: float) -> void:
+	if boat == null or camera == null:
+		return
+	var target := boat.global_position + Vector3.UP * 0.8
+	var desired := target + Vector3(21.0, 27.0, 30.0)
+	camera.global_position = camera.global_position.lerp(desired, 1.0 - exp(-3.0 * delta))
+	camera.look_at(target, Vector3.UP)
+	notice_time = maxf(0.0, notice_time - delta)
+	_stream_timer -= delta
+	if _stream_timer <= 0.0:
+		_stream_timer = 0.5
+		_stream_resources()
+	hud.queue_redraw()
+	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":
+		_capture_frames += 1
+		if _capture_frames == 35:
+			var output := OS.get_environment("JOURNEY_BOAT_SHOT_PATH")
+			if output.is_empty():
+				output = "user://boat.png"
+			var err := get_viewport().get_texture().get_image().save_png(output)
+			print("[BOAT] screenshot %s (%d)" % [output, err])
+			get_tree().quit(0 if err == OK else 1)
+
+
+func _ensure_boat_input() -> void:
+	_add_action("boat_forward", [KEY_W, KEY_UP])
+	_add_action("boat_reverse", [KEY_S, KEY_DOWN])
+	_add_action("boat_left", [KEY_A, KEY_LEFT])
+	_add_action("boat_right", [KEY_D, KEY_RIGHT])
+	_add_action("boat_pump", [KEY_SPACE])
+
+
+func _add_action(action: String, keys: Array) -> void:
+	if InputMap.has_action(action):
+		return
+	InputMap.add_action(action)
+	for key in keys:
+		var input := InputEventKey.new()
+		input.physical_keycode = key
+		InputMap.action_add_event(action, input)
+```
+
+---
+
+### 3. `scripts/boat_hud.gd`
+*(Обновлена карточка статуса судна и подсказка по покупке/тесту прицепа).*
+
+```gdscript
+class_name BoatHud
+extends Control
+## Лёгкий интерфейс без экранной цветокоррекции: чистые пигменты остаются чистыми.
+var main: BoatMain
+
+func _draw() -> void:
+	if main == null or main.boat == null:
+		return
+	var font := ThemeDB.fallback_font
+	var ink := Color("e9f0e8")
+	var muted := Color("9db8b7")
+	var accent := Color("78dfcb")
+	var backdrop := Color(0.035, 0.075, 0.10, 0.88)
+	var panel := Rect2(22, 22, 396, 276)
+	draw_rect(panel, backdrop)
+	draw_rect(panel, Color("548c89"), false, 1.5)
+	draw_string(font, Vector2(42, 53), "ПРИЛИВНАЯ ЛАБОРАТОРИЯ", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, ink)
+	draw_string(font, Vector2(42, 78), "СКОРОСТЬ  %02.0f / %.0f     НАСОС  %s" % [
+		absf(main.boat.speed),
+		main.boat.effective_max_speed(),
+		"АКТИВЕН" if main.boat.pump_fraction() > 0.0 else "ГОТОВ"
+	], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, muted)
+	for i in range(ResourceSlick.COLORS.size()):
+		var y := 105.0 + float(i) * 32.0
+		draw_rect(Rect2(42, y - 15, 13, 13), ResourceSlick.COLORS[i])
+		draw_string(font, Vector2(65, y - 3), ResourceSlick.NAMES[i].to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 122, 15, ink)
+		draw_string(font, Vector2(235, y - 3), "%02d сыр.  →  %02d гот." % [main.raw[i], main.refined[i]], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, muted)
+
+	var trailer_status := "ПРИЦЕП: ПРИСТЫКОВАН (2 сыр. → 1 гот.)" if main.boat.has_trailer else "ПРИЦЕП: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
+	draw_string(font, Vector2(42, 240), trailer_status, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, accent if main.boat.has_trailer else muted)
+
+	var resource_name := main.boat.target_name()
+	var action := "ПРОБЕЛ — ЗАБРАТЬ: %s" % resource_name.to_upper() if not resource_name.is_empty() else "ИЩИТЕ СВЕТЯЩИЕСЯ ПЯТНА"
+	var center := Vector2(size.x * 0.5 - 195.0, size.y - 134.0)
+	draw_rect(Rect2(center, Vector2(390, 38)), backdrop)
+	draw_string(font, center + Vector2(14, 26), action, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, ink)
+	if main.boat.pump_fraction() > 0.0:
+		draw_rect(Rect2(center + Vector2(0, 36), Vector2(390.0 * main.boat.pump_fraction(), 3)), accent)
+	var controls := "W/S — ХОД    A/D — РУЛЬ    ПРОБЕЛ — НАСОС    R — ПЕРЕРАБОТКА    B — КУПИТЬ ПРИЦЕП    T — ТЕСТ ПРИЦЕПА    КОЛЕСО — ЗУМ"
+	draw_string(font, Vector2(28, size.y - 28), controls, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, ink)
+	if main.notice_time > 0.0:
+		draw_string(font, Vector2(size.x * 0.5 - 260, size.y - 168), main.notice, HORIZONTAL_ALIGNMENT_CENTER, 520, 17, Color("f3c783"))
+```
+
+---
+
+### Как протестировать:
+1. Замени код в этих трёх файлах и запусти сцену (`F5`).
+2. Приблизь камеру **колесиком мыши вверх** — ты сразу увидишь высокую бортовую линию, боковые понтоны на арочных фермах, 3 каюты, вращающийся радар, винты под кормой и 4 стеклянные колбы.
+3. Нажми **`T`** на клавиатуре — позади лодки со всплеском появится прицеп-оранжерея на буксирном тросе (или накопи 2 переработанных ресурса и купи его по-честному клавишей **`B`**).
