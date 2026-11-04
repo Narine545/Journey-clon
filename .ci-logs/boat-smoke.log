@@ -6,6 +6,7 @@ WORLD: Vulkan недоступен — Compatibility-фолбэк, волюме�
 [BOAT SMOKE] PASS SDF-пятна распределены вокруг лодки
 [BOAT SMOKE] PASS изометрическая камера
 [BOAT SMOKE] PASS мотор двигает лодку
+[BOAT SMOKE] PASS насос не проходит через правый борт
 [BOAT SMOKE] PASS насос собирает одно пятно
 [BOAT SMOKE] PASS три единицы сырья превращаются в один очищенный материал
 [BOAT SMOKE] PASS прицеп изначально не куплен
