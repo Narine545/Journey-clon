@@ -99,12 +99,14 @@ func effective_pump_seconds() -> float:
 
 
 func update_night_lights(night01: float, overdrive: bool) -> void:
+	# Локальное освещение — лишь тёплый навигационный акцент. Общий свет
+	# от луны теперь освещает и море, и берег, и судно одновременно.
 	if _bow_spot != null:
-		var base_e := lerpf(1.8, 5.2, night01)
-		_bow_spot.light_energy = base_e * (1.75 if overdrive else 1.0)
-		_bow_spot.spot_range = lerpf(24.0, 38.0, night01) * (1.45 if overdrive else 1.0)
+		_bow_spot.light_energy = lerpf(0.12, 0.95, night01) * (1.6 if overdrive else 1.0)
+		_bow_spot.spot_range = lerpf(18.0, 27.0, night01) * (1.35 if overdrive else 1.0)
 	if _deck_light != null:
-		_deck_light.light_energy = lerpf(0.85, 1.85, night01)
+		_deck_light.light_energy = lerpf(0.10, 0.30, night01)
+		_deck_light.omni_range = 5.5
 
 
 func set_trailer_enabled(enabled: bool) -> void:

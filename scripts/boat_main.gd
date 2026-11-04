@@ -115,17 +115,21 @@ func _apply_atmosphere(n01: float) -> void:
 	var sun := day_sun.lerp(dusk_sun, night01).normalized()
 	game.sun_dir = sun
 	world.apply_sun(sun)
+	world.apply_boat_moonlight(night01)
 	coast.apply_sun(sun)
 	water.apply_sun(sun)
-	water.set_param("water_shallow", Color("49a9a2").lerp(Color("163d42"), night01))
-	water.set_param("water_mid", Color("258b91").lerp(Color("0b2530"), night01))
-	water.set_param("water_deep", Color("0f5668").lerp(Color("04111c"), night01))
-	water.set_param("horizon_col", Color("6996a0").lerp(Color("1d2c3b"), night01))
-	water.set_param("sky_col", Color("447084").lerp(Color("0d1624"), night01))
+	# Луна освещает всё море одним холодным направленным светом. Не
+	# оставляем на ночной воде золотые солнечные искры из шейдера.
+	water.set_param("water_shallow", Color("49a9a2").lerp(Color("32606d"), night01))
+	water.set_param("water_mid", Color("258b91").lerp(Color("254553"), night01))
+	water.set_param("water_deep", Color("0f5668").lerp(Color("172e42"), night01))
+	water.set_param("horizon_col", Color("6996a0").lerp(Color("456078"), night01))
+	water.set_param("sky_col", Color("447084").lerp(Color("293b56"), night01))
+	water.set_param("sun_col", Color("ffcc85").lerp(Color("a8c9e3"), night01))
 	water.set_param("mega_amp", lerpf(0.25, 0.31, night01))
 	water.set_param("ripple_strength", 0.10)
-	water.set_param("glitter_amount", lerpf(0.32, 0.08, night01))
-	water.set_param("sun_path_amount", lerpf(0.09, 0.03, night01))
+	water.set_param("glitter_amount", lerpf(0.32, 0.18, night01))
+	water.set_param("sun_path_amount", lerpf(0.09, 0.05, night01))
 	water.set_param("direct_specular_amount", 0.018)
 	if boat != null:
 		boat.update_night_lights(night01, overdrive_timer > 0.0)
@@ -553,7 +557,7 @@ func interact_with_beacon() -> void:
 		if not target_b.is_empty():
 			var bp: Vector3 = target_b["buoy_pos"]
 			var dist := int(round(Vector2(boat.global_position.x, boat.global_position.z).distance_to(Vector2(bp.x, bp.z))))
-			announce("ДО МАЯКА «%s»: %d М (ПОДОЙДИТЕ К ПРИЧАЛЬНОМУ БУЮ)" % [target_b["name"].to_upper(), dist])
+			announce("ДО БУЯ «%s» %d М. [E] РАБОТАЕТ В ПРЕДЕЛАХ 14 М; %d СЫРЬЯ = 1 ГОТОВЫЙ" % [target_b["name"].to_upper(), dist, 2 if boat.has_trailer else 3])
 		return
 
 	if b["lit"]:
@@ -565,12 +569,20 @@ func interact_with_beacon() -> void:
 		return
 
 	var cost: PackedInt32Array = b["cost"]
+	var needed := 2 if boat.has_trailer else 3
+	# E принимает как готовый материал, так и достаточно сырья. Сначала
+	# проверяем ВЕСЬ рецепт: при нехватке ничего не списываем.
 	for i in range(cost.size()):
-		if refined[i] < cost[i]:
-			announce("НУЖНО ДЛЯ МАЯКА: %s (НАЖМИТЕ R ДЛЯ ПЕРЕРАБОТКИ)" % format_beacon_recipe(cost).to_upper())
+		var available := refined[i] + int(raw[i] / float(needed))
+		if available < cost[i]:
+			announce("МАЯК: НУЖНО %d %s (ЕСТЬ %d ГОТ. И %d СЫР.; %d СЫР. = 1 ГОТ.)" % [
+				cost[i], ResourceSlick.NAMES[i].to_upper(), refined[i], raw[i], needed])
 			return
 
 	for i in range(cost.size()):
+		var missing := maxi(0, cost[i] - refined[i])
+		raw[i] -= missing * needed
+		refined[i] += missing
 		refined[i] -= cost[i]
 
 	b["lit"] = true
@@ -605,7 +617,7 @@ func interact_with_beacon() -> void:
 
 func announce(text: String) -> void:
 	notice = text
-	notice_time = 3.0
+	notice_time = 6.0
 
 
 func _unhandled_input(event: InputEvent) -> void:

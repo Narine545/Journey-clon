@@ -277,12 +277,24 @@ func apply_sun(dir: Vector3) -> void:
 	if not _using_sky_plus:
 		_sky_mat.set_shader_parameter("sun_direction", dir)
 	_sun.basis = Basis.looking_at(-dir.normalized(), Vector3.UP)
-	if game.night01 > 0.5:
-		var elev01n := smoothf(dir.y, 0.05, 0.55)
-		_sun.light_color = Color(0.68, 0.74, 0.95).lerp(Color(0.85, 0.90, 1.0), elev01n)
-	else:
-		var elev01 := smoothf(dir.y, 0.05, 0.55)
-		_sun.light_color = Color(1.0, 0.83, 0.66).lerp(Color(1.0, 0.97, 0.92), elev01)
+	var elev01 := smoothf(dir.y, 0.05, 0.55)
+	var daylight := Color(1.0, 0.83, 0.66).lerp(Color(1.0, 0.97, 0.92), elev01)
+	# Без порога 0.5: резкая замена солнца белой «луной» была заметна
+	# на всём мире при смене сумерек.
+	_sun.light_color = daylight.lerp(Color(0.59, 0.72, 0.91), game.night01)
+
+
+## Только лодочный режим: мягкий общий лунный свет вместо пересвеченного
+## локального фонаря на фоне почти чёрной воды. Рыбалку не меняем.
+func apply_boat_moonlight(n: float) -> void:
+	_env.ambient_light_energy = lerpf(0.72, 1.08, n)
+	_env.fog_light_color = Game.HORIZON_COL.lerp(Color(0.22, 0.30, 0.42), n)
+	_env.volumetric_fog_density = lerpf(0.0016, 0.008, n)
+	_env.tonemap_exposure = lerpf(0.95, 1.02, n)
+	_sun.light_energy = lerpf(0.85, 0.83, n)
+	_sun.light_volumetric_fog_energy = lerpf(0.75, 0.20, n)
+	if _using_sky_plus:
+		_sky_mat.set_shader_parameter("exposure", lerpf(13.5, 10.5, n))
 
 
 func smoothf(v: float, a: float, b: float) -> float:

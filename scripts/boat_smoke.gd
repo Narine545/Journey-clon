@@ -129,15 +129,18 @@ func _physics_process(_delta: float) -> void:
 		var beacon: Dictionary = main.beacons[0]
 		var bp: Vector3 = beacon["buoy_pos"]
 		main.boat.global_position = bp
+		main.raw[0] = 3
 		main.interact_with_beacon()
-		_check(not beacon["lit"], "неполный рецепт не зажигает маяк")
+		_check(not beacon["lit"] and main.raw[0] == 3,
+			"неполный рецепт не зажигает маяк и не расходует сырьё")
 		var cost: PackedInt32Array = beacon["cost"]
 		for i in range(cost.size()):
-			main.refined[i] = cost[i]
+			main.raw[i] = cost[i] * 3
 		main.interact_with_beacon()
 		_check(beacon["lit"] and main.lit_beacon_count() == 1 and
-			main.total_refined() == 0 and main.boat.hull_hp == 100.0,
-			"маяк списывает рецепт и ремонтирует лодку")
+			main.total_refined() == 0 and main.raw[0] == 0 and main.raw[2] == 0 and
+			main.boat.hull_hp == 100.0,
+			"маяк автоматически перерабатывает сырьё по рецепту и ремонтирует лодку")
 		main.boat.hull_hp = 55.0
 		main.interact_with_beacon()
 		_check(main.boat.hull_hp == 100.0, "зажжённый маяк ремонтирует бесплатно")

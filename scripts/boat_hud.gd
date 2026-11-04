@@ -16,7 +16,7 @@ func _draw() -> void:
 	var backdrop := Color(0.035, 0.075, 0.10, 0.88)
 
 	# 1. ГЛАВНАЯ ПАНЕЛЬ ЛАБОРАТОРИИ И РЕСУРСОВ
-	var panel := Rect2(22, 22, 412, 336)
+	var panel := Rect2(22, 22, 412, 380)
 	draw_rect(panel, backdrop)
 	draw_rect(panel, Color("548c89"), false, 1.5)
 	draw_string(font, Vector2(42, 52), "ПРИЛИВНАЯ ЛАБОРАТОРИЯ", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, ink)
@@ -55,8 +55,18 @@ func _draw() -> void:
 		var dist := int(round(Vector2(main.boat.global_position.x, main.boat.global_position.z).distance_to(Vector2(bp.x, bp.z))))
 		draw_string(font, Vector2(42, 292), "ЦЕЛЬ: «%s» (%d М)" % [next_b["name"].to_upper(), dist],
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, ink)
-		draw_string(font, Vector2(42, 312), "НУЖНО (ГОТ.): %s" % main.format_beacon_recipe(next_b["cost"]),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 13, muted)
+		draw_string(font, Vector2(42, 312), "РЕЦЕПТ: %s" % main.format_beacon_recipe(next_b["cost"]),
+			HORIZONTAL_ALIGNMENT_LEFT, 370, 13, muted)
+		var cost: PackedInt32Array = next_b["cost"]
+		var can_fuel := true
+		for i in range(cost.size()):
+			if main.refined[i] + int(main.raw[i] / float(required)) < cost[i]:
+				can_fuel = false
+				break
+		var instruction := "СЫРЬЯ ХВАТАЕТ → К БУЮ (<14 М), ЗАТЕМ [E]" if can_fuel else \
+			"СОБЕРИТЕ РЕЦЕПТ: %d СЫРЬЯ = 1 ГОТОВЫЙ [R]" % required
+		draw_string(font, Vector2(42, 335), instruction,
+			HORIZONTAL_ALIGNMENT_LEFT, 370, 12, accent if can_fuel else warn)
 	else:
 		draw_string(font, Vector2(42, 295), "ВСЕ МАЯКИ СВЕТА АКТИВИРОВАНЫ!", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, accent)
 
@@ -64,7 +74,7 @@ func _draw() -> void:
 		("(%02.0fс)" % main.sonar_timer) if main.sonar_timer > 0.0 else "",
 		("(%02.0fс)" % main.overdrive_timer) if main.overdrive_timer > 0.0 else ""
 	]
-	draw_string(font, Vector2(42, 342), sys_line, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, accent if (main.sonar_timer > 0.0 or main.overdrive_timer > 0.0) else muted)
+	draw_string(font, Vector2(42, 369), sys_line, HORIZONTAL_ALIGNMENT_LEFT, 370, 12, accent if (main.sonar_timer > 0.0 or main.overdrive_timer > 0.0) else muted)
 
 	# 2. КРУГОВОЙ ПЕЛЕНГАТОР-КОМПАС (справа от главной панели)
 	_draw_beacon_compass(font, Vector2(505, 102), 58.0, backdrop, accent, warn, muted, ink)
@@ -87,6 +97,12 @@ func _draw() -> void:
 		action_col = accent
 	elif main.boat.wrong_side_target:
 		action = "ПОВЕРНИТЕСЬ ЛЕВЫМ БОРТОМ К ПЯТНУ"
+		action_col = warn
+	elif not next_b.is_empty():
+		var destination: Vector3 = next_b["buoy_pos"]
+		var distance := int(round(Vector2(main.boat.global_position.x,
+			main.boat.global_position.z).distance_to(Vector2(destination.x, destination.z))))
+		action = "ДО БУЯ %d М  •  [E] НА РАССТОЯНИИ ДО 14 М" % distance
 		action_col = warn
 
 	var center := Vector2(size.x * 0.5 - 245.0, size.y - 134.0)
