@@ -13,7 +13,10 @@ const PUMP_RANGE := 6.5
 const PUMP_SECONDS := 1.4
 
 const START_WITH_TRAILER := false
-const TRAILER_DISTANCE := 8.8
+const TRAILER_DISTANCE := 9.3
+# Описанные окружности корпусов: корпус 5.4 м, плашкоут 3.35 м + зазор.
+# Кинематический контакт нужен и при заднем ходе, когда трос слабеет.
+const TRAILER_CLEARANCE := 9.15
 const TRAIL_POINTS := 20
 const TRAIL_STEP_TIME := 0.25 # 20 точек сохраняют примерно 5 секунд пути
 
@@ -139,7 +142,12 @@ func _physics_process(delta: float) -> void:
 	var right := global_transform.basis.x
 	var next := global_position + heading * speed * delta
 	if coast.water_depth(next.x, next.z) > 1.7:
-		global_position = next
+		# Слабый трос не мешает идти задним ходом: корпус должен толкнуть
+		# плашкоут, а не проходить сквозь его геометрию.
+		if _make_room_for_trailer(next):
+			global_position = next
+		else:
+			speed = 0.0
 	else:
 		speed = minf(speed, 0.0)
 
@@ -179,6 +187,28 @@ func _physics_process(delta: float) -> void:
 	_update_pump(delta)
 	_update_trailer(delta)
 	_sync_water_shader()
+
+
+func _separate_trailer_from(boat_at: Vector3, trailer_at: Vector3) -> Vector3:
+	var gap := Vector2(trailer_at.x - boat_at.x, trailer_at.z - boat_at.z)
+	if gap.length_squared() >= TRAILER_CLEARANCE * TRAILER_CLEARANCE:
+		return trailer_at
+	if gap.length_squared() < 0.0001:
+		gap = Vector2(global_transform.basis.z.x, global_transform.basis.z.z)
+	gap = gap.normalized() * TRAILER_CLEARANCE
+	return Vector3(boat_at.x + gap.x, trailer_at.y, boat_at.z + gap.y)
+
+
+func _make_room_for_trailer(boat_next: Vector3) -> bool:
+	if not has_trailer or _trailer == null:
+		return true
+	var pushed := _separate_trailer_from(boat_next, _trailer.global_position)
+	if pushed.distance_squared_to(_trailer.global_position) < 0.000001:
+		return true
+	if coast.water_depth(pushed.x, pushed.z) < 1.2:
+		return false
+	_trailer.global_position = pushed
+	return true
 
 
 func _reset_trail(at: Vector2) -> void:
@@ -340,6 +370,13 @@ func _update_trailer(delta: float) -> void:
 				trailer_pos.x = next_xz.x
 				trailer_pos.z = next_xz.y
 
+	# Подтягивание тросом на повороте тоже не должно втаскивать прицеп
+	# в борт. Если выталкивать его некуда (мель), оставляем прежнее место.
+	var separated := _separate_trailer_from(global_position, trailer_pos)
+	if coast != null and coast.water_depth(separated.x, separated.z) < 1.2:
+		trailer_pos = _trailer.global_position
+	else:
+		trailer_pos = separated
 	var t_surf := water.surface_height(trailer_pos.x, trailer_pos.z)
 	trailer_pos.y = lerpf(trailer_pos.y, t_surf + 0.06, minf(1.0, delta * 3.8))
 	_trailer.global_position = trailer_pos

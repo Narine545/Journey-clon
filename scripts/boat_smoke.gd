@@ -58,6 +58,15 @@ func _physics_process(_delta: float) -> void:
 		main.buy_trailer()
 		_check(main.boat.has_trailer and main.total_refined() == 0,
 			"прицеп покупается за два готовых материала")
+		var trailer_before := main.boat._trailer.global_position
+		var reverse_next := main.boat.global_position + main.boat.global_transform.basis.z * 2.0
+		var can_reverse := main.boat._make_room_for_trailer(reverse_next)
+		var trailer_after := main.boat._trailer.global_position
+		var clearance := Vector2(trailer_after.x - reverse_next.x,
+			trailer_after.z - reverse_next.z).length()
+		_check(can_reverse and trailer_after.distance_to(trailer_before) > 0.5 and
+			clearance >= BoatVessel.TRAILER_CLEARANCE - 0.001,
+			"задний ход отталкивает прицеп, корпуса не пересекаются")
 		main.raw[2] = 2
 		_check(main.refine() == 1 and main.refined[2] == 1 and main.raw[2] == 0,
 			"прицеп снижает цену переработки до двух единиц сырья")

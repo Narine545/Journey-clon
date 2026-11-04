@@ -21,11 +21,18 @@ func _draw() -> void:
 		main.boat.effective_max_speed(),
 		"РАБОТАЕТ" if main.boat.pump_fraction() > 0.0 else "ГОТОВ"
 	], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, muted)
+	var required := 2 if main.boat.has_trailer else 3
 	for i in range(ResourceSlick.COLORS.size()):
 		var y := 105.0 + float(i) * 32.0
 		draw_rect(Rect2(42, y - 15, 13, 13), ResourceSlick.COLORS[i])
 		draw_string(font, Vector2(65, y - 3), ResourceSlick.NAMES[i].to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 122, 15, ink)
 		draw_string(font, Vector2(235, y - 3), "%02d сыр.  →  %02d гот." % [main.raw[i], main.refined[i]], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, muted)
+		# Это прогресс следующей переработки, не «ёмкость»: запасы не ограничены.
+		draw_rect(Rect2(235, y + 2, 158, 4), Color("273c41"))
+		draw_rect(Rect2(235, y + 2, 158.0 * clampf(float(main.raw[i]) / float(required), 0.0, 1.0), 4),
+			ResourceSlick.COLORS[i])
+	draw_string(font, Vector2(42, 223), "ПОЛОСЫ: СЫРЬЁ ДО ПЕРЕРАБОТКИ (%d ШТ.)" % required,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, muted)
 
 	var trailer_status := "ПЛАШКОУТ: НА БУКСИРЕ (2 сыр. → 1 гот.)" if main.boat.has_trailer else "ПЛАШКОУТ: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
 	draw_string(font, Vector2(42, 240), trailer_status, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, accent if main.boat.has_trailer else muted)
