@@ -375,7 +375,7 @@ void fragment() {
 	EMISSION = distant_glitter;
 
 	NORMAL = normalize((VIEW_MATRIX * vec4(N.x, N.y, N.z, 0.0)).xyz);
-	float rough = mix(0.16, 0.55, near_shore);
+	float rough = mix(0.29, 0.55, near_shore); // зыбь не должна давать белые зеркальные прямоугольники
 	ROUGHNESS = mix(rough, 0.88, foam);
 	SPECULAR = mix(0.55, 0.18, near_shore);
 	METALLIC = 0.0;
