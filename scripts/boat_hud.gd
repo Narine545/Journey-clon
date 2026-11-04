@@ -79,6 +79,25 @@ func _draw() -> void:
 	# 2. КРУГОВОЙ ПЕЛЕНГАТОР-КОМПАС (справа от главной панели)
 	_draw_beacon_compass(font, Vector2(505, 102), 58.0, backdrop, accent, warn, muted, ink)
 
+	# Отладка всегда доступна в лодочном режиме; [0] прячет только панель.
+	if main.debug_panel_visible:
+		var dbg := Vector2(size.x - 355.0, 22.0)
+		draw_rect(Rect2(dbg, Vector2(333, 191)), backdrop)
+		draw_rect(Rect2(dbg, Vector2(333, 191)), Color("548c89"), false, 1.0)
+		draw_string(font, dbg + Vector2(12, 23), "БЫСТРАЯ ПРОВЕРКА  •  %d FPS" % Engine.get_frames_per_second(),
+			HORIZONTAL_ALIGNMENT_LEFT, 309, 14, accent)
+		draw_string(font, dbg + Vector2(12, 47), "[0] — СКРЫТЬ / ПОКАЗАТЬ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
+		draw_string(font, dbg + Vector2(12, 70), "[4] — +3 ГОТОВЫХ КАЖДОГО ЦВЕТА", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
+		draw_string(font, dbg + Vector2(12, 93), "[5] — ДЕНЬ / СУМЕРКИ / НОЧЬ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
+		draw_string(font, dbg + Vector2(12, 116), "[6] — К СЛЕДУЮЩЕМУ БУЮ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
+		draw_string(font, dbg + Vector2(12, 139), "[7] — ПРОДОЛЖИТЬ ВРЕМЯ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
+		draw_string(font, dbg + Vector2(12, 162), "[8] / [9] — НОЧНОЙ ОБЪЁМ - / +", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
+		draw_string(font, dbg + Vector2(12, 184),
+			"НОЧЬ %d%%  %s  •  СВЕТ %.2f  ТУМАН %.3f" % [int(main.night01 * 100.0),
+				"ПАУЗА" if main.debug_night_paused else "ИДЁТ",
+				main.debug_night_fill, main.world._env.fog_density],
+			HORIZONTAL_ALIGNMENT_LEFT, 309, 11, muted)
+
 	# 3. КОНТЕКСТНАЯ ПОДСКАЗКА ДЕЙСТВИЯ ВНИЗУ ЭКРАНА
 	var dock_b := main.nearby_dock_beacon()
 	var resource_name := main.boat.target_name()

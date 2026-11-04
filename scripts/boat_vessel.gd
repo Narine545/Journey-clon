@@ -83,6 +83,10 @@ func setup(boat_main: BoatMain, water_ref: WaterSurface, coast_ref: Coast) -> vo
 		set_trailer_enabled(true)
 
 
+func steering_yaw_delta(steer: float, current_speed: float, delta: float) -> float:
+	return -steer * TURN_RATE * delta * clampf(absf(current_speed) / 3.5, 0.0, 1.0) * (1.0 if current_speed >= 0.0 else -1.0)
+
+
 func effective_max_speed() -> float:
 	var base := MAX_SPEED + (2.0 if has_trailer else 0.0)
 	var hp_factor := lerpf(0.60, 1.0, clampf(hull_hp / 100.0, 0.0, 1.0))
@@ -148,7 +152,9 @@ func _physics_process(delta: float) -> void:
 	speed = move_toward(speed, target_speed, (ACCELERATION if absf(throttle) > 0.01 else DRAG) * delta)
 	var accel_rate := (speed - prev_speed) / maxf(delta, 0.001)
 
-	rotation.y += steer * TURN_RATE * delta * clampf(absf(speed) / 3.5, 0.0, 1.0) * (1.0 if speed >= 0.0 else -1.0)
+	# При текущем ракурсе положительный yaw ведёт нос ВЛЕВО на экране.
+	# Input axis: A=-1, D=+1; A должен давать положительный yaw.
+	rotation.y += steering_yaw_delta(steer, speed, delta)
 
 	var heading := -global_transform.basis.z
 	var right := global_transform.basis.x

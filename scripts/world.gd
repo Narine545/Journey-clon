@@ -284,14 +284,21 @@ func apply_sun(dir: Vector3) -> void:
 	_sun.light_color = daylight.lerp(Color(0.59, 0.72, 0.91), game.night01)
 
 
-## Только лодочный режим: после заката солнце действительно гаснет,
-## вместо того чтобы превращаться в яркую направленную «луну».
-## Тёмный туман/экспозиция из apply_night01 остаются без переопределения;
-## рыболовный режим не меняем.
-func fade_boat_sun(n: float) -> void:
+## Только лодочный режим: диск солнца и дорожка исчезают, но оставляем
+## очень слабый направленный свет неба, чтобы тени и рельеф не стали плоскими.
+## Никакого локального «лунного прожектора» или повышения экспозиции.
+func fade_boat_sun(n: float, fill_energy: float) -> void:
 	var sunset := clampf((n - 0.18) / 0.60, 0.0, 1.0)
-	_sun.light_energy = lerpf(0.85, 0.30, n) * (1.0 - sunset)
+	_sun.light_energy = lerpf(0.85, fill_energy, sunset)
 	_sun.light_volumetric_fog_energy = 0.75 * (1.0 - sunset)
+	# Тёмный небесный фон + слабый боковой свет дают форму корпусу и
+	# рифам; повышение общей экспозиции лишь делало всё одинаково серым.
+	_env.ambient_light_energy = lerpf(0.72, 0.34, n)
+	_env.tonemap_exposure = lerpf(0.95, 1.05, n)
+	_env.fog_density = lerpf(0.0011, 0.006, n) if not compat_fallback \
+		else lerpf(0.0011, 0.012, n)
+	_env.volumetric_fog_density = lerpf(0.0016, 0.016, n)
+	_env.fog_aerial_perspective = lerpf(0.25, 0.42, n)
 	if _using_sky_plus:
 		_sky_mat.set_shader_parameter("sundisc_intensity", lerpf(32.0, 0.0, sunset))
 	else:

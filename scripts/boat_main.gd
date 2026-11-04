@@ -36,6 +36,12 @@ var beacons: Array[Dictionary] = []
 var reefs: Array[Dictionary] = []
 var all_beacons_lit := false
 
+# Быстрый тест встроен в лодочную сцену, не требует внешних консольных команд.
+var debug_panel_visible := true
+var debug_night_paused := false
+var debug_night_fill := 0.18
+var _debug_night_step := 0
+
 var _capture_frames := 0
 var _camera_focus := Vector3.ZERO
 var _stream_timer := 0.0
@@ -115,7 +121,7 @@ func _apply_atmosphere(n01: float) -> void:
 	var sun := day_sun.lerp(dusk_sun, night01).normalized()
 	game.sun_dir = sun
 	world.apply_sun(sun)
-	world.fade_boat_sun(night01)
+	world.fade_boat_sun(night01, debug_night_fill)
 	coast.apply_sun(sun)
 	water.apply_sun(sun)
 	# Уходит дневной свет, а не включается отдельная луна. Оставляем
@@ -625,6 +631,46 @@ func announce(text: String) -> void:
 	notice_time = 6.0
 
 
+func debug_grant_materials() -> void:
+	# Одно нажатие покрывает суммарные рецепты всех трёх маяков.
+	for i in range(refined.size()):
+		refined[i] += 3
+	announce("ТЕСТ: +3 ГОТОВЫХ ПИГМЕНТА КАЖДОГО ЦВЕТА")
+
+
+func debug_cycle_night() -> void:
+	_debug_night_step = (_debug_night_step + 1) % 3
+	debug_night_paused = true
+	var presets := PackedFloat32Array([0.0, 0.45, 0.88])
+	_apply_atmosphere(presets[_debug_night_step])
+	announce("ТЕСТ: ВРЕМЯ СУТОК %d%% (ЗАФИКСИРОВАНО; [7] — ПРОДОЛЖИТЬ)" % int(round(night01 * 100.0)))
+
+
+func debug_adjust_fill(change: float) -> void:
+	debug_night_fill = clampf(debug_night_fill + change, 0.02, 0.42)
+	_apply_atmosphere(night01)
+	announce("ТЕСТ: НОЧНОЙ БОКОВОЙ СВЕТ %.2f (БЕЗ ЛУННОЙ ДОРОЖКИ)" % debug_night_fill)
+
+
+func debug_warp_to_beacon() -> void:
+	var target_b := next_unlit_beacon()
+	if target_b.is_empty() and not beacons.is_empty():
+		target_b = beacons[0]
+	if target_b.is_empty() or boat == null:
+		return
+	var bp: Vector3 = target_b["buoy_pos"]
+	var at := Vector3(bp.x - 5.0, water.surface_height(bp.x - 5.0, bp.z) + 0.08, bp.z)
+	boat.global_position = at
+	boat.speed = 0.0
+	boat._reset_trail(Vector2(at.x, at.z))
+	if boat.has_trailer:
+		boat.set_trailer_enabled(true)
+	_camera_focus = at + Vector3.UP * 0.8
+	camera.global_position = _camera_focus + Vector3(21.0, 26.2, 30.0)
+	camera.look_at(_camera_focus, Vector3.UP)
+	announce("ТЕСТ: У БУЯ «%s» — НАЖМИТЕ [E]" % target_b["name"].to_upper())
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
@@ -649,6 +695,30 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_3:
 				activate_overdrive()
 				get_viewport().set_input_as_handled()
+			# Цифры не перехватываются редактором Godot: F6/F8 заняты
+			# запуском/остановкой сцены при игре внутри редактора.
+			KEY_0:
+				debug_panel_visible = not debug_panel_visible
+				get_viewport().set_input_as_handled()
+			KEY_4:
+				debug_grant_materials()
+				get_viewport().set_input_as_handled()
+			KEY_5:
+				debug_cycle_night()
+				get_viewport().set_input_as_handled()
+			KEY_6:
+				debug_warp_to_beacon()
+				get_viewport().set_input_as_handled()
+			KEY_7:
+				debug_night_paused = false
+				announce("ТЕСТ: ВРЕМЯ СУТОК СНОВА ИДЁТ")
+				get_viewport().set_input_as_handled()
+			KEY_8:
+				debug_adjust_fill(-0.04)
+				get_viewport().set_input_as_handled()
+			KEY_9:
+				debug_adjust_fill(0.04)
+				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera.size = maxf(16.0, camera.size - 2.0)
@@ -661,10 +731,13 @@ func _process(delta: float) -> void:
 		return
 	_beacon_anim_time += delta
 	sonar_timer = maxf(0.0, sonar_timer - delta)
+	var had_overdrive := overdrive_timer > 0.0
 	overdrive_timer = maxf(0.0, overdrive_timer - delta)
+	if had_overdrive and overdrive_timer <= 0.0:
+		boat.update_night_lights(night01, false)
 
 	# Плавное наступление сумерек (в режиме smoke-теста оставляем яркий день)
-	if OS.get_environment("JOURNEY_BOAT_SMOKE") != "1":
+	if OS.get_environment("JOURNEY_BOAT_SMOKE") != "1" and not debug_night_paused:
 		var night_rate := 0.0015 if all_beacons_lit else (0.0055 - float(lit_beacon_count()) * 0.0012)
 		night01 = minf(0.88, night01 + night_rate * delta)
 		_atmosphere_timer -= delta

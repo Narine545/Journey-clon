@@ -20,6 +20,17 @@ func _physics_process(_delta: float) -> void:
 		_check(main.coast.water_depth(origin.x, origin.z) > 2.0, "лодка спущена на глубокую воду")
 		_check(main.slicks.size() >= 6, "SDF-пятна распределены вокруг лодки")
 		_check(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "изометрическая камера")
+		var yaw := main.boat.rotation.y
+		var view_right := main.camera.global_transform.basis.x
+		var heading := -main.boat.global_transform.basis.z
+		var left_yaw := main.boat.steering_yaw_delta(-1.0, 5.0, 0.2)
+		var right_yaw := main.boat.steering_yaw_delta(1.0, 5.0, 0.2)
+		var left_heading := -Basis(Vector3.UP, yaw + left_yaw).z
+		var right_heading := -Basis(Vector3.UP, yaw + right_yaw).z
+		_check(left_heading.dot(view_right) < heading.dot(view_right) and
+			right_heading.dot(view_right) > heading.dot(view_right) and
+			main.boat.steering_yaw_delta(-1.0, -5.0, 0.2) < 0.0,
+			"A ведёт нос влево на экране, D вправо, задний ход инвертирует руль")
 		_check(main.beacons.size() == 3 and main.reefs.size() > 0,
 			"три маяка и морские рифы созданы")
 		var safe_buoys := true
@@ -165,10 +176,28 @@ func _physics_process(_delta: float) -> void:
 			gap >= float(rf["radius"]) + 1.85 - 0.01,
 			"риф гасит скорость, повреждает корпус и не телепортирует его внутрь")
 		main._apply_atmosphere(0.88)
-		_check(main.world._sun.light_energy < 0.001 and
+		_check(main.world._sun.light_energy > 0.14 and main.world._sun.light_energy < 0.20 and
 			float(main.water.material().get_shader_parameter("sun_path_amount")) < 0.001 and
-			main.world._env.volumetric_fog_density > 0.014,
-			"ночью нет лунной дорожки и направленной луны, но есть плотный туман")
+			main.world._env.volumetric_fog_density > 0.013,
+			"ночью нет световой дорожки, а слабый свет сохраняет объём в тумане")
+		var night_glitter := float(main.water.material().get_shader_parameter("glitter_amount"))
+		main.debug_adjust_fill(0.04)
+		_check(main.world._sun.light_energy > 0.21 and
+			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
+			"[9] добавляет объёмный свет, не изменяя глиттер")
+		main.debug_adjust_fill(-0.04)
+		var before_grant := main.refined[0]
+		main.debug_grant_materials()
+		_check(main.refined[0] == before_grant + 3 and main.refined[3] >= 3,
+			"[4] выдаёт готовые материалы для быстрой проверки")
+		main.debug_cycle_night()
+		_check(main.debug_night_paused and is_equal_approx(main.night01, 0.45),
+			"[5] фиксирует сумерки")
+		main.debug_cycle_night()
+		_check(is_equal_approx(main.night01, 0.88), "[5] фиксирует тёмную ночь")
+		main.debug_warp_to_beacon()
+		_check(not main.nearby_dock_beacon().is_empty() and main.boat.speed == 0.0,
+			"[6] доставляет судно к бую без рывка двигателя")
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))
 		get_tree().quit(0 if failures == 0 else 1)
 
