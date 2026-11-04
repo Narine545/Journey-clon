@@ -181,6 +181,6 @@ func _mega_h_cpu(x: float, z: float) -> float:
 
 	var mph := v * 0.70 + u * 0.16 + rn * 2.6 + rn2 * 3.4 + t * swell_time_rate
 	var chop_ph := u * 1.15 - v * 0.45 + t * 1.65
-	var primary := cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
-		+ cos(mph * 0.47 + 0.8) * 0.22
+	var primary := (cos(mph) * 0.62 + cos(mph * 2.63 + 1.7) * 0.30
+		+ cos(mph * 0.47 + 0.8) * 0.22)
 	return (primary + sin(chop_ph) * chop_strength) * mega_amp * wind_power
