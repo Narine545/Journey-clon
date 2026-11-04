@@ -24,7 +24,6 @@ uniform float ripple_freq = 1.35;
 uniform float ripple_speed = 1.1;
 uniform float ripple_strength = 0.38;
 uniform float glitter_amount = 1.0;
-uniform float solar_glitter_amount = 1.0;
 uniform float sun_path_amount = 1.0;
 uniform float direct_specular_amount = 1.0;
 
@@ -307,9 +306,6 @@ void fragment() {
 
 	// ---------- солнечный глиттер ----------
 	vec3 H = normalize(V + L);
-	// Крупные вспышки раньше выключались вблизи и появлялись только вдали.
-	// Постоянный масштаб и интенсивность без границы «линзы».
-	float far_glit = 0.22;
 	// Плотность мировых ячеек постоянна на экране ортографической камеры:
 	// ступенчатый LOD по расстоянию рисовал заметные концентрические зоны.
 	float density = 4.0;
@@ -326,53 +322,16 @@ void fragment() {
 	float glit_fade = 0.78 * (1.0 - 0.72 * near_shore);
 	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26) * glint * glit_fade;
 
-	float path_power = mix(180.0, 34.0, far_glit);
-	float path = pow(clamp(dot(N_ambient, H), 0.0, 1.0), path_power);
+	float path = pow(clamp(dot(N_ambient, H), 0.0, 1.0), 180.0);
 	base += sun_col * path * 0.55 * sun_path_amount * (1.0 - 0.85 * near_shore);
-
-	vec2 view_xz = V.xz / max(length(V.xz), 1e-4);
-	vec2 sun_xz = L.xz / max(length(L.xz), 1e-4);
-	float road_alignment = clamp(-dot(view_xz, sun_xz), 0.0, 1.0);
-	float sun_road = pow(road_alignment, 8.0);
-	float spark_cell_size = mix(3.2, 11.0, far_glit);
-	vec2 spark_uv = wp / spark_cell_size;
-	vec2 spark_cell = floor(spark_uv);
-	vec2 spark_local = fract(spark_uv) - vec2(0.5);
-	float spark_seed = hash12(spark_cell);
-	vec2 spark_jitter = vec2(hash12(spark_cell + vec2(5.7, 2.3)),
-		hash12(spark_cell + vec2(1.9, 8.1))) - vec2(0.5);
-	vec2 spark_pos = (spark_local - spark_jitter * 0.54) * spark_cell_size;
-	float pixel_world = max(0.04, 2.0
-		/ max(VIEWPORT_SIZE.y * PROJECTION_MATRIX[1][1], 1.0));
-	float spark_radius = max(0.55, pixel_world * 0.95);
-	float spark_core = 1.0 - smoothstep(spark_radius * 0.30, spark_radius,
-		length(spark_pos));
-	float ray_width = max(0.12, pixel_world * 0.12);
-	float ray_v = (1.0 - smoothstep(ray_width, ray_width * 2.4, abs(spark_pos.x)))
-		* (1.0 - smoothstep(spark_radius, spark_radius * 3.2, abs(spark_pos.y)));
-	float ray_h = (1.0 - smoothstep(ray_width, ray_width * 2.4, abs(spark_pos.y)))
-		* (1.0 - smoothstep(spark_radius, spark_radius * 3.2, abs(spark_pos.x)));
-	float sparkle_shape = max(spark_core, max(ray_v, ray_h) * 0.72);
-	float microfacet_seed = hash12(spark_cell + vec2(11.7, 4.1));
-	vec3 microfacet_n = normalize(vec3((microfacet_seed - 0.5) * 0.38, 1.0,
-		hash12(spark_cell + vec2(3.3, 15.1)) * 0.38 - 0.19));
-	float microfacet_match = 0.45 + 0.55 * pow(
-		clamp(dot(microfacet_n, H), 0.0, 1.0), 10.0);
-	float spark_select = step(1.0 - solar_glitter_amount * 0.32, spark_seed);
-	float spark_twinkle = 0.72 + 0.28 * sin(u_time * 3.4 + spark_seed * 71.0);
-	vec3 spark_tint = mix(sun_col, vec3(1.0, 0.96, 0.82), spark_core * 0.82);
-	vec3 distant_glitter = spark_tint * sparkle_shape * spark_select * sun_road
-		* microfacet_match * spark_twinkle * far_glit * solar_glitter_amount
-		* 9.0 * (1.0 - 0.70 * near_shore);
-	base += distant_glitter;
 
 	// ---------- пена прибоя + мировая кильватерная пена ----------
 	float fn = vnoise(vec2(wp.x * 0.85 + u_time * 0.10, wp.y * 1.55));
 	float fn2 = vnoise(vec2(wp.x * 3.2 - u_time * 0.38, wp.y * 2.35));
-	// Одна мягкая шумовая кайма вместо двух параллельных синусоидальных
-	// полос: узкий второй гребень превращался в пунктир на диагональном урезе.
-	float edge = exp(-pow((depth_m - 0.025) / 0.13, 2.0));
-	float foam = edge * smoothstep(0.20, 0.68, fn * 0.70 + fn2 * 0.30) * 0.38;
+	float edge = exp(-pow((depth_m - 0.014 - 0.014 * sin(wp.x * 0.9 + u_time * 1.3)) / 0.075, 2.0));
+	float edge2 = exp(-pow((depth_m - 0.17 - 0.03 * sin(wp.y * 0.21 + u_time * 1.15)) / 0.08, 2.0));
+	float foam = edge * smoothstep(0.02, 0.40, fn) * (0.72 + 0.28 * fn2);
+	foam += edge2 * smoothstep(0.45, 0.85, fn2) * 0.55;
 	foam = clamp(max(foam, ship_wake_foam), 0.0, 1.0);
 	base = mix(base, foam_col * (0.82 + 0.18 * ndl), foam * 0.92);
 
@@ -380,8 +339,7 @@ void fragment() {
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
 	float above = smoothstep(-2.0, 16.0, w_pos.y - CAMERA_POSITION_WORLD.y);
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);
-	ALBEDO = mix(base - distant_glitter, fcol, fog);
-	EMISSION = distant_glitter;
+	ALBEDO = mix(base, fcol, fog);
 
 	// Спектральная нормаль в прямом свете давала повторяющиеся светлые
 	// «сканлайны» даже после выравнивания отражения неба. Для освещения

@@ -28,6 +28,7 @@ uniform vec2 wind_dir = vec2(0.32, -0.95); // нормализуется вну�
 uniform float wind_power = 1.0;
 
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
+uniform float orthographic_glitter = 0.0; // только изометрическая сцена лодки
 uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.5;
 uniform float shadow_star_density : hint_range(0.15, 0.98) = 0.30;
@@ -140,7 +141,12 @@ void fragment() {
 
 	// Дистанция до фрагмента: мелкая деталь гаснет с расстоянием,
 	// чтобы дюны оставались шелковистыми, а не рябило муаром.
-	float dist = length(CAMERA_POSITION_WORLD - w_pos);
+	// В перспективной рыбалке расстояние радиальное. Для ортографической
+	// лодки оно рисовало неподвижную «линзу» на песке вокруг камеры:
+	// затухание света/глиттера и пороги LOD шли концентрическими кругами.
+	float view_depth = max(-(VIEW_MATRIX * vec4(w_pos, 1.0)).z, 0.0);
+	float dist = mix(length(CAMERA_POSITION_WORLD - w_pos), view_depth,
+		orthographic_glitter);
 	float detail = exp(-dist * 0.030);
 
 	// ---------- 0. Настоящий песок: карта смещений ----------
@@ -231,13 +237,16 @@ void fragment() {
 	//   • солнечный — искра вспыхивает ярче, когда солнце в кадре;
 	//   • небесный — зерно ловит САМУ КАМЕРУ: песок сверкает и когда
 	//     летишь боком, и когда солнце за спиной (как в Journey).
-	vec3 V = normalize(CAMERA_POSITION_WORLD - w_pos);
+	vec3 perspective_view = normalize(CAMERA_POSITION_WORLD - w_pos);
+	vec3 parallel_view = normalize((INV_VIEW_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
+	vec3 V = normalize(mix(perspective_view, parallel_view, orthographic_glitter));
 	vec3 H = normalize(V + L);
-	// LOD «мип-уровнями»: плотность меняется СТУПЕНЯМИ (3·2^k клеток/м) —
-	// сетка прибита к миру. Непрерывный пересчёт от дистанции заставлял
-	// блёстки «плыть» и растягиваться в шлейф при движении камеры.
+	// Перспективная рыбалка оставляет прежний дистанционный LOD. Под
+	// ортографической лодкой ступени LOD меняли масштаб искр кругом вокруг
+	// камеры; теперь все ячейки песка одинакового размера в мировых метрах.
 	float need = 900.0 / max(dist, 0.001);
-	float density = clamp(pow(2.0, floor(log2(need / 3.0))) * 3.0, 6.0, 130.0);
+	float perspective_density = clamp(pow(2.0, floor(log2(need / 3.0))) * 3.0, 6.0, 130.0);
+	float density = mix(perspective_density, 12.0, orthographic_glitter);
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));

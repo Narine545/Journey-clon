@@ -41,6 +41,9 @@ func _ready() -> void:
 	add_child(sand)
 	sand.setup(game)
 	coast.attach_sand(sand)
+	# Песок под ортографической камерой не должен менять LOD кругами
+	# вокруг её положения; режим рыбалки остаётся перспективным.
+	coast.set_sand("orthographic_glitter", 1.0)
 	water = WaterSurface.new()
 	water.shader_path = "res://shaders/water_boat.gdshader"
 	add_child(water)
@@ -98,9 +101,6 @@ func _ready() -> void:
 	water.set_param("ripple_strength", 0.10)
 	# Вернуть искры на ровно освещённую воду, без экранной «линзы» и LOD-колец.
 	water.set_param("glitter_amount", 0.15)
-	water.set_param("solar_glitter_amount", 0.10)
-	# Сгладить пересечение двух сеток на диагональном урезе берега.
-	water.set_param("shore_fade", 0.45)
 	water.set_param("sun_path_amount", 0.09)
 	water.set_param("direct_specular_amount", 0.018)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
