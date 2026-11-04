@@ -182,8 +182,9 @@ func _physics_process(_delta: float) -> void:
 			"ночью нет световой дорожки, а слабый свет сохраняет объём в тумане")
 		var night_glitter := float(main.water.material().get_shader_parameter("glitter_amount"))
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_AGX and
+			main.world._env.ssao_light_affect > 0.0 and
 			is_equal_approx(float(main.water.material().get_shader_parameter("surface_light_detail")), 0.16),
-			"лодочный профиль включает AgX и мягкое освещение волн")
+			"лодочный профиль включает AgX, SSAO и мягкое освещение волн")
 		main.debug_toggle_lighting()
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_FILMIC and
 			is_zero_approx(float(main.water.material().get_shader_parameter("surface_light_detail"))),

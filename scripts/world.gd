@@ -298,7 +298,9 @@ func configure_boat_lighting(enabled: bool) -> void:
 	_env.ambient_light_color = Color(0.20, 0.27, 0.36) if enabled else Color.WHITE
 	_env.ssao_radius = 1.35 if enabled else 3.0
 	_env.ssao_intensity = 1.8 if enabled else 2.0
-	_env.ssao_direct_light_affect = 0.32 if enabled else 0.0
+	# В API Godot 4.7.2 сеттер называется set_ssao_direct_light_affect,
+	# но зарегистрированное свойство GDScript — именно ssao_light_affect.
+	_env.ssao_light_affect = 0.32 if enabled else 0.0
 	_env.ssao_ao_channel_affect = 0.45 if enabled else 0.0
 	_env.ssil_intensity = 0.95 if enabled else 0.85
 	_sun.directional_shadow_max_distance = 100.0 if enabled else 180.0
