@@ -284,13 +284,19 @@ void fragment() {
 	base = mix(base, water_shallow * 1.22, near_shore * 0.45);
 	base = mix(base, water_shallow * 1.28, clamp(trail_aerated, 0.0, 0.55));
 
-	float ndl = clamp(dot(N, L) * 0.5 + 0.5, 0.0, 1.0);
+	// Широкие полосы — отражение неба на периодических склонах спектра.
+	// Крупные волны по-прежнему двигают вершины, но цвет неба берём по
+	// сглаженной нормали; мелкие блики и кильватер используют полную N.
+	vec3 N_ambient = normalize(mix(vec3(0.0, 1.0, 0.0), N, 0.16));
+	float ndl = clamp(dot(N_ambient, L) * 0.5 + 0.5, 0.0, 1.0);
 	base *= 0.80 + 0.32 * ndl;
 
 	// ---------- френель: небо в воде ----------
-	vec3 V = normalize(CAMERA_POSITION_WORLD - w_pos);
-	vec3 R = reflect(-V, N);
-	float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.2);
+	// Ортографическая камера: все лучи параллельны. Вектор от точки до
+	// положения камеры создавал ложную сферическую область бликов в кадре.
+	vec3 V = normalize((INV_VIEW_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
+	vec3 R = reflect(-V, N_ambient);
+	float fres = pow(1.0 - clamp(dot(N_ambient, V), 0.0, 1.0), 3.2);
 	vec3 sky_ref = mix(horizon_col, sky_col, smoothstep(0.02, 0.42, R.y));
 	sky_ref = mix(sky_ref, sky_ref * vec3(0.60, 0.80, 1.02), 0.62);
 	float mirror = clamp(0.05 + 0.92 * fres, 0.0, 0.88);
@@ -300,9 +306,9 @@ void fragment() {
 	// ---------- солнечный глиттер ----------
 	vec3 H = normalize(V + L);
 	float far_glit = smoothstep(120.0, 900.0, dist);
-	float need = 900.0 / max(dist, 0.001);
-	float lod_density = pow(2.0, floor(log2(need / 3.0))) * 3.0;
-	float density = clamp(lod_density, mix(6.0, 1.2, far_glit), 72.0);
+	// Плотность мировых ячеек постоянна на экране ортографической камеры:
+	// ступенчатый LOD по расстоянию рисовал заметные концентрические зоны.
+	float density = 4.0;
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));
@@ -311,14 +317,13 @@ void fragment() {
 	vec3 Hg = normalize(H + vec3(cellid - 0.5, cellb - 0.5, cellc - 0.5) * 0.55);
 	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(30.0, 110.0, cellb));
 	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(24.0, 80.0, cellc));
-	float glit_chance = glitter_amount * mix(exp(-dist * 0.002), 0.42, far_glit);
+	float glit_chance = glitter_amount * 0.28;
 	float glint = step(1.0 - glit_chance, cellid);
-	float glit_fade = mix(exp(-dist * 0.0025), 0.38, far_glit)
-		* (1.0 - 0.92 * near_shore);
+	float glit_fade = 0.44 * (1.0 - 0.92 * near_shore);
 	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26) * glint * glit_fade;
 
 	float path_power = mix(180.0, 34.0, far_glit);
-	float path = pow(clamp(dot(N, H), 0.0, 1.0), path_power);
+	float path = pow(clamp(dot(N_ambient, H), 0.0, 1.0), path_power);
 	base += sun_col * path * 0.55 * sun_path_amount * (1.0 - 0.85 * near_shore);
 
 	vec2 view_xz = V.xz / max(length(V.xz), 1e-4);
