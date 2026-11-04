@@ -92,7 +92,7 @@ func _draw() -> void:
 		draw_string(font, dbg + Vector2(12, 116), "[6] — К СЛЕДУЮЩЕМУ БУЮ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
 		draw_string(font, dbg + Vector2(12, 139), "[7] — ПРОДОЛЖИТЬ ВРЕМЯ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
 		draw_string(font, dbg + Vector2(12, 162), "[8] / [9] — НОЧНОЙ ОБЪЁМ - / +", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
-		draw_string(font, dbg + Vector2(12, 185), "[L] — СВЕТ AgX / FILMIC: %s" % (
+		draw_string(font, dbg + Vector2(12, 185), "[L] — ТОЛЬКО AgX / FILMIC: %s" % (
 			"AgX" if main.debug_lighting_profile else "FILMIC"),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
 		draw_string(font, dbg + Vector2(12, 207),

@@ -285,25 +285,26 @@ func apply_sun(dir: Vector3) -> void:
 	_sun.light_color = daylight.lerp(Color(0.59, 0.72, 0.91), game.night01)
 
 
-## Профиль лодки: реальные отношения направленного/фонового света, AgX,
-## локальный SSAO и SSIL. Не включаем дорогой SDFGI в динамической сцене.
-## Можно сравнить с прежним Filmic через [L], не затрагивая старую рыбалку.
-func configure_boat_lighting(enabled: bool) -> void:
-	boat_lighting_profile = enabled
-	_env.tonemap_mode = Environment.TONE_MAPPER_AGX if enabled else Environment.TONE_MAPPER_FILMIC
-	_env.adjustment_enabled = enabled
-	_env.adjustment_contrast = 1.12 if enabled else 1.0
-	_env.adjustment_saturation = 1.08 if enabled else 1.0
-	_env.ambient_light_sky_contribution = 0.80 if enabled else 1.0
-	_env.ambient_light_color = Color(0.20, 0.27, 0.36) if enabled else Color.WHITE
-	_env.ssao_radius = 1.35 if enabled else 3.0
-	_env.ssao_intensity = 1.8 if enabled else 2.0
-	# В API Godot 4.7.2 сеттер называется set_ssao_direct_light_affect,
-	# но зарегистрированное свойство GDScript — именно ssao_light_affect.
-	_env.ssao_light_affect = 0.32 if enabled else 0.0
-	_env.ssao_ao_channel_affect = 0.45 if enabled else 0.0
-	_env.ssil_intensity = 0.95 if enabled else 0.85
-	_sun.directional_shadow_max_distance = 100.0 if enabled else 180.0
+## Постоянный лодочный профиль. Не связываем тонмаппер с SSAO, небом,
+## тенями или нормалью воды: [L] должен сравнивать ОДНУ настройку.
+func configure_boat_lighting() -> void:
+	boat_lighting_profile = true
+	_env.adjustment_enabled = true
+	_env.adjustment_contrast = 1.12
+	_env.adjustment_saturation = 1.08
+	_env.ambient_light_sky_contribution = 0.80
+	_env.ambient_light_color = Color(0.20, 0.27, 0.36)
+	_env.ssao_radius = 1.35
+	_env.ssao_intensity = 1.8
+	# В Godot 4.7.2 имя свойства — ssao_light_affect, НЕ имя сеттера.
+	_env.ssao_light_affect = 0.32
+	_env.ssao_ao_channel_affect = 0.45
+	_env.ssil_intensity = 0.95
+	_sun.directional_shadow_max_distance = 100.0
+
+
+func set_boat_tonemapper(use_agx: bool) -> void:
+	_env.tonemap_mode = Environment.TONE_MAPPER_AGX if use_agx else Environment.TONE_MAPPER_FILMIC
 
 
 ## Только лодочный режим: диск солнца и дорожка исчезают, но оставляем
@@ -323,6 +324,10 @@ func fade_boat_sun(n: float, fill_energy: float) -> void:
 		else lerpf(0.0011, 0.012, n)
 	_env.volumetric_fog_density = lerpf(0.0016, 0.016, n)
 	_env.fog_aerial_perspective = lerpf(0.25, 0.42, n)
+	# Sky++ раньше оставлял дневное рассеяние при нулевом солнечном диске;
+	# fallback тоже сохранял часть многократного рассеяния. Не меняем
+	# sun_dir: он используется водой для естественного глиттера.
+	_sky_mat.set_shader_parameter("daylight_scatter", lerpf(1.0, 0.16, sunset))
 	if _using_sky_plus:
 		_sky_mat.set_shader_parameter("sundisc_intensity", lerpf(32.0, 0.0, sunset))
 	else:

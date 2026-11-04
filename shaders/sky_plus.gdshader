@@ -33,6 +33,9 @@ uniform float mie_anisotropy_factor = 0.75;
 
 uniform float atmosphere_density: hint_range(0.0, 5.0) = 1.0;
 uniform float exposure = 10.0;
+// В лодочной сцене солнечное рассеяние уходит вместе с дневным светом.
+// Прочие сцены используют дневное значение по умолчанию.
+uniform float daylight_scatter : hint_range(0.0, 1.0) = 1.0;
 
 uniform float sun_disc_feather: hint_range(0.0, 1.0) = 0.5;
 uniform float sundisc_intensity = 100.0;
@@ -258,7 +261,8 @@ vec3 integrate_scattering (vec3 rayStart, vec3 rayDir, float rayLength, vec3 lig
 
 	transmittance = absorb(opticalDepth);
 
-	return (rayleigh * C_RAYLEIGH * rayleigh_strength + mie * C_MIE * mie_strength) * lightColor * exposure;
+	return (rayleigh * C_RAYLEIGH * rayleigh_strength + mie * C_MIE * mie_strength)
+		* lightColor * exposure * daylight_scatter;
 }
 
 float sun_disc(vec3 eyedir, vec3 sundir, float theta_r) {

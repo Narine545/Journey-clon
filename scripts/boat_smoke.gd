@@ -181,14 +181,25 @@ func _physics_process(_delta: float) -> void:
 			main.world._env.volumetric_fog_density > 0.013,
 			"ночью нет световой дорожки, а слабый свет сохраняет объём в тумане")
 		var night_glitter := float(main.water.material().get_shader_parameter("glitter_amount"))
+		_check(is_equal_approx(float(main.world._sky_mat.get_shader_parameter("daylight_scatter")), 0.16),
+			"ночное небо снижает дневное рассеяние, не меняя глиттер")
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_AGX and
 			main.world._env.ssao_light_affect > 0.0 and
 			is_equal_approx(float(main.water.material().get_shader_parameter("surface_light_detail")), 0.16),
 			"лодочный профиль включает AgX, SSAO и мягкое освещение волн")
+		var before_light := main.world._sun.light_energy
+		var before_ambient := main.world._env.ambient_light_energy
+		var before_ssao := main.world._env.ssao_light_affect
+		var before_sky := float(main.world._sky_mat.get_shader_parameter("daylight_scatter"))
 		main.debug_toggle_lighting()
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_FILMIC and
-			is_zero_approx(float(main.water.material().get_shader_parameter("surface_light_detail"))),
-			"[L] возвращает прежнее освещение для сравнения")
+			is_equal_approx(main.world._sun.light_energy, before_light) and
+			is_equal_approx(main.world._env.ambient_light_energy, before_ambient) and
+			is_equal_approx(main.world._env.ssao_light_affect, before_ssao) and
+			is_equal_approx(float(main.world._sky_mat.get_shader_parameter("daylight_scatter")), before_sky) and
+			is_equal_approx(float(main.water.material().get_shader_parameter("surface_light_detail")), 0.16) and
+			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
+			"[L] меняет только тонмаппер, сохраняя свет, небо и воду")
 		main.debug_toggle_lighting()
 		main.debug_adjust_fill(0.04)
 		_check(main.world._sun.light_energy > 0.29 and

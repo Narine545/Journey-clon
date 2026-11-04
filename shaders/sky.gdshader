@@ -14,6 +14,8 @@ shader_type sky;
 group_uniforms Sun;
 
 uniform float sun_intensity : hint_range(0.0, 314.159, 0.1) = 50.0;
+// Аналог лодочного затухания рассеяния для Compatibility; рыбалка = 1.
+uniform float daylight_scatter : hint_range(0.0, 1.0) = 1.0;
 uniform vec3 sun_wavelengths = vec3(0.680, 0.550, 0.480);
 uniform vec3 sun_direction = vec3(0.16, 0.44, -0.88); // К солнцу (ставится из Game.SUN_DIR)
 
@@ -305,6 +307,7 @@ void sky() {
 	// кучевые облака поверх атмосферы
 	vec4 cl = cloud_layer(ray_direction, sun_dir);
 	final_color = mix(final_color, cl.rgb, cl.a);
+	final_color *= daylight_scatter;
 
 	// дебандинг: физический градиент не должен полосить
 	// (EYEDIR вместо SCREEN_UV — одинаково работает в Forward+ и Compatibility)
