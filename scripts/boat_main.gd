@@ -4,11 +4,11 @@ extends Node3D
 
 const START_Z := Coast.SPAWN_Z
 const START_SEAWARD := 95.0
-# Переставляем только давно ушедшие за кадр пятна; новые возникают
-# за пределами ортографической камеры и позже приплывают в область обзора.
-const SLICK_RECYCLE_DISTANCE := 110.0
-const SLICK_SPAWN_MIN := 85.0
-const SLICK_SPAWN_MAX := 105.0
+# Переставляем только ушедшие за кадр пятна, чтобы в движении не было
+# многосекундной пустоты между видимой областью и дальним кольцом спавна.
+const SLICK_RECYCLE_DISTANCE := 60.0
+const SLICK_SPAWN_MIN := 38.0
+const SLICK_SPAWN_MAX := 57.0
 const TRAILER_COST := 2
 
 var game: GameState
@@ -25,6 +25,7 @@ var refined := PackedInt32Array([0, 0, 0, 0])
 var notice := ""
 var notice_time := 0.0
 var _capture_frames := 0
+var _camera_focus := Vector3.ZERO
 var _stream_timer := 0.0
 var _slick_rng := RandomNumberGenerator.new()
 
@@ -70,8 +71,9 @@ func _ready() -> void:
 	camera.far = 1500.0
 	add_child(camera)
 	camera.current = true
+	_camera_focus = boat.global_position + Vector3.UP * 0.8
 	camera.position = boat.global_position + Vector3(21.0, 27.0, 30.0)
-	camera.look_at(boat.global_position + Vector3.UP * 0.8, Vector3.UP)
+	camera.look_at(_camera_focus, Vector3.UP)
 	hud = BoatHud.new()
 	var layer := CanvasLayer.new()
 	layer.layer = 12
@@ -100,7 +102,7 @@ func _ready() -> void:
 	water.set_param("mega_amp", 0.25)
 	water.set_param("ripple_strength", 0.10)
 	# Вернуть искры на ровно освещённую воду, без экранной «линзы» и LOD-колец.
-	water.set_param("glitter_amount", 0.15)
+	water.set_param("glitter_amount", 0.32)
 	water.set_param("sun_path_amount", 0.09)
 	water.set_param("direct_specular_amount", 0.018)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
@@ -128,19 +130,40 @@ func _build_resources() -> void:
 		slicks.append(slick)
 
 
+func _outside_boat_view(at: Vector2) -> bool:
+	# Проверяем прогнозируемый кадр вокруг лодки, а не догоняющую камеру:
+	# при резком манёвре и тестовом переносе камеры эти центры различаются.
+	var relative := Vector3(at.x - boat.global_position.x, 0.0,
+		at.y - boat.global_position.z)
+	var viewport_size := get_viewport().get_visible_rect().size
+	var half_height := camera.size * 0.5 + 4.0 # запас на радиус пятна
+	var half_width := camera.size * 0.5 * viewport_size.x / maxf(viewport_size.y, 1.0) + 4.0
+	return absf(relative.dot(camera.global_transform.basis.x)) > half_width or \
+		absf(relative.dot(camera.global_transform.basis.y)) > half_height
+
+
 func _stream_resources() -> void:
 	var center := Vector2(boat.global_position.x, boat.global_position.z)
+	var forward := Vector2(-boat.global_transform.basis.z.x,
+		-boat.global_transform.basis.z.z)
 	for slick in slicks:
 		if slick.depleted:
 			continue
 		var current := Vector2(slick.position.x, slick.position.z)
-		if current.distance_to(center) <= SLICK_RECYCLE_DISTANCE:
+		# Не трогаем видимые пятна, даже если камера сильно отстала.
+		if current.distance_to(center) <= SLICK_RECYCLE_DISTANCE or \
+				not _outside_boat_view(current):
 			continue
-		for _attempt in range(24):
+		for attempt in range(32):
 			var angle := _slick_rng.randf_range(-PI, PI)
+			var direction := Vector2.from_angle(angle)
+			# Первые попытки — в сторону движения, чтобы пятна не оставались
+			# только позади. Запасные попытки допускают любую сторону у берега.
+			if attempt < 20 and boat.speed > 0.5 and direction.dot(forward) < -0.15:
+				continue
 			var distance := _slick_rng.randf_range(SLICK_SPAWN_MIN, SLICK_SPAWN_MAX)
-			var candidate := center + Vector2.from_angle(angle) * distance
-			if coast.water_depth(candidate.x, candidate.y) < 3.0:
+			var candidate := center + direction * distance
+			if not _outside_boat_view(candidate) or coast.water_depth(candidate.x, candidate.y) < 3.0:
 				continue
 			var clear := true
 			for other in slicks:
@@ -254,10 +277,13 @@ func _process(delta: float) -> void:
 			absf(boat.global_position.z - water.position.z) > 100.0:
 		water.position = Vector3(boat.global_position.x, Coast.SEA_LEVEL,
 			boat.global_position.z)
+	# Не наводить объектив на дискретную физическую высоту корпуса:
+	# при переменном FPS это выглядело как внезапный рывок лодки в кадре.
 	var target := boat.global_position + Vector3.UP * 0.8
-	var desired := target + Vector3(21.0, 27.0, 30.0)
+	_camera_focus = _camera_focus.lerp(target, 1.0 - exp(-4.0 * delta))
+	var desired := _camera_focus + Vector3(21.0, 26.2, 30.0)
 	camera.global_position = camera.global_position.lerp(desired, 1.0 - exp(-3.0 * delta))
-	camera.look_at(target, Vector3.UP)
+	camera.look_at(_camera_focus, Vector3.UP)
 	notice_time = maxf(0.0, notice_time - delta)
 	_stream_timer -= delta
 	if _stream_timer <= 0.0:

@@ -125,8 +125,25 @@ func _add_ring(pos: Vector2, amp: float) -> void:
 	_amp[i] = amp
 
 
+# Лодка читает волну в _physics_process: её время должно идти теми же
+# фиксированными шагами, а не прыгать вслед за переменным FPS рендера.
+# У старой рыбалки оставляем прежний порядок обновления.
+func _physics_process(delta: float) -> void:
+	if use_spectrum:
+		_advance_time(delta)
+
+
 func _process(delta: float) -> void:
+	if not use_spectrum:
+		_advance_time(delta)
+
+
+func _advance_time(delta: float) -> void:
 	t += delta
+	if use_spectrum and mat != null:
+		# Время вершин воды идёт в том же такте, что и плавучесть лодки;
+		# массивы колец по-прежнему отправляются только на PUSH_HZ.
+		mat.set_shader_parameter("u_time", t)
 	# гашение мёртвых слотов (не обязательно, но держит uniform чистым)
 	for i in range(MAX_RINGS):
 		if _amp[i] > 0.0 and t - _t0[i] > RING_LIFE:

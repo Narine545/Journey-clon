@@ -5,7 +5,7 @@ extends MeshInstance3D
 const SHADER := preload("res://shaders/resource_slick.gdshader")
 # Вершины пятна повторяют дисперсионные волны; небольшой запас оставляет
 # шейдерное пятно над контактной пеной и редкими точечными всплесками.
-const FLOAT_HEIGHT := 0.24
+const FLOAT_HEIGHT := 0.34
 const COLORS: Array[Color] = [
 	Color("31c2bd"), # приливная бирюза
 	Color("f07b62"), # коралл
@@ -39,6 +39,9 @@ func setup(water: WaterSurface, at: Vector2, resource_kind: int, variation: floa
 	_mat.set_shader_parameter("fade", 1.0)
 	material_override = _mat
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Вершинный шейдер поднимает край пятна за исходный плоский AABB:
+	# иначе движущийся объект может исчезнуть из-за frustum culling.
+	extra_cull_margin = 1.0
 	sorting_offset = 100.0 # поверх прозрачной воды, без вмешательства в шейдер моря
 
 

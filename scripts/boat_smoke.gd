@@ -72,11 +72,18 @@ func _physics_process(_delta: float) -> void:
 		main.boat.speed = 0.0
 		main._stream_resources()
 		var nearby := 0
+		var popped_in_view := 0
 		for slick in main.slicks:
-			if not slick.depleted and Vector2(slick.position.x, slick.position.z).distance_to(
-				Vector2(main.boat.global_position.x, main.boat.global_position.z)) < 108.0:
+			if slick.depleted:
+				continue
+			var slick_xz := Vector2(slick.position.x, slick.position.z)
+			if slick_xz.distance_to(Vector2(main.boat.global_position.x,
+				main.boat.global_position.z)) < BoatMain.SLICK_RECYCLE_DISTANCE:
 				nearby += 1
-		_check(nearby >= 4, "пятна появляются в новом районе после плавания")
+				if not main._outside_boat_view(slick_xz):
+					popped_in_view += 1
+		_check(nearby >= 4, "пятна появляются близко к лодке в новом районе")
+		_check(popped_in_view == 0, "перемещённые пятна не возникают в кадре")
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))
 		get_tree().quit(0 if failures == 0 else 1)
 

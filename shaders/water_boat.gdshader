@@ -316,7 +316,7 @@ void fragment() {
 	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(24.0, 80.0, cellc));
 	float glit_chance = glitter_amount * 0.28;
 	float glint = step(1.0 - glit_chance, cellid);
-	float glit_fade = 0.78 * (1.0 - 0.72 * near_shore);
+	float glit_fade = 0.95 * (1.0 - 0.72 * near_shore);
 	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26) * glint * glit_fade;
 
 	float path = pow(clamp(dot(N_ambient, H), 0.0, 1.0), 180.0);
