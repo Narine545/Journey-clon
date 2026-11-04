@@ -48,6 +48,9 @@ func setup(game_ref, center: Vector2, p_level_y: float) -> void:
 	# уровень моря: шейдер вычисляет глубину у кромки берега
 	_mat.set_shader_parameter("sea_level", level_y)
 	material_override = _mat
+	if shader_path == "res://shaders/water_boat.gdshader":
+		# В прозрачном проходе всегда рисовать море раньше ресурсных пятен.
+		_mat.render_priority = -10
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# море непрозрачное в глубине, alpha используется только у мягкого уреза; рисуем ПЕРВЫМ:
 	# SDF-квад существ читает u_screen с уже нарисованной водой (по ней

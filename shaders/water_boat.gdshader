@@ -3,7 +3,9 @@ shader_type spatial;
 // - Кильватерная струя и волны Кельвина строятся вдоль кривой u_wake_trail[20],
 //   поэтому след остаётся в мировых координатах воды и плавно изгибается при поворотах.
 
-render_mode diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_always;
+// Прозрачное море не должно записывать глубину поверх пятен ресурсов:
+// depth_draw_always мог скрывать их всюду, кроме выреза под корпусом.
+render_mode diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_opaque;
 
 uniform vec3 water_shallow : source_color = vec3(0.30, 0.66, 0.62);
 uniform vec3 water_mid : source_color = vec3(0.10, 0.38, 0.48);
@@ -164,14 +166,11 @@ void fragment() {
 	// бегущие светлые полосы. Вместо них — градиент двумерного шума в
 	// МИРОВЫХ координатах: он адвектируется ветром, но не создаёт гребней.
 	// Крупные волны остаются в spectrum_height/gradient и CPU-плавучести.
-	vec2 flow_a = wp * 0.48 + wdir * u_time * 0.18;
-	vec2 flow_b = wp * 1.70 - wdir * u_time * 0.32 + vec2(17.0, 9.0);
-	float na = vnoise(flow_a);
-	float nb = vnoise(flow_b);
-	vec2 micro_grad = vec2(vnoise(flow_a + vec2(0.18, 0.0)) - na,
-		vnoise(flow_a + vec2(0.0, 0.18)) - na) * 4.0;
-	micro_grad += vec2(vnoise(flow_b + vec2(0.18, 0.0)) - nb,
-		vnoise(flow_b + vec2(0.0, 0.18)) - nb) * 1.7;
+	// Один слой вместо двух: 3 выборки шума на пиксель, а не 6.
+	vec2 flow = wp * 0.68 + wdir * u_time * 0.22;
+	float n = vnoise(flow);
+	vec2 micro_grad = vec2(vnoise(flow + vec2(0.18, 0.0)) - n,
+		vnoise(flow + vec2(0.0, 0.18)) - n) * 4.4;
 	micro_grad *= ripple_strength * wind_power * (1.0 - 0.88 * near_shore);
 	N = normalize(N - vec3(micro_grad.x, 0.0, micro_grad.y) * 0.44);
 

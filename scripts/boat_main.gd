@@ -27,6 +27,7 @@ var notice_time := 0.0
 var _capture_frames := 0
 var _camera_focus := Vector3.ZERO
 var _stream_timer := 0.0
+var _stream_cursor := 0
 var _slick_rng := RandomNumberGenerator.new()
 
 
@@ -155,7 +156,11 @@ func _stream_resources() -> void:
 	var center := Vector2(boat.global_position.x, boat.global_position.z)
 	var forward := Vector2(-boat.global_transform.basis.z.x,
 		-boat.global_transform.basis.z.z)
-	for slick in slicks:
+	# Не переселять сразу все 12 пятен в один кадр: каждые полсекунды
+	# такой пакет блокировал главный поток и дёргал движение лодки.
+	for offset in range(slicks.size()):
+		var index := (_stream_cursor + offset) % slicks.size()
+		var slick := slicks[index]
 		if slick.depleted:
 			continue
 		var current := Vector2(slick.position.x, slick.position.z)
@@ -163,12 +168,13 @@ func _stream_resources() -> void:
 		if current.distance_to(center) <= SLICK_RECYCLE_DISTANCE or \
 				not _outside_boat_view(current) or not _outside_camera_view(current):
 			continue
-		for attempt in range(32):
+		_stream_cursor = (index + 1) % slicks.size()
+		for attempt in range(24):
 			var angle := _slick_rng.randf_range(-PI, PI)
 			var direction := Vector2.from_angle(angle)
 			# Первые попытки — в сторону движения, чтобы пятна не оставались
 			# только позади. Запасные попытки допускают любую сторону у берега.
-			if attempt < 20 and boat.speed > 0.5 and direction.dot(forward) < -0.15:
+			if attempt < 12 and boat.speed > 0.5 and direction.dot(forward) < -0.15:
 				continue
 			var distance := _slick_rng.randf_range(SLICK_SPAWN_MIN, SLICK_SPAWN_MAX)
 			var candidate := center + direction * distance
@@ -186,6 +192,7 @@ func _stream_resources() -> void:
 				slick.relocate_smoothly(Vector3(candidate.x,
 					water.surface_height(candidate.x, candidate.y) + ResourceSlick.FLOAT_HEIGHT, candidate.y))
 				break
+		break # одно пятно за тик, даже если подходящее место не нашлось
 
 
 func nearest_resource(at: Vector3, radius: float) -> ResourceSlick:
@@ -297,7 +304,7 @@ func _process(delta: float) -> void:
 	notice_time = maxf(0.0, notice_time - delta)
 	_stream_timer -= delta
 	if _stream_timer <= 0.0:
-		_stream_timer = 0.5
+		_stream_timer = 0.12
 		_stream_resources()
 	hud.queue_redraw()
 	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":

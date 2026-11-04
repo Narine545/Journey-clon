@@ -38,6 +38,7 @@ func setup(water: WaterSurface, at: Vector2, resource_kind: int, variation: floa
 	_mat.set_shader_parameter("seed", variation)
 	_mat.set_shader_parameter("fade", 1.0)
 	material_override = _mat
+	_mat.render_priority = 10 # после моря, но тест глубины сохраняет окклюзию корпусом
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Вершинный шейдер поднимает край пятна за исходный плоский AABB:
 	# иначе движущийся объект может исчезнуть из-за frustum culling.

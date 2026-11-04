@@ -75,7 +75,9 @@ func _physics_process(_delta: float) -> void:
 		main._camera_focus = main.boat.global_position + Vector3.UP * 0.8
 		main.camera.global_position = main._camera_focus + Vector3(21.0, 26.2, 30.0)
 		main.camera.look_at(main._camera_focus, Vector3.UP)
-		main._stream_resources()
+		# На экране игра переселяет не более одного пятна за тик.
+		for _i in range(main.slicks.size()):
+			main._stream_resources()
 		var nearby := 0
 		var popped_in_view := 0
 		for slick in main.slicks:
