@@ -70,6 +70,11 @@ func _physics_process(_delta: float) -> void:
 		# в стартовом круге. Уходим в открытое море, не заходя на берег.
 		main.boat.global_position = origin + Vector3(-220.0, 0.0, 0.0)
 		main.boat.speed = 0.0
+		# Тест телепортирует лодку; для проверки видимого кадра переносим
+		# камеру тоже. При обычной езде она остаётся плавной и инерционной.
+		main._camera_focus = main.boat.global_position + Vector3.UP * 0.8
+		main.camera.global_position = main._camera_focus + Vector3(21.0, 26.2, 30.0)
+		main.camera.look_at(main._camera_focus, Vector3.UP)
 		main._stream_resources()
 		var nearby := 0
 		var popped_in_view := 0

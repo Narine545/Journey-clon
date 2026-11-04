@@ -142,6 +142,15 @@ func _outside_boat_view(at: Vector2) -> bool:
 		absf(relative.dot(camera.global_transform.basis.y)) > half_height
 
 
+func _outside_camera_view(at: Vector2) -> bool:
+	# Дополнительно учитываем реальный кадр: камера с инерцией может
+	# отставать от лодки, и пятно нельзя переносить на глазах игрока.
+	var screen_pos := camera.unproject_position(Vector3(at.x, Coast.SEA_LEVEL, at.y))
+	var viewport_size := get_viewport().get_visible_rect().size
+	return not Rect2(Vector2(-64.0, -64.0),
+		viewport_size + Vector2(128.0, 128.0)).has_point(screen_pos)
+
+
 func _stream_resources() -> void:
 	var center := Vector2(boat.global_position.x, boat.global_position.z)
 	var forward := Vector2(-boat.global_transform.basis.z.x,
@@ -152,7 +161,7 @@ func _stream_resources() -> void:
 		var current := Vector2(slick.position.x, slick.position.z)
 		# Не трогаем видимые пятна, даже если камера сильно отстала.
 		if current.distance_to(center) <= SLICK_RECYCLE_DISTANCE or \
-				not _outside_boat_view(current):
+				not _outside_boat_view(current) or not _outside_camera_view(current):
 			continue
 		for attempt in range(32):
 			var angle := _slick_rng.randf_range(-PI, PI)
@@ -163,7 +172,8 @@ func _stream_resources() -> void:
 				continue
 			var distance := _slick_rng.randf_range(SLICK_SPAWN_MIN, SLICK_SPAWN_MAX)
 			var candidate := center + direction * distance
-			if not _outside_boat_view(candidate) or coast.water_depth(candidate.x, candidate.y) < 3.0:
+			if not _outside_boat_view(candidate) or not _outside_camera_view(candidate) or \
+					coast.water_depth(candidate.x, candidate.y) < 3.0:
 				continue
 			var clear := true
 			for other in slicks:
