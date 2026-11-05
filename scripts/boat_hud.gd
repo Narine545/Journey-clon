@@ -39,7 +39,7 @@ func _draw() -> void:
 		draw_rect(Rect2(252, y + 2, 160.0 * clampf(float(main.raw[i]) / float(required), 0.0, 1.0), 4),
 			ResourceSlick.COLORS[i])
 
-	var trailer_status := "ПЛАШКОУТ: АВТОСБОР С 2 БОРТОВ  •  РАДИУС 11 М" if main.boat.has_trailer else "ПЛАШКОУТ: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
+	var trailer_status := "ПЛАШКОУТ: АВТОСБОР С 2 БОРТОВ  •  РАДИУС 16 М" if main.boat.has_trailer else "ПЛАШКОУТ: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
 	draw_string(font, Vector2(42, 236), trailer_status, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, accent if main.boat.has_trailer else muted)
 
 	# Блок экспедиционной цели (Маяки побережья)

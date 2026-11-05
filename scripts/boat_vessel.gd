@@ -16,8 +16,8 @@ const SHIP_EMISSION_BOOST := 2.0
 const START_WITH_TRAILER := false
 const TRAILER_DISTANCE := 9.3
 const TRAILER_CLEARANCE := 9.15
-const TRAILER_PUMP_RANGE := 11.0 # больше ручного насоса лодки даже с прицепом (9 м)
-const TRAILER_PUMP_SECONDS := 0.8
+const TRAILER_PUMP_RANGE := 16.0 # от центра прицепа; лодка с прицепом: 9 м
+const TRAILER_PUMP_SECONDS := 0.55
 const TRAIL_POINTS := 20
 const TRAIL_STEP_TIME := 0.25
 
@@ -118,16 +118,16 @@ func update_night_lights(night01: float, overdrive: bool) -> void:
 	# Прожектор — короткий локальный луч перед носом, не замена лунному
 	# или фоновому свету всей сцены. [H] отключает его для честного A/B.
 	if _bow_spot != null:
-		_bow_spot.light_energy = 6.0 * lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
+		_bow_spot.light_energy = 12.0 * lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
 		_bow_spot.spot_range = lerpf(18.0, 28.0, night01) * (1.20 if overdrive else 1.0)
 	if _deck_light != null:
 		_deck_light.light_energy = lerpf(0.10, 0.55, night01)
 		_deck_light.omni_range = 5.5
-	# Светится ВСЯ прозрачная поверхность окон, а не отдельные кусочки
-	# за ней. Сдержанный янтарный цвет вместо белой непрозрачной пластины.
+	# Вернули первоначальный тёплый цвет света; прозрачное стекло и
+	# умеренная яркость не дают белой непрозрачной пластины.
 	var window_on := smoothstep(0.25, 0.82, night01)
 	if _window_glass_mat != null:
-		_window_glass_mat.emission_energy_multiplier = 1.4 * window_on
+		_window_glass_mat.emission_energy_multiplier = 0.85 * window_on
 	if _window_light != null:
 		_window_light.light_energy = 0.85 * window_on
 
@@ -360,9 +360,12 @@ func is_on_trailer_working_side(world_pos: Vector3) -> bool:
 	if not has_trailer or _trailer == null:
 		return false
 	var local := _trailer.to_local(world_pos)
-	# Рабочие сектора — только два борта рядом с палубой прицепа:
-	# центральная полоса, нос (-Z) и точки за кормой недоступны.
-	return absf(local.x) > 1.35 and local.z > -1.35 and local.z < 2.1 and \
+	# Широкие боковые сектора вместо узкой полосы вдоль палубы.
+	# Отсекаем центр и область перед носом (-Z), но разрешаем пятна
+	# по диагонали и у кормы: не нужна точная остановка напротив центра.
+	var side_distance := absf(local.x)
+	return side_distance > 1.35 and local.z > -3.0 and \
+		side_distance > absf(local.z) * 0.85 and \
 		Vector2(local.x, local.z).length_squared() < TRAILER_PUMP_RANGE * TRAILER_PUMP_RANGE
 
 
@@ -429,13 +432,14 @@ func _update_pump(delta: float) -> void:
 
 
 func _update_trailer_pump(delta: float) -> void:
-	# Самостоятельная рука: обе стороны, без ПРОБЕЛА; работает на малом
-	# ходу, пока пятно проходит вдоль борта. Смена цели обнуляет прогресс.
+	# Самостоятельная рука: обе стороны, без ПРОБЕЛА и ограничения
+	# скорости — при проходе мимо пятна она должна успевать сработать.
+	# Смена цели обнуляет прогресс.
 	var previous := _trailer_target
 	_trailer_target = null
 	_trailer_hose.visible = false
 	_trailer_head.visible = false
-	if has_trailer and _trailer != null and absf(speed) < 5.0:
+	if has_trailer and _trailer != null:
 		var best_d2 := TRAILER_PUMP_RANGE * TRAILER_PUMP_RANGE
 		for slick in main.slicks:
 			if slick.depleted or (slick == _target and Input.is_action_pressed("boat_pump")):
@@ -698,11 +702,11 @@ func _build_appearance() -> void:
 	var dark_iron := _material(Color("161c20"), 0.55, 0.0, 0.50)
 	var aged_bronze := _material(Color("7d6340"), 0.62, 0.0, 0.45)
 	# Одно стекло для ВСЕХ окон: прозрачное, тёмное днём, ночью целиком
-	# светится янтарным, не становясь белой непрозрачной панелью.
+	# светится тем же тёплым цветом, что и первый вариант рубки.
 	var bridge_glass := _material(Color(0.04, 0.09, 0.12, 0.24), 0.15, 0.0, 0.22)
 	bridge_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	bridge_glass.emission_enabled = true
-	bridge_glass.emission = Color("b8652b")
+	bridge_glass.emission = Color("ffd49a")
 	bridge_glass.emission_energy_multiplier = 0.0
 	_window_glass_mat = bridge_glass
 	var warm_interior := _material(Color("d69e5c"), 0.10, 0.0, 0.30)
@@ -804,7 +808,7 @@ func _build_appearance() -> void:
 	_cyl_on(_body, Vector3(0.0, 3.12, -2.38), 0.09, 0.09, 0.06, _material(Color("ffdf9e"), 0.1, 2.0, 0.2), Vector3(PI * 0.5 - 0.28, 0.0, 0.0), 12)
 	_bow_spot = SpotLight3D.new()
 	_bow_spot.light_color = Color("ffe8ba")
-	_bow_spot.light_energy = 12.0
+	_bow_spot.light_energy = 24.0
 	_bow_spot.spot_range = 24.0
 	_bow_spot.spot_angle = 30.0
 	_bow_spot.light_volumetric_fog_energy = 1.3

@@ -114,7 +114,10 @@ func _physics_process(_delta: float) -> void:
 			BoatVessel.TRAILER_PUMP_RANGE > main.boat.effective_pump_range() and
 			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(-10.0, 0.0, 0.3))) and
 			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(10.0, 0.0, 0.3))) and
-			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(11.5, 0.0, 0.3))),
+			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(14.5, 0.0, 2.5))) and
+			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(3.0, 0.0, 2.5))) and
+			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(2.0, 0.0, -4.0))) and
+			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(16.5, 0.0, 0.3))),
 			"рука прицепа доступна по обоим бортам, но не в центре и не у носа")
 		for side in [-1.0, 1.0]:
 			var sample_pos: Vector3 = trailer_node.to_global(Vector3(side * 10.0, 0.0, 0.3))
@@ -123,6 +126,7 @@ func _physics_process(_delta: float) -> void:
 			sample.setup(main.water, Vector2(sample_pos.x, sample_pos.z), 0, 0.0)
 			main.slicks.append(sample)
 			var raw_before := main.raw[0]
+			main.boat.speed = 7.0 # автосбор без ручного ввода даже на ходу
 			main.boat._update_pump(0.01)
 			_check(main.boat._trailer_target == sample and
 				main.boat.trailer_pump_fraction() > 0.0 and
@@ -131,7 +135,8 @@ func _physics_process(_delta: float) -> void:
 			main.boat._update_pump(BoatVessel.TRAILER_PUMP_SECONDS + 0.01)
 			_check(sample.depleted and main.raw[0] == raw_before + 1 and
 				main.boat._trailer_hose.visible and not main.boat._hose.visible,
-				"прицеп собирает пятно с борта %s своей рукой" % ("левого" if side < 0.0 else "правого"))
+				"прицеп собирает пятно с борта %s своей рукой на ходу" % ("левого" if side < 0.0 else "правого"))
+			main.boat.speed = 0.0
 			main.slicks.erase(sample)
 			sample.queue_free()
 		var blocked := ResourceSlick.new()
@@ -258,11 +263,11 @@ func _physics_process(_delta: float) -> void:
 		var before_ssao := main.world._env.ssao_light_affect
 		var before_sky := float(main.world._sky_mat.get_shader_parameter("daylight_scatter"))
 		var spot := main.boat._bow_spot
-		_check(spot != null and spot.light_energy > 18.0 and
+		_check(spot != null and spot.light_energy > 36.0 and
 			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
 			"ночной прожектор усилен, оставаясь локальным")
-		_check(main.boat._window_glass_mat.emission_energy_multiplier > 1.35 and
-			main.boat._window_glass_mat.emission.r > main.boat._window_glass_mat.emission.b * 2.0 and
+		_check(main.boat._window_glass_mat.emission_energy_multiplier > 0.8 and
+			main.boat._window_glass_mat.emission == Color("ffd49a") and
 			main.boat._window_light.light_energy > 0.8 and
 			main.boat._window_light.omni_range < 4.0 and
 			main.boat._deck_light.light_energy > 0.4 and
@@ -296,8 +301,8 @@ func _physics_process(_delta: float) -> void:
 		main.debug_cycle_night()
 		_check(main.debug_night_paused and is_equal_approx(main.night01, 0.45) and
 			main.boat._window_light.light_energy > 0.15 and
-			main.boat._window_glass_mat.emission_energy_multiplier > 0.25 and
-			main.boat._window_glass_mat.emission_energy_multiplier < 0.6 and
+			main.boat._window_glass_mat.emission_energy_multiplier > 0.15 and
+			main.boat._window_glass_mat.emission_energy_multiplier < 0.4 and
 			main.boat._window_glass_mat.albedo_color.a < 0.5,
 			"при 45% вся поверхность окон мягко светится янтарным и остаётся прозрачной")
 		main.debug_cycle_night()

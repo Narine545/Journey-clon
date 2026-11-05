@@ -403,8 +403,12 @@ void light() {
 	vec3 radiance = LIGHT_COLOR * ATTENUATION;
 	// У воды тёмный запечённый ALBEDO и малая доля реальной нормали.
 	// Только локальный свет (прожектор/маяк) усиливает диффузную
-	// читаемость пятна. Солнце, френель, глиттер и specular не меняем.
-	float local_diffuse = LIGHT_IS_DIRECTIONAL ? 1.0 : 2.0;
+	// читаемость пятна. Солнце, френель и глиттер не меняем.
+	// Сильный прожектор раньше почти не отражался: specular воды
+	// глобально срезан до 0.018 ради отсутствия солнечных полос.
+	// Для локальных источников отдельно разрешаем мягкий отклик.
+	float local_diffuse = LIGHT_IS_DIRECTIONAL ? 1.0 : 3.0;
+	float local_specular = LIGHT_IS_DIRECTIONAL ? direct_specular_amount : 0.08;
 
 	if (proxima_test < 0.5) {
 		float a = max(ROUGHNESS * ROUGHNESS, 0.002);
@@ -421,7 +425,7 @@ void light() {
 		float burley_v = 1.0 + (fd90 - 1.0) * pow(1.0 - nv, 5.0);
 		DIFFUSE_LIGHT += radiance * ALBEDO * (1.0 / PI)
 			* burley_l * burley_v * nl * local_diffuse;
-		SPECULAR_LIGHT += radiance * d * gl * gv * f * direct_specular_amount
+		SPECULAR_LIGHT += radiance * d * gl * gv * f * local_specular
 			/ max(4.0 * nl * nv, 1e-3);
 	} else {
 	float alpha = ROUGHNESS * ROUGHNESS;
@@ -457,7 +461,7 @@ void light() {
 		- proxima_r(proxima_specular_fresnel_falloff)) * (1.0 - f0) * fh;
 	vec3 fs = d * gl * gv * fresnel * nl;
 	DIFFUSE_LIGHT += radiance * fd * local_diffuse;
-	SPECULAR_LIGHT += radiance * fs * direct_specular_amount;
+	SPECULAR_LIGHT += radiance * fs * local_specular;
 	}
 	}
 }
