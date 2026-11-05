@@ -29,7 +29,7 @@ uniform float direct_specular_amount = 1.0;
 // Небольшая доля рассчитанной нормали волн в реальном освещении.
 // 0 = прежний плоский PBR, 0.16 = мягкая форма без светлых полос.
 uniform float surface_light_detail = 0.0;
-// Мягкие прерывистые акценты гребней; 0 сохраняет прежний профиль.
+// Усиление существующего глиттера на гребнях; 0 = прежние блики.
 uniform float swell_light_detail : hint_range(0.0, 1.0) = 0.0;
 
 uniform float proxima_test = 0.0;
@@ -318,32 +318,24 @@ void fragment() {
 	vec3 Hg = normalize(H + vec3(cellid - 0.5, cellb - 0.5, cellc - 0.5) * 0.55);
 	float sun_lobe = pow(clamp(dot(N, Hg), 0.0, 1.0), mix(30.0, 110.0, cellb));
 	float sky_lobe = pow(clamp(dot(G, V), 0.0, 1.0), mix(24.0, 80.0, cellc));
-	float glit_chance = glitter_amount * 0.28;
+	// Привязываем дополнительные искры к высоте той же волны, что в геометрии.
+	// Не меняем диффузную нормаль: она снова дала бы сплошные полосы.
+	float swell_height = spectrum_height(wp, u_time, wind_dir, mega_amp, wind_power);
+	float relative_height = swell_height / max(mega_amp * wind_power, 0.001);
+	float crest = smoothstep(0.12, 0.80, relative_height);
+	float crest_gain = crest * swell_light_detail
+		* smoothstep(0.02, 0.35, L.y) * (1.0 - near_shore);
+	// Плавно увеличиваем вероятность: случайные ячейки остаются прежними,
+	// но на проходящем гребне загорается больше из них. Без световой дорожки.
+	float glit_chance = clamp(glitter_amount * 0.28 * (1.0 + 3.0 * crest_gain), 0.0, 0.35);
 	float glint = step(1.0 - glit_chance, cellid);
 	float glit_fade = 0.95 * (1.0 - 0.72 * near_shore);
-	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26) * glint * glit_fade;
+	// Сохраняем форму и цвет любимых бликов, усиливая оба исходных лепестка.
+	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26)
+		* glint * glit_fade * (1.0 + 2.5 * crest_gain);
 
 	float path = pow(clamp(dot(N_ambient, H), 0.0, 1.0), 180.0);
 	base += sun_col * path * 0.55 * sun_path_amount * (1.0 - 0.85 * near_shore);
-
-	// Акцент верхних участков волн, а НЕ диффузная подсветка всего склона.
-	// Высота берётся из того же спектра, который двигает геометрию.
-	// Это художественная аппроксимация отражения, не пена и не emission.
-	float swell_height = spectrum_height(wp, u_time, wind_dir, mega_amp, wind_power);
-	float relative_height = swell_height / max(mega_amp * wind_power, 0.001);
-	float crest = smoothstep(0.32, 0.88, relative_height);
-	vec3 crest_normal = normalize(vec3(-wave_grad.x, 1.0, -wave_grad.y));
-	float crest_facing = smoothstep(0.35, 0.90, dot(crest_normal, H));
-	// Две непериодические мировые маски разбивают длинные линии гребней.
-	float crest_patch = vnoise(wp * 0.72 + wdir * u_time * 0.16);
-	float crest_breakup = smoothstep(0.40, 0.72, crest_patch)
-		* smoothstep(0.25, 0.65, n);
-	float crest_light = crest * crest_facing * crest_breakup
-		* smoothstep(0.02, 0.35, L.y) * (1.0 - near_shore);
-	// Ограниченный цветовой акцент; без усиления глобального specular,
-	// световой дорожки и повторного внесения периодической PBR-нормали.
-	vec3 crest_color = mix(base, sky_ref + sun_col * 0.12, 0.30);
-	base = mix(base, crest_color, crest_light * swell_light_detail);
 
 	// ---------- пена прибоя + мировая кильватерная пена ----------
 	float fn = vnoise(vec2(wp.x * 0.85 + u_time * 0.10, wp.y * 1.55));

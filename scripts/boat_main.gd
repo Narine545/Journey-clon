@@ -680,7 +680,7 @@ func debug_toggle_wave_lighting() -> void:
 	var current := float(water.material().get_shader_parameter("swell_light_detail"))
 	var enabled := current < 0.01
 	water.set_param("swell_light_detail", 0.65 if enabled else 0.0)
-	announce("[K] АКЦЕНТЫ ГРЕБНЕЙ: %s" % ("НОВЫЙ" if enabled else "ПРЕЖНИЙ"))
+	announce("[K] ГЛИТТЕР НА ГРЕБНЯХ: %s" % ("НОВЫЙ" if enabled else "ПРЕЖНИЙ"))
 
 
 func debug_toggle_headlight() -> void:
