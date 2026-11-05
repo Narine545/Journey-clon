@@ -27,6 +27,7 @@ uniform float reveal_range = 28.0;
 uniform float reveal_cos_outer = 0.8660254;
 uniform float reveal_cos_inner = 0.9135455;
 uniform float reveal_enabled = 0.0;
+uniform float afterglow : hint_range(0.0, 1.0) = 0.0;
 varying vec3 surface_world_position;
 varying vec2 local_pos;
 varying vec2 world_xz;
@@ -152,9 +153,9 @@ void fragment() {
     float cone = smoothstep(reveal_cos_outer, reveal_cos_inner, cone_cos);
     float range_mask = 1.0 - smoothstep(reveal_range * 0.78, reveal_range, light_distance);
     float flashlight = cone * range_mask * reveal_enabled;
-    float night_blend = smoothstep(0.40, 0.78, night_factor);
-    float visibility = mix(1.0, flashlight, night_blend);
+    float night_blend = smoothstep(0.55, 0.82, night_factor);
+    float visibility = mix(1.0, max(flashlight, afterglow * 0.85), night_blend);
     ALBEDO = col;
     ALPHA = body * (0.48 + 0.30 * core + 0.10 * upper_mass) * fade * visibility;
-    EMISSION = pigment * body * 0.06 * fade * visibility;
+    EMISSION = pigment * body * (0.06 + 0.14 * afterglow * night_blend) * fade * visibility;
 }
