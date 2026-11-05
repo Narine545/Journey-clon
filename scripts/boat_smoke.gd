@@ -287,6 +287,13 @@ func _physics_process(_delta: float) -> void:
 		var before_ambient := main.world._env.ambient_light_energy
 		var before_ssao := main.world._env.ssao_light_affect
 		var before_sky := float(main.world._sky_mat.get_shader_parameter("daylight_scatter"))
+		# Форсаж включён этим же физическим тиком (activate_overdrive выше),
+		# а overdrive_timer внутри одного тика не уменьшается. Он даёт
+		# прожектору ×1.35 к энергии и ×1.20 к дальности, то есть здесь
+		# измерялся бы временный буст, а не базовый ночной свет —
+		# spot_range уезжал на 32.16 при пороге 30. Сбрасываем на обычное
+		# ночное состояние: проверяем именно «усилен, оставаясь локальным».
+		main.boat.update_night_lights(main.night01, false)
 		var spot := main.boat._bow_spot
 		_check(spot != null and spot.light_energy > 36.0 and
 			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
