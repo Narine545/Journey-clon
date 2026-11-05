@@ -16,7 +16,9 @@ void fog() {
 	// Только отдельные низкие клочья у поверхности, без верхней пелены.
 	float height_mask = smoothstep(-1.5, 0.0, WORLD_POSITION.y) *
 		(1.0 - smoothstep(1.5, 8.0, WORLD_POSITION.y));
-	float edge = smoothstep(0.0, 5.0, min(-SDF.x, min(-SDF.y, -SDF.z)));
+	// В Godot fog() SDF — скалярное signed distance, НЕ vec3.
+	// Внутри объёма значение отрицательное; плавно гасим край бокса.
+	float edge = smoothstep(0.0, 5.0, -SDF);
 	DENSITY = density_scale * mix(0.75, 1.0, night_factor) * patches * height_mask * edge;
 	ALBEDO = mix(vec3(0.28, 0.37, 0.39), vec3(0.10, 0.17, 0.23), night_factor);
 }
