@@ -120,7 +120,7 @@ func _draw() -> void:
 			"[O] — ТУМАН: %s" % ("МАССЫ" if main.debug_mystery_atmosphere else "ПРЕЖНИЙ"),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
 		draw_string(font, dbg + Vector2(12, 345),
-			"[F8] — ТЕНИ ПРОЖЕКТОРА: %s" % (
+			"[Y] — ТЕНИ ПРОЖЕКТОРА: %s" % (
 				"ВКЛ" if main.boat._bow_spot.shadow_enabled else "ВЫКЛ"),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
 

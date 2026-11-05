@@ -51,5 +51,5 @@ uniforms = set(re.findall(r'uniform\s+\w+\s+(\w+)', shader))
 for name in re.findall(r'_rme4_material.set_shader_parameter\("(\w+)"', main):
     assert name in uniforms, name
 assert 'debug_mystery_atmosphere := true' in main
-assert 'KEY_O:' in main and 'KEY_F8:' in main
+assert 'KEY_O:' in main and 'KEY_Y:' in main
 print('OK: legacy profile parity, finite density, height bounds, contrast, uniform names.')

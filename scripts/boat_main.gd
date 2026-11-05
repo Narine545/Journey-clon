@@ -787,10 +787,10 @@ func debug_toggle_mystery_atmosphere() -> void:
 
 func debug_toggle_headlight_shadows() -> void:
 	if RenderingServer.get_rendering_device() == null:
-		announce("[F8] СРАВНЕНИЕ ОБЪЁМНЫХ ТЕНЕЙ ТРЕБУЕТ FORWARD+")
+		announce("[Y] СРАВНЕНИЕ ОБЪЁМНЫХ ТЕНЕЙ ТРЕБУЕТ FORWARD+")
 		return
 	boat._bow_spot.shadow_enabled = not boat._bow_spot.shadow_enabled
-	announce("[F8] ТЕНИ ПРОЖЕКТОРА: %s (СРАВНИТЕ FPS)" % (
+	announce("[Y] ТЕНИ ПРОЖЕКТОРА: %s (СРАВНИТЕ FPS)" % (
 		"ВКЛ" if boat._bow_spot.shadow_enabled else "ВЫКЛ"))
 
 
@@ -900,7 +900,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_O:
 				debug_toggle_mystery_atmosphere()
 				get_viewport().set_input_as_handled()
-			KEY_F8:
+			KEY_Y:
 				debug_toggle_headlight_shadows()
 				get_viewport().set_input_as_handled()
 			KEY_P:
