@@ -83,3 +83,8 @@ func collect() -> void:
 	_respawn = 35.0
 	if _water != null and _water.field != null:
 		_water.field.splash(Vector2(position.x, position.z), 1.2)
+
+
+func set_parallax_enabled(enabled: bool) -> void:
+	if _mat != null:
+		_mat.set_shader_parameter("parallax_depth", 0.55 if enabled else 0.0)

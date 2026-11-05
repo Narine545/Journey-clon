@@ -330,9 +330,9 @@ void fragment() {
 	float glit_chance = glitter_amount * 0.28;
 	float glint = step(1.0 - glit_chance, cellid);
 	float glit_fade = 0.95 * (1.0 - 0.72 * near_shore);
-	// Лишь мягкая модуляция яркости: максимум +45.5% при штатном весе 0.65.
+	// Лишь мягкая модуляция яркости: максимум +65% при штатном весе 0.65.
 	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26)
-		* glint * glit_fade * (1.0 + 0.70 * crest_gain);
+		* glint * glit_fade * (1.0 + 1.0 * crest_gain);
 
 	float path = pow(clamp(dot(N_ambient, H), 0.0, 1.0), 180.0);
 	base += sun_col * path * 0.55 * sun_path_amount * (1.0 - 0.85 * near_shore);

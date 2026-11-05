@@ -26,6 +26,7 @@ var boat: BoatVessel
 var camera: Camera3D
 var hud: BoatHud
 var slicks: Array[ResourceSlick] = []
+var debug_slick_parallax := true
 var raw := PackedInt32Array([0, 0, 0, 0])
 var refined := PackedInt32Array([0, 0, 0, 0])
 var notice := ""
@@ -676,6 +677,13 @@ func debug_toggle_lighting() -> void:
 		"AgX" if debug_lighting_profile else "Filmic"))
 
 
+func debug_toggle_slick_parallax() -> void:
+	debug_slick_parallax = not debug_slick_parallax
+	for slick in slicks:
+		slick.set_parallax_enabled(debug_slick_parallax)
+	announce("[P] ПАРАЛЛАКС ПИГМЕНТА: %s" % ("ВКЛ" if debug_slick_parallax else "ВЫКЛ"))
+
+
 func debug_toggle_wave_lighting() -> void:
 	var current := float(water.material().get_shader_parameter("swell_light_detail"))
 	var enabled := current < 0.01
@@ -855,6 +863,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_L:
 				debug_toggle_lighting()
+				get_viewport().set_input_as_handled()
+			KEY_P:
+				debug_toggle_slick_parallax()
 				get_viewport().set_input_as_handled()
 			KEY_K:
 				debug_toggle_wave_lighting()

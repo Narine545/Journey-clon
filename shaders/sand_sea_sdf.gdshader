@@ -258,12 +258,18 @@ void fragment() {
         float eps = max(epsilon, 1e-4);
         int steps = clamp(max_steps, 1, 512);
         vec2 ndc_xy = SCREEN_UV * 2.0 - 1.0;
-        // Луч через пиксель — через far-плоскость (reversed-Z: far = 0).
+        // Reversed-Z: near=1, far=0. Луч из near-плоскости работает и
+        // в перспективе, и в ортографии: во втором случае начала различны,
+        // а направления параллельны. Луч из позиции камеры давал веер.
+        vec4 near_view = INV_PROJECTION_MATRIX * vec4(ndc_xy, 1.0, 1.0);
         vec4 far_view = INV_PROJECTION_MATRIX * vec4(ndc_xy, 0.0, 1.0);
+        near_view.xyz /= near_view.w;
         far_view.xyz /= far_view.w;
-        vec3 cam_pos = INV_VIEW_MATRIX[3].xyz;
-        vec3 rd = normalize((INV_VIEW_MATRIX * vec4(normalize(far_view.xyz), 0.0)).xyz);
-        float max_dist = min(max(max_ray_distance, 0.01), length(far_view.xyz));
+        vec3 view_ray = normalize(far_view.xyz - near_view.xyz);
+        float ray_length = length(far_view.xyz - near_view.xyz);
+        vec3 cam_pos = (INV_VIEW_MATRIX * vec4(near_view.xyz, 1.0)).xyz;
+        vec3 rd = normalize((INV_VIEW_MATRIX * vec4(view_ray, 0.0)).xyz);
+        float max_dist = min(max(max_ray_distance, 0.01), ray_length);
 
         // Окклюзия: геометрия сцены останавливает луч.
         float depth_raw = texture(depth_texture, SCREEN_UV).r;
@@ -271,7 +277,7 @@ void fragment() {
         if (depth_raw > 0.0001) {
                 vec4 dview = INV_PROJECTION_MATRIX * vec4(ndc_xy, depth_raw, 1.0);
                 dview.xyz /= dview.w;
-                scene_t = length(dview.xyz);
+                scene_t = max(dot(dview.xyz - near_view.xyz, view_ray), 0.0);
                 max_dist = min(max_dist, scene_t);
         }
 
@@ -285,7 +291,7 @@ void fragment() {
                 float candidate_t = (u_water_level - cam_pos.y) / rd.y;
                 bool no_opaque_occluder = depth_raw <= 0.0001
                         || scene_t + 0.35 >= candidate_t;
-                if (candidate_t > 0.0 && candidate_t < length(far_view.xyz)
+                if (candidate_t > 0.0 && candidate_t < ray_length
                         && no_opaque_occluder) {
                         water_surface_t = candidate_t;
                         water_surface_pos = cam_pos + rd * candidate_t;
@@ -326,7 +332,10 @@ void fragment() {
                                         hit = true;
                                         break;
                                 }
-                                float ratio = d / max(t * pixel_angle, 1e-6);
+                                // В ортографии размер пикселя не растёт с расстоянием.
+                                float pixel_size = PROJECTION_MATRIX[3][3] > 0.5
+                                        ? pixel_angle : (t + length(near_view.xyz)) * pixel_angle;
+                                float ratio = d / max(pixel_size, 1e-6);
                                 if (ratio < coverage) {
                                         coverage = ratio;
                                         t_edge = t;

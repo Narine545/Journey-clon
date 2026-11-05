@@ -12,7 +12,11 @@ uniform float wave_time = 0.0;
 uniform float wave_amp = 0.25;
 uniform float wave_power = 1.0;
 uniform vec2 wave_wind = vec2(0.32, -0.95);
+// Два внутренних слоя вместо screen-texture: прозрачное море не обязано
+// присутствовать в screen copy. Нулевая глубина отключает эффект.
+uniform float parallax_depth : hint_range(0.0, 1.0) = 0.55;
 varying vec2 local_pos;
+varying vec2 world_xz;
 
 #include "res://shaders/boat_wave_spectrum.gdshaderinc"
 
@@ -20,6 +24,14 @@ float hash21(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.x + p3.y) * p3.z);
+}
+
+float pigment_noise(vec2 p) {
+    vec2 cell = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash21(cell), hash21(cell + vec2(1.0, 0.0)), f.x),
+        mix(hash21(cell + vec2(0.0, 1.0)), hash21(cell + vec2(1.0)), f.x), f.y);
 }
 
 // IQ polynomial smooth-min: та же операция "плавления", что у SDF-рыб.
@@ -33,6 +45,7 @@ void vertex() {
 	// Сетка пятна повторяет тот же дисперсионный спектр, что и море.
 	vec2 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
 	vec2 center = MODEL_MATRIX[3].xz;
+	world_xz = wp;
 	VERTEX.y += spectrum_height(wp, wave_time, wave_wind, wave_amp, wave_power)
 		- spectrum_height(center, wave_time, wave_wind, wave_amp, wave_power);
 }
@@ -55,7 +68,27 @@ void fragment() {
     float aa = max(fwidth(d), 0.012);
     float body = 1.0 - smoothstep(-aa, aa, d);
     float edge = exp(-pow(d / 0.19, 2.0));
-    float veins = 0.5 + 0.5 * sin(p.x * 7.0 + p.y * 9.0 + t * 2.4);
+    // Параллельный вектор взгляда для ортографической камеры; перспективная
+    // камера использует направление от фрагмента (VIEW в view space).
+    vec3 view_direction = PROJECTION_MATRIX[3][3] > 0.5 ? vec3(0.0, 0.0, 1.0) : VIEW;
+    vec3 view_world = normalize((INV_VIEW_MATRIX * vec4(view_direction, 0.0)).xyz);
+    vec2 slope = spectrum_gradient(world_xz, wave_time, wave_wind, wave_amp, wave_power);
+    vec3 surface_normal = normalize(vec3(-slope.x, 1.0, -slope.y));
+    // Внутренняя граница вода/пигмент: IOR около 1.33. Луч идёт внутрь.
+    vec3 inside_ray = refract(-view_world, surface_normal, 1.0 / 1.33);
+    vec2 world_offset = inside_ray.xz / max(-inside_ray.y, 0.20) * parallax_depth;
+    // Перевод world XZ в локальную плоскость пятна (учёт масштаба/поворота).
+    vec3 offset_local = inverse(mat3(MODEL_MATRIX)) * vec3(world_offset.x, 0.0, world_offset.y);
+    vec2 inner = p + offset_local.xz * 0.82;
+    vec2 deep = p + offset_local.xz * 1.64;
+    float veins = 0.5 + 0.5 * sin(inner.x * 7.0 + inner.y * 9.0 + t * 2.4);
+    float pockets = smoothstep(0.30, 0.78,
+        pigment_noise(deep * 2.5 + vec2(seed)));
+    // Рисунок смещается под неподвижным поверхностным контуром.
+    // Маска тела НЕ сдвигается: край не отрывается от волновой сетки.
+    float inner_ribbon = 0.5 + 0.5 * sin(deep.x * 4.0 - deep.y * 6.0 + seed);
+    float depth_mix = smoothstep(0.0, 0.20, parallax_depth);
+    veins = mix(veins, veins * 0.60 + inner_ribbon * 0.25 + pockets * 0.15, depth_mix);
     vec3 col = pigment * (0.72 + 0.28 * veins);
     col += pigment * edge * (0.8 + 0.5 * sin(t * 2.0));
     col += vec3(0.85, 0.96, 0.90) * edge * pulse * 0.65;
