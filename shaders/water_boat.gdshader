@@ -322,17 +322,17 @@ void fragment() {
 	// Не меняем диффузную нормаль: она снова дала бы сплошные полосы.
 	float swell_height = spectrum_height(wp, u_time, wind_dir, mega_amp, wind_power);
 	float relative_height = swell_height / max(mega_amp * wind_power, 0.001);
-	float crest = smoothstep(0.12, 0.80, relative_height);
+	float crest = smoothstep(-0.25, 0.90, relative_height);
 	float crest_gain = crest * swell_light_detail
 		* smoothstep(0.02, 0.35, L.y) * (1.0 - near_shore);
-	// Плавно увеличиваем вероятность: случайные ячейки остаются прежними,
-	// но на проходящем гребне загорается больше из них. Без световой дорожки.
-	float glit_chance = clamp(glitter_amount * 0.28 * (1.0 + 3.0 * crest_gain), 0.0, 0.35);
+	// Не меняем количество искр на проходящей волне: движущийся порог
+	// step() резко включал ячейки и превращал гребни в бегущую гирлянду.
+	float glit_chance = glitter_amount * 0.28;
 	float glint = step(1.0 - glit_chance, cellid);
 	float glit_fade = 0.95 * (1.0 - 0.72 * near_shore);
-	// Сохраняем форму и цвет любимых бликов, усиливая оба исходных лепестка.
+	// Лишь мягкая модуляция яркости: максимум +45.5% при штатном весе 0.65.
 	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26)
-		* glint * glit_fade * (1.0 + 2.5 * crest_gain);
+		* glint * glit_fade * (1.0 + 0.70 * crest_gain);
 
 	float path = pow(clamp(dot(N_ambient, H), 0.0, 1.0), 180.0);
 	base += sun_col * path * 0.55 * sun_path_amount * (1.0 - 0.85 * near_shore);
