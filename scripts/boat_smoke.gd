@@ -296,14 +296,21 @@ func _physics_process(_delta: float) -> void:
 			"адаптация RME4 не создаёт объём до ручного включения")
 		if RenderingServer.get_rendering_device() != null:
 			var fog_before := main.world._env.volumetric_fog_enabled
+			var density_before := main.world._env.volumetric_fog_density
+			var ambient_before := main.world._env.volumetric_fog_ambient_inject
 			main.debug_toggle_rme4_fog()
+			main._apply_atmosphere(main.night01) # профиль не должен вернуть белую пелену
 			_check(main.debug_rme4_enabled and main._rme4_volume.visible and
 				main._rme4_volume.material is ShaderMaterial and
-				main.world._env.volumetric_fog_enabled,
-				"[J] включает 3D-шум тумана в Forward+")
+				main.world._env.volumetric_fog_enabled and
+				is_zero_approx(main.world._env.volumetric_fog_density) and
+				main.world._env.volumetric_fog_ambient_inject < ambient_before,
+				"[J] оставляет только локальный шум без глобальной светлой пелены")
 			main.debug_toggle_rme4_fog()
 			_check(not main.debug_rme4_enabled and not main._rme4_volume.visible and
-				main.world._env.volumetric_fog_enabled == fog_before,
+				main.world._env.volumetric_fog_enabled == fog_before and
+				is_equal_approx(main.world._env.volumetric_fog_density, density_before) and
+				is_equal_approx(main.world._env.volumetric_fog_ambient_inject, ambient_before),
 				"[J] выключает объём и восстанавливает прежнее состояние")
 		main.debug_toggle_lighting()
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_FILMIC and

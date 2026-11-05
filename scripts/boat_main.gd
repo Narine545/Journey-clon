@@ -48,6 +48,8 @@ var _retro_rect: ColorRect
 var _rme4_volume: FogVolume
 var _rme4_material: ShaderMaterial
 var _rme4_previous_fog_enabled := false
+var _rme4_previous_ambient_inject := 0.0
+var _rme4_previous_sky_affect := 0.0
 var _debug_night_step := 0
 
 var _capture_frames := 0
@@ -135,6 +137,11 @@ func _apply_atmosphere(n01: float) -> void:
 	game.sun_dir = sun
 	world.apply_sun(sun)
 	world.fade_boat_sun(night01, debug_night_fill)
+	# Профиль ночи переустанавливает глобальную плотность каждые 0.15 с.
+	# В режиме [J] оставляем только локальные шумовые облака, иначе
+	# два слоя тумана складываются в сплошную светлую пелену.
+	if debug_rme4_enabled:
+		world._env.volumetric_fog_density = 0.0
 	coast.apply_sun(sun)
 	water.apply_sun(sun)
 	# Уходит дневной свет, а не включается отдельная луна. Оставляем
@@ -710,7 +717,10 @@ func debug_toggle_rme4_fog() -> void:
 	if debug_rme4_enabled:
 		debug_rme4_enabled = false
 		_rme4_volume.visible = false
+		world._env.volumetric_fog_ambient_inject = _rme4_previous_ambient_inject
+		world._env.volumetric_fog_sky_affect = _rme4_previous_sky_affect
 		world._env.volumetric_fog_enabled = _rme4_previous_fog_enabled
+		_apply_atmosphere(night01) # возвращаем профильную плотность для текущей ночи
 		announce("ТЕСТ: RME4-АТМОСФЕРА ВЫКЛ")
 		return
 	if RenderingServer.get_rendering_device() == null:
@@ -720,7 +730,7 @@ func debug_toggle_rme4_fog() -> void:
 		_rme4_volume = FogVolume.new()
 		_rme4_volume.name = "RME4SeaMistDebug"
 		_rme4_volume.shape = RenderingServer.FOG_VOLUME_SHAPE_BOX
-		_rme4_volume.size = Vector3(160.0, 26.0, 160.0)
+		_rme4_volume.size = Vector3(110.0, 18.0, 110.0)
 		_rme4_material = ShaderMaterial.new()
 		_rme4_material.shader = preload("res://shaders/boat_rme4_fog.gdshader")
 		_rme4_material.set_shader_parameter("density_noise",
@@ -728,9 +738,14 @@ func debug_toggle_rme4_fog() -> void:
 		_rme4_volume.material = _rme4_material
 		add_child(_rme4_volume)
 	_rme4_previous_fog_enabled = world._env.volumetric_fog_enabled
+	_rme4_previous_ambient_inject = world._env.volumetric_fog_ambient_inject
+	_rme4_previous_sky_affect = world._env.volumetric_fog_sky_affect
 	world._env.volumetric_fog_enabled = true
+	world._env.volumetric_fog_density = 0.0
+	world._env.volumetric_fog_ambient_inject = 0.04
+	world._env.volumetric_fog_sky_affect = 0.0
 	_rme4_material.set_shader_parameter("night_factor", night01)
-	_rme4_volume.global_position = Vector3(boat.global_position.x, 6.0, boat.global_position.z)
+	_rme4_volume.global_position = Vector3(boat.global_position.x, 3.0, boat.global_position.z)
 	_rme4_volume.visible = true
 	debug_rme4_enabled = true
 	announce("ТЕСТ: RME4-АТМОСФЕРА ВКЛ (3D-ШУМ; [J] — ВЫКЛ)")
@@ -845,7 +860,7 @@ func _process(delta: float) -> void:
 	if boat == null or camera == null:
 		return
 	if debug_rme4_enabled:
-		_rme4_volume.global_position = Vector3(boat.global_position.x, 6.0, boat.global_position.z)
+		_rme4_volume.global_position = Vector3(boat.global_position.x, 3.0, boat.global_position.z)
 	_beacon_anim_time += delta
 	sonar_timer = maxf(0.0, sonar_timer - delta)
 	var had_overdrive := overdrive_timer > 0.0
