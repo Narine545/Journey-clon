@@ -42,6 +42,8 @@ var debug_night_paused := false
 var debug_night_fill := 0.18
 var debug_lighting_profile := true
 var debug_headlight_enabled := true
+var debug_retro_enabled := false
+var _retro_rect: ColorRect
 var _debug_night_step := 0
 
 var _capture_frames := 0
@@ -105,6 +107,7 @@ func _ready() -> void:
 	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hud)
+	_setup_retro_debug()
 	_ensure_boat_input()
 	if OS.get_environment("JOURNEY_BOAT_SHOT_DRIVE") == "1":
 		Input.action_press("boat_forward")
@@ -451,7 +454,7 @@ func buy_trailer() -> void:
 		if remaining <= 0:
 			break
 	boat.set_trailer_enabled(true)
-	announce("ПЛАШКОУТ: АВТОСБОР С 2 БОРТОВ (16 М), +СКОРОСТЬ, ПЕРЕРАБОТКА 2→1")
+	announce("ПЛАШКОУТ: АВТОСБОР У ОБОИХ БОРТОВ, +СКОРОСТЬ, ПЕРЕРАБОТКА 2→1")
 
 
 func toggle_trailer_free() -> void:
@@ -664,6 +667,29 @@ func debug_toggle_headlight() -> void:
 	announce("ТЕСТ: НОСОВОЙ ПРОЖЕКТОР %s" % ("ВКЛ" if debug_headlight_enabled else "ВЫКЛ"))
 
 
+func _setup_retro_debug() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "RetroDebugLayer"
+	layer.layer = 11 # Мир — ниже; HUD (слой 12) — поверх эффекта.
+	add_child(layer)
+	_retro_rect = ColorRect.new()
+	_retro_rect.name = "RetroDebugPostprocess"
+	_retro_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_retro_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://shaders/boat_retro_debug.gdshader")
+	_retro_rect.material = material
+	_retro_rect.visible = false
+	layer.add_child(_retro_rect)
+
+
+func debug_toggle_retro() -> void:
+	debug_retro_enabled = not debug_retro_enabled
+	_retro_rect.visible = debug_retro_enabled
+	announce("ТЕСТ: FEARS TO FATHOM %s (БЕЗ ВИНЬЕТКИ И ПОЛОС)" % (
+		"ВКЛ" if debug_retro_enabled else "ВЫКЛ"))
+
+
 func debug_toggle_volumetric_fog() -> void:
 	world._env.volumetric_fog_enabled = not world._env.volumetric_fog_enabled
 	announce("ТЕСТ: ОБЪЁМНЫЙ ТУМАН %s (RD: %s)" % [
@@ -752,6 +778,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_G:
 				debug_toggle_volumetric_fog()
+				get_viewport().set_input_as_handled()
+			KEY_V:
+				debug_toggle_retro()
 				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:

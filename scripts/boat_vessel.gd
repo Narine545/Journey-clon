@@ -16,7 +16,8 @@ const SHIP_EMISSION_BOOST := 2.0
 const START_WITH_TRAILER := false
 const TRAILER_DISTANCE := 9.3
 const TRAILER_CLEARANCE := 9.15
-const TRAILER_PUMP_RANGE := 16.0 # от центра прицепа; лодка с прицепом: 9 м
+const TRAILER_PUMP_RANGE := 8.0 # от ближайшего борта, а не от центра прицепа
+const TRAILER_SLICK_RADIUS := 1.8 # видимая кромка SDF-пятна не совпадает с центром
 const TRAILER_PUMP_SECONDS := 0.55
 const TRAIL_POINTS := 20
 const TRAIL_STEP_TIME := 0.25
@@ -356,17 +357,24 @@ func _update_animations(delta: float) -> void:
 				tf.scale.y = lerpf(tf.scale.y, t_fill, minf(1.0, delta * 4.0))
 
 
-func is_on_trailer_working_side(world_pos: Vector3) -> bool:
+func trailer_pickup_distance(world_pos: Vector3) -> float:
 	if not has_trailer or _trailer == null:
-		return false
+		return INF
 	var local := _trailer.to_local(world_pos)
-	# Широкие боковые сектора вместо узкой полосы вдоль палубы.
-	# Отсекаем центр и область перед носом (-Z), но разрешаем пятна
-	# по диагонали и у кормы: не нужна точная остановка напротив центра.
-	var side_distance := absf(local.x)
-	return side_distance > 1.35 and local.z > -3.0 and \
-		side_distance > absf(local.z) * 0.85 and \
-		Vector2(local.x, local.z).length_squared() < TRAILER_PUMP_RANGE * TRAILER_PUMP_RANGE
+	# Отсекаем ось прицепа и участок перед самым носом. За бортом же
+	# измеряем расстояние до ближайшей точки на борту, а не до центра
+	# корпуса: иначе соседнее пятно ложно кажется «далёким».
+	if absf(local.x) < 0.85 or local.z < -2.8:
+		return INF
+	var rail_x := 1.4 if local.x > 0.0 else -1.4
+	var rail_z := clampf(local.z, -1.9, 2.3)
+	return Vector2(local.x - rail_x, local.z - rail_z).length()
+
+
+func is_on_trailer_working_side(world_pos: Vector3) -> bool:
+	# Пятно рисуется шире своей точки спавна: если его видимая кромка
+	# касается рабочей зоны, сбор возможен и без точного совмещения центров.
+	return trailer_pickup_distance(world_pos) < TRAILER_PUMP_RANGE + TRAILER_SLICK_RADIUS
 
 
 func _update_pump(delta: float) -> void:
@@ -436,20 +444,20 @@ func _update_trailer_pump(delta: float) -> void:
 	# скорости — при проходе мимо пятна она должна успевать сработать.
 	# Смена цели обнуляет прогресс.
 	var previous := _trailer_target
-	_trailer_target = null
 	_trailer_hose.visible = false
 	_trailer_head.visible = false
-	if has_trailer and _trailer != null:
-		var best_d2 := TRAILER_PUMP_RANGE * TRAILER_PUMP_RANGE
+	if _trailer_target != null and (_trailer_target.depleted or
+			not is_on_trailer_working_side(_trailer_target.global_position) or
+			(_trailer_target == _target and Input.is_action_pressed("boat_pump"))):
+		_trailer_target = null
+	if _trailer_target == null and has_trailer and _trailer != null:
+		var best_distance := TRAILER_PUMP_RANGE + TRAILER_SLICK_RADIUS
 		for slick in main.slicks:
 			if slick.depleted or (slick == _target and Input.is_action_pressed("boat_pump")):
 				continue
-			var at := slick.global_position
-			if not is_on_trailer_working_side(at):
-				continue
-			var d2 := Vector2(_trailer.global_position.x, _trailer.global_position.z).distance_squared_to(Vector2(at.x, at.z))
-			if d2 < best_d2:
-				best_d2 = d2
+			var distance := trailer_pickup_distance(slick.global_position)
+			if distance < best_distance:
+				best_distance = distance
 				_trailer_target = slick
 	if _trailer_target != previous:
 		_trailer_pump_progress = 0.0

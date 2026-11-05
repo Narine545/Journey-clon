@@ -39,7 +39,7 @@ func _draw() -> void:
 		draw_rect(Rect2(252, y + 2, 160.0 * clampf(float(main.raw[i]) / float(required), 0.0, 1.0), 4),
 			ResourceSlick.COLORS[i])
 
-	var trailer_status := "ПЛАШКОУТ: АВТОСБОР С 2 БОРТОВ  •  РАДИУС 16 М" if main.boat.has_trailer else "ПЛАШКОУТ: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
+	var trailer_status := "ПЛАШКОУТ: АВТОСБОР С 2 БОРТОВ  •  ОТ КРОМКИ" if main.boat.has_trailer else "ПЛАШКОУТ: НЕТ  [B — КУПИТЬ ЗА 2 ГОТ. / T — ТЕСТ]"
 	draw_string(font, Vector2(42, 236), trailer_status, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, accent if main.boat.has_trailer else muted)
 
 	# Блок экспедиционной цели (Маяки побережья)
@@ -82,8 +82,8 @@ func _draw() -> void:
 	# Отладка всегда доступна в лодочном режиме; [0] прячет только панель.
 	if main.debug_panel_visible:
 		var dbg := Vector2(size.x - 355.0, 22.0)
-		draw_rect(Rect2(dbg, Vector2(333, 263)), backdrop)
-		draw_rect(Rect2(dbg, Vector2(333, 263)), Color("548c89"), false, 1.0)
+		draw_rect(Rect2(dbg, Vector2(333, 287)), backdrop)
+		draw_rect(Rect2(dbg, Vector2(333, 287)), Color("548c89"), false, 1.0)
 		draw_string(font, dbg + Vector2(12, 23), "БЫСТРАЯ ПРОВЕРКА  •  %d FPS" % Engine.get_frames_per_second(),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 14, accent)
 		draw_string(font, dbg + Vector2(12, 47), "[0] — СКРЫТЬ / ПОКАЗАТЬ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
@@ -109,6 +109,9 @@ func _draw() -> void:
 				"ДА" if RenderingServer.get_rendering_device() != null else "НЕТ",
 				main.world._env.volumetric_fog_density],
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 11, muted)
+		draw_string(font, dbg + Vector2(12, 276),
+			"[V] — FEARS TO FATHOM: %s" % ("ВКЛ" if main.debug_retro_enabled else "ВЫКЛ"),
+			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
 
 	# 3. КОНТЕКСТНАЯ ПОДСКАЗКА ДЕЙСТВИЯ ВНИЗУ ЭКРАНА
 	var dock_b := main.nearby_dock_beacon()

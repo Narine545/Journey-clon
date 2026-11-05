@@ -111,31 +111,32 @@ func _physics_process(_delta: float) -> void:
 			"длинная рука установлена в центре прицепа")
 		_check(not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(0.0, 0.0, 0.3))) and
 			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(0.0, 0.0, -2.2))) and
-			BoatVessel.TRAILER_PUMP_RANGE > main.boat.effective_pump_range() and
 			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(-10.0, 0.0, 0.3))) and
 			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(10.0, 0.0, 0.3))) and
-			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(14.5, 0.0, 2.5))) and
-			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(3.0, 0.0, 2.5))) and
+			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(1.0, 0.0, 0.3))) and
+			main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(2.0, 0.0, 4.5))) and
+			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(0.0, 0.0, 0.3))) and
 			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(2.0, 0.0, -4.0))) and
-			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(16.5, 0.0, 0.3))),
-			"рука прицепа доступна по обоим бортам, но не в центре и не у носа")
-		for side in [-1.0, 1.0]:
-			var sample_pos: Vector3 = trailer_node.to_global(Vector3(side * 10.0, 0.0, 0.3))
+			not main.boat.is_on_trailer_working_side(trailer_node.to_global(Vector3(11.5, 0.0, 0.3))),
+			"прицеп собирает у кромки обоих бортов, но не по оси и не у носа")
+		for side_x in [-10.0, 10.0, 1.0]:
+			var sample_pos: Vector3 = trailer_node.to_global(Vector3(side_x, 0.0, 0.3))
 			var sample := ResourceSlick.new()
 			main.add_child(sample)
 			sample.setup(main.water, Vector2(sample_pos.x, sample_pos.z), 0, 0.0)
 			main.slicks.append(sample)
 			var raw_before := main.raw[0]
+			var zone := "близкой кромки" if side_x == 1.0 else ("левого борта" if side_x < 0.0 else "правого борта")
 			main.boat.speed = 7.0 # автосбор без ручного ввода даже на ходу
 			main.boat._update_pump(0.01)
 			_check(main.boat._trailer_target == sample and
 				main.boat.trailer_pump_fraction() > 0.0 and
 				not Input.is_action_pressed("boat_pump"),
-				"прицеп сам выбирает дальнее пятно с борта %s" % ("левого" if side < 0.0 else "правого"))
+				"прицеп сам выбирает пятно у %s" % zone)
 			main.boat._update_pump(BoatVessel.TRAILER_PUMP_SECONDS + 0.01)
 			_check(sample.depleted and main.raw[0] == raw_before + 1 and
 				main.boat._trailer_hose.visible and not main.boat._hose.visible,
-				"прицеп собирает пятно с борта %s своей рукой на ходу" % ("левого" if side < 0.0 else "правого"))
+				"прицеп автоматически собирает пятно у %s" % zone)
 			main.boat.speed = 0.0
 			main.slicks.erase(sample)
 			sample.queue_free()
@@ -279,6 +280,17 @@ func _physics_process(_delta: float) -> void:
 			"[H] отключает прожектор без изменения фона и глиттера")
 		main.debug_toggle_headlight()
 		_check(spot.visible, "[H] возвращает прожектор")
+		_check(not main.debug_retro_enabled and not main._retro_rect.visible and
+			main._retro_rect.material is ShaderMaterial and
+			(main._retro_rect.get_parent() as CanvasLayer).layer == 11,
+			"ретро-постэффект по умолчанию выключен и расположен ниже HUD")
+		main.debug_toggle_retro()
+		_check(main.debug_retro_enabled and main._retro_rect.visible and
+			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
+			"[V] включает экранный эффект без изменения воды")
+		main.debug_toggle_retro()
+		_check(not main.debug_retro_enabled and not main._retro_rect.visible,
+			"[V] возвращает изображение без постэффекта")
 		main.debug_toggle_lighting()
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_FILMIC and
 			is_equal_approx(main.world._sun.light_energy, before_light) and
