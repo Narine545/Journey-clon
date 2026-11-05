@@ -165,6 +165,8 @@ func _apply_atmosphere(n01: float) -> void:
 	water.set_param("swell_light_detail", 0.65) # [K] — сравнение с прежней водой
 	if boat != null:
 		boat.update_night_lights(night01, overdrive_timer > 0.0)
+		for slick in slicks:
+			slick.configure_night_visibility(boat._bow_spot, night01)
 
 
 # ---------------------------------------------------------------------------

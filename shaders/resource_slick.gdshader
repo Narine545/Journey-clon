@@ -19,6 +19,15 @@ uniform float parallax_depth : hint_range(0.0, 1.0) = 0.55;
 // а не цветовой шум. Можно настраивать независимо от геометрии волн.
 uniform float refract_strength : hint_range(0.0, 1.0) = 0.75;
 uniform float normal_scale : hint_range(0.5, 4.0) = 1.6;
+// Ночная видимость задаётся только конусом носового прожектора.
+uniform float night_factor : hint_range(0.0, 1.0) = 0.0;
+uniform vec3 reveal_position = vec3(0.0);
+uniform vec3 reveal_direction = vec3(0.0, 0.0, -1.0);
+uniform float reveal_range = 28.0;
+uniform float reveal_cos_outer = 0.8660254;
+uniform float reveal_cos_inner = 0.9135455;
+uniform float reveal_enabled = 0.0;
+varying vec3 surface_world_position;
 varying vec2 local_pos;
 varying vec2 world_xz;
 
@@ -52,6 +61,7 @@ void vertex() {
 	world_xz = wp;
 	VERTEX.y += spectrum_height(wp, wave_time, wave_wind, wave_amp, wave_power)
 		- spectrum_height(center, wave_time, wave_wind, wave_amp, wave_power);
+	surface_world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 
 void fragment() {
@@ -136,7 +146,15 @@ void fragment() {
     vec3 reflected = reflect(-view_world, mapped_normal);
     float sheen = smoothstep(0.30, 0.85, reflected.y);
     col += vec3(0.10, 0.13, 0.15) * sheen * (0.3 + upper_mass * 0.7);
+    vec3 light_to_surface = surface_world_position - reveal_position;
+    float light_distance = length(light_to_surface);
+    float cone_cos = dot(light_to_surface / max(light_distance, 0.001), reveal_direction);
+    float cone = smoothstep(reveal_cos_outer, reveal_cos_inner, cone_cos);
+    float range_mask = 1.0 - smoothstep(reveal_range * 0.78, reveal_range, light_distance);
+    float flashlight = cone * range_mask * reveal_enabled;
+    float night_blend = smoothstep(0.40, 0.78, night_factor);
+    float visibility = mix(1.0, flashlight, night_blend);
     ALBEDO = col;
-    ALPHA = body * (0.48 + 0.30 * core + 0.10 * upper_mass) * fade;
-    EMISSION = pigment * body * 0.06 * fade;
+    ALPHA = body * (0.48 + 0.30 * core + 0.10 * upper_mass) * fade * visibility;
+    EMISSION = pigment * body * 0.06 * fade * visibility;
 }

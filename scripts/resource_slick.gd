@@ -17,6 +17,7 @@ const NAMES: Array[String] = ["Бирюза", "Коралл", "Янтарь", "�
 var kind := 0
 var depleted := false
 var _mat: ShaderMaterial
+var _reveal_light: SpotLight3D
 var _water: WaterSurface
 var _age := 0.0
 var _respawn := 0.0
@@ -54,6 +55,7 @@ func relocate_smoothly(new_pos: Vector3) -> void:
 
 
 func _process(delta: float) -> void:
+	_sync_reveal_light()
 	_age += delta
 	if depleted:
 		_respawn -= delta
@@ -88,3 +90,27 @@ func collect() -> void:
 func set_parallax_enabled(enabled: bool) -> void:
 	if _mat != null:
 		_mat.set_shader_parameter("parallax_depth", 0.55 if enabled else 0.0)
+
+
+func configure_night_visibility(light: SpotLight3D, night: float) -> void:
+	_reveal_light = light
+	if _mat != null:
+		_mat.set_shader_parameter("night_factor", night)
+		_sync_reveal_light()
+
+
+func _sync_reveal_light() -> void:
+	if _mat == null:
+		return
+	var active := is_instance_valid(_reveal_light)
+	if active:
+		active = _reveal_light.is_visible_in_tree() and _reveal_light.light_energy > 0.001
+	_mat.set_shader_parameter("reveal_enabled", 1.0 if active else 0.0)
+	if not active:
+		return
+	_mat.set_shader_parameter("reveal_position", _reveal_light.global_position)
+	_mat.set_shader_parameter("reveal_direction", -_reveal_light.global_basis.z.normalized())
+	_mat.set_shader_parameter("reveal_range", maxf(_reveal_light.spot_range, 0.01))
+	var angle := deg_to_rad(_reveal_light.spot_angle)
+	_mat.set_shader_parameter("reveal_cos_outer", cos(angle))
+	_mat.set_shader_parameter("reveal_cos_inner", cos(angle * 0.80))
