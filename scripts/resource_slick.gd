@@ -118,8 +118,10 @@ func _sync_reveal_light() -> void:
 	_mat.set_shader_parameter("reveal_enabled", 1.0 if active else 0.0)
 	if not active:
 		return
-	_mat.set_shader_parameter("reveal_position", _reveal_light.global_position)
-	_mat.set_shader_parameter("reveal_direction", -_reveal_light.global_basis.z.normalized())
+	# Маска пятен должна совпадать с отрисованным интерполированным фонарём.
+	var rendered_light := _reveal_light.get_global_transform_interpolated()
+	_mat.set_shader_parameter("reveal_position", rendered_light.origin)
+	_mat.set_shader_parameter("reveal_direction", -rendered_light.basis.z.normalized())
 	_mat.set_shader_parameter("reveal_range", maxf(_reveal_light.spot_range, 0.01))
 	var angle := deg_to_rad(_reveal_light.spot_angle)
 	_mat.set_shader_parameter("reveal_cos_outer", cos(angle))

@@ -88,9 +88,12 @@ func _ready() -> void:
 	game.water = water
 	boat = BoatVessel.new()
 	boat.name = "Vessel"
+	# Только физически движущаяся ветка: вода/камера/пятна живут в _process.
+	boat.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	add_child(boat)
 	boat.global_position = Vector3(coast.shore_x(START_Z) - START_SEAWARD, 0.2, START_Z)
 	boat.setup(self, water, coast)
+	boat.reset_physics_interpolation()
 	if OS.get_environment("JOURNEY_BOAT_SHOT_TRAILER") == "1":
 		boat.set_trailer_enabled(true)
 	_build_resources()
@@ -812,6 +815,7 @@ func debug_warp_to_beacon() -> void:
 	boat._reset_trail(Vector2(at.x, at.z))
 	if boat.has_trailer:
 		boat.set_trailer_enabled(true)
+	boat.reset_physics_interpolation()
 	_camera_focus = at + Vector3.UP * 0.8
 	camera.global_position = _camera_focus + Vector3(21.0, 26.2, 30.0)
 	camera.look_at(_camera_focus, Vector3.UP)
@@ -931,10 +935,14 @@ func _process(delta: float) -> void:
 		water.position = Vector3(boat.global_position.x, Coast.SEA_LEVEL,
 			boat.global_position.z)
 
-	var target := boat.global_position + Vector3.UP * 0.8
+	# Рендерная камера должна следовать рендерной, а не последней тиковой
+	# позиции лодки. Иначе при 60 Гц физики и другом FPS видны ступеньки.
+	var target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
 	_camera_focus = _camera_focus.lerp(target, 1.0 - exp(-4.0 * delta))
 	var desired := _camera_focus + Vector3(21.0, 26.2, 30.0)
-	camera.global_position = camera.global_position.lerp(desired, 1.0 - exp(-3.0 * delta))
+	# Один фильтр для focus; второй лаг позиции менял угол взгляда камеры
+	# при разгоне и поворотах, хотя ракурс должен оставаться изометрическим.
+	camera.global_position = desired
 	camera.look_at(_camera_focus, Vector3.UP)
 	notice_time = maxf(0.0, notice_time - delta)
 	_stream_timer -= delta

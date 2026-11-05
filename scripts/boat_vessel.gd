@@ -140,6 +140,7 @@ func set_trailer_enabled(enabled: bool) -> void:
 		var heading := -global_transform.basis.z
 		_trailer.global_position = global_position - heading * TRAILER_DISTANCE
 		_trailer.global_rotation = Vector3(0.0, rotation.y, 0.0)
+		_trailer.reset_physics_interpolation()
 	if not enabled:
 		_trailer_target = null
 		_trailer_pump_progress = 0.0
@@ -961,6 +962,7 @@ func _build_trailer() -> void:
 	_trailer = Node3D.new()
 	_trailer.name = "TowedEquipmentBarge"
 	_trailer.top_level = true
+	_trailer.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	_trailer.visible = false
 	add_child(_trailer)
 

@@ -3,4 +3,5 @@
 [ext_resource type="Script" path="res://scripts/boat_main.gd" id="1_boat"]
 
 [node name="BoatWorld" type="Node3D"]
+physics_interpolation_mode = 2
 script = ExtResource("1_boat")
