@@ -282,6 +282,7 @@ func _physics_process(_delta: float) -> void:
 		_check(spot.visible, "[H] возвращает прожектор")
 		_check(not main.debug_retro_enabled and not main._retro_rect.visible and
 			main._retro_rect.material is ShaderMaterial and
+			main._retro_rect.size == Vector2(main.get_viewport().get_visible_rect().size) and
 			(main._retro_rect.get_parent() as CanvasLayer).layer == 11,
 			"ретро-постэффект по умолчанию выключен и расположен ниже HUD")
 		main.debug_toggle_retro()
@@ -291,6 +292,19 @@ func _physics_process(_delta: float) -> void:
 		main.debug_toggle_retro()
 		_check(not main.debug_retro_enabled and not main._retro_rect.visible,
 			"[V] возвращает изображение без постэффекта")
+		_check(not main.debug_rme4_enabled and main._rme4_volume == null,
+			"адаптация RME4 не создаёт объём до ручного включения")
+		if RenderingServer.get_rendering_device() != null:
+			var fog_before := main.world._env.volumetric_fog_enabled
+			main.debug_toggle_rme4_fog()
+			_check(main.debug_rme4_enabled and main._rme4_volume.visible and
+				main._rme4_volume.material is ShaderMaterial and
+				main.world._env.volumetric_fog_enabled,
+				"[J] включает 3D-шум тумана в Forward+")
+			main.debug_toggle_rme4_fog()
+			_check(not main.debug_rme4_enabled and not main._rme4_volume.visible and
+				main.world._env.volumetric_fog_enabled == fog_before,
+				"[J] выключает объём и восстанавливает прежнее состояние")
 		main.debug_toggle_lighting()
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_FILMIC and
 			is_equal_approx(main.world._sun.light_energy, before_light) and

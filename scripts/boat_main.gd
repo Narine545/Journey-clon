@@ -43,7 +43,11 @@ var debug_night_fill := 0.18
 var debug_lighting_profile := true
 var debug_headlight_enabled := true
 var debug_retro_enabled := false
+var debug_rme4_enabled := false
 var _retro_rect: ColorRect
+var _rme4_volume: FogVolume
+var _rme4_material: ShaderMaterial
+var _rme4_previous_fog_enabled := false
 var _debug_night_step := 0
 
 var _capture_frames := 0
@@ -120,6 +124,8 @@ func _ready() -> void:
 
 func _apply_atmosphere(n01: float) -> void:
 	night01 = clampf(n01, 0.0, 0.88)
+	if _rme4_material != null:
+		_rme4_material.set_shader_parameter("night_factor", night01)
 	world.apply_night01(night01)
 	coast.set_night01(night01)
 	water.apply_night01(night01)
@@ -674,23 +680,66 @@ func _setup_retro_debug() -> void:
 	add_child(layer)
 	_retro_rect = ColorRect.new()
 	_retro_rect.name = "RetroDebugPostprocess"
-	_retro_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_retro_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var material := ShaderMaterial.new()
 	material.shader = preload("res://shaders/boat_retro_debug.gdshader")
 	_retro_rect.material = material
 	_retro_rect.visible = false
 	layer.add_child(_retro_rect)
+	# CanvasLayer не является Control-контейнером: явный размер надёжнее
+	# preset до add_child(), который ранее мог оставить ColorRect нулевым.
+	_sync_retro_rect()
+	get_viewport().size_changed.connect(_sync_retro_rect)
+
+
+func _sync_retro_rect() -> void:
+	_retro_rect.position = Vector2.ZERO
+	_retro_rect.size = get_viewport().get_visible_rect().size
 
 
 func debug_toggle_retro() -> void:
 	debug_retro_enabled = not debug_retro_enabled
 	_retro_rect.visible = debug_retro_enabled
+	print("RETRO DEBUG: visible=", _retro_rect.visible, " rect=", _retro_rect.size,
+		" viewport=", get_viewport().get_visible_rect().size)
 	announce("ТЕСТ: FEARS TO FATHOM %s (БЕЗ ВИНЬЕТКИ И ПОЛОС)" % (
 		"ВКЛ" if debug_retro_enabled else "ВЫКЛ"))
 
 
+func debug_toggle_rme4_fog() -> void:
+	if debug_rme4_enabled:
+		debug_rme4_enabled = false
+		_rme4_volume.visible = false
+		world._env.volumetric_fog_enabled = _rme4_previous_fog_enabled
+		announce("ТЕСТ: RME4-АТМОСФЕРА ВЫКЛ")
+		return
+	if RenderingServer.get_rendering_device() == null:
+		announce("ТЕСТ: RME4-ОБЪЁМ НЕДОСТУПЕН В COMPATIBILITY (НУЖЕН FORWARD+)")
+		return
+	if _rme4_volume == null:
+		_rme4_volume = FogVolume.new()
+		_rme4_volume.name = "RME4SeaMistDebug"
+		_rme4_volume.shape = RenderingServer.FOG_VOLUME_SHAPE_BOX
+		_rme4_volume.size = Vector3(160.0, 26.0, 160.0)
+		_rme4_material = ShaderMaterial.new()
+		_rme4_material.shader = preload("res://shaders/boat_rme4_fog.gdshader")
+		_rme4_material.set_shader_parameter("density_noise",
+			world._noise_3d(32, 137, 0.085, FastNoiseLite.TYPE_SIMPLEX_SMOOTH))
+		_rme4_volume.material = _rme4_material
+		add_child(_rme4_volume)
+	_rme4_previous_fog_enabled = world._env.volumetric_fog_enabled
+	world._env.volumetric_fog_enabled = true
+	_rme4_material.set_shader_parameter("night_factor", night01)
+	_rme4_volume.global_position = Vector3(boat.global_position.x, 6.0, boat.global_position.z)
+	_rme4_volume.visible = true
+	debug_rme4_enabled = true
+	announce("ТЕСТ: RME4-АТМОСФЕРА ВКЛ (3D-ШУМ; [J] — ВЫКЛ)")
+
+
 func debug_toggle_volumetric_fog() -> void:
+	if debug_rme4_enabled:
+		announce("ТЕСТ: СНАЧАЛА ВЫКЛЮЧИТЕ RME4 КЛАВИШЕЙ [J]")
+		return
 	world._env.volumetric_fog_enabled = not world._env.volumetric_fog_enabled
 	announce("ТЕСТ: ОБЪЁМНЫЙ ТУМАН %s (RD: %s)" % [
 		"ВКЛ" if world._env.volumetric_fog_enabled else "ВЫКЛ",
@@ -782,6 +831,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_V:
 				debug_toggle_retro()
 				get_viewport().set_input_as_handled()
+			KEY_J:
+				debug_toggle_rme4_fog()
+				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera.size = maxf(16.0, camera.size - 2.0)
@@ -792,6 +844,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if boat == null or camera == null:
 		return
+	if debug_rme4_enabled:
+		_rme4_volume.global_position = Vector3(boat.global_position.x, 6.0, boat.global_position.z)
 	_beacon_anim_time += delta
 	sonar_timer = maxf(0.0, sonar_timer - delta)
 	var had_overdrive := overdrive_timer > 0.0
