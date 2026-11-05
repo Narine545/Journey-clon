@@ -82,8 +82,8 @@ func _draw() -> void:
 	# Отладка всегда доступна в лодочном режиме; [0] прячет только панель.
 	if main.debug_panel_visible:
 		var dbg := Vector2(size.x - 355.0, 22.0)
-		draw_rect(Rect2(dbg, Vector2(333, 311)), backdrop)
-		draw_rect(Rect2(dbg, Vector2(333, 311)), Color("548c89"), false, 1.0)
+		draw_rect(Rect2(dbg, Vector2(333, 357)), backdrop)
+		draw_rect(Rect2(dbg, Vector2(333, 357)), Color("548c89"), false, 1.0)
 		draw_string(font, dbg + Vector2(12, 23), "БЫСТРАЯ ПРОВЕРКА  •  %d FPS" % Engine.get_frames_per_second(),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 14, accent)
 		draw_string(font, dbg + Vector2(12, 47), "[0] — СКРЫТЬ / ПОКАЗАТЬ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
@@ -114,6 +114,14 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
 		draw_string(font, dbg + Vector2(12, 299),
 			"[J] — RME4 3D-ТУМАН: %s" % ("ВКЛ" if main.debug_rme4_enabled else "ВЫКЛ"),
+			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
+
+		draw_string(font, dbg + Vector2(12, 322),
+			"[O] — ТУМАН: %s" % ("МАССЫ" if main.debug_mystery_atmosphere else "ПРЕЖНИЙ"),
+			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
+		draw_string(font, dbg + Vector2(12, 345),
+			"[F8] — ТЕНИ ПРОЖЕКТОРА: %s" % (
+				"ВКЛ" if main.boat._bow_spot.shadow_enabled else "ВЫКЛ"),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
 
 	# 3. КОНТЕКСТНАЯ ПОДСКАЗКА ДЕЙСТВИЯ ВНИЗУ ЭКРАНА

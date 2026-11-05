@@ -50,6 +50,7 @@ var debug_retro_enabled := false
 # RME4-слой — это штатный воздух сцены, а не отладочный режим: без него
 # Forward+ не рендерит объёмный туман вовсе (см. configure_boat_lighting).
 var debug_rme4_enabled := true
+var debug_mystery_atmosphere := true
 var _retro_rect: ColorRect
 var _rme4_volume: FogVolume
 var _rme4_material: ShaderMaterial
@@ -759,6 +760,8 @@ func _setup_rme4_atmosphere() -> void:
 	_rme4_volume.size = RME4_BOX_SIZE
 	_rme4_material = ShaderMaterial.new()
 	_rme4_material.shader = preload("res://shaders/boat_rme4_fog.gdshader")
+	_rme4_material.set_shader_parameter("mystery_profile",
+		1.0 if debug_mystery_atmosphere else 0.0)
 	_rme4_material.set_shader_parameter("density_noise",
 		world._noise_3d(RME4_NOISE_PX, 137, 0.085, FastNoiseLite.TYPE_SIMPLEX_SMOOTH))
 	_rme4_volume.material = _rme4_material
@@ -768,6 +771,27 @@ func _setup_rme4_atmosphere() -> void:
 	_rme4_volume.visible = debug_rme4_enabled
 	print("RME4: слой воздуха ", RME4_BOX_SIZE, " центр y=", RME4_BOX_Y,
 		" noise=", RME4_NOISE_PX, "^3")
+
+
+## [O] — сравнение формы и собственного свечения одного FogVolume.
+func debug_toggle_mystery_atmosphere() -> void:
+	if _rme4_material == null:
+		announce("[O] ОБЪЁМНЫЙ ПРОФИЛЬ НЕДОСТУПЕН: НУЖЕН FORWARD+")
+		return
+	debug_mystery_atmosphere = not debug_mystery_atmosphere
+	_rme4_material.set_shader_parameter("mystery_profile",
+		1.0 if debug_mystery_atmosphere else 0.0)
+	announce("[O] ТУМАН: %s" % (
+		"ПЛОТНЫЕ МАССЫ" if debug_mystery_atmosphere else "ПРЕЖНИЙ СЛОЙ"))
+
+
+func debug_toggle_headlight_shadows() -> void:
+	if RenderingServer.get_rendering_device() == null:
+		announce("[F8] СРАВНЕНИЕ ОБЪЁМНЫХ ТЕНЕЙ ТРЕБУЕТ FORWARD+")
+		return
+	boat._bow_spot.shadow_enabled = not boat._bow_spot.shadow_enabled
+	announce("[F8] ТЕНИ ПРОЖЕКТОРА: %s (СРАВНИТЕ FPS)" % (
+		"ВКЛ" if boat._bow_spot.shadow_enabled else "ВЫКЛ"))
 
 
 ## [J] — A/B воздуха: RME4-слой против ровной глобальной дымки.
@@ -872,6 +896,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_L:
 				debug_toggle_lighting()
+				get_viewport().set_input_as_handled()
+			KEY_O:
+				debug_toggle_mystery_atmosphere()
+				get_viewport().set_input_as_handled()
+			KEY_F8:
+				debug_toggle_headlight_shadows()
 				get_viewport().set_input_as_handled()
 			KEY_P:
 				debug_toggle_slick_parallax()
