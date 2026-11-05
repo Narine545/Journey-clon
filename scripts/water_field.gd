@@ -190,19 +190,37 @@ func _vnoise(p: Vector2) -> float:
 ## Линейная дисперсия глубоководных волн omega²=g*k; коэффициенты
 ## повторяют boat_wave_spectrum.gdshaderinc для плавучести и пятен.
 func _spectrum_height(x: float, z: float) -> float:
-	var d1 := wind_dir.normalized()
-	var d2 := Vector2(d1.x * 0.80 - d1.y * 0.60,
-		d1.x * 0.60 + d1.y * 0.80).normalized()
-	var d3 := Vector2(d1.x * 0.52 + d1.y * 0.85,
-		-d1.x * 0.85 + d1.y * 0.52).normalized()
+	var d := wind_dir.normalized()
 	var p := Vector2(x, z)
-	var k1 := TAU / 18.0
-	var k2 := TAU / 9.5
-	var k3 := TAU / 4.5
+	var d0 := Vector2(d.x * 0.97814760 - d.y * -0.20791169,
+		d.x * -0.20791169 + d.y * 0.97814760)
+	var k0 := TAU / 23.7
+	var d1 := Vector2(d.x * 0.99026807 - d.y * 0.13917310,
+		d.x * 0.13917310 + d.y * 0.99026807)
+	var k1 := TAU / 17.3
+	var d2 := Vector2(d.x * 0.82903757 - d.y * 0.55919290,
+		d.x * 0.55919290 + d.y * 0.82903757)
+	var k2 := TAU / 12.1
+	var d3 := Vector2(d.x * 0.77714596 - d.y * -0.62932039,
+		d.x * -0.62932039 + d.y * 0.77714596)
+	var k3 := TAU / 8.3
+	var d4 := Vector2(d.x * 0.48480962 - d.y * 0.87461971,
+		d.x * 0.87461971 + d.y * 0.48480962)
+	var k4 := TAU / 5.7
+	var d5 := Vector2(d.x * 0.39073113 - d.y * -0.92050485,
+		d.x * -0.92050485 + d.y * 0.39073113)
+	var k5 := TAU / 3.9
+	var d6 := Vector2(d.x * 0.92050485 - d.y * 0.39073113,
+		d.x * 0.39073113 + d.y * 0.92050485)
+	var k6 := TAU / 2.8
 	return mega_amp * wind_power * (
-		0.75 * cos(k1 * p.dot(d1) - sqrt(9.81 * k1) * t)
-		+ 0.45 * cos(k2 * p.dot(d2) - sqrt(9.81 * k2) * t + 1.7)
-		+ 0.22 * cos(k3 * p.dot(d3) - sqrt(9.81 * k3) * t + 3.1))
+		0.49491911 * cos(k0 * p.dot(d0) - sqrt(9.81 * k0) * t + 0.4)
+		+ 0.44336503 * cos(k1 * p.dot(d1) - sqrt(9.81 * k1) * t + 2.1)
+		+ 0.39181096 * cos(k2 * p.dot(d2) - sqrt(9.81 * k2) * t + 4.8)
+		+ 0.31963526 * cos(k3 * p.dot(d3) - sqrt(9.81 * k3) * t + 1.3)
+		+ 0.25777037 * cos(k4 * p.dot(d4) - sqrt(9.81 * k4) * t + 3.7)
+		+ 0.18559467 * cos(k5 * p.dot(d5) - sqrt(9.81 * k5) * t + 5.6)
+		+ 0.12372978 * cos(k6 * p.dot(d6) - sqrt(9.81 * k6) * t + 2.8))
 
 
 func _mega_h_cpu(x: float, z: float) -> float:
