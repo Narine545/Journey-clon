@@ -15,6 +15,10 @@ uniform vec2 wave_wind = vec2(0.32, -0.95);
 // Два внутренних слоя вместо screen-texture: прозрачное море не обязано
 // присутствовать в screen copy. Нулевая глубина отключает эффект.
 uniform float parallax_depth : hint_range(0.0, 1.0) = 0.55;
+// Процедурный аналог normal_texture из local-refract: плавные линзы,
+// а не цветовой шум. Можно настраивать независимо от геометрии волн.
+uniform float refract_strength : hint_range(0.0, 1.0) = 0.75;
+uniform float normal_scale : hint_range(0.5, 4.0) = 1.6;
 varying vec2 local_pos;
 varying vec2 world_xz;
 
@@ -71,11 +75,40 @@ void fragment() {
     vec3 view_world = normalize((INV_VIEW_MATRIX * vec4(view_direction, 0.0)).xyz);
     vec2 slope = spectrum_gradient(world_xz, wave_time, wave_wind, wave_amp, wave_power);
     vec3 surface_normal = normalize(vec3(-slope.x, 1.0, -slope.y));
-    // Внутренняя граница вода/пигмент: IOR около 1.33. Луч идёт внутрь.
-    vec3 inside_ray = refract(-view_world, surface_normal, 1.0 / 1.33);
-    vec2 world_offset = inside_ray.xz / max(-inside_ray.y, 0.20) * parallax_depth;
-    // Перевод world XZ в локальную плоскость пятна (учёт масштаба/поворота).
-    vec3 offset_local = inverse(mat3(MODEL_MATRIX)) * vec3(world_offset.x, 0.0, world_offset.y);
+    // Аналог normal_texture: производные непрерывного поля высоты линз.
+    // Поле следует пятну; медленный дрейф не привязан к экрану.
+    vec2 normal_uv = local_pos * normal_scale + vec2(seed, -seed)
+        + vec2(wave_time * 0.055, -wave_time * 0.035);
+    float ne = 0.12;
+    vec2 lens_gradient = vec2(
+        pigment_noise(normal_uv + vec2(ne, 0.0))
+            - pigment_noise(normal_uv - vec2(ne, 0.0)),
+        pigment_noise(normal_uv + vec2(0.0, ne))
+            - pigment_noise(normal_uv - vec2(0.0, ne))) / (2.0 * ne);
+    // Все векторы здесь в WORLD SPACE. Не смешиваем TANGENT из view
+    // space с NORMAL из world space, как в присланном примере.
+    vec3 surface_tangent = normalize(vec3(1.0, slope.x, 0.0));
+    vec3 surface_bitangent = normalize(cross(surface_normal, surface_tangent));
+    vec3 mapped_normal = normalize(surface_normal
+        - surface_tangent * lens_gradient.x * refract_strength * 0.65
+        + surface_bitangent * lens_gradient.y * refract_strength * 0.65);
+    // Gram-Schmidt: касательная должна быть ортогональна уже ИСКАЖЁННОЙ
+    // нормали. В ортографии view_world постоянен, но этот базис — нет.
+    vec3 projection_tangent = normalize(surface_tangent
+        - mapped_normal * dot(surface_tangent, mapped_normal));
+    vec3 projection_bitangent = normalize(cross(mapped_normal, projection_tangent));
+    vec3 view_tangent = vec3(dot(view_world, projection_tangent),
+        dot(view_world, projection_bitangent), dot(view_world, mapped_normal));
+    // Single-face parallax: xy/z * depth, как в предоставленном коде.
+    // Ограничиваем скользящие углы вместо деления на 0.001 (взрыв UV).
+    vec2 projected_offset = -view_tangent.xy / max(view_tangent.z, 0.30)
+        * parallax_depth;
+    projected_offset /= max(1.0, length(projected_offset) / 1.25);
+    vec3 world_offset = projection_tangent * projected_offset.x
+        + projection_bitangent * projected_offset.y;
+    // У нас PlaneMesh XZ, а рисунок задан в локальных метрах, НЕ в UV.
+    // Обратная матрица учитывает mesh_dimensions, масштаб и поворот.
+    vec3 offset_local = inverse(mat3(MODEL_MATRIX)) * world_offset;
     vec2 inner = p + offset_local.xz * 0.82;
     vec2 deep = p + offset_local.xz * 1.64;
     // Крупные сгустки на двух глубинах. Не sin(x+y): длинных полос нет.
@@ -100,7 +133,7 @@ void fragment() {
     float rim = exp(-pow(d / 0.075, 2.0));
     col = mix(col, pigment * 1.15 + vec3(0.06), rim * 0.42);
     // Широкий слабый блик поверхности движется с общей нормалью волн.
-    vec3 reflected = reflect(-view_world, surface_normal);
+    vec3 reflected = reflect(-view_world, mapped_normal);
     float sheen = smoothstep(0.30, 0.85, reflected.y);
     col += vec3(0.10, 0.13, 0.15) * sheen * (0.3 + upper_mass * 0.7);
     ALBEDO = col;
