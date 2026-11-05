@@ -298,19 +298,24 @@ func _physics_process(_delta: float) -> void:
 			var fog_before := main.world._env.volumetric_fog_enabled
 			var density_before := main.world._env.volumetric_fog_density
 			var ambient_before := main.world._env.volumetric_fog_ambient_inject
+			var sun_fog_before := main.world._sun.light_volumetric_fog_energy
+			var glitter_before := float(main.water.material().get_shader_parameter("glitter_amount"))
 			main.debug_toggle_rme4_fog()
 			main._apply_atmosphere(main.night01) # профиль не должен вернуть белую пелену
 			_check(main.debug_rme4_enabled and main._rme4_volume.visible and
 				main._rme4_volume.material is ShaderMaterial and
 				main.world._env.volumetric_fog_enabled and
 				is_zero_approx(main.world._env.volumetric_fog_density) and
-				main.world._env.volumetric_fog_ambient_inject < ambient_before,
-				"[J] оставляет только локальный шум без глобальной светлой пелены")
+				main.world._env.volumetric_fog_ambient_inject < ambient_before and
+				main.world._sun.light_volumetric_fog_energy > sun_fog_before and
+				is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), glitter_before),
+				"[J] усиливает рассеяние в локальном тумане без глобальной пелены и правки воды")
 			main.debug_toggle_rme4_fog()
 			_check(not main.debug_rme4_enabled and not main._rme4_volume.visible and
 				main.world._env.volumetric_fog_enabled == fog_before and
 				is_equal_approx(main.world._env.volumetric_fog_density, density_before) and
-				is_equal_approx(main.world._env.volumetric_fog_ambient_inject, ambient_before),
+				is_equal_approx(main.world._env.volumetric_fog_ambient_inject, ambient_before) and
+				is_equal_approx(main.world._sun.light_volumetric_fog_energy, sun_fog_before),
 				"[J] выключает объём и восстанавливает прежнее состояние")
 		main.debug_toggle_lighting()
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_FILMIC and

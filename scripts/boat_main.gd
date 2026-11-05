@@ -142,6 +142,9 @@ func _apply_atmosphere(n01: float) -> void:
 	# два слоя тумана складываются в сплошную светлую пелену.
 	if debug_rme4_enabled:
 		world._env.volumetric_fog_density = 0.0
+		# В RME4 атмосфера читается в косом свете. Усиливаем только
+		# рассеяние внутри тумана, НЕ энергию солнца на воде/берегу.
+		world._sun.light_volumetric_fog_energy = 2.0
 	coast.apply_sun(sun)
 	water.apply_sun(sun)
 	# Уходит дневной свет, а не включается отдельная луна. Оставляем
@@ -744,11 +747,15 @@ func debug_toggle_rme4_fog() -> void:
 	world._env.volumetric_fog_density = 0.0
 	world._env.volumetric_fog_ambient_inject = 0.04
 	world._env.volumetric_fog_sky_affect = 0.0
+	world._sun.light_volumetric_fog_energy = 2.0
 	_rme4_material.set_shader_parameter("night_factor", night01)
 	_rme4_volume.global_position = Vector3(boat.global_position.x, 3.0, boat.global_position.z)
 	_rme4_volume.visible = true
 	debug_rme4_enabled = true
-	announce("ТЕСТ: RME4-АТМОСФЕРА ВКЛ (3D-ШУМ; [J] — ВЫКЛ)")
+	print("RME4 DEBUG: volume=", _rme4_volume.size, " at=", _rme4_volume.global_position,
+		" fog_density=", world._env.volumetric_fog_density,
+		" sun_fog_energy=", world._sun.light_volumetric_fog_energy)
+	announce("ТЕСТ: RME4-АТМОСФЕРА ВКЛ (3D-ШУМ + РАССЕЯНИЕ СВЕТА; [J] — ВЫКЛ)")
 
 
 func debug_toggle_volumetric_fog() -> void:
