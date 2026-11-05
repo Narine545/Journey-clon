@@ -29,7 +29,7 @@ uniform float direct_specular_amount = 1.0;
 // Небольшая доля рассчитанной нормали волн в реальном освещении.
 // 0 = прежний плоский PBR, 0.16 = мягкая форма без светлых полос.
 uniform float surface_light_detail = 0.0;
-// Дополнительный отклик только крупных волн; 0 сохраняет прежний профиль.
+// Мягкие прерывистые акценты гребней; 0 сохраняет прежний профиль.
 uniform float swell_light_detail : hint_range(0.0, 1.0) = 0.0;
 
 uniform float proxima_test = 0.0;
@@ -165,11 +165,6 @@ void fragment() {
 	vec2 wave_grad = spectrum_gradient(wp, u_time, wind_dir, mega_amp, wind_power);
 	N = normalize(N - vec3(wave_grad.x, 0.0, wave_grad.y)
 		* (1.0 - 0.92 * near_shore));
-
-	// Сохраняем крупный склон ДО микроряби, колец и границ пигмента.
-	// Мягкое ограничение не даёт крутым гребням стать белыми полосами.
-	vec2 swell_slope = wave_grad * (1.0 - 0.92 * near_shore);
-	swell_slope /= 1.0 + length(swell_slope) / 0.35;
 
 	// ---------- локальная микрорябь без песчаных «сканлайнов» ----------
 	// Три параллельных cos(dot(wp, wind)) из старой воды образовывали
@@ -331,6 +326,25 @@ void fragment() {
 	float path = pow(clamp(dot(N_ambient, H), 0.0, 1.0), 180.0);
 	base += sun_col * path * 0.55 * sun_path_amount * (1.0 - 0.85 * near_shore);
 
+	// Акцент верхних участков волн, а НЕ диффузная подсветка всего склона.
+	// Высота берётся из того же спектра, который двигает геометрию.
+	// Это художественная аппроксимация отражения, не пена и не emission.
+	float swell_height = spectrum_height(wp, u_time, wind_dir, mega_amp, wind_power);
+	float relative_height = swell_height / max(mega_amp * wind_power, 0.001);
+	float crest = smoothstep(0.32, 0.88, relative_height);
+	vec3 crest_normal = normalize(vec3(-wave_grad.x, 1.0, -wave_grad.y));
+	float crest_facing = smoothstep(0.35, 0.90, dot(crest_normal, H));
+	// Две непериодические мировые маски разбивают длинные линии гребней.
+	float crest_patch = vnoise(wp * 0.72 + wdir * u_time * 0.16);
+	float crest_breakup = smoothstep(0.40, 0.72, crest_patch)
+		* smoothstep(0.25, 0.65, n);
+	float crest_light = crest * crest_facing * crest_breakup
+		* smoothstep(0.02, 0.35, L.y) * (1.0 - near_shore);
+	// Ограниченный цветовой акцент; без усиления глобального specular,
+	// световой дорожки и повторного внесения периодической PBR-нормали.
+	vec3 crest_color = mix(base, sky_ref + sun_col * 0.12, 0.30);
+	base = mix(base, crest_color, crest_light * swell_light_detail);
+
 	// ---------- пена прибоя + мировая кильватерная пена ----------
 	float fn = vnoise(vec2(wp.x * 0.85 + u_time * 0.10, wp.y * 1.55));
 	float fn2 = vnoise(vec2(wp.x * 3.2 - u_time * 0.38, wp.y * 2.35));
@@ -355,9 +369,6 @@ void fragment() {
 	// полностью лишала воду реакции на свет и тени. Френель и глиттер выше
 	// остаются прежними; [L] меняет только тонмаппер.
 	vec3 lighting_normal = normalize(mix(vec3(0.0, 1.0, 0.0), N, surface_light_detail));
-	// Не усиливаем шум и границы пятен вместе с крупной волной.
-	lighting_normal = normalize(lighting_normal
-		- vec3(swell_slope.x, 0.0, swell_slope.y) * swell_light_detail);
 	NORMAL = normalize((VIEW_MATRIX * vec4(lighting_normal, 0.0)).xyz);
 	float rough = mix(0.29, 0.55, near_shore); // зыбь не должна давать белые зеркальные прямоугольники
 	ROUGHNESS = mix(rough, 0.88, foam);
