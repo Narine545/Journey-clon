@@ -310,6 +310,17 @@ func _physics_process(_delta: float) -> void:
 				main.world._sun.light_volumetric_fog_energy > sun_fog_before and
 				is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), fog_glitter_before),
 				"[J] усиливает рассеяние в локальном тумане без глобальной пелены и правки воды")
+			main.debug_toggle_rme4_strength()
+			main._apply_atmosphere(main.night01)
+			_check(main.debug_rme4_strong and
+				is_equal_approx(float(main._rme4_material.get_shader_parameter("density_scale")), 0.08) and
+				is_equal_approx(main.world._sun.light_volumetric_fog_energy, 2.5) and
+				is_zero_approx(main.world._env.volumetric_fog_density),
+				"[K] держит усиленный локальный туман при смене времени")
+			main.debug_toggle_rme4_strength()
+			_check(not main.debug_rme4_strong and
+				is_equal_approx(float(main._rme4_material.get_shader_parameter("density_scale")), 0.055),
+				"[K] возвращает исходный A/B-режим")
 			main.debug_toggle_rme4_fog()
 			_check(not main.debug_rme4_enabled and not main._rme4_volume.visible and
 				main.world._env.volumetric_fog_enabled == fog_before and

@@ -44,6 +44,7 @@ var debug_lighting_profile := true
 var debug_headlight_enabled := true
 var debug_retro_enabled := false
 var debug_rme4_enabled := false
+var debug_rme4_strong := false
 var _retro_rect: ColorRect
 var _rme4_volume: FogVolume
 var _rme4_material: ShaderMaterial
@@ -144,7 +145,7 @@ func _apply_atmosphere(n01: float) -> void:
 		world._env.volumetric_fog_density = 0.0
 		# В RME4 атмосфера читается в косом свете. Усиливаем только
 		# рассеяние внутри тумана, НЕ энергию солнца на воде/берегу.
-		world._sun.light_volumetric_fog_energy = 2.0
+		world._sun.light_volumetric_fog_energy = 2.5 if debug_rme4_strong else 2.0
 	coast.apply_sun(sun)
 	water.apply_sun(sun)
 	# Уходит дневной свет, а не включается отдельная луна. Оставляем
@@ -719,6 +720,7 @@ func debug_toggle_retro() -> void:
 func debug_toggle_rme4_fog() -> void:
 	if debug_rme4_enabled:
 		debug_rme4_enabled = false
+		debug_rme4_strong = false
 		_rme4_volume.visible = false
 		world._env.volumetric_fog_ambient_inject = _rme4_previous_ambient_inject
 		world._env.volumetric_fog_sky_affect = _rme4_previous_sky_affect
@@ -747,7 +749,9 @@ func debug_toggle_rme4_fog() -> void:
 	world._env.volumetric_fog_density = 0.0
 	world._env.volumetric_fog_ambient_inject = 0.04
 	world._env.volumetric_fog_sky_affect = 0.0
+	debug_rme4_strong = false
 	world._sun.light_volumetric_fog_energy = 2.0
+	_rme4_material.set_shader_parameter("density_scale", 0.055)
 	_rme4_material.set_shader_parameter("night_factor", night01)
 	_rme4_volume.global_position = Vector3(boat.global_position.x, 3.0, boat.global_position.z)
 	_rme4_volume.visible = true
@@ -756,6 +760,19 @@ func debug_toggle_rme4_fog() -> void:
 		" fog_density=", world._env.volumetric_fog_density,
 		" sun_fog_energy=", world._sun.light_volumetric_fog_energy)
 	announce("ТЕСТ: RME4-АТМОСФЕРА ВКЛ (3D-ШУМ + РАССЕЯНИЕ СВЕТА; [J] — ВЫКЛ)")
+
+
+func debug_toggle_rme4_strength() -> void:
+	if not debug_rme4_enabled:
+		announce("ТЕСТ: СНАЧАЛА ВКЛЮЧИТЕ RME4 КЛАВИШЕЙ [J]")
+		return
+	debug_rme4_strong = not debug_rme4_strong
+	# Увеличиваем только клочья тумана и свет, который они рассеивают.
+	# Глобальная плотность остаётся 0; основной режим не меняется.
+	_rme4_material.set_shader_parameter("density_scale", 0.08 if debug_rme4_strong else 0.055)
+	world._sun.light_volumetric_fog_energy = 2.5 if debug_rme4_strong else 2.0
+	announce("ТЕСТ: RME4 %s (ГЛОБАЛЬНЫЙ ТУМАН 0)" % (
+		"СИЛЬНЕЕ" if debug_rme4_strong else "ОБЫЧНЫЙ"))
 
 
 func debug_toggle_volumetric_fog() -> void:
@@ -855,6 +872,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_J:
 				debug_toggle_rme4_fog()
+				get_viewport().set_input_as_handled()
+			KEY_K:
+				debug_toggle_rme4_strength()
 				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
