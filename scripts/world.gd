@@ -4,6 +4,15 @@ extends Node3D
 ## Всё строится кодом в setup(). Горизонт закрыт настоящими дальними
 ## дюнами — карта террейна расширена (см. Coast), никаких подставок.
 
+## Направления солнца лодочной сцены. Раньше ночным было
+## Vector3(-0.62, 0.22, -0.75): y = +0.22, то есть светило оставалось на
+## ~12.7° НАД горизонтом при night01 = 0.88. Диск гасили, направление — нет,
+## поэтому тени шли по-дневному, а небо продолжало светиться закатом.
+const BOAT_DAY_SUN := Vector3(-0.36, 0.76, -0.54)
+const BOAT_DUSK_SUN := Vector3(-0.62, 0.22, -0.75)
+const BOAT_NIGHT_SUN := Vector3(-0.71, -0.24, -0.66)
+
+
 var game: GameState # автозагрузка Game
 
 var _sky_mat: ShaderMaterial
@@ -70,6 +79,8 @@ func _build_environment() -> void:
 	_env.ssil_intensity = 0.85
 
 	# Дымка в цвет горизонта — для любых материалов со стандартным туманом.
+	# Она дешёвая и работает даже без Forward+, поэтому держим её лёгкой:
+	# основной воздух делает объёмный туман ниже, а не двойная дымка.
 	_env.fog_enabled = true
 	_env.fog_light_color = Game.HORIZON_COL
 	_env.fog_density = 0.0034
@@ -81,8 +92,7 @@ func _build_environment() -> void:
 	_env.fog_aerial_perspective = 0.25
 
 	# ВОЛЮМЕТРИЧЕСКИЙ ТУМАН (Forward+/Vulkan): настоящий 3D-объём —
-	# луч фонаря и огонь маяка видны в воздухе. Ночь пустыни: плотный
-	# холодный туман гуляет по дюнам. Крутилки — в DEV-панели (F3).
+	# луч фонаря и огонь маяка видны в воздухе. Крутилки — в DEV-панели (F3).
 	_env.volumetric_fog_enabled = true
 	# 0.09 превращало весь кадр в равномерную серую стену и убивало глубину.
 	# Более длинный и прозрачный объём даёт планы, силуэты и световые лучи.
@@ -90,11 +100,16 @@ func _build_environment() -> void:
 	_env.volumetric_fog_albedo = Color(0.46, 0.52, 0.64)
 	_env.volumetric_fog_emission = Color(0.006, 0.009, 0.018)
 	_env.volumetric_fog_emission_energy = 0.35
-	_env.volumetric_fog_anisotropy = 0.72
+	_env.volumetric_fog_anisotropy = 0.70
 	_env.volumetric_fog_length = 160.0
 	_env.volumetric_fog_detail_spread = 1.5
 	_env.volumetric_fog_ambient_inject = 0.22
 	_env.volumetric_fog_gi_inject = 0.0
+	# ВНИМАНИЕ: volumetric_fog_sky_affect в 4.7.2 — мёртвая крутилка.
+	# В fog.cpp вклад неба берётся из ambient_light_sky_contribution
+	# (params.sky_contribution), а геттер volumetric_fog_sky_affect не
+	# читает никто, кроме привязки свойства. Значение оставляем только
+	# ради инспектора, управляем — через ambient_light_sky_contribution.
 	_env.volumetric_fog_sky_affect = 0.30
 	_env.volumetric_fog_temporal_reprojection_enabled = true
 
@@ -292,7 +307,7 @@ func configure_boat_lighting() -> void:
 	_env.adjustment_enabled = true
 	_env.adjustment_contrast = 1.12
 	_env.adjustment_saturation = 1.08
-	_env.ambient_light_sky_contribution = 0.80
+	_env.ambient_light_sky_contribution = 0.85
 	_env.ambient_light_color = Color(0.20, 0.27, 0.36)
 	_env.ssao_radius = 1.35
 	_env.ssao_intensity = 1.8
@@ -300,10 +315,16 @@ func configure_boat_lighting() -> void:
 	_env.ssao_light_affect = 0.32
 	_env.ssao_ao_channel_affect = 0.45
 	_env.ssil_intensity = 0.95
-	# В лодочной сцене объём сейчас лишь затемняет кадр без видимого
-	# рассеяния. Не держим дорогой эффект включённым по умолчанию;
-	# [G] позволяет проверить его отдельно, не меняя обычную дымку.
-	_env.volumetric_fog_enabled = false
+	# Раньше здесь стояло volumetric_fog_enabled = false: «объём лишь
+	# затемняет кадр без видимого рассеяния». Причина была не в стоимости
+	# эффекта, а в настройках — свет в тумане обнулялся, а плотность была
+	# мала. Без объёма в Forward+ не рендерится вообще ничего: и глобальный
+	# туман, и FogVolume с RME4-шейдером пропускаются одним early-return в
+	# _update_volumetric_fog(). Поэтому объём включён, а рассеяние в нём
+	# настраивает apply_boat_atmosphere().
+	_env.volumetric_fog_enabled = true
+	_env.volumetric_fog_anisotropy = 0.70
+	_env.volumetric_fog_gi_inject = 0.0
 	_sun.directional_shadow_max_distance = 100.0
 
 
@@ -311,31 +332,89 @@ func set_boat_tonemapper(use_agx: bool) -> void:
 	_env.tonemap_mode = Environment.TONE_MAPPER_AGX if use_agx else Environment.TONE_MAPPER_FILMIC
 
 
-## Только лодочный режим: диск солнца и дорожка исчезают, но оставляем
-## очень слабый направленный свет неба, чтобы тени и рельеф не стали плоскими.
-## Никакого локального «лунного прожектора» или повышения экспозиции.
-func fade_boat_sun(n: float, fill_energy: float) -> void:
-	var sunset := clampf((n - 0.18) / 0.60, 0.0, 1.0)
-	# При том же низком общем уровне света усиливаем разницу между
-	# направленным ключом и небесной заливкой: форма читается за счёт теней,
-	# а не завышенной экспозиции/белого прожектора.
+## Направление НА солнце для заданного времени суток. Проходит через
+## горизонт: к ночи светило действительно садится.
+func boat_sun_dir(n01: float) -> Vector3:
+	var n := clampf(n01, 0.0, 1.0)
+	var dusk := BOAT_DAY_SUN.lerp(BOAT_DUSK_SUN, clampf(n / 0.55, 0.0, 1.0))
+	return dusk.lerp(BOAT_NIGHT_SUN, clampf((n - 0.55) / 0.45, 0.0, 1.0)).normalized()
+
+
+## ЕДИНСТВЕННЫЙ писатель лодочной атмосферы.
+##
+## Прежняя схема была «apply_night01(n) → apply_sun(dir) → fade_boat_sun(n)»,
+## и все три писали одни и те же свойства: ambient_light_energy,
+## tonemap_exposure, fog_density, volumetric_fog_density, light_energy,
+## light_color и sundisc_intensity. Первые два вызова были мёртвыми
+## записями — побеждал третий. Отсюда и ощущение, что свет «какой-то
+## странный» и не поддаётся настройке.
+##
+## rme4_active — включён ли локальный FogVolume с RME4-шейдером. Когда он
+## включён, глобальная плотность обязана быть нулевой: в Godot локальная
+## плотность ПРИБАВЛЯЕТСЯ к volumetric_fog_density (volumetric_fog_process
+## .glsl: total_density = params.base_density + local/1024), а не заменяет
+## её, иначе к шумовому слою липнет равномерная пелена.
+func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
+		rme4_active: bool) -> void:
+	game.night01 = clampf(n01, 0.0, 1.0)
+	var n: float = game.night01
+	var sunset := clampf((n - 0.16) / 0.58, 0.0, 1.0)
+
+	_sun.basis = Basis.looking_at(-sun.normalized(), Vector3.UP)
+
+	# --- Ключевой свет -------------------------------------------------
+	# Низкое солнце краснеет; ночью остаётся слабый холодный ключ, а не
+	# ноль: форму держат тени, а не завышенная экспозиция.
+	var elev01 := smoothf(sun.y, 0.05, 0.55)
+	var daylight := Color(1.0, 0.83, 0.66).lerp(Color(1.0, 0.97, 0.92), elev01)
+	# На закате ключ уходит в янтарь сильнее, чем даёт одна высота солнца,
+	# иначе сумерки получались белёсыми, а не золотыми.
+	daylight = daylight.lerp(Color(1.0, 0.62, 0.38), sin(sunset * PI) * 0.75)
+	# В ночную синеву уходим только во второй половине заката, чтобы
+	# золотой час не гасили сразу.
+	_sun.light_color = daylight.lerp(Color(0.58, 0.71, 0.94),
+		smoothf(sunset, 0.55, 1.0))
 	var key := minf(0.42, fill_energy + 0.08) if boat_lighting_profile else fill_energy
 	_sun.light_energy = lerpf(0.85, key, sunset)
-	_sun.light_volumetric_fog_energy = 0.75 * (1.0 - sunset)
-	_env.ambient_light_energy = lerpf(0.72, 0.25 if boat_lighting_profile else 0.34, n)
-	_env.tonemap_exposure = lerpf(0.95, 1.05, n)
-	_env.fog_density = lerpf(0.0011, 0.006, n) if not compat_fallback \
-		else lerpf(0.0011, 0.012, n)
-	_env.volumetric_fog_density = lerpf(0.0016, 0.016, n)
-	_env.fog_aerial_perspective = lerpf(0.25, 0.42, n)
-	# Sky++ раньше оставлял дневное рассеяние при нулевом солнечном диске;
-	# fallback тоже сохранял часть многократного рассеяния. Не меняем
-	# sun_dir: он используется водой для естественного глиттера.
-	_sky_mat.set_shader_parameter("daylight_scatter", lerpf(1.0, 0.16, sunset))
+	# Ключ НЕ должен гаснуть в воздухе вместе с диском. Прежнее
+	# 0.75 * (1 - sunset) обнуляло его к ночи, и туман оставался плоским
+	# серым wash'ем от ambient_inject — свет переставал «работать на
+	# атмосферу». При anisotropy 0.7 фазовая функция Хеньи-Гринштейна даёт
+	# ~17× разницу между взглядом на солнце и от него, то есть читаемые лучи.
+	_sun.light_volumetric_fog_energy = lerpf(3.0, 1.8, sunset)
+
+	# --- Небо ----------------------------------------------------------
 	if _using_sky_plus:
+		_sky_mat.set_shader_parameter("exposure", lerpf(13.5, 8.5, n))
+		_sky_mat.set_shader_parameter("coverage", lerpf(0.34, 0.48, n))
 		_sky_mat.set_shader_parameter("sundisc_intensity", lerpf(32.0, 0.0, sunset))
 	else:
 		_sky_mat.set_shader_parameter("sun_intensity", lerpf(50.0, 0.0, sunset))
+	# Дневное рассеяние уходит вместе с диском, иначе при выключенном солнце
+	# небо продолжало светиться как днём.
+	_sky_mat.set_shader_parameter("daylight_scatter", lerpf(1.0, 0.16, sunset))
+
+	# --- Заливка и пост ------------------------------------------------
+	_env.ambient_light_energy = lerpf(0.72, 0.25 if boat_lighting_profile else 0.34, n)
+	_env.tonemap_exposure = lerpf(0.95, 1.05, n)
+
+	# --- Туман ---------------------------------------------------------
+	_env.fog_light_color = Game.HORIZON_COL.lerp(Color(0.15, 0.20, 0.34), n)
+	# Дымка материалов остаётся лёгкой: основной воздух делает объём, иначе
+	# получается двойная пелена и сцена теряет глубину.
+	_env.fog_density = lerpf(0.0012, 0.0035, n) if not compat_fallback \
+		else lerpf(0.0011, 0.012, n)
+	_env.fog_aerial_perspective = lerpf(0.25, 0.42, n)
+	if rme4_active:
+		_env.volumetric_fog_density = 0.0
+	else:
+		_env.volumetric_fog_density = lerpf(0.010, 0.018, n)
+	_env.volumetric_fog_albedo = Color(0.55, 0.60, 0.68).lerp(Color(0.30, 0.36, 0.48), n)
+	# ambient_inject в Godot умножается на ambient_light_energy, поэтому
+	# даже 0.10 днём давали бы вклад больше солнечного. Держим низким:
+	# пусть воздух освещает ключ, а не константа.
+	_env.volumetric_fog_ambient_inject = lerpf(0.10, 0.07, sunset)
+	_env.volumetric_fog_anisotropy = 0.70
 
 
 func smoothf(v: float, a: float, b: float) -> float:

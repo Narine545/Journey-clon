@@ -244,17 +244,41 @@ func _physics_process(_delta: float) -> void:
 			float(main.water.material().get_shader_parameter("sun_path_amount")) < 0.001 and
 			main.world._env.volumetric_fog_density > 0.013,
 			"ночью нет световой дорожки, а слабый свет сохраняет объём в тумане")
+		# Регресс «свет не работает на атмосферу»: раньше fade_boat_sun()
+		# домножал light_volumetric_fog_energy на (1 - sunset), и к ночи
+		# ключ переставал рассеиваться в воздухе вовсе.
+		_check(main.world._sun.light_volumetric_fog_energy > 1.0,
+			"ключевой свет продолжает рассеиваться в тумане и ночью")
+		# Регресс «странный свет ночью»: ночное направление было
+		# (-0.62, +0.22, -0.75), то есть светило не садилось.
+		_check(main.game.sun_dir.y < 0.0,
+			"к ночи солнце действительно уходит под горизонт")
+		var day_sun_y: float = main.world.boat_sun_dir(0.0).y
+		_check(day_sun_y > 0.5 and main.world.boat_sun_dir(0.45).y > 0.0,
+			"днём солнце высоко, на закате ещё над горизонтом")
 		var night_glitter := float(main.water.material().get_shader_parameter("glitter_amount"))
-		_check(not main.world._env.volumetric_fog_enabled,
-			"лодка не включает невидимый объёмный туман по умолчанию")
+		# Объём включён по умолчанию: без volumetric_fog_enabled Forward+
+		# пропускает весь проход, включая FogVolume с RME4-шейдером.
+		_check(main.world._env.volumetric_fog_enabled,
+			"объёмный туман включён в лодочном профиле по умолчанию")
 		main.debug_toggle_volumetric_fog()
-		_check(main.world._env.volumetric_fog_enabled and
+		_check(not main.world._env.volumetric_fog_enabled and
 			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
-			"[G] включает только объёмный туман")
+			"[G] выключает весь volumetric-проход, не трогая воду")
 		main.debug_toggle_volumetric_fog()
-		_check(not main.world._env.volumetric_fog_enabled, "[G] возвращает обычную дымку")
+		_check(main.world._env.volumetric_fog_enabled, "[G] возвращает объёмный туман")
 		_check(is_equal_approx(float(main.world._sky_mat.get_shader_parameter("daylight_scatter")), 0.16),
 			"ночное небо снижает дневное рассеяние, не меняя глиттер")
+		# Атмосфера применяется одним вызовом. Если писателей снова станет
+		# несколько, повторное применение даст другой результат.
+		var once_density := main.world._env.volumetric_fog_density
+		var once_energy := main.world._sun.light_energy
+		var once_ambient := main.world._env.ambient_light_energy
+		main._apply_atmosphere(0.88)
+		_check(is_equal_approx(main.world._env.volumetric_fog_density, once_density) and
+			is_equal_approx(main.world._sun.light_energy, once_energy) and
+			is_equal_approx(main.world._env.ambient_light_energy, once_ambient),
+			"повторное применение ночи идемпотентно (нет конфликтующих записей)")
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_AGX and
 			main.world._env.ssao_light_affect > 0.0 and
 			is_equal_approx(float(main.water.material().get_shader_parameter("surface_light_detail")), 0.16),
@@ -292,31 +316,35 @@ func _physics_process(_delta: float) -> void:
 		main.debug_toggle_retro()
 		_check(not main.debug_retro_enabled and not main._retro_rect.visible,
 			"[V] возвращает изображение без постэффекта")
-		_check(not main.debug_rme4_enabled and main._rme4_volume == null,
-			"адаптация RME4 не создаёт объём до ручного включения")
-		if RenderingServer.get_rendering_device() != null:
-			var fog_before := main.world._env.volumetric_fog_enabled
-			var density_before := main.world._env.volumetric_fog_density
-			var ambient_before := main.world._env.volumetric_fog_ambient_inject
-			var sun_fog_before := main.world._sun.light_volumetric_fog_energy
-			var fog_glitter_before := float(main.water.material().get_shader_parameter("glitter_amount"))
-			main.debug_toggle_rme4_fog()
-			main._apply_atmosphere(main.night01) # профиль не должен вернуть белую пелену
-			_check(main.debug_rme4_enabled and main._rme4_volume.visible and
+		if RenderingServer.get_rendering_device() == null:
+			_check(not main.debug_rme4_enabled and main._rme4_volume == null,
+				"в Compatibility RME4-объём не создаётся и не обещает воздух")
+		else:
+			# В Forward+ слой воздуха — штатная часть сцены, а не отладка.
+			_check(main.debug_rme4_enabled and main._rme4_volume != null and
+				main._rme4_volume.visible and
 				main._rme4_volume.material is ShaderMaterial and
-				main.world._env.volumetric_fog_enabled and
-				is_zero_approx(main.world._env.volumetric_fog_density) and
-				main.world._env.volumetric_fog_ambient_inject < ambient_before and
-				main.world._sun.light_volumetric_fog_energy > sun_fog_before and
-				is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), fog_glitter_before),
-				"[J] усиливает рассеяние в локальном тумане без глобальной пелены и правки воды")
+				main._rme4_volume.size == BoatMain.RME4_BOX_SIZE,
+				"RME4-слой воздуха создан при старте и виден по умолчанию")
+			_check(is_zero_approx(main.world._env.volumetric_fog_density) and
+				main.world._env.volumetric_fog_enabled,
+				"при живом RME4-слое глобальная плотность нулевая: нет двойной пелены")
+			var rme4_mat: ShaderMaterial = main._rme4_volume.material
+			_check(float(rme4_mat.get_shader_parameter("density_scale")) > 0.02 and
+				rme4_mat.get_shader_parameter("density_noise") != null,
+				"RME4-шейдер получил рабочую плотность и 3D-шум")
+			var fog_glitter_before := float(main.water.material().get_shader_parameter("glitter_amount"))
+			var fog_sun_before := main.world._sun.light_volumetric_fog_energy
 			main.debug_toggle_rme4_fog()
 			_check(not main.debug_rme4_enabled and not main._rme4_volume.visible and
-				main.world._env.volumetric_fog_enabled == fog_before and
-				is_equal_approx(main.world._env.volumetric_fog_density, density_before) and
-				is_equal_approx(main.world._env.volumetric_fog_ambient_inject, ambient_before) and
-				is_equal_approx(main.world._sun.light_volumetric_fog_energy, sun_fog_before),
-				"[J] выключает объём и восстанавливает прежнее состояние")
+				main.world._env.volumetric_fog_density > 0.005 and
+				is_equal_approx(main.world._sun.light_volumetric_fog_energy, fog_sun_before) and
+				is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), fog_glitter_before),
+				"[J] выключает RME4 и подставляет ровную дымку, не трогая свет и воду")
+			main.debug_toggle_rme4_fog()
+			_check(main.debug_rme4_enabled and main._rme4_volume.visible and
+				is_zero_approx(main.world._env.volumetric_fog_density),
+				"[J] возвращает RME4-слой и убирает глобальную плотность")
 		main.debug_toggle_lighting()
 		_check(main.world._env.tonemap_mode == Environment.TONE_MAPPER_FILMIC and
 			is_equal_approx(main.world._sun.light_energy, before_light) and

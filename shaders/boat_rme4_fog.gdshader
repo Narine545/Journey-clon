@@ -1,25 +1,83 @@
 shader_type fog;
-// Адаптация идеи атмосферной 3D-плотности / многомасштабного шума из
-// patu, «RME4 - Crater»: https://www.shadertoy.com/view/MlSBDt
-// НЕ переносим его кратер, skybox и raymarch-геометрию поверх нашего моря.
-// Godot интегрирует плотность в собственном volumetric-fog froxel pass.
+// Атмосферный слой моря по мотивам patu, «RME4 - Crater»:
+// https://www.shadertoy.com/view/MlSBDt
+//
+// Оттуда берём ПРИНЦИП, а не картинку: плотность собирается из нескольких
+// масштабов шума (broad / mid / detail), и воздух становится густым и
+// слоистым. Кратер, skybox и raymarch-геометрию НЕ переносим — плотность
+// интегрирует собственный froxel-pass Godot (volumetric_fog.glsl).
+//
+// ВАЖНО: это не постэффект. DENSITY попадает в 3D-текстуру объёма, и по ней
+// считаются солнце, прожектор и огни маяков. Именно поэтому свет здесь
+// «работает на атмосферу», а не просто осветляет кадр.
+//
+// Два ограничения Godot, о которые ломалась прошлая версия:
+//  1) Весь pass (включая FogVolume) пропускается, если
+//     Environment.volumetric_fog_enabled == false — см.
+//     render_forward_clustered.cpp, _update_volumetric_fog().
+//  2) DENSITY уходит в целочисленную карту с множителем 1024 и порогом
+//     отсечения 0.001, поэтому плотность ниже ~0.005 просто не видна.
 
 uniform sampler3D density_noise : repeat_enable, filter_linear;
+
+// 0 = день, 1 = ночь. Двигает плотность, цвет и собственное свечение.
 uniform float night_factor : hint_range(0.0, 1.0) = 0.0;
-uniform float density_scale : hint_range(0.0, 0.1) = 0.055;
+// Суммарная плотность слоя. 0.045 даёт около 50 % непрозрачности на луче
+// изометрической камеры, ядра пятен — до 70 %.
+uniform float density_scale : hint_range(0.0, 0.15) = 0.045;
+// Порог пятна. Ниже — туман сплошной, выше — рваные облака.
+uniform float patch_threshold : hint_range(0.0, 1.0) = 0.42;
+// Доля «базовой дымки»: слой никогда не становится полностью пустым,
+// иначе между пятнами проваливается в ноль и читается как дырки.
+uniform float base_fill : hint_range(0.0, 1.0) = 0.34;
+// Скорость дрейфа слоя, условные м/с.
+uniform float wind_speed : hint_range(0.0, 4.0) = 1.0;
+
+// Направление НА солнце. Нужно, чтобы красить воздух на низком солнце.
+uniform vec3 sun_direction = vec3(-0.36, 0.76, -0.54);
+uniform vec3 day_albedo : source_color = vec3(0.55, 0.60, 0.67);
+uniform vec3 night_albedo : source_color = vec3(0.20, 0.26, 0.36);
+uniform vec3 dusk_tint : source_color = vec3(0.72, 0.48, 0.34);
+// Собственное свечение тумана. Годот умножает его на плотность, поэтому
+// число выглядит большим, а в кадре даёт лишь лёгкое ночное дыхание воздуха.
+uniform float night_emission : hint_range(0.0, 0.6) = 0.16;
 
 void fog() {
-	vec3 wind = vec3(TIME * 0.003, 0.0, -TIME * 0.002);
-	float broad = texture(density_noise, WORLD_POSITION * 0.022 + wind).r;
-	float detail = texture(density_noise, WORLD_POSITION * 0.073 - wind * 1.7).r;
-	float patches = smoothstep(0.47, 0.66, broad * 0.72 + detail * 0.28);
-	// Пятна разной плотности над водой: зазор у поверхности оставляет
-	// ближние волны читаемыми; слой пересекает луч к берегу и лодке.
-	float height_mask = smoothstep(-0.5, 1.5, WORLD_POSITION.y) *
-		(1.0 - smoothstep(5.0, 12.0, WORLD_POSITION.y));
-	// В Godot fog() SDF — скалярное signed distance, НЕ vec3.
-	// Внутри объёма значение отрицательное; плавно гасим край бокса.
-	float edge = smoothstep(0.0, 5.0, -SDF);
-	DENSITY = density_scale * mix(0.75, 1.0, night_factor) * patches * height_mask * edge;
-	ALBEDO = mix(vec3(0.28, 0.37, 0.39), vec3(0.10, 0.17, 0.23), night_factor);
+	vec3 wp = WORLD_POSITION;
+	vec3 wind = vec3(TIME * 0.0045, 0.0, -TIME * 0.0031) * wind_speed;
+
+	// Три масштаба — тот самый приём RME4: крупные массы задают силуэт,
+	// средние рвут их на клочья, мелкие дают зерно на ближнем плане.
+	// Дрейфуют с разной скоростью, поэтому слой эволюционирует, а не едет.
+	float broad = texture(density_noise, wp * 0.0105 + wind * 0.6).r;
+	float mid = texture(density_noise, wp * 0.0330 + wind * 1.3).r;
+	float detail = texture(density_noise, wp * 0.0910 - wind * 2.1).r;
+	float n = broad * 0.55 + mid * 0.30 + detail * 0.15;
+
+	float patches = smoothstep(patch_threshold, patch_threshold + 0.24, n);
+	float body = mix(base_fill, 1.0, patches);
+
+	// Слой лежит НА воде и поднимается метров на пятнадцать. Изометрическая
+	// камера смотрит сквозь него под малым углом и набирает десятки метров
+	// пути; прежняя плита толщиной 3 м давала лучу всего ~6 м и ~8 %
+	// непрозрачности, поэтому туман и выглядел несуществующим.
+	float height_mask = smoothstep(0.0, 1.2, wp.y) * (1.0 - smoothstep(7.0, 15.0, wp.y));
+
+	// В Godot SDF — скалярное signed distance, внутри объёма отрицательное.
+	// Гасим край широкой полосой, иначе бокс читается стеклянным паралле-
+	// лелепипедом с видимой гранью.
+	// Ловушка: у FOG_VOLUME_SHAPE_WORLD SDF всегда остаётся -1.0, поэтому
+	// этот edgefade срезал бы плотность до 4 %. Объём обязан быть BOX.
+	float edge = smoothstep(0.0, 18.0, -SDF);
+
+	float night = clamp(night_factor, 0.0, 1.0);
+	DENSITY = density_scale * body * height_mask * edge * mix(0.90, 1.12, night);
+
+	// Альбедо однократного рассеяния (НЕ домноженное на плотность — это
+	// сделает сам Godot). Тёплое на низком солнце, холодное ночью.
+	float low_sun = clamp(1.0 - sun_direction.y * 2.2, 0.0, 1.0);
+	vec3 albedo = mix(day_albedo, dusk_tint, low_sun * (1.0 - night));
+	ALBEDO = mix(albedo, night_albedo, night);
+
+	EMISSION = night_albedo * night_emission * night;
 }
