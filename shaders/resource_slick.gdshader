@@ -60,14 +60,11 @@ void fragment() {
         float lobe = length(p - center) - (0.52 + 0.12 * sin(t * 1.2 + float(i) * 2.0));
         d = smooth_union(d, lobe, 0.48);
     }
-    float ripple = sin(length(p) * 11.0 - t * 3.8 + atan(p.y, p.x) * 4.0);
-    float angle = atan(p.y, p.x);
-    d += sin(angle * 5.0 + t * 0.65) * 0.08
-        + sin(angle * 9.0 - t * 0.25) * 0.035;
-    d += ripple * 0.035 + (hash21(floor(p * 12.0) + floor(t * 0.2)) - 0.5) * 0.025;
+    // Непериодическая граница без радиальных/диагональных полос и
+    // скачущего floor(TIME)-шума.
+    d += (pigment_noise(p * 3.0 + vec2(seed, t * 0.08)) - 0.5) * 0.16;
     float aa = max(fwidth(d), 0.012);
     float body = 1.0 - smoothstep(-aa, aa, d);
-    float edge = exp(-pow(d / 0.19, 2.0));
     // Параллельный вектор взгляда для ортографической камеры; перспективная
     // камера использует направление от фрагмента (VIEW в view space).
     vec3 view_direction = PROJECTION_MATRIX[3][3] > 0.5 ? vec3(0.0, 0.0, 1.0) : VIEW;
@@ -81,18 +78,32 @@ void fragment() {
     vec3 offset_local = inverse(mat3(MODEL_MATRIX)) * vec3(world_offset.x, 0.0, world_offset.y);
     vec2 inner = p + offset_local.xz * 0.82;
     vec2 deep = p + offset_local.xz * 1.64;
-    float veins = 0.5 + 0.5 * sin(inner.x * 7.0 + inner.y * 9.0 + t * 2.4);
-    float pockets = smoothstep(0.30, 0.78,
-        pigment_noise(deep * 2.5 + vec2(seed)));
-    // Рисунок смещается под неподвижным поверхностным контуром.
-    // Маска тела НЕ сдвигается: край не отрывается от волновой сетки.
-    float inner_ribbon = 0.5 + 0.5 * sin(deep.x * 4.0 - deep.y * 6.0 + seed);
-    float depth_mix = smoothstep(0.0, 0.20, parallax_depth);
-    veins = mix(veins, veins * 0.60 + inner_ribbon * 0.25 + pockets * 0.15, depth_mix);
-    vec3 col = pigment * (0.72 + 0.28 * veins);
-    col += pigment * edge * (0.8 + 0.5 * sin(t * 2.0));
-    col += vec3(0.85, 0.96, 0.90) * edge * pulse * 0.65;
+    // Крупные сгустки на двух глубинах. Не sin(x+y): длинных полос нет.
+    // Domain warp также непериодический и движется медленно.
+    vec2 drift = vec2(t * 0.035, -t * 0.025);
+    vec2 warp = vec2(pigment_noise(inner * 1.7 + seed),
+        pigment_noise(inner * 1.7 + vec2(7.2, 3.8) + seed)) - 0.5;
+    float upper_cloud = pigment_noise(inner * 2.8 + warp * 1.5 + drift + seed);
+    float lower_cloud = pigment_noise(deep * 2.1 - warp + vec2(4.7, 9.1) + seed);
+    float upper_mass = smoothstep(0.34, 0.70, upper_cloud);
+    float lower_mass = smoothstep(0.28, 0.72, lower_cloud);
+    // Независимый силуэт внутреннего скопления даёт видимую точку
+    // отсчёта параллакса под фиксированной поверхностной кромкой.
+    float core_radius = 0.88 + (pigment_noise(deep * 2.0 + seed) - 0.5) * 0.45;
+    float core = 1.0 - smoothstep(core_radius - 0.22, core_radius + 0.12,
+        length(deep + warp * 0.20));
+    vec3 deep_color = pigment * vec3(0.22, 0.28, 0.36);
+    vec3 suspended_color = mix(pigment * 0.62, pigment * 1.30, upper_mass);
+    vec3 col = mix(deep_color, pigment * 0.75, lower_mass * 0.65);
+    col = mix(col, suspended_color, core * (0.28 + upper_mass * 0.65));
+    // Тонкая полупрозрачная кромка вместо прежнего пульсирующего неона.
+    float rim = exp(-pow(d / 0.075, 2.0));
+    col = mix(col, pigment * 1.15 + vec3(0.06), rim * 0.42);
+    // Широкий слабый блик поверхности движется с общей нормалью волн.
+    vec3 reflected = reflect(-view_world, surface_normal);
+    float sheen = smoothstep(0.30, 0.85, reflected.y);
+    col += vec3(0.10, 0.13, 0.15) * sheen * (0.3 + upper_mass * 0.7);
     ALBEDO = col;
-    ALPHA = body * (0.63 + 0.17 * veins) * fade;
-    EMISSION = pigment * body * (0.10 + 0.20 * pulse) * fade;
+    ALPHA = body * (0.48 + 0.30 * core + 0.10 * upper_mass) * fade;
+    EMISSION = pigment * body * 0.06 * fade;
 }
