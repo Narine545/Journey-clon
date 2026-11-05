@@ -29,6 +29,8 @@ uniform float direct_specular_amount = 1.0;
 // Небольшая доля рассчитанной нормали волн в реальном освещении.
 // 0 = прежний плоский PBR, 0.16 = мягкая форма без светлых полос.
 uniform float surface_light_detail = 0.0;
+// Дополнительный отклик только крупных волн; 0 сохраняет прежний профиль.
+uniform float swell_light_detail : hint_range(0.0, 1.0) = 0.0;
 
 uniform float proxima_test = 0.0;
 uniform float proxima_specular_strength = 0.55;
@@ -163,6 +165,11 @@ void fragment() {
 	vec2 wave_grad = spectrum_gradient(wp, u_time, wind_dir, mega_amp, wind_power);
 	N = normalize(N - vec3(wave_grad.x, 0.0, wave_grad.y)
 		* (1.0 - 0.92 * near_shore));
+
+	// Сохраняем крупный склон ДО микроряби, колец и границ пигмента.
+	// Мягкое ограничение не даёт крутым гребням стать белыми полосами.
+	vec2 swell_slope = wave_grad * (1.0 - 0.92 * near_shore);
+	swell_slope /= 1.0 + length(swell_slope) / 0.35;
 
 	// ---------- локальная микрорябь без песчаных «сканлайнов» ----------
 	// Три параллельных cos(dot(wp, wind)) из старой воды образовывали
@@ -348,6 +355,9 @@ void fragment() {
 	// полностью лишала воду реакции на свет и тени. Френель и глиттер выше
 	// остаются прежними; [L] меняет только тонмаппер.
 	vec3 lighting_normal = normalize(mix(vec3(0.0, 1.0, 0.0), N, surface_light_detail));
+	// Не усиливаем шум и границы пятен вместе с крупной волной.
+	lighting_normal = normalize(lighting_normal
+		- vec3(swell_slope.x, 0.0, swell_slope.y) * swell_light_detail);
 	NORMAL = normalize((VIEW_MATRIX * vec4(lighting_normal, 0.0)).xyz);
 	float rough = mix(0.29, 0.55, near_shore); // зыбь не должна давать белые зеркальные прямоугольники
 	ROUGHNESS = mix(rough, 0.88, foam);

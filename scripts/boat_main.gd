@@ -161,6 +161,7 @@ func _apply_atmosphere(n01: float) -> void:
 	water.set_param("sun_path_amount", 0.09 * (1.0 - clampf((night01 - 0.25) / 0.53, 0.0, 1.0)))
 	water.set_param("direct_specular_amount", 0.018)
 	water.set_param("surface_light_detail", 0.16) # [L] не меняет нормаль воды
+	water.set_param("swell_light_detail", 0.65) # [K] — сравнение с прежней водой
 	if boat != null:
 		boat.update_night_lights(night01, overdrive_timer > 0.0)
 
@@ -675,6 +676,13 @@ func debug_toggle_lighting() -> void:
 		"AgX" if debug_lighting_profile else "Filmic"))
 
 
+func debug_toggle_wave_lighting() -> void:
+	var current := float(water.material().get_shader_parameter("swell_light_detail"))
+	var enabled := current < 0.01
+	water.set_param("swell_light_detail", 0.65 if enabled else 0.0)
+	announce("[K] СВЕТ НА КРУПНЫХ ВОЛНАХ: %s" % ("НОВЫЙ" if enabled else "ПРЕЖНИЙ"))
+
+
 func debug_toggle_headlight() -> void:
 	debug_headlight_enabled = not debug_headlight_enabled
 	boat._bow_spot.visible = debug_headlight_enabled
@@ -847,6 +855,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_L:
 				debug_toggle_lighting()
+				get_viewport().set_input_as_handled()
+			KEY_K:
+				debug_toggle_wave_lighting()
 				get_viewport().set_input_as_handled()
 			KEY_H:
 				debug_toggle_headlight()
