@@ -29,6 +29,9 @@ uniform float direct_specular_amount = 1.0;
 // Небольшая доля рассчитанной нормали волн в реальном освещении.
 // 0 = прежний плоский PBR, 0.16 = мягкая форма без светлых полос.
 uniform float surface_light_detail = 0.0;
+// Художественная аппроксимация ночного отражённого света неба.
+// Не зависит от прожектора и не меняет прозрачность/освещение пятен.
+uniform float night_surface_fill : hint_range(0.0, 0.3) = 0.0;
 // Усиление существующего глиттера на гребнях; 0 = прежние блики.
 uniform float swell_light_detail : hint_range(0.0, 1.0) = 0.0;
 
@@ -352,6 +355,10 @@ void fragment() {
 	float above = smoothstep(-2.0, 16.0, w_pos.y - CAMERA_POSITION_WORLD.y);
 	vec3 fcol = mix(horizon_col, sky_col, above * 0.6);
 	ALBEDO = mix(base, fcol, fog);
+	// Солнце ночью ниже горизонта: один ALBEDO теряет верхний свет.
+	// Слабый floor сохраняет цвет и детали моря без повышения ambient
+	// всей сцены. Прожектор продолжает добавлять своё реальное освещение.
+	EMISSION = base * night_surface_fill;
 
 	// Прямое освещение равномерно: периодическая нормаль спектра раньше
 	// давала «сканлайны» даже при малом весе. Полная N остаётся в

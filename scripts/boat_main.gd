@@ -156,6 +156,9 @@ func _apply_atmosphere(n01: float) -> void:
 	water.set_param("sun_col", Color("ffcc85").lerp(Color("a8c9e3"), night01))
 	water.set_param("mega_amp", lerpf(0.25, 0.31, night01))
 	water.set_param("ripple_strength", 0.10)
+	# Ночной фон только у моря: скрытые пятна не подсвечиваем.
+	var water_night := smoothstep(0.35, 0.80, night01)
+	water.set_param("night_surface_fill", 0.18 * water_night)
 	water.set_param("glitter_amount", lerpf(0.32, 0.18, night01))
 	# Это широкая искусственная дорожка, НЕ отдельные искры-глиттер.
 	# Плавно убрать её до наступления полной темноты.

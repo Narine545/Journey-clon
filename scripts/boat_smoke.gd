@@ -309,6 +309,9 @@ func _physics_process(_delta: float) -> void:
 		_check(not spot.visible and is_equal_approx(main.world._sun.light_energy, before_light) and
 			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
 			"[H] отключает прожектор без изменения фона и глиттера")
+		_check(is_equal_approx(float(main.water.material().get_shader_parameter(
+			"night_surface_fill")), 0.18),
+			"ночная вода сохраняет собственный слабый фон при выключенном прожекторе")
 		main.debug_toggle_headlight()
 		_check(spot.visible, "[H] возвращает прожектор")
 		_check(not main.debug_retro_enabled and not main._retro_rect.visible and
