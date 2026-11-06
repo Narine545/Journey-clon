@@ -82,8 +82,8 @@ func _draw() -> void:
 	# Отладка всегда доступна в лодочном режиме; [0] прячет только панель.
 	if main.debug_panel_visible:
 		var dbg := Vector2(size.x - 355.0, 22.0)
-		draw_rect(Rect2(dbg, Vector2(333, 357)), backdrop)
-		draw_rect(Rect2(dbg, Vector2(333, 357)), Color("548c89"), false, 1.0)
+		draw_rect(Rect2(dbg, Vector2(333, 380)), backdrop)
+		draw_rect(Rect2(dbg, Vector2(333, 380)), Color("548c89"), false, 1.0)
 		draw_string(font, dbg + Vector2(12, 23), "БЫСТРАЯ ПРОВЕРКА  •  %d FPS" % Engine.get_frames_per_second(),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 14, accent)
 		draw_string(font, dbg + Vector2(12, 47), "[0] — СКРЫТЬ / ПОКАЗАТЬ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
@@ -123,6 +123,11 @@ func _draw() -> void:
 			"[Y] — ТЕНИ ПРОЖЕКТОРА: %s" % (
 				"ВКЛ" if main.boat._bow_spot.shadow_enabled else "ВЫКЛ"),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
+
+		draw_string(font, dbg + Vector2(12, 368),
+			"[U] — ПРОВЕРКА ТУМАНА: %s" % (
+				["ВЫКЛ", "GLOBAL", "FOGVOLUME"][main.debug_fog_diagnostic]),
+			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, warn)
 
 	# 3. КОНТЕКСТНАЯ ПОДСКАЗКА ДЕЙСТВИЯ ВНИЗУ ЭКРАНА
 	var dock_b := main.nearby_dock_beacon()

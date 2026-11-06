@@ -51,6 +51,10 @@ var debug_retro_enabled := false
 # Forward+ не рендерит объёмный туман вовсе (см. configure_boat_lighting).
 var debug_rme4_enabled := true
 var debug_mystery_atmosphere := true
+var debug_fog_diagnostic := 0
+var _fog_diagnostic_saved_enabled := true
+var _fog_diagnostic_saved_emission := Color.BLACK
+var _fog_diagnostic_saved_emission_energy := 0.0
 var _retro_rect: ColorRect
 var _rme4_volume: FogVolume
 var _rme4_material: ShaderMaterial
@@ -145,6 +149,8 @@ func _apply_atmosphere(n01: float) -> void:
 	# и те же свойства окружения — побеждал последний, а первые два были
 	# мёртвыми записями.
 	world.apply_boat_atmosphere(night01, sun, debug_night_fill, debug_rme4_enabled)
+	if debug_fog_diagnostic != 0:
+		_apply_fog_diagnostic()
 	if _rme4_material != null:
 		_rme4_material.set_shader_parameter("night_factor", night01)
 		_rme4_material.set_shader_parameter("sun_direction", sun)
@@ -773,8 +779,53 @@ func _setup_rme4_atmosphere() -> void:
 		" noise=", RME4_NOISE_PX, "^3")
 
 
+## [U]: штатная атмосфера -> сплошной Environment -> тест FogVolume -> штатная.
+## Это диагностика РЕНДЕРА, а не ещё один художественный профиль тумана.
+func debug_cycle_fog_diagnostic() -> void:
+	if RenderingServer.get_rendering_device() == null:
+		announce("[U] ОБЪЁМНЫЙ ПРОХОД НЕДОСТУПЕН: НУЖЕН FORWARD+")
+		return
+	if debug_fog_diagnostic == 0:
+		_fog_diagnostic_saved_enabled = world._env.volumetric_fog_enabled
+		_fog_diagnostic_saved_emission = world._env.volumetric_fog_emission
+		_fog_diagnostic_saved_emission_energy = world._env.volumetric_fog_emission_energy
+	debug_fog_diagnostic = (debug_fog_diagnostic + 1) % 3
+	if debug_fog_diagnostic == 0:
+		world._env.volumetric_fog_emission = _fog_diagnostic_saved_emission
+		world._env.volumetric_fog_emission_energy = _fog_diagnostic_saved_emission_energy
+		world._env.volumetric_fog_enabled = _fog_diagnostic_saved_enabled
+		if _rme4_material != null:
+			_rme4_material.set_shader_parameter("diagnostic_volume", false)
+		if _rme4_volume != null:
+			_rme4_volume.visible = debug_rme4_enabled
+		_apply_atmosphere(night01)
+		announce("[U] ШТАТНАЯ АТМОСФЕРА ВОССТАНОВЛЕНА")
+	else:
+		_apply_fog_diagnostic()
+		announce("[U] ТЕСТ %d: %s" % [debug_fog_diagnostic,
+			"ЯНТАРНЫЙ GLOBAL FOG" if debug_fog_diagnostic == 1 else "ГОЛУБОЙ FOGVOLUME"])
+	print("FOG DIAGNOSTIC: stage=", debug_fog_diagnostic,
+		" renderer=", RenderingServer.get_current_rendering_method(),
+		" camera=", camera.projection, " volume=", _rme4_volume != null)
+
+
+func _apply_fog_diagnostic() -> void:
+	world._env.volumetric_fog_enabled = true
+	var global_test := debug_fog_diagnostic == 1
+	world._env.volumetric_fog_density = 0.06 if global_test else 0.0
+	world._env.volumetric_fog_emission = Color(0.75, 0.32, 0.04) if global_test else Color.BLACK
+	world._env.volumetric_fog_emission_energy = 1.0 if global_test else 0.0
+	if _rme4_volume != null:
+		_rme4_volume.visible = not global_test
+	if _rme4_material != null:
+		_rme4_material.set_shader_parameter("diagnostic_volume", not global_test)
+
+
 ## [O] — сравнение формы и собственного свечения одного FogVolume.
 func debug_toggle_mystery_atmosphere() -> void:
+	if debug_fog_diagnostic != 0:
+		announce("СНАЧАЛА ВЫЙДИТЕ ИЗ ТЕСТА ТУМАНА КЛАВИШЕЙ [U]")
+		return
 	if _rme4_material == null:
 		announce("[O] ОБЪЁМНЫЙ ПРОФИЛЬ НЕДОСТУПЕН: НУЖЕН FORWARD+")
 		return
@@ -799,6 +850,9 @@ func debug_toggle_headlight_shadows() -> void:
 ## видимость: никаких «сохранить/восстановить» состояний, которые могли
 ## бы разойтись с профилем ночи.
 func debug_toggle_rme4_fog() -> void:
+	if debug_fog_diagnostic != 0:
+		announce("СНАЧАЛА ВЫЙДИТЕ ИЗ ТЕСТА ТУМАНА КЛАВИШЕЙ [U]")
+		return
 	if _rme4_volume == null:
 		announce("ТЕСТ: RME4-ОБЪЁМ НЕДОСТУПЕН В COMPATIBILITY (НУЖЕН FORWARD+)")
 		return
@@ -813,6 +867,9 @@ func debug_toggle_rme4_fog() -> void:
 ## [J]: [J] меняет источник плотности (RME4-шум против ровной дымки),
 ## а [G] выключает сам проход, вместе с FogVolume.
 func debug_toggle_volumetric_fog() -> void:
+	if debug_fog_diagnostic != 0:
+		announce("СНАЧАЛА ВЫЙДИТЕ ИЗ ТЕСТА ТУМАНА КЛАВИШЕЙ [U]")
+		return
 	world._env.volumetric_fog_enabled = not world._env.volumetric_fog_enabled
 	announce("ТЕСТ: ОБЪЁМНЫЙ ТУМАН %s%s (RD: %s)" % [
 		"ВКЛ" if world._env.volumetric_fog_enabled else "ВЫКЛ",
@@ -897,6 +954,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_L:
 				debug_toggle_lighting()
 				get_viewport().set_input_as_handled()
+			KEY_U:
+				debug_cycle_fog_diagnostic()
+				get_viewport().set_input_as_handled()
 			KEY_O:
 				debug_toggle_mystery_atmosphere()
 				get_viewport().set_input_as_handled()
@@ -931,7 +991,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if boat == null or camera == null:
 		return
-	if debug_rme4_enabled and _rme4_volume != null:
+	if (debug_rme4_enabled or debug_fog_diagnostic == 2) and _rme4_volume != null:
 		_rme4_volume.global_position = Vector3(boat.global_position.x, RME4_BOX_Y,
 			boat.global_position.z)
 	_beacon_anim_time += delta

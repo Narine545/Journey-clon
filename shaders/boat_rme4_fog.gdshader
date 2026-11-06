@@ -24,6 +24,8 @@ uniform sampler3D density_noise : repeat_enable, filter_linear;
 uniform float night_factor : hint_range(0.0, 1.0) = 0.0;
 // [O]: 0 — прежний ровный слой, 1 — плотные массы и неровная граница.
 uniform float mystery_profile : hint_range(0.0, 1.0) = 1.0;
+// [U] диагностика: обходим шум, высоту и зависимость видимости от света.
+uniform bool diagnostic_volume = false;
 // Масштаб плотности прежнего профиля. Новый профиль повышает пики,
 // но уменьшает заполняющую дымку; итог зависит от пути луча.
 uniform float density_scale : hint_range(0.0, 0.15) = 0.045;
@@ -92,4 +94,9 @@ void fog() {
 	// Собственное свечение раньше заполняло ночные тени. Сохраняем лишь
 	// четверть в новом профиле: главный акцент должен давать реальный свет.
 	EMISSION = night_albedo * night_emission * mix(1.0, 0.25, profile) * night;
+	if (diagnostic_volume) {
+		DENSITY = 0.08 * smoothstep(0.0, 2.0, -SDF);
+		ALBEDO = vec3(0.7);
+		EMISSION = vec3(0.05, 0.65, 0.75);
+	}
 }
