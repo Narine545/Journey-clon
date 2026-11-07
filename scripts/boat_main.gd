@@ -267,15 +267,19 @@ func _build_beacons() -> void:
 		# Вращающийся прожекторный луч маяка
 		var beam_pivot := Node3D.new()
 		beam_pivot.position = Vector3(0.0, 10.3, 0.0)
+		beam_pivot.rotation.y = PI * 0.5 # начальный луч в сторону моря (-X)
 		tower.add_child(beam_pivot)
 		var spot := SpotLight3D.new()
 		spot.light_color = s["color"]
 		spot.light_energy = 0.0
-		spot.spot_range = 58.0
-		spot.spot_attenuation = 2.0
-		spot.spot_angle = 20.0
-		spot.light_volumetric_fog_energy = 0.45
-		spot.rotation = Vector3(-0.22, PI * 0.5, 0.0)
+		spot.spot_range = 90.0
+		spot.spot_attenuation = 1.0
+		spot.spot_angle = 12.0
+		spot.light_volumetric_fog_energy = 0.65
+		# Ось пересекает уровень моря в 32 м: не у самого предела range.
+		# Источник вынесен к наружной стороне фонарной камеры.
+		spot.position = Vector3(0.0, 0.0, -1.3)
+		spot.rotation = Vector3(-atan2(tower_pos.y + 10.3, 32.0), 0.0, 0.0)
 		beam_pivot.add_child(spot)
 
 		# Глубоководный причальный буй в море (где лодка безопасно швартуется)
@@ -664,7 +668,7 @@ func interact_with_beacon() -> void:
 	var top_l: OmniLight3D = b["top_light"]
 	top_l.light_energy = 1.4
 	var spot_l: SpotLight3D = b["spot"]
-	spot_l.light_energy = 1.8
+	spot_l.light_energy = 18.0
 
 	if boat != null:
 		boat.hull_hp = 100.0
@@ -1014,9 +1018,19 @@ func _process(delta: float) -> void:
 		var buoy_node: Node3D = b["buoy_node"]
 		buoy_node.position.y = water.surface_height(bp.x, bp.z)
 		buoy_node.rotation.z = sin(_beacon_anim_time * 2.0 + bp.z * 0.1) * 0.08
+		# Буй имеет собственный плавный проблеск; emission и реальный
+		# источник синхронны. Цвет по-прежнему задаётся состоянием маяка.
+		var pulse := 0.15 + 0.85 * pow(maxf(0.0,
+			sin(_beacon_anim_time * TAU / 4.0 + bp.z * 0.1)), 8.0)
+		var buoy_signal: OmniLight3D = b["buoy_light"]
+		var buoy_lens: StandardMaterial3D = b["buoy_lamp_mat"]
+		buoy_signal.light_energy = 0.35 * pulse
+		buoy_lens.emission_energy_multiplier = 1.4 * pulse
 		if b["lit"]:
 			var pivot: Node3D = b["beam_pivot"]
-			pivot.rotation.y += delta * 0.85
+			# Один полный оборот за 18 с; свет действительно движется,
+			# а не мигает вся сцена. Навигационные огни судна постоянные.
+			pivot.rotation.y = fposmod(pivot.rotation.y + delta * TAU / 18.0, TAU)
 
 	if absf(boat.global_position.x - water.position.x) > 100.0 or \
 			absf(boat.global_position.z - water.position.z) > 100.0:

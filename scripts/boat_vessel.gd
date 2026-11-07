@@ -815,9 +815,15 @@ func _build_appearance() -> void:
 		_box_on(_body, Vector3(side * 1.42, 2.22, -1.08), Vector3(0.06, 0.38, 1.85), cabin_chalk)
 		var nav_col := Color("d93829") if side < 0.0 else Color("29b856")
 		_box_on(_body, Vector3(side * 1.44, 2.32, -1.72), Vector3(0.12, 0.16, 0.34), cabin_trim)
-		var nav_mat := _material(nav_col, 0.1, 1.8, 0.2)
+		var nav_mat := _material(nav_col, 0.1, 0.65, 0.24)
 		_cyl_on(_body, Vector3(side * 1.46, 2.32, -1.72), 0.05, 0.05, 0.12, nav_mat)
-		_practical_light(_body, Vector3(side * 1.51, 2.34, -1.72), nav_col, 0.35, 2.2, nav_mat)
+		# Малый радиус: свет не заливает всю плоскую платформу/рубку.
+		_practical_light(_body, Vector3(side * 1.51, 2.34, -1.72), nav_col, 0.10, 1.1, nav_mat)
+		# Тёмная спинка и козырёк выделяют линзу, а не светящийся кубик.
+		_box_on(_body, Vector3(side * 1.405, 2.36, -1.72),
+			Vector3(0.035, 0.23, 0.24), dark_iron)
+		_box_on(_body, Vector3(side * 1.46, 2.435, -1.72),
+			Vector3(0.16, 0.035, 0.24), dark_iron)
 
 	_loft_segment(_body, -2.18, -2.24, -0.32, -0.31, 2.04, 2.25,
 		1.98, 2.02, 2.06, 2.04, cabin_chalk)
