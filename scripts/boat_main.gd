@@ -275,12 +275,30 @@ func _build_beacons() -> void:
 		spot.spot_range = 90.0
 		spot.spot_attenuation = 1.0
 		spot.spot_angle = 12.0
-		spot.light_volumetric_fog_energy = 0.65
+		spot.light_volumetric_fog_energy = 3.0
 		# Ось пересекает уровень моря в 32 м: не у самого предела range.
 		# Источник вынесен к наружной стороне фонарной камеры.
 		spot.position = Vector3(0.0, 0.0, -1.3)
 		spot.rotation = Vector3(-atan2(tower_pos.y + 10.3, 32.0), 0.0, 0.0)
 		beam_pivot.add_child(spot)
+		# Видимая несимметричная оптика вращается вместе с реальным лучом.
+		var optic_mat := _mat(s["color"], 0.0, 0.0, 0.18)
+		var optic := _add_cyl(beam_pivot, Vector3(0.0, 0.0, -1.26),
+			0.32, 0.38, 0.20, optic_mat, Vector3(PI * 0.5, 0.0, 0.0), 16)
+		optic.rotation.x -= atan2(tower_pos.y + 10.3, 32.0)
+		var beam_volume: FogVolume
+		if RenderingServer.get_rendering_device() != null:
+			beam_volume = FogVolume.new()
+			beam_volume.name = "BeaconBeamMist"
+			beam_volume.shape = RenderingServer.FOG_VOLUME_SHAPE_BOX
+			beam_volume.size = Vector3(40.0, 40.0, 90.0)
+			beam_volume.position = Vector3(0.0, 0.0, -45.0)
+			var beam_material := ShaderMaterial.new()
+			beam_material.shader = preload("res://shaders/beacon_beam_fog.gdshader")
+			beam_material.set_shader_parameter("cone_tangent", tan(deg_to_rad(spot.spot_angle)))
+			beam_volume.material = beam_material
+			beam_volume.visible = false
+			spot.add_child(beam_volume)
 
 		# Глубоководный причальный буй в море (где лодка безопасно швартуется)
 		var buoy := Node3D.new()
@@ -315,6 +333,8 @@ func _build_beacons() -> void:
 			"top_light": top_light,
 			"spot": spot,
 			"beam_pivot": beam_pivot,
+			"beam_volume": beam_volume,
+			"optic_mat": optic_mat,
 		})
 
 
@@ -669,6 +689,13 @@ func interact_with_beacon() -> void:
 	top_l.light_energy = 1.4
 	var spot_l: SpotLight3D = b["spot"]
 	spot_l.light_energy = 18.0
+	var optic_mat: StandardMaterial3D = b["optic_mat"]
+	optic_mat.emission_enabled = true
+	optic_mat.emission = col
+	optic_mat.emission_energy_multiplier = 2.0
+	var beam_volume: FogVolume = b["beam_volume"]
+	if beam_volume != null:
+		beam_volume.visible = true
 
 	if boat != null:
 		boat.hull_hp = 100.0

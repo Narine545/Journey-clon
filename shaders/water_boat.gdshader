@@ -114,7 +114,9 @@ float ground_at(vec2 wp) {
 		// диагональную границу, когда лодка выходила за карту дна.
 		return -100.0;
 	}
-	return texture(ground_tex, uv).r;
+	// Вершина i хранится в центре texel i, не на его левой границе.
+	vec2 sample_uv = (uv * (ground_n - 1.0) + vec2(0.5)) / ground_n;
+	return texture(ground_tex, sample_uv).r;
 }
 
 vec2 to_ship_local(vec2 wp, vec2 center, float yaw) {

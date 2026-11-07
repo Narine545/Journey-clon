@@ -128,9 +128,11 @@ float swell_of(float mph) {
 float ground_at(vec2 wp) {
 	vec2 uv = (wp - ground_origin) / (ground_cell * (ground_n - 1.0));
 	if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) {
-		return -6.0; // за картой — глубокое море
+		return -100.0; // совпадает с OUTER_SEABED и внешним рядом Coast
 	}
-	return texture(ground_tex, uv).r;
+	// Вершина i хранится в центре texel i, не на его левой границе.
+	vec2 sample_uv = (uv * (ground_n - 1.0) + vec2(0.5)) / ground_n;
+	return texture(ground_tex, sample_uv).r;
 }
 
 void vertex() {

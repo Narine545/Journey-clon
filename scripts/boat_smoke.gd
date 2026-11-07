@@ -70,6 +70,12 @@ func _physics_process(_delta: float) -> void:
 		main.boat.global_position = first.global_position + Vector3(4.0, 0.0, 1.0)
 	if ticks == 185:
 		Input.action_release("boat_pump")
+		for edge_point in [Vector2(Coast.CENTER.x - Coast.SIZE * 0.5, 0.0),
+			Vector2(Coast.CENTER.x + Coast.SIZE * 0.5, 0.0),
+			Vector2(Coast.CENTER.x, -Coast.SIZE * 0.5),
+			Vector2(Coast.CENTER.x, Coast.SIZE * 0.5)]:
+			_check(is_equal_approx(main.coast.sample_height(edge_point.x, edge_point.y),
+				Coast.OUTER_SEABED), "край рельефа согласован с внешним дном воды")
 		_check(main.raw[0] == 1 and main.slicks[0].depleted, "насос собирает одно пятно")
 		main.receive_resource(0)
 		main.receive_resource(0)
@@ -221,6 +227,9 @@ func _physics_process(_delta: float) -> void:
 			main.boat.hull_hp == 100.0 and is_equal_approx(main.night01, dusk_before) and
 			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), glitter_before),
 			"маяк питается по рецепту, не подсвечивает весь мир и не меняет глиттер")
+		if RenderingServer.get_rendering_device() != null:
+			_check(beacon["beam_volume"] != null and beacon["beam_volume"].visible,
+				"активированный маяк включает локальную дымку вращающегося луча")
 		main.boat.hull_hp = 55.0
 		main.interact_with_beacon()
 		_check(main.boat.hull_hp == 100.0, "зажжённый маяк ремонтирует бесплатно")

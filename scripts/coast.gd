@@ -14,6 +14,8 @@ extends MeshInstance3D
 ## поверхностью, а fragment-depth и мягкая прозрачность дают чистый
 ## переход у берега. Узкую мокрую кайму красит шейдер песка.
 
+const OUTER_SEABED := -100.0
+const EDGE_TRANSITION := 64.0
 const SIZE := 900.0 # сторона мира (м)
 const SEGMENTS := 760 # 761×761 вершин, ячейка ~1.18 м — урез не «лесенкой»
 const CENTER := Vector2(170.0, 0.0) # центр плоскости
@@ -225,8 +227,19 @@ func land_dir(x: float, z: float) -> Vector3:
 ## Бикубический Катмулл-Ром по сетке высот: C1-гладкая поверхность,
 ## по которой ходит физика.
 func sample_height(x: float, z: float) -> float:
+	if x < _x0 or z < _z0 or x > _x0 + SIZE or z > _z0 + SIZE:
+		return OUTER_SEABED
 	var fx := (x - _x0) / _cell
 	var fz := (z - _z0) / _cell
+	# Крайние ячейки доходят до настоящего края, а не зажимаются
+	# ко второму ряду бикубической выборки.
+	if fx < 1.0 or fz < 1.0 or fx > SEGMENTS - 1 or fz > SEGMENTS - 1:
+		var ex := clampi(int(floor(fx)), 0, SEGMENTS - 1)
+		var ez := clampi(int(floor(fz)), 0, SEGMENTS - 1)
+		var ux := clampf(fx - ex, 0.0, 1.0)
+		var uz := clampf(fz - ez, 0.0, 1.0)
+		return lerpf(lerpf(_grid[ez * _row + ex], _grid[ez * _row + ex + 1], ux),
+			lerpf(_grid[(ez + 1) * _row + ex], _grid[(ez + 1) * _row + ex + 1], ux), uz)
 	var ix := clampi(int(floor(fx)), 1, SEGMENTS - 2)
 	var iz := clampi(int(floor(fz)), 1, SEGMENTS - 2)
 	var tx := clampf(fx - float(ix), 0.0, 1.0)
@@ -341,8 +354,14 @@ func _build_grid() -> void:
 		for ix in range(_row):
 			var i := iz * _row + ix
 			var x := _x0 + float(ix) * _cell
-			_grid[i] = height_at(x, z)
-			_dgrid[i] = dune01_at(x, z)
+			# Сетка, CPU и R32F-текстура имеют одну и ту же границу:
+			# наружный пояс плавно уходит под море, а не обрывается стеной.
+			var dx := minf(x - _x0, _x0 + SIZE - x)
+			var dz := minf(z - _z0, _z0 + SIZE - z)
+			var edge := smoothf(dx, 0.0, EDGE_TRANSITION) \
+				* smoothf(dz, 0.0, EDGE_TRANSITION)
+			_grid[i] = lerpf(OUTER_SEABED, height_at(x, z), edge)
+			_dgrid[i] = dune01_at(x, z) * edge
 	_build_height_tex()
 
 
