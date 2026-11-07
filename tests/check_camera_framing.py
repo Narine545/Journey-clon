@@ -12,10 +12,21 @@ assert 'camera_framing.setup(coast)' in main
 assert 'camera_framing.fit_offset(_camera_focus' in main
 assert 'main.camera_framing.fit_offset(_focus' in inspector
 assert 'camera.near +' in source and 'camera.keep_aspect == Camera3D.KEEP_WIDTH' in source
-assert 'coast._grid.max()' in source and 'coast.sample_height' in source
+assert 'for sample in coast._grid:' in source and 'highest = maxf(highest, sample)' in source
+assert '.max()' not in source and 'coast.sample_height' in source
+assert 'const CAMERA_MAX_OUTWARD_MULTIPLE := 2.25' in main
+assert 'CAMERA_REFERENCE_SIZE * CAMERA_MAX_OUTWARD_MULTIPLE' in main
 assert 'for row in range(5)' in source and 'for column in range(9)' in source
 assert 'camera.projection != Camera3D.PROJECTION_ORTHOGONAL' in source
-assert 'minf(160.0, camera.size + 2.0)' in main  # 5x retained, not hidden by a smaller zoom limit.
+assert 'minf(CAMERA_MAX_SIZE, camera.size + 2.0)' in main  # Normal gameplay is capped separately; broad framing remains tested for inspection.
+assert 32.0*2.25==72.0
+# PackedFloat32Array does not expose Array.max(); guard every GDScript.
+for script in (root/'scripts').glob('*.gd'):
+    assert '_grid.max(' not in script.read_text(),script
+for samples,expected in (([],0.),([-100.,-5.],0.),([-20.,4.,28.,2.],28.)):
+    highest=0.
+    for sample in samples: highest=max(highest,sample)
+    assert highest==expected
 assert 'camera.near = 0.2' in main and 'camera.far = 1500.0' in main
 
 
@@ -59,7 +70,7 @@ while len(routes)<70:
 count=0
 for x,z in routes:
     focus=(x,.88,z)
-    for size in (32,60,76,160):
+    for size in (32,60,72,76,160):
         for aspect in (4/3,16/9,21/9):
             for lift in (12,26.2,160):
                 preferred=(21,lift,30)

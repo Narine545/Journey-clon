@@ -35,7 +35,7 @@ assert 'save_png(base + ".png")' in worker and 'base + ".json"' in worker
 assert 'Time.get_ticks_usec()' in photo
 assert 'clampf(_focus.y, -20.0, 2000.0)' in inspector
 assert 'camera_height = minf(160.0' in main and 'KEY_PAGEUP:' in main
-assert 'minf(160.0, camera.size + 2.0)' in main
+assert 'minf(CAMERA_MAX_SIZE, camera.size + 2.0)' in main
 assert ': normalize(CAMERA_POSITION_WORLD - w_pos)' in water
 assert '_check_photo_mode()' in smoke
 

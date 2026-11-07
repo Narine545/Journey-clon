@@ -864,7 +864,7 @@ func _check_camera_framing() -> void:
 	var saved_size := camera.size
 	var focus := Vector3(114.0, 0.88, -38.0)
 	var preferred := Vector3(21.0, 26.2, 30.0)
-	camera.size = 160.0
+	camera.size = BoatMain.CAMERA_MAX_SIZE
 	camera.global_position = focus + preferred
 	camera.look_at(focus, Vector3.UP)
 	var landmark := Vector3(124.0, 6.0, -49.0)
@@ -875,8 +875,8 @@ func _check_camera_framing() -> void:
 	var after := camera.unproject_position(landmark)
 	var lowest := camera.global_position.y - camera.global_basis.z.y * camera.near - camera.global_basis.y.y * camera.size * 0.5
 	_check(lowest >= Coast.SEA_LEVEL + 1.0,
-		"при 5× нижняя сторона near plane находится над водой")
-	_check(before.distance_to(after) < 0.05 and is_equal_approx(camera.size, 160.0),
-		"безопасное отступление камеры сохраняет кадр и охват 5×")
+		"при 2,25× нижняя сторона near plane находится над водой")
+	_check(before.distance_to(after) < 0.05 and is_equal_approx(camera.size, 72.0),
+		"безопасное отступление камеры сохраняет кадр и охват 2,25×")
 	camera.size = saved_size
 	camera.global_transform = saved_pose

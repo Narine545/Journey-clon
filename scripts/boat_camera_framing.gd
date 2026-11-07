@@ -11,8 +11,10 @@ func setup(terrain: Coast) -> void:
 	coast = terrain
 	# Cached once, not a terrain scan every frame. Margin covers interpolation
 	# and small sand displacement above the finite mesh's sampled maximum.
-	if not coast._grid.is_empty():
-		_terrain_ceiling = maxf(Coast.SEA_LEVEL, float(coast._grid.max())) + 3.0
+	var highest := Coast.SEA_LEVEL
+	for sample in coast._grid:
+		highest = maxf(highest, sample)
+	_terrain_ceiling = highest + 3.0
 
 
 func fit_offset(focus: Vector3, preferred: Vector3, camera: Camera3D, viewport: Vector2) -> Vector3:

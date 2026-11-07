@@ -8,6 +8,8 @@ extends Node3D
 
 const CAMERA_REFERENCE_HEIGHT := 27.0 # Approximate normal eye height above sea.
 const CAMERA_REFERENCE_SIZE := 32.0
+const CAMERA_MAX_OUTWARD_MULTIPLE := 2.25
+const CAMERA_MAX_SIZE := CAMERA_REFERENCE_SIZE * CAMERA_MAX_OUTWARD_MULTIPLE
 const TRAILER_COST := 2
 const DOCK_RANGE := 13.5
 const RME4_BOX_SIZE := Vector3(320.0, 60.0, 320.0)
@@ -1034,7 +1036,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera.size = maxf(16.0, camera.size - 2.0)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			camera.size = minf(160.0, camera.size + 2.0)
+			camera.size = minf(CAMERA_MAX_SIZE, camera.size + 2.0)
 
 
 func _physics_process(delta: float) -> void:
