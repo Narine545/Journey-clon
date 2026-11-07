@@ -385,7 +385,13 @@ func _record_world_wake_trail(delta: float, heading: Vector3) -> void:
 		_reset_trail(stern_xz)
 		moved = 0.0
 	_trail_timer -= delta
-	if (_trail_timer <= 0.0 and moved > 0.35) or moved > 2.5:
+	var head := _trail_buffer[0]
+	# Do not keep a stopped wake permanently newborn at the stern.
+	if absf(speed) < 0.05 and stern_xz.distance_to(Vector2(head.x, head.y)) < 0.001:
+		return
+	# Fixed time cadence reserves >=4.5s of history even under overdrive.
+	# Early distance-based insertions used to evict still-visible tail sections.
+	if _trail_timer <= 0.0 and moved > 0.35:
 		_trail_timer = TRAIL_STEP_TIME
 		_last_trail_pos = stern_xz
 		for i in range(TRAIL_POINTS - 1, 0, -1):

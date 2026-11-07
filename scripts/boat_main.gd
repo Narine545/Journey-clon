@@ -6,6 +6,8 @@ extends Node3D
 ## - Цепь из 4 Погасших Маяков с глубоководными причальными буями вдоль берега
 ## - Морские рифы, прочность корпуса и 3 активные судовые системы (Сонар, Ремонт, Форсаж)
 
+const CAMERA_REFERENCE_HEIGHT := 27.0 # Approximate normal eye height above sea.
+const CAMERA_REFERENCE_SIZE := 32.0
 const TRAILER_COST := 2
 const DOCK_RANGE := 13.5
 const RME4_BOX_SIZE := Vector3(320.0, 60.0, 320.0)
@@ -946,6 +948,18 @@ func debug_warp_to_beacon() -> void:
 	camera.global_position = _camera_focus + Vector3(21.0, 26.2, 30.0)
 	camera.look_at(_camera_focus, Vector3.UP)
 	announce("ТЕСТ: У БУЯ «%s» — НАЖМИТЕ [E]" % target_b["name"].to_upper())
+
+
+func camera_height_multiple() -> float:
+	return maxf(0.0, camera.global_position.y - Coast.SEA_LEVEL) / CAMERA_REFERENCE_HEIGHT
+
+
+func camera_scale_text() -> String:
+	var height := maxf(0.0, camera.global_position.y - Coast.SEA_LEVEL)
+	var text := "ВЫСОТА %.2f× (%.1f м)" % [camera_height_multiple(), height]
+	if camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
+		text += " · ОТДАЛЕНИЕ %.2f×" % (camera.size / CAMERA_REFERENCE_SIZE)
+	return text
 
 
 func inspection_active() -> bool:

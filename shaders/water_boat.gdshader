@@ -85,6 +85,9 @@ varying vec3 local_glitter_normal;
 varying float local_glitter_mask;
 
 const float PI_2 = 6.28318530718;
+// Fade fully before the 20-point/0.25s history can retire a segment.
+const float WAKE_FADE_START = 2.4;
+const float WAKE_FADE_END = 4.2;
 
 float hash12(vec2 p) {
 	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -259,10 +262,12 @@ void fragment() {
 
 	float trail_foam = 0.0;
 	float trail_aerated = 0.0;
-	if (best_age < 5.2 && best_spd > 0.4) {
+	if (best_age < WAKE_FADE_END && best_spd > 0.0) {
 		float perp_d = sqrt(best_d2);
 		float local_spd01 = clamp(best_spd / 10.0, 0.0, 1.2);
-		float age_fade = exp(-best_age * 0.55) * local_spd01;
+		float lifetime = 1.0 - smoothstep(WAKE_FADE_START, WAKE_FADE_END, best_age);
+		float speed_fade = smoothstep(0.0, 0.8, best_spd);
+		float age_fade = exp(-best_age * 0.55) * lifetime * local_spd01 * speed_fade;
 
 		// Центральная турбулентная струя от винтов (расширяется со временем вдоль кривой пути)
 		float wash_w = 0.55 + best_age * 0.36;

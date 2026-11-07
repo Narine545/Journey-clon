@@ -265,6 +265,8 @@ func make_report() -> Dictionary:
 		"camera_position": _v3(camera.global_position),
 		"camera_rotation_degrees": _v3(camera.global_rotation * (180.0 / PI)),
 		"camera_size": camera.size,
+		"camera_height_multiple": main.camera_height_multiple(),
+		"camera_outward_multiple": camera.size / BoatMain.CAMERA_REFERENCE_SIZE,
 		"camera_projection": camera.projection,
 		"camera_near": camera.near,
 		"camera_far": camera.far,
@@ -607,7 +609,7 @@ func _draw() -> void:
 		_text(Vector2(28, 61), "WASD — движение · Q/E — высота · Shift — быстрее · ПКМ — поворот · колесо — масштаб", Color("b6c9c5"), 13)
 		_text(Vector2(28, 85), "ЛКМ — метка · Enter — приблизить метку · C — копировать · Ctrl+S — снимок + отчёт · B — дымка", Color("b6c9c5"), 13)
 		_text(Vector2(28, 114), marker_text(), Color("ffae90"), 14)
-		_text(Vector2(28, 139), "Масштаб %.1f м · Сумерки %.2f · %s" % [main.camera.size, main.night01, main.weather.label()], Color("b6c9c5"), 12)
+		_text(Vector2(28, 139), "%s · Сумерки %.2f · %s" % [main.camera_scale_text(), main.night01, main.weather.label()], Color("b6c9c5"), 12)
 		if clear_view:
 			_text(Vector2(28, 179), "ОБЗОР БЕЗ ДЫМКИ — это диагностический вид, не исходный рендер. B — вернуть атмосферу.", Color("ffae90"), 14)
 		if selected >= 0 and not main.camera.is_position_behind(markers[selected]):

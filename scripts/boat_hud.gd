@@ -18,6 +18,9 @@ func _draw() -> void:
 	draw_string(font, Vector2(28, size.y - 52), "[M] КАРТА   [F] СВОБОДНАЯ КАМЕРА   [F2] ФОТО   [PgUp/PgDn] ВЫСОТА",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, muted)
 
+	draw_string(font, Vector2(28, size.y - 76), main.camera_scale_text(),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, accent)
+
 	if main.shoals != null and main.shoals.warning:
 		var warning_at := Vector2(size.x * 0.5 - 165.0, 24.0)
 		draw_rect(Rect2(warning_at, Vector2(330, 48)), backdrop)

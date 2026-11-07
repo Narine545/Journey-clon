@@ -16,6 +16,7 @@ var _saved: Dictionary = {}
 var _saved_projection := Camera3D.PROJECTION_ORTHOGONAL
 var _attributes: CameraAttributesPractical
 var _panel: PanelContainer
+var _camera_readout: Label
 var _status: Label
 var _view: OptionButton
 var _iso: OptionButton
@@ -69,6 +70,8 @@ func setup(game: BoatMain) -> void:
 		OS.shell_open(ProjectSettings.globalize_path("user://photos")))
 	box.add_child(folder)
 	_label(box, "1–4 — точка · ПКМ — взгляд\nКолесо — зум · Q/E — высота\nShift — быстрее · R — сброс взгляда\nСетка не попадает на снимок.\nПогода и волны продолжают идти.")
+	_camera_readout = _label(box, "")
+	_camera_readout.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status = _label(box, "")
 
 
@@ -235,6 +238,7 @@ func capture() -> void:
 		"shutter_seconds": _shutter.get_selected_metadata(), "ev": _ev.value,
 		"focus_meters": _focus.value, "dof": _dof.button_pressed,
 		"exposure_multiplier": _attributes.exposure_multiplier, "night01": main.night01,
+		"camera_height_multiple": main.camera_height_multiple(),
 		"shutter_is_exposure_only": true}, "\t")
 	_task = WorkerThreadPool.add_task(_save_image.bind(image, base, metadata))
 
@@ -270,6 +274,7 @@ func _exit_tree() -> void:
 func _process(_delta: float) -> void:
 	if active:
 		_panel.size = Vector2(330, clampf(size.y - 36.0, 260.0, 760.0))
+		_camera_readout.text = main.camera_scale_text()
 		queue_redraw()
 
 
