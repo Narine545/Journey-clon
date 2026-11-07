@@ -28,11 +28,11 @@ uniform float reveal_cos_outer = 0.8660254;
 uniform float reveal_cos_inner = 0.9135455;
 uniform float reveal_enabled = 0.0;
 uniform float afterglow : hint_range(0.0, 1.0) = 0.0;
-// Два временных куска одного логического ресурса.
-uniform float split_amount : hint_range(0.0, 1.0) = 0.0;
-uniform vec2 split_axis = vec2(1.0, 0.0);
-uniform float split_bias = 0.0;
-uniform float split_asymmetry = 0.0;
+// Плотность локальной particle-fluid плёнки и исходные координаты вещества.
+uniform sampler2D film_field : filter_linear, repeat_disable;
+uniform sampler2D film_previous : filter_linear, repeat_disable;
+uniform float film_interpolation : hint_range(0.0, 1.0) = 0.0;
+uniform float film_blend : hint_range(0.0, 1.0) = 0.0;
 varying vec3 surface_world_position;
 varying vec2 local_pos;
 varying vec2 world_xz;
@@ -89,22 +89,19 @@ void fragment() {
     float t = TIME * 0.45 + seed;
     float intact = slick_distance(p, t);
     float d = intact;
-    if (split_amount > 0.001) {
-        vec2 axis = normalize(split_axis);
-        vec2 shift_a = axis * split_amount * 0.90 * (1.0 + split_asymmetry);
-        vec2 shift_b = axis * split_amount * 0.90 * (1.0 - split_asymmetry);
-        vec2 source_a = p - shift_a;
-        vec2 source_b = p + shift_b;
-        float da = max(slick_distance(source_a, t), split_bias - dot(source_a, axis));
-        float db = max(slick_distance(source_b, t), dot(source_b, axis) - split_bias);
-        float pieces = smooth_union(da, db, 0.06);
-        d = mix(intact, pieces, smoothstep(0.0, 0.15, split_amount));
-        // Внутренний рисунок переносится вместе со своим куском.
-        p = da < db ? source_a : source_b;
+    if (film_blend > 0.001) {
+        vec3 film = mix(texture(film_previous, local_pos / 8.0 + vec2(0.5)).rgb,
+            texture(film_field, local_pos / 8.0 + vec2(0.5)).rgb, film_interpolation);
+        // Сумма гладких ядер частиц: края округляются сами, плоского
+        // clipping plane и заранее назначенных половинок здесь нет.
+        float film_distance = (0.70 - film.r) * 0.16;
+        d = mix(intact, film_distance, film_blend);
+        vec2 material_position = film.gb / max(film.r, 0.001);
+        p = mix(p, material_position * 0.82, film_blend);
     }
     float aa = max(fwidth(d), 0.012);
     float body = 1.0 - smoothstep(-aa, aa, d);
-    // Расширенный quad нужен только для разлетающихся кусков. Пустые
+    // Расширенный quad вмещает растекание плёнки. Пустые
     // пиксели не считают дорогой внутренний параллакс/облачные слои.
     if (body < 0.001 || fade < 0.001) {
         discard;

@@ -9,9 +9,6 @@ const FLOAT_HEIGHT := 0.34
 const CHARGE_RATE := 2.0
 const GLOW_HOLD_SECONDS := 5.0
 const GLOW_FADE_SECONDS := 6.0
-const SPLIT_HOLD_SECONDS := 1.4
-const SPLIT_OPEN_RATE := 2.8
-const SPLIT_CLOSE_RATE := 0.28
 const COLORS: Array[Color] = [
 	Color("31c2bd"), # приливная бирюза
 	Color("f07b62"), # коралл
@@ -31,15 +28,14 @@ var _water: WaterSurface
 var _age := 0.0
 var _respawn := 0.0
 var _fade := 1.0
-var _split_amount := 0.0
-var _split_hold := 0.0
-var _split_strength := 0.0
-var _split_rng := RandomNumberGenerator.new()
+var _film: SlickFilm
+var _film_blend := 0.0
+var _variation := 0.0
 
 
 func setup(water: WaterSurface, at: Vector2, resource_kind: int, variation: float) -> void:
 	_water = water
-	_split_rng.seed = int(absf(variation) * 10000.0) + resource_kind * 137 + 41
+	_variation = variation
 	kind = resource_kind % COLORS.size()
 	position = Vector3(at.x, water.surface_height(at.x, at.y) + FLOAT_HEIGHT, at.y)
 	var plane := PlaneMesh.new()
@@ -157,8 +153,15 @@ func _beam_exposure() -> float:
 	var strength := 0.0
 	# Центр и четыре точки внутри тела пятна: касание края лучом тоже
 	# даёт заряд. Это маска конуса, не проверка теней препятствий.
-	for offset in [Vector3.ZERO, Vector3(0.9, 0, 0), Vector3(-0.9, 0, 0),
-		Vector3(0, 0, 0.9), Vector3(0, 0, -0.9)]:
+	var offsets: Array[Vector3] = [Vector3.ZERO, Vector3(0.9, 0, 0), Vector3(-0.9, 0, 0),
+		Vector3(0, 0, 0.9), Vector3(0, 0, -0.9)]
+	if _film != null and _film_blend > 0.5:
+		offsets.clear()
+		var stride := maxi(1, int(_film.positions.size() / 12.0))
+		for i in range(0, _film.positions.size(), stride):
+			var at := _film.positions[i]
+			offsets.append(global_basis * Vector3(at.x, 0.0, at.y))
+	for offset in offsets:
 		var to_point: Vector3 = global_position + offset - _reveal_light.global_position
 		var distance := to_point.length()
 		var cone := smoothstep(cos(angle), cos(angle * 0.80),
@@ -187,15 +190,34 @@ func _update_afterglow(delta: float) -> void:
 		_mat.set_shader_parameter("afterglow", _glow_charge)
 
 
+func pickup_position(from: Vector3) -> Vector3:
+	if _film == null or _film_blend < 0.5:
+		return global_position
+	# Рука/шланг тянутся к веществу, а не к пустому центру между сгустками.
+	var local_from := to_local(from)
+	var point := Vector2(local_from.x, local_from.z)
+	var closest := Vector2.ZERO
+	var best := INF
+	for at in _film.positions:
+		var distance := point.distance_squared_to(at)
+		if distance < best:
+			best = distance
+			closest = at
+	return to_global(Vector3(closest.x, 0.0, closest.y))
+
+
 func react_to_sweep(from: Vector2, to: Vector2, heading: Vector2,
-		half_length: float, half_width: float, delta: float) -> void:
+		half_length: float, half_width: float, delta: float, source_id: int = 0) -> void:
 	if depleted or _mat == null or _fade < 0.1 or delta <= 0.0:
 		return
 	var movement := to - from
 	var distance := movement.length()
 	var travel_speed := distance / delta
-	# Только движение, не качка/стоянка и не телепорт через весь мир.
-	if travel_speed < 0.25 or distance > maxf(1.5, delta * 30.0):
+	# Стоянка не запускает новую симуляцию. Но уже возмущённая плёнка
+	# продолжает обтекать стоящий корпус, а не срастается сквозь него.
+	if travel_speed < 0.25 and _film == null:
+		return
+	if distance > maxf(1.5, delta * 30.0):
 		return
 	var axis := heading.normalized()
 	if axis.length_squared() < 0.5:
@@ -209,36 +231,41 @@ func react_to_sweep(from: Vector2, to: Vector2, heading: Vector2,
 	var closest := a + ab * clampf((point - a).dot(ab) / maxf(ab.length_squared(), 0.001),
 		0.0, 1.0)
 	var gap := point.distance_to(closest)
-	var contact := 1.0 - smoothstep(half_width + 0.6, half_width + 1.8, gap)
+	var extent := 3.7 if _film != null else 1.8
+	var contact := 1.0 - smoothstep(half_width + 0.6, half_width + extent, gap)
 	if contact <= 0.01:
 		return
-	if _split_amount < 0.08 and _split_hold <= 0.0:
-		_split_strength = 0.0
-		# Одна случайность на событие, а не на каждый кадр/источник.
-		var lateral := Vector2(-axis.y, axis.x).rotated(_split_rng.randf_range(-0.22, 0.22))
-		var local_axis := global_basis.inverse() * Vector3(lateral.x, 0.0, lateral.y)
-		_mat.set_shader_parameter("split_axis", Vector2(local_axis.x, local_axis.z).normalized())
-		_mat.set_shader_parameter("split_bias", _split_rng.randf_range(-0.20, 0.20))
-		_mat.set_shader_parameter("split_asymmetry", _split_rng.randf_range(-0.15, 0.15))
-	_split_strength = maxf(_split_strength, clampf(travel_speed / 4.0, 0.35, 1.0) * contact)
-	_split_hold = SPLIT_HOLD_SECONDS
+	if _film == null:
+		_film = SlickFilm.new()
+		_film.setup(_variation, Time.get_ticks_msec() * 0.00045 + _variation)
+		_mat.set_shader_parameter("film_field", _film.texture)
+		_mat.set_shader_parameter("film_previous", _film.previous_texture)
+	var local_from := to_local(Vector3(from.x, global_position.y, from.y))
+	var local_to := to_local(Vector3(to.x, global_position.y, to.y))
+	var local_axis := global_basis.inverse() * Vector3(axis.x, 0.0, axis.y)
+	_film.push_hull(Vector2(local_from.x, local_from.z), Vector2(local_to.x, local_to.z),
+		Vector2(local_axis.x, local_axis.z).normalized(), half_length, half_width,
+		travel_speed, source_id)
 
 
 func _update_disturbance(delta: float) -> void:
-	var opening_time := minf(delta, _split_hold)
-	if opening_time > 0.0:
-		_split_amount = move_toward(_split_amount, _split_strength, opening_time * SPLIT_OPEN_RATE)
-		_split_hold -= opening_time
-	var closing_time := delta - opening_time
-	if closing_time > 0.0:
-		_split_amount = move_toward(_split_amount, 0.0, closing_time * SPLIT_CLOSE_RATE)
-	if _mat != null:
-		_mat.set_shader_parameter("split_amount", _split_amount)
+	if _film == null:
+		return
+	_film.advance(delta)
+	_mat.set_shader_parameter("film_interpolation", _film.interpolation())
+	# После физического затихания возвращаем живой процедурный контур.
+	# Во время контакта и несколько секунд после него маска целиком из частиц.
+	var target := 0.0 if _film.idle > 9.0 else 1.0
+	_film_blend = move_toward(_film_blend, target, delta * (0.5 if target == 0.0 else 6.0))
+	_mat.set_shader_parameter("film_blend", _film_blend)
+	if _film_blend <= 0.0 and target == 0.0:
+		_reset_disturbance()
 
 
 func _reset_disturbance() -> void:
-	_split_amount = 0.0
-	_split_hold = 0.0
-	_split_strength = 0.0
+	_film = null
+	_film_blend = 0.0
 	if _mat != null:
-		_mat.set_shader_parameter("split_amount", 0.0)
+		_mat.set_shader_parameter("film_blend", 0.0)
+		_mat.set_shader_parameter("film_field", null)
+		_mat.set_shader_parameter("film_previous", null)

@@ -449,25 +449,39 @@ func _check_slick_disturbance() -> void:
 		forward, 4.7, 1.6, 0.1)
 	probe.react_to_sweep(center + Vector2(0.0, 30.0), center - Vector2(0.0, 30.0),
 		forward, 4.7, 1.6, 0.1)
-	_check(is_zero_approx(probe._split_hold), "пятно не реагирует на стоянку, дальний проход и телепорт")
+	_check(probe._film == null, "плёнка не создаётся при стоянке, дальнем проходе и телепорте")
 	probe._glow_charge = 0.6
 	probe.react_to_sweep(before, after, forward, 4.7, 1.6, 0.1)
-	probe._update_disturbance(0.5)
-	_check(probe._split_amount > 0.9 and not probe.depleted and
+	var film := probe._film
+	var count := film.positions.size()
+	for step in range(12):
+		probe.react_to_sweep(before, after, forward, 4.7, 1.6, 0.1)
+		probe._update_disturbance(0.05)
+	var moved := false
+	for i in range(count):
+		moved = moved or film.positions[i].distance_to(film.origins[i]) > 0.3
+	_check(moved and probe._film_blend > 0.9 and count > 40 and
+		count == film.positions.size() and not probe.depleted and
 		is_equal_approx(probe._glow_charge, 0.6),
-		"проход корпуса разделяет пятно, не расходуя ресурс и ночной заряд")
-	probe._update_disturbance(10.0)
-	_check(is_zero_approx(probe._split_amount), "пятно самостоятельно срастается после прохода")
-	probe.react_to_sweep(before, after, forward, 2.8, 1.4, 0.1)
-	probe._update_disturbance(0.5)
-	_check(probe._split_amount > 0.9, "баржа тоже может разделить сросшееся пятно")
+		"корпус переносит частицы пигмента, не тратит массу, ресурс и ночной заряд")
+	var pickup := probe.pickup_position(Vector3(center.x - 3.0, probe.position.y, center.y))
+	_check(pickup.distance_to(probe.global_position) > 0.5,
+		"насос целится в сгусток, а не в пустой центр разошедшегося пятна")
+	film.push_hull(Vector2.ZERO, Vector2.ZERO, forward, 4.7, 1.6, 4.0, 0)
+	film.push_hull(Vector2.ZERO, Vector2.ZERO, forward, 2.8, 1.4, 4.0, 1)
+	_check(film._hulls.size() == 2, "судно и баржа сохраняют независимые воздействия в одном шаге")
+	film._hulls.clear()
+	for step in range(230):
+		probe._update_disturbance(0.05)
+	_check(probe._film == null and is_zero_approx(probe._film_blend),
+		"затихшая плёнка освобождает симуляцию и возвращает обычный живой контур")
+	probe.react_to_sweep(before, after, forward, 2.8, 1.4, 0.1, 1)
+	_check(probe._film != null, "баржа снова активирует плёнку после затихания")
 	probe.relocate_smoothly(probe.position)
-	_check(is_zero_approx(probe._split_amount) and is_zero_approx(probe._split_hold),
-		"перенос пятна сбрасывает деформацию")
+	_check(probe._film == null, "перенос пятна сбрасывает старое поле")
 	probe._fade = 1.0
 	probe.react_to_sweep(before, after, forward, 4.7, 1.6, 0.1)
 	probe.collect()
 	probe.react_to_sweep(before, after, forward, 4.7, 1.6, 0.1)
-	_check(probe.depleted and is_zero_approx(probe._split_hold),
-		"собранное пятно не реагирует и не сохраняет старый разрез")
+	_check(probe.depleted and probe._film == null, "собранное пятно не хранит и не запускает плёнку")
 	probe.queue_free()

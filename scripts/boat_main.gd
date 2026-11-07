@@ -472,7 +472,8 @@ func nearest_resource(at: Vector3, radius: float) -> ResourceSlick:
 	for slick in slicks:
 		if slick.depleted:
 			continue
-		var distance := Vector2(at.x, at.z).distance_squared_to(Vector2(slick.position.x, slick.position.z))
+		var sample := slick.pickup_position(at)
+		var distance := Vector2(at.x, at.z).distance_squared_to(Vector2(sample.x, sample.z))
 		if distance < closest:
 			closest = distance
 			candidate = slick

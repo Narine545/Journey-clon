@@ -30,35 +30,24 @@ assert contact((0, 4), (0, 0), (0, 1), (0, -1), 4.7, 1.6, .1) == 1
 assert contact((0, 0), (0, 20), (0, -20), (0, -1), 4.7, 1.6, .1) == 0
 assert contact((20, 0), (0, 0), (0, -1), (0, -1), 4.7, 1.6, .1) == 0
 assert contact((0, 0), (0, 4), (0, 3), (0, -1), 2.8, 1.4, .1) > 0
-# Full split opens in <0.5 s, holds after contact, heals in <5.1 s.
-for hz in (20, 60, 144):
-    amount, hold = 0., 1.4
-    for _ in range(6*hz):
-        dt = 1/hz
-        opening = min(dt, hold)
-        amount = min(1, amount+opening*2.8)
-        hold -= opening
-        amount = max(0, amount-(dt-opening)*.28)
-    assert amount == 0
-# A translated, clipped circle has a gap at full split but is intact at zero.
-def pieces(x, y, split, bias):
-    a, b = x-split*.9, x+split*.9
-    return min(max(math.hypot(a, y)-1, bias-a), max(math.hypot(b,y)-1, b-bias))
-assert pieces(0, 0, 1, .15) > 0
-for x, y in ((0,0), (.5,.2), (2,.1)):
-    assert (pieces(x,y,0,.15) <= 0) == (math.hypot(x,y) <= 1)
 script = Path('scripts/resource_slick.gd').read_text()
 vessel = Path('scripts/boat_vessel.gd').read_text()
 shader = Path('shaders/resource_slick.gdshader').read_text()
 assert 'travel_speed < 0.25' in script
 assert 'distance > maxf(1.5, delta * 30.0)' in script
-assert 'randf_range' in script.split('if _split_amount < 0.08', 1)[1]
 assert 'func _reset_disturbance()' in script
 assert '_reset_afterglow()\n\t_reset_disturbance()' in script
 assert 'slick.react_to_sweep(slick_previous_position' in vessel
 assert 'slick.react_to_sweep(slick_previous_trailer' in vessel
-assert 'p = da < db ? source_a : source_b;' in shader
+assert 'split_axis' not in shader and 'split_bias' not in shader
+assert 'split_amount' not in shader and 'source_a' not in shader
+assert 'texture(film_field, local_pos / 8.0' in shader
+assert 'film.gb / max(film.r, 0.001)' in shader
+assert 'texture(film_previous' in shader and 'film_interpolation' in shader
+assert 'slick.pickup_position(from)' in vessel
+assert 'source_id: int = 0' in script
+assert '2.8, 1.4, delta, 1)' in vessel
 assert 'if (body < 0.001 || fade < 0.001)' in shader
 assert shader.count('{') == shader.count('}')
-assert 1.7/.82+.9*1.15/.82 < 4  # conservative silhouette + spread fits quad
-print('OK: ship/barge sweeps, reverse, idle/warp rejection, healing, two pieces, reset and no duplicates.')
+assert 3.55 + .43 < 4  # bounded particles + kernel fit quad
+print('OK: sweeps/reverse, idle/warp rejection, particle-field wiring, no planar cuts, material transport, pickup.')

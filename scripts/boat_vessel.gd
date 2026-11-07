@@ -288,12 +288,12 @@ func _physics_process(delta: float) -> void:
 		var slick_heading := Vector2(heading.x, heading.z).normalized()
 		var slick_current := Vector2(global_position.x, global_position.z)
 		for slick in main.slicks:
-			slick.react_to_sweep(slick_previous_position, slick_current, slick_heading, 4.7, 1.6, delta)
+			slick.react_to_sweep(slick_previous_position, slick_current, slick_heading, 4.7, 1.6, delta, 0)
 			if has_trailer and _trailer != null:
 				var trailer_forward := -_trailer.global_basis.z
 				slick.react_to_sweep(slick_previous_trailer,
 					Vector2(_trailer.global_position.x, _trailer.global_position.z),
-					Vector2(trailer_forward.x, trailer_forward.z), 2.8, 1.4, delta)
+					Vector2(trailer_forward.x, trailer_forward.z), 2.8, 1.4, delta, 1)
 	_update_pump(delta)
 	_sync_water_shader()
 
@@ -412,6 +412,15 @@ func is_on_trailer_working_side(world_pos: Vector3) -> bool:
 	return trailer_pickup_distance(world_pos) < TRAILER_PUMP_RANGE + TRAILER_SLICK_RADIUS
 
 
+func _slick_pickup(slick: ResourceSlick, trailer: bool = false) -> Vector3:
+	var from := global_position
+	if trailer and _trailer_body != null:
+		from = _trailer_body.global_position
+	elif _crane_turret != null:
+		from = _crane_turret.global_position
+	return slick.pickup_position(from)
+
+
 func _update_pump(delta: float) -> void:
 	# Ручной насос лодки по-прежнему работает только с левого борта.
 	var p_range := effective_pump_range()
@@ -420,9 +429,11 @@ func _update_pump(delta: float) -> void:
 	wrong_side_target = false
 	var best_d2 := p_range * p_range
 	for slick in main.slicks:
-		if slick.depleted or not is_on_port_working_side(slick.global_position):
+		if slick.depleted:
 			continue
-		var at := slick.global_position
+		var at := _slick_pickup(slick)
+		if not is_on_port_working_side(at):
+			continue
 		var d2 := Vector2(global_position.x, global_position.z).distance_squared_to(Vector2(at.x, at.z))
 		if d2 < best_d2:
 			best_d2 = d2
@@ -436,7 +447,7 @@ func _update_pump(delta: float) -> void:
 	if _crane_turret != null:
 		var target_yaw := -0.18
 		if _target != null:
-			var local_t := _body.to_local(_target.global_position)
+			var local_t := _body.to_local(_slick_pickup(_target))
 			var rel := local_t - _crane_turret.position
 			target_yaw = clampf(atan2(rel.x, rel.z), -2.68, -0.36)
 		_crane_turret.rotation.y = lerp_angle(_crane_turret.rotation.y, target_yaw, minf(1.0, delta * 5.0))
@@ -450,7 +461,7 @@ func _update_pump(delta: float) -> void:
 	_intake_head.visible = false
 	if drawing:
 		_pump_progress += delta
-		var to := _target.global_position + Vector3.UP * 0.10
+		var to := _slick_pickup(_target) + Vector3.UP * 0.10
 		var pigment_col := ResourceSlick.COLORS[_target.kind]
 		var tip := _crane_jib.to_global(Vector3(0.0, -0.12, 1.05))
 		_hose_mat.albedo_color = pigment_col.darkened(0.35)
@@ -483,7 +494,7 @@ func _update_trailer_pump(delta: float) -> void:
 	_trailer_hose.visible = false
 	_trailer_head.visible = false
 	if _trailer_target != null and (_trailer_target.depleted or
-			not is_on_trailer_working_side(_trailer_target.global_position) or
+			not is_on_trailer_working_side(_slick_pickup(_trailer_target, true)) or
 			(_trailer_target == _target and Input.is_action_pressed("boat_pump"))):
 		_trailer_target = null
 	if _trailer_target == null and has_trailer and _trailer != null:
@@ -491,7 +502,7 @@ func _update_trailer_pump(delta: float) -> void:
 		for slick in main.slicks:
 			if slick.depleted or (slick == _target and Input.is_action_pressed("boat_pump")):
 				continue
-			var distance := trailer_pickup_distance(slick.global_position)
+			var distance := trailer_pickup_distance(_slick_pickup(slick, true))
 			if distance < best_distance:
 				best_distance = distance
 				_trailer_target = slick
@@ -500,14 +511,14 @@ func _update_trailer_pump(delta: float) -> void:
 
 	var arm_yaw := 0.0
 	if _trailer_target != null:
-		var rel := _trailer_body.to_local(_trailer_target.global_position) - _trailer_arm_pivot.position
+		var rel := _trailer_body.to_local(_slick_pickup(_trailer_target, true)) - _trailer_arm_pivot.position
 		arm_yaw = atan2(-rel.x, -rel.z)
 	_trailer_arm_pivot.rotation.y = lerp_angle(_trailer_arm_pivot.rotation.y, arm_yaw, minf(1.0, delta * 5.0))
 	if _trailer_target == null:
 		return
 
 	_trailer_pump_progress += delta
-	var to := _trailer_target.global_position + Vector3.UP * 0.10
+	var to := _slick_pickup(_trailer_target, true) + Vector3.UP * 0.10
 	var pigment_col := ResourceSlick.COLORS[_trailer_target.kind]
 	var tip := _trailer_arm_pivot.to_global(Vector3(0.0, -0.02, -2.95))
 	_trailer_hose_mat.albedo_color = pigment_col.darkened(0.35)
