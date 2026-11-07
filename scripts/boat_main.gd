@@ -706,6 +706,12 @@ func debug_toggle_wave_lighting() -> void:
 	announce("[K] ГЛИТТЕР НА ГРЕБНЯХ: %s" % ("НОВЫЙ" if enabled else "ПРЕЖНИЙ"))
 
 
+func debug_toggle_local_water_response() -> void:
+	var enabled := float(water.material().get_shader_parameter("local_water_response")) < 0.5
+	water.set_param("local_water_response", 1.0 if enabled else 0.0)
+	announce("[I] ВОДА ПОД ФОНАРЁМ: %s" % ("ВОЛНОВОЕ ОТРАЖЕНИЕ" if enabled else "ПРЕЖНЯЯ"))
+
+
 func debug_toggle_headlight() -> void:
 	debug_headlight_enabled = not debug_headlight_enabled
 	boat._bow_spot.visible = debug_headlight_enabled
@@ -968,6 +974,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_K:
 				debug_toggle_wave_lighting()
+				get_viewport().set_input_as_handled()
+			KEY_I:
+				debug_toggle_local_water_response()
 				get_viewport().set_input_as_handled()
 			KEY_H:
 				debug_toggle_headlight()

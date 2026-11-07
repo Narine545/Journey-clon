@@ -323,7 +323,7 @@ func configure_boat_lighting() -> void:
 	# _update_volumetric_fog(). Поэтому объём включён, а рассеяние в нём
 	# настраивает apply_boat_atmosphere().
 	_env.volumetric_fog_enabled = true
-	_env.volumetric_fog_anisotropy = 0.70
+	_env.volumetric_fog_anisotropy = 0.25
 	_env.volumetric_fog_gi_inject = 0.0
 	# Тонкий слой требует более мелких ячеек по глубине. Для изометрии
 	# тратить 160 м на невидимую даль не нужно; число froxel-ов не растёт.
@@ -382,10 +382,9 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	_sun.light_energy = lerpf(0.85, key, sunset)
 	# Ключ НЕ должен гаснуть в воздухе вместе с диском. Прежнее
 	# 0.75 * (1 - sunset) обнуляло его к ночи, и туман оставался плоским
-	# серым wash'ем от ambient_inject — свет переставал «работать на
-	# атмосферу». При anisotropy 0.7 фазовая функция Хеньи-Гринштейна даёт
-	# ~17× разницу между взглядом на солнце и от него, то есть читаемые лучи.
-	_sun.light_volumetric_fog_energy = lerpf(3.0, 1.8, sunset)
+	# серым wash'ем от ambient_inject. Теперь вклад ключа умеренный:
+	# он не должен перекрывать локальный прожектор при смене курса.
+	_sun.light_volumetric_fog_energy = lerpf(1.8, 1.1, sunset)
 
 	# --- Небо ----------------------------------------------------------
 	if _using_sky_plus:
@@ -418,7 +417,9 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	# даже 0.10 днём давали бы вклад больше солнечного. Держим низким:
 	# пусть воздух освещает ключ, а не константа.
 	_env.volumetric_fog_ambient_inject = lerpf(0.10, 0.07, sunset)
-	_env.volumetric_fog_anisotropy = 0.70
+	# Более широкий угловой отклик: вращение лодки не должно превращать
+	# прожектор в почти невидимый луч. Полная независимость от угла не нужна.
+	_env.volumetric_fog_anisotropy = 0.25
 
 
 func smoothf(v: float, a: float, b: float) -> float:

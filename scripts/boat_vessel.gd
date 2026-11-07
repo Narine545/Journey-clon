@@ -820,7 +820,7 @@ func _build_appearance() -> void:
 	_bow_spot.light_energy = 24.0
 	_bow_spot.spot_range = 24.0
 	_bow_spot.spot_angle = 30.0
-	_bow_spot.light_volumetric_fog_energy = 1.3
+	_bow_spot.light_volumetric_fog_energy = 2.0
 	_bow_spot.position = Vector3(0.0, 3.12, -2.45)
 	# -Z вдоль курса, наклон вниз: пятно на воде в нескольких метрах
 	# перед носом, а не вдали под туманом.

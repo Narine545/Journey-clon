@@ -314,6 +314,14 @@ func _physics_process(_delta: float) -> void:
 			"ночная вода сохраняет собственный слабый фон при выключенном прожекторе")
 		main.debug_toggle_headlight()
 		_check(spot.visible, "[H] возвращает прожектор")
+		main.debug_toggle_local_water_response()
+		_check(is_zero_approx(float(main.water.material().get_shader_parameter(
+			"local_water_response"))) and
+			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")),
+				night_glitter), "[I] возвращает прежний отклик локальных ламп без изменения глиттера")
+		main.debug_toggle_local_water_response()
+		_check(is_equal_approx(float(main.water.material().get_shader_parameter(
+			"local_water_response")), 1.0), "[I] возвращает волновое отражение фонаря")
 		_check(not main.debug_retro_enabled and not main._retro_rect.visible and
 			main._retro_rect.material is ShaderMaterial and
 			main._retro_rect.size == Vector2(main.get_viewport().get_visible_rect().size) and

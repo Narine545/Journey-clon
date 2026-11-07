@@ -32,6 +32,8 @@ uniform float surface_light_detail = 0.0;
 // Художественная аппроксимация ночного отражённого света неба.
 // Не зависит от прожектора и не меняет прозрачность/освещение пятен.
 uniform float night_surface_fill : hint_range(0.0, 0.3) = 0.0;
+// [I] — реакция воды на локальные лампы; солнце и глиттер не меняются.
+uniform float local_water_response : hint_range(0.0, 1.0) = 1.0;
 // Усиление существующего глиттера на гребнях; 0 = прежние блики.
 uniform float swell_light_detail : hint_range(0.0, 1.0) = 0.0;
 
@@ -75,6 +77,8 @@ uniform vec4 u_trailer_state = vec4(0.0, 0.0, 0.0, 0.0);
 uniform vec4 u_wake_trail[20]; // xy = world_xz, z = birth_time, w = speed_at_birth
 
 varying vec3 w_pos;
+// Fragment -> light varying: полная форма воды только для локальных ламп.
+varying vec3 local_light_normal;
 
 const float PI_2 = 6.28318530718;
 
@@ -369,6 +373,8 @@ void fragment() {
 	// остаются прежними; [L] меняет только тонмаппер.
 	vec3 lighting_normal = normalize(mix(vec3(0.0, 1.0, 0.0), N, surface_light_detail));
 	NORMAL = normalize((VIEW_MATRIX * vec4(lighting_normal, 0.0)).xyz);
+	vec3 local_normal = normalize(mix(vec3(0.0, 1.0, 0.0), N, 0.70));
+	local_light_normal = normalize((VIEW_MATRIX * vec4(local_normal, 0.0)).xyz);
 	float rough = mix(0.29, 0.55, near_shore); // зыбь не должна давать белые зеркальные прямоугольники
 	ROUGHNESS = mix(rough, 0.88, foam);
 	SPECULAR = mix(0.55, 0.18, near_shore);
@@ -411,7 +417,8 @@ float proxima_t(float x) {
 }
 
 void light() {
-	vec3 n = normalize(NORMAL);
+	vec3 n = LIGHT_IS_DIRECTIONAL ? normalize(NORMAL)
+		: normalize(mix(NORMAL, local_light_normal, local_water_response));
 	vec3 l = normalize(LIGHT);
 	vec3 v = normalize(VIEW);
 	float nl = max(dot(n, l), 0.0);
@@ -421,14 +428,12 @@ void light() {
 	float nh = clamp(dot(h, n), 0.0, 1.0);
 	float hl = clamp(dot(h, l), 0.0, 1.0);
 	vec3 radiance = LIGHT_COLOR * ATTENUATION;
-	// У воды тёмный запечённый ALBEDO и малая доля реальной нормали.
-	// Только локальный свет (прожектор/маяк) усиливает диффузную
-	// читаемость пятна. Солнце, френель и глиттер не меняем.
-	// Сильный прожектор раньше почти не отражался: specular воды
-	// глобально срезан до 0.018 ради отсутствия солнечных полос.
-	// Для локальных источников отдельно разрешаем мягкий отклик.
-	float local_diffuse = LIGHT_IS_DIRECTIONAL ? 1.0 : 3.0;
-	float local_specular = LIGHT_IS_DIRECTIONAL ? direct_specular_amount : 0.08;
+	// Прежний local_diffuse=3 делал ровную матовую заливку как на пластике.
+	// Оставляем слабое объёмное рассеяние цвета; форму даёт отражение
+	// по нормали волн. Тонмаппер, солнечный specular и глиттер не меняем.
+	float local_diffuse = LIGHT_IS_DIRECTIONAL ? 1.0 : mix(3.0, 0.65, local_water_response);
+	float local_specular = LIGHT_IS_DIRECTIONAL ? direct_specular_amount
+		: mix(0.08, 0.22, local_water_response);
 
 	if (proxima_test < 0.5) {
 		float a = max(ROUGHNESS * ROUGHNESS, 0.002);
@@ -445,7 +450,10 @@ void light() {
 		float burley_v = 1.0 + (fd90 - 1.0) * pow(1.0 - nv, 5.0);
 		DIFFUSE_LIGHT += radiance * ALBEDO * (1.0 / PI)
 			* burley_l * burley_v * nl * local_diffuse;
-		SPECULAR_LIGHT += radiance * d * gl * gv * f * local_specular
+		// BRDF * cos(theta): раньше отсутствовавший nl усиливал локальный
+		// блик на скользящих углах. Солнечный отклик оставляем прежним.
+		float incidence = LIGHT_IS_DIRECTIONAL ? 1.0 : mix(1.0, nl, local_water_response);
+		SPECULAR_LIGHT += radiance * d * gl * gv * f * local_specular * incidence
 			/ max(4.0 * nl * nv, 1e-3);
 	} else {
 	float alpha = ROUGHNESS * ROUGHNESS;
