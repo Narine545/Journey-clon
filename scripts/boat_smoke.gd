@@ -53,6 +53,7 @@ func _physics_process(_delta: float) -> void:
 		_check_resource_zones()
 		_check_buoy_dynamics()
 		_check_photo_mode()
+		_check_camera_framing()
 		Input.action_press("boat_forward")
 	if ticks == 60:
 		trail_sample = main.boat._trail_buffer[2]
@@ -855,3 +856,27 @@ func _check_photo_mode() -> void:
 	_check(not photo.active and camera.projection == projection and camera.attributes == attributes and
 		is_equal_approx(camera.near, near_clip) and is_equal_approx(camera.far, far_clip) and
 		camera.global_transform.is_equal_approx(pose), "выход из фоторежима восстанавливает камеру")
+
+
+func _check_camera_framing() -> void:
+	var camera := main.camera
+	var saved_pose := camera.global_transform
+	var saved_size := camera.size
+	var focus := Vector3(114.0, 0.88, -38.0)
+	var preferred := Vector3(21.0, 26.2, 30.0)
+	camera.size = 160.0
+	camera.global_position = focus + preferred
+	camera.look_at(focus, Vector3.UP)
+	var landmark := Vector3(124.0, 6.0, -49.0)
+	var before := camera.unproject_position(landmark)
+	var offset := main.camera_framing.fit_offset(focus, preferred, camera, get_viewport().get_visible_rect().size)
+	camera.global_position = focus + offset
+	camera.look_at(focus, Vector3.UP)
+	var after := camera.unproject_position(landmark)
+	var lowest := camera.global_position.y - camera.global_basis.z.y * camera.near - camera.global_basis.y.y * camera.size * 0.5
+	_check(lowest >= Coast.SEA_LEVEL + 1.0,
+		"при 5× нижняя сторона near plane находится над водой")
+	_check(before.distance_to(after) < 0.05 and is_equal_approx(camera.size, 160.0),
+		"безопасное отступление камеры сохраняет кадр и охват 5×")
+	camera.size = saved_size
+	camera.global_transform = saved_pose

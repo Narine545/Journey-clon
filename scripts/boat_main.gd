@@ -27,6 +27,7 @@ var hud: BoatHud
 var inspector: WorldInspector
 var photo_mode: BoatPhotoMode
 var camera_height := 26.2
+var camera_framing := BoatCameraFraming.new()
 var slicks: Array[ResourceSlick] = []
 var resource_zones := ResourceZones.new()
 var buoy_dynamics := BuoyDynamics.new()
@@ -82,6 +83,7 @@ func _ready() -> void:
 	coast = Coast.new()
 	add_child(coast)
 	coast.setup(game)
+	camera_framing.setup(coast)
 	sand = SandField.new()
 	add_child(sand)
 	sand.setup(game)
@@ -1100,7 +1102,8 @@ func _process(delta: float) -> void:
 		# позиции лодки. Иначе при 60 Гц физики и другом FPS видны ступеньки.
 		var target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
 		_camera_focus = _camera_focus.lerp(target, 1.0 - exp(-4.0 * delta))
-		var desired := _camera_focus + Vector3(21.0, camera_height, 30.0)
+		var offset := camera_framing.fit_offset(_camera_focus, Vector3(21.0, camera_height, 30.0), camera, get_viewport().get_visible_rect().size)
+		var desired := _camera_focus + offset
 		# Один фильтр для focus; второй лаг позиции менял угол взгляда камеры
 		# при разгоне и поворотах, хотя ракурс должен оставаться изометрическим.
 		camera.global_position = desired

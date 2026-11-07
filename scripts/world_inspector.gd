@@ -178,7 +178,8 @@ func update_camera(delta: float) -> void:
 	_focus.y = clampf(_focus.y, -20.0, 2000.0)
 	var distance := maxf(_entry_distance, camera.size * 0.9)
 	var direction := Vector3(sin(_yaw) * cos(_pitch), sin(_pitch), cos(_yaw) * cos(_pitch))
-	camera.global_position = _focus + direction * distance
+	var offset := main.camera_framing.fit_offset(_focus, direction * distance, camera, size)
+	camera.global_position = _focus + offset
 	camera.look_at(_focus, Vector3.UP)
 
 
