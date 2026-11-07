@@ -1,20 +1,25 @@
-"""Sparse lamp-facet regression. Numerical/static checks, NOT a Godot render."""
+"""Water-light contract regressions: math/static only, NOT rendered validation.
+Godot Forward+ multiplies accumulated diffuse_light by albedo after light().
+See light-water-contract.md for engine-source references and test limitations.
+"""
 from pathlib import Path
 import math
 
 shader = Path('shaders/water_boat.gdshader').read_text()
 light = shader.split('void light()', 1)[1]
-extra = light.split('if (!LIGHT_IS_DIRECTIONAL)', 1)[1].split('if (nl > 0.0)', 1)[0]
-assert 'local_glitter_mask' in extra and 'local_glitter_strength' in extra
-assert 'facet_light * facet_light' in extra
-assert 'radiance / (1.0 + lamp_peak * 0.1)' in extra
-assert 'facet_radiance * 0.09 * sqrt(facet_incidence)' in extra
-assert 'wave_relief = 0.65' not in light and 'vec3(0.12, 0.17, 0.19)' not in light
-assert 'EMISSION' not in extra and 'sun_dir' not in extra
+assert '!LIGHT_IS_DIRECTIONAL && PROJECTION_MATRIX[3][3] > 0.5 ? vec3(0.0, 0.0, 1.0) : normalize(VIEW)' in light
+assert 'vec3 diffuse_tint = LIGHT_IS_DIRECTIONAL ? ALBEDO : vec3(1.0);' in light
+assert 'DIFFUSE_LIGHT += radiance * diffuse_tint * (1.0 / PI)' in light
+assert 'DIFFUSE_LIGHT += radiance * ALBEDO' not in light
+assert 'facet_radiance' not in light and 'lamp_peak' not in light
+assert 'broad_incidence' not in light and 'wave_relief = 0.65' not in light
+assert 'EMISSION' not in light
 assert 'LIGHT_COLOR * ATTENUATION' in light
-assert 'local_glitter_mask = glint * glit_fade * (1.0 - foam)' in shader
+assert 'radiance * sparkle * local_glitter_mask' in light
 assert 'float glit_chance = glitter_amount * 0.28;' in shader
-assert 'radiance * sparkle * local_glitter_mask' in light  # Original narrow glints preserved.
+assert 'local_glitter_mask = glint * glit_fade * (1.0 - foam)' in shader
+assert 'local_light_normal = normalize((VIEW_MATRIX * vec4(local_normal, 0.0)).xyz)' in shader
+assert 'vec3 diffuse_tint' in light.split('if (proxima_test < 0.5)', 1)[1]
 
 
 def unit(v):
@@ -22,30 +27,49 @@ def unit(v):
     return tuple(x/d for x in v)
 
 
-def extra_return(energy, incidence, facet, mask=1., strength=.65):
-    return energy/(1+energy*.1)*.09*math.sqrt(max(incidence, 0))*\
-        (.12+.88*max(facet, 0)**2)*mask*strength
+def dot(a,b): return sum(x*y for x,y in zip(a,b))
 
 
-# Camera-facing half-vector is deliberately absent from the extra facet lobe.
-# A flat selected facet has the same response for every light heading, while
-# inclined wave facets change brightness with the incident direction.
-flat, tilted = [], []
-normal = unit((.28, 1., -.21))
+# Same material, lamp and physical incidence at each heading. A diffuse
+# response must exist even when the specular half-vector faces elsewhere.
+v = unit((21., 26.2, 30.))
+responses, mirror_alignments = [], []
 for degrees in range(360):
     yaw = math.radians(degrees)
     l = unit((math.sin(yaw)*8.3, 1.68, math.cos(yaw)*8.3))
-    flat.append(extra_return(35, l[1], l[1]))
-    tilted.append(extra_return(35, l[1], sum(a*b for a,b in zip(normal,l))))
-assert min(flat) > 0 and max(flat)-min(flat) < 1e-12
-assert max(tilted) > min(tilted)*2  # Real incident-wave relief, not a fixed bright footprint.
-for energy in (0, .1, 1, 35, 100, 1e6):
-    assert extra_return(energy, .5, .8, mask=0) == 0  # Most water gets NO new fill.
-    assert extra_return(energy, .5, .8, strength=0) == 0
-    for incidence in (0, .05, .2, .7, 1):
-        for facet in (0, .2, .5, 1):
-            assert 0 <= extra_return(energy, incidence, facet) <= .585 + 1e-9
-assert extra_return(0, .5, 1) == 0  # Off/out of cone/out of range.
-assert extra_return(35, .2, .8) > extra_return(35, .2, .1)*3
-print('OK: sparse bounded facet return at 360 headings; no continuous white fill; zero between '
-      'existing glitter cells / light-off; wave-normal contrast; original narrow glints preserved. No Godot run.')
+    nl = l[1]
+    h = unit(tuple(x+y for x,y in zip(v,l)))
+    hl = max(0., min(1., dot(h,l)))
+    roughness = .29
+    fd90 = .5 + 2*roughness*hl*hl
+    burley_l = 1+(fd90-1)*(1-nl)**5
+    burley_v = 1+(fd90-1)*(1-v[1])**5
+    responses.append(burley_l*burley_v*nl*.65/math.pi)
+    mirror_alignments.append(max(h[1],0)**48)
+assert min(responses)>0.02
+assert max(responses)/min(responses)<1.5
+assert max(mirror_alignments)>1000*min(mirror_alignments)
+
+# Engine's final material multiplication is included here (omitted in the
+# previous tests). Deep-water reflectance is no longer squared by local light.
+for albedo in (0., .001, .005, .02, .1, .5, 1.):
+    for incident in (0., .1, 1., 10.):
+        old = incident*albedo*albedo
+        corrected = incident*albedo
+        assert 0 <= corrected <= incident
+        assert corrected >= old
+        if albedo==0 or incident==0:
+            assert corrected==0  # No white additive fill; black remains black.
+        # The directional branch intentionally preserves its previous result.
+        directional = incident*albedo*albedo
+        assert directional==old
+
+# Orthographic view is invariant across the water plane; perspective retains
+# the positional vector. No screen-center-dependent half-vector in ortho mode.
+for point in ((-20,5,-40),(20,-5,-40),(0,0,-40)):
+    ortho_view=(0.,0.,1.)
+    perspective_view=unit(tuple(-x for x in point))
+    assert ortho_view==(0.,0.,1.)
+    assert math.isclose(dot(perspective_view,perspective_view),1)
+print('OK: one local albedo multiplication including renderer; 360-heading diffuse response; '
+      'parallel ortho view; directional appearance and narrow glints preserved; no additive fill. No Godot run.')

@@ -434,25 +434,13 @@ void light() {
 	vec3 n = LIGHT_IS_DIRECTIONAL ? normalize(NORMAL)
 		: normalize(mix(NORMAL, local_light_normal, local_water_response));
 	vec3 l = normalize(LIGHT);
-	vec3 v = normalize(VIEW);
+	// Godot's VIEW is position-to-eye. An orthographic camera instead has
+	// parallel rays, matching the world-space V used by fragment() above.
+	vec3 v = !LIGHT_IS_DIRECTIONAL && PROJECTION_MATRIX[3][3] > 0.5 ? vec3(0.0, 0.0, 1.0) : normalize(VIEW);
 	float nl = max(dot(n, l), 0.0);
 	float nv = clamp(dot(n, v), 1e-3, 1.0);
 	vec3 radiance = LIGHT_COLOR * ATTENUATION;
-	if (!LIGHT_IS_DIRECTIONAL) {
-		// Only the already-selected glitter facets return this broader lobe.
-		// No continuous water-volume term: it washed out waves as a white veil.
-		vec3 water_up = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
-		float facet_incidence = max(dot(water_up, l), 0.0);
-		float facet_light = max(dot(normalize(local_glitter_normal), l), 0.0);
-		float facet_relief = 0.12 + 0.88 * facet_light * facet_light;
-		// Preserve the lamp hue and zero/off/cone attenuation, but bound this
-		// artistic extra return so a close/high-energy lamp cannot bleach cells.
-		float lamp_peak = max(max(radiance.r, radiance.g), radiance.b);
-		vec3 facet_radiance = radiance / (1.0 + lamp_peak * 0.1);
-		SPECULAR_LIGHT += facet_radiance * 0.09 * sqrt(facet_incidence)
-			* facet_relief * local_glitter_mask
-			* local_glitter_strength * local_water_response;
-	}
+
 	if (nl > 0.0) {
 	vec3 h = normalize(v + l);
 	float nh = clamp(dot(h, n), 0.0, 1.0);
@@ -487,7 +475,11 @@ void light() {
 		float fd90 = 0.5 + 2.0 * ROUGHNESS * hl * hl;
 		float burley_l = 1.0 + (fd90 - 1.0) * pow(1.0 - nl, 5.0);
 		float burley_v = 1.0 + (fd90 - 1.0) * pow(1.0 - nv, 5.0);
-		DIFFUSE_LIGHT += radiance * ALBEDO * (1.0 / PI)
+		// Forward+ multiplies accumulated DIFFUSE_LIGHT by ALBEDO at the end.
+		// Local lamps were tinting it twice, almost squaring dark night water.
+		// Keep the accepted directional appearance unchanged in this fix.
+		vec3 diffuse_tint = LIGHT_IS_DIRECTIONAL ? ALBEDO : vec3(1.0);
+		DIFFUSE_LIGHT += radiance * diffuse_tint * (1.0 / PI)
 			* burley_l * burley_v * nl * local_diffuse;
 		// BRDF * cos(theta): раньше отсутствовавший nl усиливал локальный
 		// блик на скользящих углах. Солнечный отклик оставляем прежним.
