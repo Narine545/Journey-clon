@@ -109,7 +109,13 @@ func _draw() -> void:
 	var action := "ИЩИТЕ СВЕТЯЩИЕСЯ ПЯТНА И ЗАЖИГАЙТЕ МАЯКИ НА БЕРЕГУ"
 	var action_col := ink
 
-	if not dock_b.is_empty():
+	if main.harbor != null and main.harbor.moored:
+		action = "ТИХАЯ БУХТА: ПРИШВАРТОВАНЫ  •  E — ОТЧАЛИТЬ"
+		action_col = accent
+	elif main.harbor != null and main.harbor.near_berth():
+		action = "E — ШВАРТОВКА  •  СКОРОСТЬ ДО 1.2 М/С"
+		action_col = accent
+	elif not dock_b.is_empty():
 		if dock_b["lit"]:
 			action = "E — ПРИЧАЛ МАЯКА «%s» (ПОЛНЫЙ РЕМОНТ КОРПУСА)" % dock_b["name"].to_upper()
 			action_col = accent
@@ -141,7 +147,7 @@ func _draw() -> void:
 	if pump_fraction > 0.0:
 		draw_rect(Rect2(center + Vector2(0, 35), Vector2(490.0 * pump_fraction, 3)), accent)
 
-	var controls := "W/S — ХОД   A/D — РУЛЬ   ПРОБЕЛ — НАСОС   R — ПЕРЕРАБОТКА   E — МАЯК   1/2/3 — СОНАР/РЕМОНТ/ФОРСАЖ   B/T — ПЛАШКОУТ"
+	var controls := "W/S — ХОД   A/D — РУЛЬ   ПРОБЕЛ — НАСОС   R — ПЕРЕРАБОТКА   E — МАЯК/ПРИЧАЛ   1/2/3 — СОНАР/РЕМОНТ/ФОРСАЖ   B/T — ПЛАШКОУТ"
 	draw_string(font, Vector2(28, size.y - 28), controls, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, ink)
 	if main.notice_time > 0.0:
 		draw_string(font, Vector2(size.x * 0.5 - 290, size.y - 168), main.notice, HORIZONTAL_ALIGNMENT_CENTER, 580, 17, warn)
@@ -176,7 +182,7 @@ func _draw_beacon_compass(font: Font, center: Vector2, radius: float, backdrop: 
 				var pt_s := center + scr_s * clampf(d_s / 85.0, 0.15, 0.90) * (radius - 6.0)
 				draw_circle(pt_s, 3.0, ResourceSlick.COLORS[slick.kind])
 
-	# Отображаем все 3 Маяка на ободе компаса
+	# Отображаем все Маяки на ободе компаса
 	for b in main.beacons:
 		var bp: Vector3 = b["buoy_pos"]
 		var rel := Vector2(bp.x, bp.z) - boat_xz

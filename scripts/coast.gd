@@ -1,18 +1,8 @@
 class_name Coast
 extends MeshInstance3D
-## Берег: пляж, дюны за спиной и морское дно под водой — одна карта высот.
-##
-## Море — на уровне SEA_LEVEL (Y = 0), суша поднимается от уреза вглубь,
-## за пляжем встают дюны, а по краям залива — дюнные мысы, закрывающие
-## горизонт. Рельеф — непрерывная функция height_at(); по ней строится
-## сетка и по ней же (бикубически) ходит физика путника.
-##
-## ПОВЕРХНОСТЬ = берег + НАСТОЯЩИЙ ПЕСОК: SandField добавляет смещения
-## от следов, и физика/камера/ветер идут по этой сумме.
-##
-## Урез воды не рисуется по рёбрам сетки: море остаётся гладкой
-## поверхностью, а fragment-depth и мягкая прозрачность дают чистый
-## переход у берега. Узкую мокрую кайму красит шейдер песка.
+## Closed island and seabed share a single sampled height field with the water.
+## IslandLayout owns the coast, hills and bay; this class owns mesh/CPU/GPU data.
+## SandField displacement remains real geometry, including walking footprints.
 
 const OUTER_SEABED := -100.0
 const EDGE_TRANSITION := 64.0
@@ -24,21 +14,7 @@ const SEA_LEVEL := 0.0 # уровень моря, м
 const SPAWN_Z := -14.0 # z стартовой точки на пляже
 const SPAWN_INLAND := 26.0 # сколько метров вглубь от уреза
 
-# --- береговой профиль ---
-const BEACH_SLOPE := 0.062 # подъём пляжа от уреза (≈3.5°)
-const BEACH_BERM := 22.0 # где пляж выполаживается в берму (м от уреза)
-const DUNE_FOOT := 34.0 # начало дюн (м от уреза)
-const DUNE_SPAN := 64.0 # ширина подножия дюн (м)
-const BACK_DUNE0 := 130.0 # дальняя стена дюн: начало (м от уреза)
-const BACK_DUNE1 := 330.0 # дальняя стена дюн: полная высота
-const SEABED_SLOPE := 0.085 # уклон дна у берега
-const SEABED_DEEP := 0.17 # уклон дна дальше от берега
-
-# --- ambient occlusion (запекается по карте высот) ---
-const SHORE_LUT_Z0 := -460.0
-const SHORE_LUT_Z1 := 460.0
-const SHORE_LUT_N := 1024
-
+# --- ambient occlusion, baked from the same island heights ---
 const AO_STEP := 4
 const AO_DIRS := 8
 const AO_RAYS := [2.5, 6.0, 12.0]
@@ -46,19 +22,9 @@ const AO_RAYS := [2.5, 6.0, 12.0]
 var game: GameState # автозагрузка Game
 var sand: SandField # поле настоящего песка (может не быть)
 
-var _coast := FastNoiseLite.new() # изгиб линии уреза
-var _dune := FastNoiseLite.new() # варп дюн
-var _ridge := FastNoiseLite.new() # гребни дюн вдоль берега
-var _macro := FastNoiseLite.new() # где дюны выше/ниже
-var _fine := FastNoiseLite.new() # микродеталь пляжа
-var _bars := FastNoiseLite.new() # песчаные отмели под водой
-
 var _grid := PackedFloat32Array()
 var _dgrid := PackedFloat32Array() # 0 — пляж, 1 — дюны (для шейдера)
 var _ao_grid := PackedFloat32Array()
-## Одномерная «карта уреза»: shore_x(z). Её читает море, чтобы плавно
-## растворяться у песка (иначе линия пересечения рвётся треугольниками).
-var shore_lut: ImageTexture
 ## Карта высот поверхности (та же, что у меша): шейдер моря кладёт
 ## плёнку прибоя прямо на песок — иначе на буграх она рвётся лоскутами.
 var height_tex: ImageTexture
@@ -79,65 +45,15 @@ func setup(game_ref) -> void:
 	_cell = SIZE / float(SEGMENTS)
 	_row = SEGMENTS + 1
 
-	_coast.seed = 733
-	_coast.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_coast.frequency = 0.010
-	_coast.fractal_octaves = 2
-
-	_dune.seed = 517
-	_dune.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_dune.frequency = 0.006
-	_dune.fractal_octaves = 1
-
-	_ridge.seed = 1373
-	_ridge.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_ridge.frequency = 1.0
-	_ridge.fractal_octaves = 1
-
-	_macro.seed = 991
-	_macro.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_macro.frequency = 0.004
-	_macro.fractal_octaves = 2
-
-	_fine.seed = 771
-	_fine.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_fine.frequency = 1.0
-	_fine.fractal_octaves = 1
-
-	_bars.seed = 3117
-	_bars.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	_bars.frequency = 1.0
-	_bars.fractal_octaves = 2
-
-	_build_shore_lut() # после настройки шума: та же линия, что у геометрии
 	_build_grid()
 	_build_ao()
 	_build_mesh()
 
 
-# ---------------------------------------------------------------------------
-# Карта уреза для шейдера моря
-# ---------------------------------------------------------------------------
-
-func _build_shore_lut() -> void:
-	var img := Image.create(SHORE_LUT_N, 1, false, Image.FORMAT_RF)
-	for i in range(SHORE_LUT_N):
-		var z := lerpf(SHORE_LUT_Z0, SHORE_LUT_Z1, (float(i) + 0.5) / float(SHORE_LUT_N))
-		img.set_pixel(i, 0, Color(shore_x(z), 0.0, 0.0))
-	shore_lut = ImageTexture.create_from_image(img)
-
-
-# ---------------------------------------------------------------------------
-# Форма берега
-# ---------------------------------------------------------------------------
-
-## Где сейчас урез воды при данном z (мировой X линии уреза).
+## Western land entry for legacy walking/fishing props only.
+## This is not a terrain classifier: a closed coastline is not a function X(Z).
 func shore_x(z: float) -> float:
-	var n: float = _coast.get_noise_1d(z + 40.0)
-	var sx: float = 9.0 * sin(z * 0.011) + 5.0 * sin(z * 0.0043 + 1.7) + 13.0 * n
-	# концы залива заворачивают сушу к морю — залив закрыт дюнами
-	sx -= 130.0 * smoothf(absf(z), 250.0, 430.0)
-	return sx
+	return IslandLayout.west_shore(z)
 
 
 ## Точка старта: всегда на одном и том же расстоянии вглубь от уреза.
@@ -145,61 +61,14 @@ func spawn_point() -> Vector2:
 	return Vector2(shore_x(SPAWN_Z) + SPAWN_INLAND, SPAWN_Z)
 
 
-## Высота ДЮН (без песка) в мировой точке.
+## Island terrain (before SandField displacement) in world space.
 func height_at(x: float, z: float) -> float:
-	var sx := shore_x(z)
-	var t := x - sx # + вглубь суши, − в море
-
-	var h := 0.0
-	if t >= 0.0:
-		h = t * BEACH_SLOPE
-		# пляж не гладкий: микродеталь и мягкая берма
-		h += _fine.get_noise_2d(x * 0.16, z * 0.16) * 0.085 * smoothf(t, 0.0, 4.0)
-		h += 0.42 * bump01(t, 10.0, 26.0) * (0.55 + 0.45 * (_macro.get_noise_2d(x * 0.02, z * 0.02) * 0.5 + 0.5))
-		# дюны: гребни вытянуты вдоль берега, варп изгибает их линии
-		var dm := smoothf(t, DUNE_FOOT, DUNE_FOOT + DUNE_SPAN)
-		if dm > 0.001:
-			h += dm * _dune_height(x, z)
-		# дальняя стена дюн — горизонт за спиной закрыт настоящим песком
-		var back := smoothf(t, BACK_DUNE0, BACK_DUNE1)
-		h += back * (26.0 + 13.0 * (_macro.get_noise_2d(x * 0.007 + 9.0, z * 0.007) * 0.5 + 0.5))
-	else:
-		# морское дно: сначала мелководье, дальше — свал
-		var d := -t
-		h = -d * SEABED_SLOPE
-		h -= smoothf(d, 26.0, 120.0) * d * (SEABED_DEEP - SEABED_SLOPE)
-		# у самого уреза песок чистый: шум просыпается только на глубине,
-		# иначе дно то выныривает, то прячется — урез рвётся лоскутами
-		var calm := smoothf(d, 0.0, 7.0)
-		h += _bars.get_noise_2d(x * 0.02, z * 0.02) * 0.55 * calm
-		# у самого уреза — песчаная «коса» под водой, мягко
-		h += _fine.get_noise_2d(x * 0.09, z * 0.09) * 0.10 * calm
-
-	# залив закрыт по краям: дюны поднимаются в том числе из воды
-	var ez := smoothf(absf(z), 245.0, 430.0)
-	if ez > 0.001:
-		h += ez * (8.0 + 16.0 * smoothf(t, -20.0, 90.0))
-
-	return h
+	return IslandLayout.height_at(Vector2(x, z))
 
 
-## Высота дюнного поля над пляжем (гребни вдоль берега).
-func _dune_height(x: float, z: float) -> float:
-	var w: float = _dune.get_noise_2d(x * 1.0, z * 1.0) * 42.0
-	var ridge: float = _ridge.get_noise_2d((x + w) * 0.024, z * 0.0072)
-	var h: float = 3.2 + 9.0 * (ridge * 0.5 + 0.5)
-	var m: float = 0.72 + 0.55 * (_macro.get_noise_2d(x, z) * 0.5 + 0.5)
-	h *= m
-	h += 0.9 * _fine.get_noise_2d(x * 0.055, z * 0.055)
-	return h
-
-
-## 0..1 «дюнность» точки — для покраски шейдером (гребни/ложбины).
+## Material blend from actual elevation: beach hollows to upland crests.
 func dune01_at(x: float, z: float) -> float:
-	var t := x - shore_x(z)
-	if t < DUNE_FOOT * 0.5:
-		return 0.0
-	return smoothf(t, DUNE_FOOT * 0.6, DUNE_FOOT + DUNE_SPAN)
+	return smoothf(height_at(x, z), 0.8, 14.0)
 
 
 ## Глубина воды в точке (0 — сухо). Учитывает следы на песке.
@@ -361,7 +230,7 @@ func _build_grid() -> void:
 			var edge := smoothf(dx, 0.0, EDGE_TRANSITION) \
 				* smoothf(dz, 0.0, EDGE_TRANSITION)
 			_grid[i] = lerpf(OUTER_SEABED, height_at(x, z), edge)
-			_dgrid[i] = dune01_at(x, z) * edge
+			_dgrid[i] = smoothf(_grid[i], 0.8, 14.0) # reuse height; no second coast evaluation
 	_build_height_tex()
 
 
@@ -445,7 +314,6 @@ func _build_mesh() -> void:
 	mat.set_shader_parameter("sand_texel", SandField.TEXEL)
 	# мокрая полоса у уреза и подводный песок — красит шейдер
 	mat.set_shader_parameter("sea_level", SEA_LEVEL)
-	mat.set_shader_parameter("shore_lut", shore_lut)
 	# Узкая мокрая кайма сохраняет тёплую палитру суши; вода остаётся
 	# отдельным холодным материалом.
 	mat.set_shader_parameter("wet_band", 0.18)

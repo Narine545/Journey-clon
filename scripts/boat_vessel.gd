@@ -191,6 +191,10 @@ func _physics_process(delta: float) -> void:
 	if main != null and main.inspection_active():
 		throttle = 0.0
 		steer = 0.0
+	if main != null and main.harbor != null and main.harbor.moored:
+		throttle = 0.0
+		steer = 0.0
+		speed = 0.0
 	_steer_visual = lerpf(_steer_visual, steer, minf(1.0, delta * 5.5))
 
 	var max_spd := effective_max_speed()
@@ -201,6 +205,7 @@ func _physics_process(delta: float) -> void:
 
 	# При текущем ракурсе положительный yaw ведёт нос ВЛЕВО на экране.
 	# Input axis: A=-1, D=+1; A должен давать положительный yaw.
+	var previous_yaw := rotation.y
 	rotation.y += steering_yaw_delta(steer, speed, delta)
 
 	var heading := -global_transform.basis.z
@@ -241,6 +246,12 @@ func _physics_process(delta: float) -> void:
 				speed = 0.0
 				break
 
+	if main != null and main.harbor != null and main.harbor.blocks_hull(Vector2(next.x, next.z), rotation.y):
+		hit_reef = true
+		speed = 0.0
+		rotation.y = previous_yaw
+		heading = -global_transform.basis.z
+		right = global_transform.basis.x
 	if not hit_reef:
 		if coast.water_depth(next.x, next.z) > 1.7:
 			if _make_room_for_trailer(next):
@@ -311,12 +322,18 @@ func _separate_trailer_from(boat_at: Vector3, trailer_at: Vector3) -> Vector3:
 	return Vector3(boat_at.x + gap.x, trailer_at.y, boat_at.z + gap.y)
 
 
+func _harbor_blocks_trailer(at: Vector2) -> bool:
+	return main != null and main.harbor != null and main.harbor.blocks_hull(at, _trailer.rotation.y, 1.5, 2.8)
+
+
 func _make_room_for_trailer(boat_next: Vector3) -> bool:
 	if not has_trailer or _trailer == null:
 		return true
 	var pushed := _separate_trailer_from(boat_next, _trailer.global_position)
 	if pushed.distance_squared_to(_trailer.global_position) < 0.000001:
 		return true
+	if _harbor_blocks_trailer(Vector2(pushed.x, pushed.z)):
+		return false
 	if coast.water_depth(pushed.x, pushed.z) < 1.2:
 		return false
 	_trailer.global_position = pushed
@@ -564,17 +581,20 @@ func _update_trailer(delta: float) -> void:
 	if dist > 0.001:
 		var dir := to_hitch / dist
 		var target_yaw := atan2(-dir.x, -dir.z)
+		var previous_yaw := _trailer.rotation.y
 		_trailer.rotation.y = lerp_angle(_trailer.rotation.y, target_yaw, minf(1.0, delta * 4.2))
+		if _harbor_blocks_trailer(Vector2(trailer_pos.x, trailer_pos.z)):
+			_trailer.rotation.y = previous_yaw
 		var pull_dist := 5.65
 		if dist > pull_dist:
 			var desired_xz := Vector2(stern_center.x, stern_center.z) - Vector2(dir.x, dir.z) * pull_dist
 			var next_xz := Vector2(trailer_pos.x, trailer_pos.z).lerp(desired_xz, minf(1.0, delta * 7.5))
-			if coast == null or coast.water_depth(next_xz.x, next_xz.y) > 1.2:
+			if (coast == null or coast.water_depth(next_xz.x, next_xz.y) > 1.2) and not _harbor_blocks_trailer(next_xz):
 				trailer_pos.x = next_xz.x
 				trailer_pos.z = next_xz.y
 
 	var separated := _separate_trailer_from(global_position, trailer_pos)
-	if coast != null and coast.water_depth(separated.x, separated.z) < 1.2:
+	if (coast != null and coast.water_depth(separated.x, separated.z) < 1.2) or _harbor_blocks_trailer(Vector2(separated.x, separated.z)):
 		trailer_pos = _trailer.global_position
 	else:
 		trailer_pos = separated

@@ -40,14 +40,15 @@ func _physics_process(_delta: float) -> void:
 			right_heading.dot(view_right) > heading.dot(view_right) and
 			main.boat.steering_yaw_delta(-1.0, -5.0, 0.2) < 0.0,
 			"A ведёт нос влево на экране, D вправо, задний ход инвертирует руль")
-		_check(main.beacons.size() == 3 and main.reefs.size() > 0,
-			"три маяка и морские рифы созданы")
+		_check(main.beacons.size() == 4 and main.reefs.size() > 0,
+			"четыре маяка и морские рифы созданы")
 		var safe_buoys := true
 		for beacon in main.beacons:
 			var bp: Vector3 = beacon["buoy_pos"]
 			if main.coast.water_depth(bp.x, bp.z) < 4.5:
 				safe_buoys = false
 		_check(safe_buoys, "каждый причальный буй на глубине не менее 4.5 м")
+		_check_island_harbor()
 		Input.action_press("boat_forward")
 	if ticks == 60:
 		trail_sample = main.boat._trail_buffer[2]
@@ -635,3 +636,37 @@ func _check_world_inspector() -> void:
 	main.camera.global_transform = old_transform
 	tool.markers = old_markers
 	tool.selected = old_selected
+
+
+func _check_island_harbor() -> void:
+	for beacon in main.beacons:
+		var tower: Vector3 = beacon["tower_pos"]
+		_check(tower.y > 0.5 and is_equal_approx(tower.y,
+			main.coast.ground_height(tower.x, tower.z) + 0.15), "маяк опирается на настоящий рельеф")
+	for i in range(24):
+		var x := lerpf(-160.0, 88.0, float(i) / 23.0)
+		_check(main.coast.water_depth(x, -30.0) > 4.5, "вход в бухту открыт с моря")
+	var port := main.harbor
+	_check(port != null and main.coast.water_depth(IslandLayout.BERTH.x, IslandLayout.BERTH.y) > 4.5,
+		"настоящий причал стоит над глубокой водой")
+	_check(port.blocks_hull(Vector2(110, -30), -PI * 0.5) and
+		not port.blocks_hull(IslandLayout.BERTH, PI * 0.5), "пирс блокирует корпус, но не место стоянки")
+	var saved := main.boat.global_position
+	var yaw := main.boat.rotation.y
+	main.boat.global_position.x = IslandLayout.BERTH.x - 3.0
+	main.boat.global_position.z = IslandLayout.BERTH.y
+	main.boat.speed = 2.0
+	port.interact()
+	_check(not port.moored, "нельзя швартоваться на ходу")
+	main.boat.speed = 0.0
+	port.interact()
+	_check(port.moored and is_equal_approx(main.boat.rotation.y, PI * 0.5),
+		"швартовка ставит лодку вдоль причала")
+	port.interact()
+	_check(not port.moored, "повторное действие отдаёт швартовы")
+	main.boat.global_position = saved
+	main.boat.rotation.y = yaw
+	if main.boat.has_trailer:
+		main.boat.set_trailer_enabled(true)
+	main.boat._reset_trail(Vector2(saved.x, saved.z))
+	main.boat.reset_physics_interpolation()

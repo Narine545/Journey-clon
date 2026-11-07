@@ -29,6 +29,7 @@ uniform float wind_power = 1.0;
 
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
 uniform float orthographic_glitter = 0.0; // только изометрическая сцена лодки
+uniform float island_biome = 0.0; // boat island only; original sand scene unchanged
 uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.5;
 uniform float shadow_star_density : hint_range(0.15, 0.98) = 0.30;
@@ -55,9 +56,6 @@ uniform float proxima_smooth_terminator_length = 0.5;
 // depth-тестом. Мокрую полосу и подводный песок красит этот же шейдер:
 // у уреза песок темнее, холоднее и глянцевее, искры гаснут.
 uniform float sea_level = 0.0;   // мировой Y уровня моря
-uniform sampler2D shore_lut : filter_linear, repeat_disable;
-uniform float shore_lut_z_min = -460.0;
-uniform float shore_lut_z_max = 460.0;
 uniform vec2 shadow_star_focus = vec2(0.0);
 uniform float shadow_star_radius = 0.0;
 uniform float wet_band = 0.16;   // ВЫСОТА над водой (м), где песок ещё мокрый
@@ -198,6 +196,14 @@ void fragment() {
 	// Мелкое зерно сохраняет фактуру песка без ветровых полос.
 	base *= 1.0 + (vnoise(wp * 2.7) - 0.5) * 0.08 * detail;
 
+	// Restrained scrub/rock colour inland only. Keep accepted beach/glitter intact.
+	float upland = island_biome * smoothstep(3.0, 9.0, w_pos.y - sea_level);
+	vec3 scrub = mix(vec3(0.23, 0.28, 0.19), vec3(0.40, 0.43, 0.27),
+		vnoise(wp * 0.032 + vec2(9.0, 1.0)));
+	vec3 rock = vec3(0.40, 0.39, 0.34);
+	vec3 inland = mix(scrub, rock, smoothstep(0.08, 0.28, 1.0 - N.y));
+	base = mix(base, inland * (0.62 + 0.54 * wrap) * ao, upland * 0.90);
+
 	// ---------- 2a. Урез: прибой ----------
 	// Высота воды в точке — ТА ЖЕ формула, что в vertex water.gdshader:
 	// море дышит, и мокрая кайма ползёт по пляжу вместе с ним.
@@ -266,7 +272,7 @@ void fragment() {
 	glint *= 0.40 + 0.60 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0));
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
 	float glit_fade = exp(-dist * 0.004); // искры живут далеко, до горизонта
-	glint *= 1.0 - 0.85 * wet; // мокрый песок не сверкает
+	glint *= (1.0 - 0.85 * wet) * (1.0 - 0.8 * upland); // мокрый песок не сверкает
 	glint *= 1.0 - smoothstep(0.12, 0.82, night_amount); // ночью оставляем только искры в тенях
 	// искры бьют сильно (2+ единицы) — даже на ярком песке после
 	// Filmic-тонмаппинга они остаются точками, а glow даёт им ореол
@@ -340,10 +346,8 @@ void light() {
 	// ATTENUATION содержит настоящую тень от причала/камней. Каждая звезда
 	// остаётся на песке в мировых координатах, а не перемещается с камерой.
 	float cast_shadow = smoothstep(0.48, 0.84, 1.0 - clamp(ATTENUATION, 0.0, 1.0));
-	float shore_u = clamp((w_pos.z - shore_lut_z_min)
-		/ (shore_lut_z_max - shore_lut_z_min), 0.0, 1.0);
-	float shore_x = texture(shore_lut, vec2(shore_u, 0.5)).r;
-	float dry_sand = smoothstep(0.0, 1.5, w_pos.x - shore_x);
+	// An enclosed island has east/north/south shores too. Never use X-shore(z).
+	float dry_sand = smoothstep(0.02, 0.20, w_pos.y - sea_level);
 	float focus_dist = distance(w_pos.xz, shadow_star_focus);
 	float star_zone = 1.0 - smoothstep(shadow_star_radius - 0.6,
 		shadow_star_radius + 0.6, focus_dist);

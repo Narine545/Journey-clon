@@ -3,11 +3,9 @@ extends Node3D
 ## Игровой цикл «To The Light»:
 ## - Сбор и переработка 4 пигментов, покупка буксируемого плашкоута
 ## - Наступающие сумерки (динамический night01)
-## - Цепь из 3 Погасших Маяков с глубоководными причальными буями вдоль берега
+## - Цепь из 4 Погасших Маяков с глубоководными причальными буями вдоль берега
 ## - Морские рифы, прочность корпуса и 3 активные судовые системы (Сонар, Ремонт, Форсаж)
 
-const START_Z := Coast.SPAWN_Z
-const START_SEAWARD := 95.0
 const SLICK_RECYCLE_DISTANCE := 60.0
 const SLICK_SPAWN_MIN := 38.0
 const SLICK_SPAWN_MAX := 57.0
@@ -19,6 +17,7 @@ const RME4_NOISE_PX := 32
 
 var game: GameState
 var world: GameWorld
+var harbor: IslandHarbor
 var coast: Coast
 var sand: SandField
 var water: WaterSurface
@@ -87,6 +86,7 @@ func _ready() -> void:
 	sand.setup(game)
 	coast.attach_sand(sand)
 	coast.set_sand("orthographic_glitter", 1.0)
+	coast.set_sand("island_biome", 1.0)
 	water = WaterSurface.new()
 	water.shader_path = "res://shaders/water_boat.gdshader"
 	add_child(water)
@@ -99,12 +99,15 @@ func _ready() -> void:
 	# Только физически движущаяся ветка: вода/камера/пятна живут в _process.
 	boat.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_ON
 	add_child(boat)
-	boat.global_position = Vector3(coast.shore_x(START_Z) - START_SEAWARD, 0.2, START_Z)
+	boat.global_position = Vector3(IslandLayout.BOAT_START.x, 0.2, IslandLayout.BOAT_START.y)
 	boat.setup(self, water, coast)
 	boat.reset_physics_interpolation()
 	if OS.get_environment("JOURNEY_BOAT_SHOT_TRAILER") == "1":
 		boat.set_trailer_enabled(true)
 	_build_resources()
+	harbor = IslandHarbor.new()
+	add_child(harbor)
+	harbor.setup(self)
 	_build_beacons()
 	_build_reefs()
 	_slick_rng.seed = 845239
@@ -203,7 +206,7 @@ func _apply_atmosphere(n01: float) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Постройка 3 береговых Маяков с причальными буями и морских рифов
+# Постройка 4 береговых Маяков с причальными буями и морских рифов
 # ---------------------------------------------------------------------------
 
 func _mat(col: Color, metal := 0.0, glow := 0.0, rough := 0.68) -> StandardMaterial3D:
@@ -220,24 +223,14 @@ func _mat(col: Color, metal := 0.0, glow := 0.0, rough := 0.68) -> StandardMater
 
 func _build_beacons() -> void:
 	var specs := [
-		{
-			"name": "Южный Створ",
-			"z": START_Z - 105.0,
-			"cost": PackedInt32Array([1, 0, 1, 0]), # 1 Бирюза + 1 Янтарь
-			"color": Color("ffd485"),
-		},
-		{
-			"name": "Рифовый Мыс",
-			"z": START_Z + 18.0,
-			"cost": PackedInt32Array([1, 1, 1, 0]), # 1 Бирюза + 1 Коралл + 1 Янтарь
-			"color": Color("78f0dc"),
-		},
-		{
-			"name": "Северный Бастион",
-			"z": START_Z + 142.0,
-			"cost": PackedInt32Array([1, 1, 1, 1]), # Все 4 очищенных пигмента
-			"color": Color("f5b8ff"),
-		},
+		{"name": "Бухтовый Мыс", "bearing": -145.0,
+			"cost": PackedInt32Array([1, 0, 1, 0]), "color": Color("ffd485")},
+		{"name": "Северный Дозор", "bearing": -78.0,
+			"cost": PackedInt32Array([1, 1, 1, 0]), "color": Color("78f0dc")},
+		{"name": "Восточная Скала", "bearing": 12.0,
+			"cost": PackedInt32Array([1, 1, 1, 1]), "color": Color("f5b8ff")},
+		{"name": "Южный Створ", "bearing": 100.0,
+			"cost": PackedInt32Array([1, 1, 1, 1]), "color": Color("a6cfff")},
 	]
 	var stone_mat := _mat(Color("3b4247"), 0.15, 0.0, 0.82)
 	var tower_mat := _mat(Color("c9c2b4"), 0.08, 0.0, 0.68)
@@ -246,15 +239,18 @@ func _build_beacons() -> void:
 
 	for i in range(specs.size()):
 		var s: Dictionary = specs[i]
-		var bz: float = s["z"]
-		var shore_x := coast.shore_x(bz)
-		var tower_pos := Vector3(shore_x + 10.0, Coast.SEA_LEVEL + 1.2, bz)
-		# Ищем настоящую глубину, а не предполагаем, что 36 м от берега
-		# автоматически дают обещанные 4.5 м (обычно там лишь ~3 м).
-		var buoy_x := shore_x - 36.0
-		while coast.water_depth(buoy_x, bz) < 4.5 and buoy_x > shore_x - 110.0:
-			buoy_x -= 3.0
-		var buoy_pos := Vector3(buoy_x, Coast.SEA_LEVEL, bz)
+		var site := IslandLayout.coastal_site(float(s["bearing"]))
+		var land: Vector2 = site["land"]
+		var shore: Vector2 = site["shore"]
+		var outward: Vector2 = site["outward"]
+		var tower_pos := Vector3(land.x, coast.ground_height(land.x, land.y) + 0.15, land.y)
+		var buoy_at := shore + outward * 36.0
+		for step in range(30):
+			if coast.water_depth(buoy_at.x, buoy_at.y) >= 4.5:
+				break
+			buoy_at += outward * 3.0
+		assert(coast.water_depth(buoy_at.x, buoy_at.y) >= 4.5, "Unsafe lighthouse buoy")
+		var buoy_pos := Vector3(buoy_at.x, Coast.SEA_LEVEL, buoy_at.y)
 
 		var root := Node3D.new()
 		root.name = "CoastalBeacon%d" % i
@@ -285,7 +281,7 @@ func _build_beacons() -> void:
 		# Вращающийся прожекторный луч маяка
 		var beam_pivot := Node3D.new()
 		beam_pivot.position = Vector3(0.0, 10.3, 0.0)
-		beam_pivot.rotation.y = PI * 0.5 # начальный луч в сторону моря (-X)
+		beam_pivot.rotation.y = atan2(-outward.x, -outward.y) # наружу от своего мыса
 		tower.add_child(beam_pivot)
 		var spot := SpotLight3D.new()
 		spot.light_color = s["color"]
@@ -341,6 +337,7 @@ func _build_beacons() -> void:
 			"color": s["color"],
 			"lit": false,
 			"tower_pos": tower_pos,
+			"outward": outward,
 			"buoy_node": buoy,
 			"buoy_pos": buoy_pos,
 			"lantern_mat": lantern_mat,
@@ -357,23 +354,27 @@ func _build_beacons() -> void:
 
 
 func _build_reefs() -> void:
-	# Координаты скал выбраны в стороне от стартового коридора автотеста boat_smoke.gd
-	var offsets := [
-		Vector2(18.0, -34.0),
-		Vector2(-26.0, -48.0),
-		Vector2(24.0, 52.0),
-		Vector2(-38.0, 68.0),
-		Vector2(12.0, -82.0),
-		Vector2(22.0, 108.0),
-	]
-	var base := Vector2(boat.global_position.x, boat.global_position.z)
+	# Keep the test/start lane clear; other rocks mark offshore headlands.
+	var base := IslandLayout.BOAT_START
+	var locations: Array[Vector2] = [base + Vector2(18.0, -34.0),
+		base + Vector2(-26.0, -48.0), base + Vector2(24.0, 52.0)]
+	for bearing in [-40.0, 45.0, 138.0]:
+		var site := IslandLayout.coastal_site(float(bearing))
+		var shore: Vector2 = site["shore"]
+		var outward: Vector2 = site["outward"]
+		locations.append(shore + outward * 40.0)
 	var rock_mat := _mat(Color("222a30"), 0.12, 0.0, 0.88)
 	var barnacle_mat := _mat(Color("3d4b4a"), 0.08, 0.0, 0.85)
 	var warn_mat := _mat(Color("f06848"), 0.1, 1.5, 0.3)
 
-	for i in range(offsets.size()):
-		var rp: Vector2 = base + offsets[i]
-		if coast.water_depth(rp.x, rp.y) < 3.5:
+	for i in range(locations.size()):
+		var rp: Vector2 = locations[i]
+		var near_buoy := false
+		for beacon in beacons:
+			var bp: Vector3 = beacon["buoy_pos"]
+			if rp.distance_to(Vector2(bp.x, bp.z)) < 25.0:
+				near_buoy = true
+		if near_buoy or coast.water_depth(rp.x, rp.y) < 3.5:
 			continue
 		var r_node := Node3D.new()
 		r_node.name = "SeaReef%d" % i
@@ -1009,7 +1010,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				toggle_trailer_free()
 				get_viewport().set_input_as_handled()
 			KEY_E:
-				interact_with_beacon()
+				if harbor != null and (harbor.moored or harbor.near_berth()):
+					harbor.interact()
+				else:
+					interact_with_beacon()
 				get_viewport().set_input_as_handled()
 			KEY_1:
 				activate_sonar()

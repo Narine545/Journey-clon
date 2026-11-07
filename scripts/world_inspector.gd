@@ -306,6 +306,9 @@ func make_report() -> Dictionary:
 		var pivot: Node3D = beacon["beam_pivot"]
 		optics.append(pivot.rotation.y)
 	report["beacon_yaws"] = optics
+	report["island_layout"] = "closed-island-1"
+	report["harbor_berth_xz"] = [IslandLayout.BERTH.x, IslandLayout.BERTH.y]
+	report["harbor_moored"] = main.harbor != null and main.harbor.moored
 	return report
 
 
@@ -527,11 +530,24 @@ func _draw() -> void:
 		var camera_point := world_to_map(Vector2(main.camera.global_position.x, main.camera.global_position.z), rect, _map_span, _map_center)
 		if rect.has_point(camera_point):
 			draw_circle(camera_point, 4.0, Color("ffffff"))
+		var harbor_point := world_to_map(IslandLayout.BERTH, rect, _map_span, _map_center)
+		if rect.has_point(harbor_point):
+			draw_rect(Rect2(harbor_point - Vector2(4, 4), Vector2(8, 8)), Color("9ad1ee"))
+			_text(harbor_point + Vector2(8, 16), "БУХТА", Color("9ad1ee"), 12)
 		for beacon in main.beacons:
 			var bp: Vector3 = beacon["buoy_pos"]
+			var tp: Vector3 = beacon["tower_pos"]
+			var col: Color = beacon["color"]
 			var pos := world_to_map(Vector2(bp.x, bp.z), rect, _map_span, _map_center)
+			var tower := world_to_map(Vector2(tp.x, tp.z), rect, _map_span, _map_center)
+			if rect.has_point(pos) and rect.has_point(tower):
+				draw_line(tower, pos, Color(col.r, col.g, col.b, 0.6), 1.0)
 			if rect.has_point(pos):
-				draw_circle(pos, 5.0, Color("f8c37b"))
+				draw_circle(pos, 3.0, col)
+			if rect.has_point(tower):
+				draw_circle(tower, 5.0, col)
+				if _map_span <= 1800.0:
+					_text(tower + Vector2(7, -7), str(beacon["name"]), col, 11)
 		for index in range(markers.size()):
 			var point := markers[index]
 			var marker := world_to_map(Vector2(point.x, point.z), rect, _map_span, _map_center)

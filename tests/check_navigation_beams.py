@@ -9,7 +9,12 @@ assert 'nav_col, 0.10, 1.1, nav_mat' in vessel
 assert 'spot.spot_range = 90.0' in main
 assert 'spot.spot_angle = 12.0' in main
 assert 'spot_l.light_energy = 18.0' in main
-assert 'beam_pivot.rotation.y = PI * 0.5' in main
+assert 'beam_pivot.rotation.y = atan2(-outward.x, -outward.y)' in main
+# All headlands start facing seaward, rather than assuming the sea lies west.
+for nx, nz in ((1, 0), (0, -1), (-1, 0), (0, 1)):
+    yaw = math.atan2(-nx, -nz)
+    assert math.isclose(-math.sin(yaw), nx, abs_tol=1e-9)
+    assert math.isclose(-math.cos(yaw), nz, abs_tol=1e-9)
 assert 'spot.position = Vector3(0.0, 0.0, -1.3)' in main
 assert 'spot.rotation = Vector3(-atan2(tower_pos.y + 10.3, 32.0), 0.0, 0.0)' in main
 assert 'delta * TAU / 18.0' in main
