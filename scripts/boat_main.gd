@@ -46,6 +46,7 @@ var debug_night_paused := false
 var debug_night_fill := 0.18
 var debug_lighting_profile := true
 var debug_headlight_enabled := true
+var debug_local_water_response := true
 var debug_retro_enabled := false
 # RME4-слой — это штатный воздух сцены, а не отладочный режим: без него
 # Forward+ не рендерит объёмный туман вовсе (см. configure_boat_lighting).
@@ -174,6 +175,7 @@ func _apply_atmosphere(n01: float) -> void:
 	# Плавно убрать её до наступления полной темноты.
 	water.set_param("sun_path_amount", 0.09 * (1.0 - clampf((night01 - 0.25) / 0.53, 0.0, 1.0)))
 	water.set_param("direct_specular_amount", 0.018)
+	water.set_param("local_water_response", 1.0 if debug_local_water_response else 0.0)
 	water.set_param("surface_light_detail", 0.16) # [L] не меняет нормаль воды
 	water.set_param("swell_light_detail", 0.65) # [K] — сравнение с прежней водой
 	if boat != null:
@@ -707,9 +709,12 @@ func debug_toggle_wave_lighting() -> void:
 
 
 func debug_toggle_local_water_response() -> void:
-	var enabled := float(water.material().get_shader_parameter("local_water_response")) < 0.5
-	water.set_param("local_water_response", 1.0 if enabled else 0.0)
-	announce("[I] ВОДА ПОД ФОНАРЁМ: %s" % ("ВОЛНОВОЕ ОТРАЖЕНИЕ" if enabled else "ПРЕЖНЯЯ"))
+	# Не читаем Variant из ShaderMaterial: отсутствующий override может
+	# вернуть null. Состояние переключателя принадлежит сцене.
+	debug_local_water_response = not debug_local_water_response
+	water.set_param("local_water_response", 1.0 if debug_local_water_response else 0.0)
+	announce("[I] ВОДА ПОД ФОНАРЁМ: %s" % (
+		"ВОЛНОВОЕ ОТРАЖЕНИЕ" if debug_local_water_response else "ПРЕЖНЯЯ"))
 
 
 func debug_toggle_headlight() -> void:

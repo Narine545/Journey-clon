@@ -812,19 +812,25 @@ func _build_appearance() -> void:
 
 	_loft_segment(_body, -2.62, -2.52, -0.18, -0.22, 2.82, 2.94, 2.28, 2.14, 2.16, 2.04, roof_ochre)
 
-	# Прожектор, радар и сигнальная мачта
-	_cyl_on(_body, Vector3(0.0, 3.08, -2.28), 0.11, 0.13, 0.26, dark_iron, Vector3(PI * 0.5 - 0.28, 0.0, 0.0), 12)
-	_cyl_on(_body, Vector3(0.0, 3.12, -2.38), 0.09, 0.09, 0.06, _material(Color("ffdf9e"), 0.1, 2.0, 0.2), Vector3(PI * 0.5 - 0.28, 0.0, 0.0), 12)
+	# Носовой прожектор: стойка над фальшбортом, линза у конца носа.
+	# Раньше свет и корпус фонаря были на крыше рубки (z около -2.4).
+	_cyl_on(_body, Vector3(0.0, 1.51, -5.48), 0.09, 0.09, 0.28,
+		dark_iron, Vector3.ZERO, 12)
+	_cyl_on(_body, Vector3(0.0, 1.72, -5.62), 0.14, 0.14, 0.30,
+		dark_iron, Vector3(PI * 0.5 - 0.20, 0.0, 0.0), 12)
+	_cyl_on(_body, Vector3(0.0, 1.69, -5.78), 0.115, 0.115, 0.035,
+		_material(Color("ffdf9e"), 0.1, 2.0, 0.2),
+		Vector3(PI * 0.5 - 0.20, 0.0, 0.0), 12)
 	_bow_spot = SpotLight3D.new()
 	_bow_spot.light_color = Color("ffe8ba")
 	_bow_spot.light_energy = 24.0
 	_bow_spot.spot_range = 24.0
 	_bow_spot.spot_angle = 30.0
 	_bow_spot.light_volumetric_fog_energy = 2.0
-	_bow_spot.position = Vector3(0.0, 3.12, -2.45)
-	# -Z вдоль курса, наклон вниз: пятно на воде в нескольких метрах
-	# перед носом, а не вдали под туманом.
-	_bow_spot.rotation = Vector3(-0.48, 0.0, 0.0)
+	_bow_spot.position = Vector3(0.0, 1.68, -5.84)
+	# Источник перед линзой и фальшбортом. Наклон ~11.5 градусов:
+	# ось пересекает спокойную воду примерно в 8 м перед фонарём.
+	_bow_spot.rotation = Vector3(-0.20, 0.0, 0.0)
 	_body.add_child(_bow_spot)
 
 	_cyl_on(_body, Vector3(0.0, 3.12, -1.35), 0.10, 0.14, 0.36, cabin_chalk)

@@ -296,7 +296,8 @@ func _physics_process(_delta: float) -> void:
 		main.boat.update_night_lights(main.night01, false)
 		var spot := main.boat._bow_spot
 		_check(spot != null and spot.light_energy > 36.0 and
-			spot.spot_range < 30.0 and spot.rotation.x < -0.4,
+			spot.spot_range < 30.0 and spot.rotation.x < -0.1 and spot.rotation.x > -0.3 and
+			spot.position.z < -5.7 and spot.position.y > 1.4 and spot.position.y < 2.0,
 			"ночной прожектор усилен, оставаясь локальным")
 		_check(main.boat._window_glass_mat.emission_energy_multiplier > 0.8 and
 			main.boat._window_glass_mat.emission == Color("ffd49a") and
