@@ -450,6 +450,13 @@ func _check_slick_disturbance() -> void:
 	probe.react_to_sweep(center + Vector2(0.0, 30.0), center - Vector2(0.0, 30.0),
 		forward, 4.7, 1.6, 0.1)
 	_check(probe._film == null, "плёнка не создаётся при стоянке, дальнем проходе и телепорте")
+	probe.react_to_sweep(center + Vector2(0.0, 7.6), center + Vector2(0.0, 7.2),
+		forward, 4.7, 1.6, 0.1)
+	for step in range(10):
+		probe._update_disturbance(0.05)
+	_check(probe._film != null and not probe._film.disturbed and is_zero_approx(probe._film_blend),
+		"до физического касания пятно сохраняет обычный бесформенный контур")
+	probe._reset_disturbance()
 	probe._glow_charge = 0.6
 	probe.react_to_sweep(before, after, forward, 4.7, 1.6, 0.1)
 	var film := probe._film

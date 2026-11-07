@@ -255,10 +255,10 @@ func _update_disturbance(delta: float) -> void:
 	_mat.set_shader_parameter("film_interpolation", _film.interpolation())
 	# После физического затихания возвращаем живой процедурный контур.
 	# Во время контакта и несколько секунд после него маска целиком из частиц.
-	var target := 0.0 if _film.idle > 9.0 else 1.0
-	_film_blend = move_toward(_film_blend, target, delta * (0.5 if target == 0.0 else 6.0))
+	var target := 1.0 if _film.disturbed and _film.idle <= 3.5 else 0.0
+	_film_blend = move_toward(_film_blend, target, delta * (1.5 if target == 0.0 else 6.0))
 	_mat.set_shader_parameter("film_blend", _film_blend)
-	if _film_blend <= 0.0 and target == 0.0:
+	if _film_blend <= 0.0 and _film.idle > 3.5:
 		_reset_disturbance()
 
 

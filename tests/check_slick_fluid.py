@@ -34,8 +34,10 @@ class FilmReference:
                     self.positions.append(point)
         self.origins = [point[:] for point in self.positions]
         self.velocities = [[0., 0.] for _ in self.positions]
+        self.rest_forces = None
+        self.step(capture_rest=True)
 
-    def step(self, hull_y=None, idle=0, width=1.6, speed=4, half_length=4.7):
+    def step(self, hull_y=None, idle=0, width=1.6, speed=4, half_length=4.7, capture_rest=False):
         dt, count = .025, len(self.positions)
         density = [1.] * count
         forces = [[0., 0.] for _ in self.positions]
@@ -61,11 +63,18 @@ class FilmReference:
                 force = offset[k] * factor + (self.velocities[j][k] - self.velocities[i][k]) * q * 3
                 forces[i][k] += force
                 forces[j][k] -= force
-        t = max(0, min(1, (idle - 1.5) / 3.5))
-        recovery = t * t * (3 - 2 * t) * .9
+        if capture_rest:
+            self.rest_forces = forces
+            return
+        t = max(0, min(1, (idle - .2) / 1.0))
+        recovery = t * t * (3 - 2 * t) * 3.2
         for i in range(count):
+            displacement = math.dist(self.positions[i], self.origins[i])
+            a = max(0, min(1, (displacement - .02) / .33))
+            activity = a * a * (3 - 2 * a)
             for k in range(2):
-                force = forces[i][k] + (self.origins[i][k] - self.positions[i][k]) * recovery
+                force = forces[i][k] - self.rest_forces[i][k] * (1 - activity)
+                force += (self.origins[i][k] - self.positions[i][k]) * recovery
                 self.velocities[i][k] = (self.velocities[i][k] + force * dt) * math.exp(-2.4 * dt)
             length = math.hypot(*self.velocities[i])
             if length > 2:
@@ -130,6 +139,14 @@ def components(pixels):
     return sorted(result, key=len, reverse=True)
 
 
+# Prewarmed/no-contact particles must retain the original organic contour,
+# even with a nearby moving hull that has not yet touched them.
+untouched = FilmReference(17, 17)
+original = [point[:] for point in untouched.positions]
+for tick in range(100):
+    untouched.step(hull_y=12, idle=tick * .025)
+assert untouched.positions == original
+
 for seed, phase in ((17, 17), (0, 0), (1, 3), (4, 9), (7, 4), (2, 14)):
     film = FilmReference(seed, phase)
     count = len(film.positions)
@@ -151,7 +168,7 @@ for seed, phase in ((17, 17), (0, 0), (1, 3), (4, 9), (7, 4), (2, 14)):
         assert len(part) / box_area < .9  # Not a filled rectangle / planar pair of doors.
     assert len(film.positions) == count
     assert abs(sum(pixels) / initial_mass - 1) < .005  # Discrete splat integration tolerance.
-    for tick in range(40, 360):
+    for tick in range(40, 90):
         film.step(idle=tick * .025)
     assert len(components(film.raster())) == 1, seed
     assert all(math.isfinite(v) and abs(v) <= 3.55 for p in film.positions for v in p)
@@ -177,10 +194,12 @@ source = Path('scripts/slick_film.gd').read_text()
 for guard in ('const RESOLUTION := 64', 'const SPACING := 0.30', 'const KERNEL := 0.62',
               'const REST_DENSITY := 2.55', 'const STEP := 0.05', '-8.0, 24.0',
               '(-10.0 * pow(1.0 - distance / 1.8, 2.0))', 'exp(-2.4 * dt)',
-              '.limit_length(2.0)', 'smoothstep(1.5, 5.0, idle)', 'Image.FORMAT_RGBAF',
+              '.limit_length(2.0)', 'smoothstep(0.2, 1.2, idle)', 'Image.FORMAT_RGBAF',
               'pixels[slot + 1] += weight * origins[i].x', 'texture.update(image)',
               '_hulls[source_id] = [from, to, heading, half_length, half_width, speed]',
-              'STEP * 2.0'):
+              'STEP * 2.0', '_rest_forces = forces.duplicate()',
+              'forces[i] - _rest_forces[i] * (1.0 - activity)',
+              'if distance < radius + 0.1:', 'disturbed = true'):
     assert guard in source, guard
 assert 'split_axis' not in source and 'split_bias' not in source
 # An untyped array literal makes its loop element Variant in Godot. Multiplying
@@ -189,4 +208,4 @@ assert 'for side in [-1.0, 1.0]' not in source
 assert 'for side_index in range(2):' in source
 assert 'var side: float =' in source
 assert 'var curl: Vector2 =' in source
-print('OK: 6 film passes + barge form two rounded density regions; mass, reunion, standing barrier, bounds.')
+print('OK: no precontact collapse; fast reunion; 6 film passes + barge form two rounded density regions; mass, reunion, standing barrier, bounds.')

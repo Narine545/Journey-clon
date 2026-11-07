@@ -19,6 +19,8 @@ var texture: ImageTexture
 var previous_texture: ImageTexture
 var _last_image: Image
 var idle := 0.0
+var disturbed := false
+var _rest_forces := PackedVector2Array()
 var _accumulator := 0.0
 var _hulls: Dictionary = {}
 var _neighbors := PackedVector4Array()
@@ -41,6 +43,8 @@ func setup(variation: float, shape_time: float) -> void:
 	assert(positions.size() <= MAX_PARTICLES)
 	densities.resize(positions.size())
 	forces.resize(positions.size())
+	_compute_forces()
+	_rest_forces = forces.duplicate()
 	_upload()
 
 
@@ -62,7 +66,6 @@ func push_hull(from: Vector2, to: Vector2, heading: Vector2,
 	if _hulls.has(source_id):
 		from = _hulls[source_id][0]
 	_hulls[source_id] = [from, to, heading, half_length, half_width, speed]
-	idle = 0.0
 
 
 func advance(delta: float) -> bool:
@@ -85,7 +88,7 @@ func interpolation() -> float:
 	return clampf(_accumulator / STEP, 0.0, 1.0)
 
 
-func _integrate(dt: float, hulls: Array) -> void:
+func _compute_forces() -> void:
 	var count := positions.size()
 	densities.fill(1.0)
 	forces.fill(Vector2.ZERO)
@@ -122,11 +125,20 @@ func _integrate(dt: float, hulls: Array) -> void:
 		force += (velocities[j] - velocities[i]) * q * 3.0
 		forces[i] += force
 		forces[j] -= force
-	var recovery := smoothstep(1.5, 5.0, idle) * 0.9
-	for i in range(count):
+
+
+func _integrate(dt: float, hulls: Array) -> void:
+	_compute_forces()
+	var recovery := smoothstep(0.2, 1.2, idle) * 3.2
+	for i in range(positions.size()):
 		# Художественное возвращение к исходной области после затихания:
 		# это сила, а не crossfade двух готовых половин.
-		var force := forces[i] + (origins[i] - positions[i]) * recovery
+		var displacement := positions[i].distance_to(origins[i])
+		var activity := smoothstep(0.02, 0.35, displacement)
+		# Well-balanced старт: компенсируем собственное давление исходного
+		# контура, иначе сцепление округляет пятно ещё до удара носом.
+		var force := forces[i] - _rest_forces[i] * (1.0 - activity)
+		force += (origins[i] - positions[i]) * recovery
 		velocities[i] = ((velocities[i] + force * dt) * exp(-2.4 * dt)).limit_length(2.0)
 		positions[i] += velocities[i] * dt
 		for hull in hulls:
@@ -149,7 +161,11 @@ func _collide(index: int, hull: Array, dt: float) -> void:
 	var offset := at - closest
 	var distance := offset.length()
 	var radius: float = hull[4] + 0.14
+	if distance < radius + 0.1:
+		idle = 0.0
 	if distance < radius:
+		if radius - distance > 0.02:
+			disturbed = true
 		var normal := offset / maxf(distance, 0.0001)
 		if distance < 0.001:
 			normal = Vector2(-direction.y, direction.x) * (-1.0 if index & 1 else 1.0)
