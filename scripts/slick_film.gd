@@ -160,12 +160,13 @@ func _collide(index: int, hull: Array, dt: float) -> void:
 	# Пара противовращающихся вихрей за кормой, а не одинаковый сдвиг
 	# всей стороны. Деформация зависит от положения каждой частицы.
 	var lateral := Vector2(-direction.y, direction.x)
-	for side in [-1.0, 1.0]:
+	for side_index in range(2):
+		var side: float = -1.0 if side_index == 0 else 1.0
 		var center: Vector2 = hull[1] - direction * spine + lateral * radius * side
 		var r := positions[index] - center
 		var r2 := r.length_squared()
 		if r2 < 6.0:
-			var curl := Vector2(-r.y, r.x) * side * exp(-r2 * 0.7) / (r2 + 0.4)
+			var curl: Vector2 = Vector2(-r.y, r.x) * side * exp(-r2 * 0.7) / (r2 + 0.4)
 			velocities[index] += curl * minf(float(hull[5]), 8.0) * dt * 0.35
 
 

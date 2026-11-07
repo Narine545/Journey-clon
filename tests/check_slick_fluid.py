@@ -183,4 +183,10 @@ for guard in ('const RESOLUTION := 64', 'const SPACING := 0.30', 'const KERNEL :
               'STEP * 2.0'):
     assert guard in source, guard
 assert 'split_axis' not in source and 'split_bias' not in source
+# An untyped array literal makes its loop element Variant in Godot. Multiplying
+# a Vector2 by it prevented inference of curl (gdparse does not catch this).
+assert 'for side in [-1.0, 1.0]' not in source
+assert 'for side_index in range(2):' in source
+assert 'var side: float =' in source
+assert 'var curl: Vector2 =' in source
 print('OK: 6 film passes + barge form two rounded density regions; mass, reunion, standing barrier, bounds.')
