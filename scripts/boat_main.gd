@@ -749,7 +749,7 @@ func debug_toggle_retro() -> void:
 ## в _ready(): без него в Forward+ не рисуется вообще ничего, и шейдер
 ## даже не компилируется.
 ##
-## Бокс намеренно ВЫШЕ самого туманного слоя (60 м при слое до 15 м).
+## BOX остаётся высоким (60 м); рабочий низкий слой ограничен y <= 2.6 м.
 ## Прошлая версия брала бокс 18 м толщиной и гасила край через
 ## smoothstep(0, 18, -SDF) — при такой геометрии «край» наступал ровно
 ## там, где плотность максимальна, и срезал её почти в ноль. Теперь
@@ -823,9 +823,9 @@ func _apply_fog_diagnostic() -> void:
 
 ## [O] — сравнение формы и собственного свечения одного FogVolume.
 func debug_toggle_mystery_atmosphere() -> void:
-	if debug_fog_diagnostic != 0:
-		announce("СНАЧАЛА ВЫЙДИТЕ ИЗ ТЕСТА ТУМАНА КЛАВИШЕЙ [U]")
-		return
+	# O всегда возвращает рабочую атмосферу, даже если оставлен тест U.
+	while debug_fog_diagnostic != 0:
+		debug_cycle_fog_diagnostic()
 	if _rme4_material == null:
 		announce("[O] ОБЪЁМНЫЙ ПРОФИЛЬ НЕДОСТУПЕН: НУЖЕН FORWARD+")
 		return
@@ -833,7 +833,7 @@ func debug_toggle_mystery_atmosphere() -> void:
 	_rme4_material.set_shader_parameter("mystery_profile",
 		1.0 if debug_mystery_atmosphere else 0.0)
 	announce("[O] ТУМАН: %s" % (
-		"ПЛОТНЫЕ МАССЫ" if debug_mystery_atmosphere else "ПРЕЖНИЙ СЛОЙ"))
+		"НИЗКИЙ ТУМАН" if debug_mystery_atmosphere else "ПРЕЖНИЙ ВЫСОКИЙ СЛОЙ"))
 
 
 func debug_toggle_headlight_shadows() -> void:

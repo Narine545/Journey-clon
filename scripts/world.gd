@@ -325,6 +325,10 @@ func configure_boat_lighting() -> void:
 	_env.volumetric_fog_enabled = true
 	_env.volumetric_fog_anisotropy = 0.70
 	_env.volumetric_fog_gi_inject = 0.0
+	# Тонкий слой требует более мелких ячеек по глубине. Для изометрии
+	# тратить 160 м на невидимую даль не нужно; число froxel-ов не растёт.
+	_env.volumetric_fog_length = 80.0
+	_env.volumetric_fog_detail_spread = 1.0
 	_sun.directional_shadow_max_distance = 100.0
 
 

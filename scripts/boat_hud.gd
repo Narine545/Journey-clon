@@ -117,7 +117,7 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
 
 		draw_string(font, dbg + Vector2(12, 322),
-			"[O] — ТУМАН: %s" % ("МАССЫ" if main.debug_mystery_atmosphere else "ПРЕЖНИЙ"),
+			"[O] — ТУМАН: %s" % ("НИЗКИЙ" if main.debug_mystery_atmosphere else "ВЫСОКИЙ"),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
 		draw_string(font, dbg + Vector2(12, 345),
 			"[Y] — ТЕНИ ПРОЖЕКТОРА: %s" % (

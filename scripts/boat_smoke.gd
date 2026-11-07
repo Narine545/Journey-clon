@@ -344,14 +344,14 @@ func _physics_process(_delta: float) -> void:
 				rme4_mat.get_shader_parameter("density_noise") != null,
 				"RME4-шейдер получил рабочую плотность и 3D-шум")
 			_check(is_equal_approx(float(rme4_mat.get_shader_parameter("mystery_profile")), 1.0),
-				"густой профиль с неровной высотой включён по умолчанию")
+				"низкий профиль у воды включён по умолчанию")
 			main.debug_toggle_mystery_atmosphere()
 			_check(is_zero_approx(float(rme4_mat.get_shader_parameter("mystery_profile"))) and
 				is_zero_approx(main.world._env.volumetric_fog_density),
 				"[O] возвращает старый профиль без второго слоя плотности")
 			main.debug_toggle_mystery_atmosphere()
 			_check(is_equal_approx(float(rme4_mat.get_shader_parameter("mystery_profile")), 1.0),
-				"[O] возвращает густые массы")
+				"[O] возвращает низкий туман")
 			var fog_glitter_before := float(main.water.material().get_shader_parameter("glitter_amount"))
 			var fog_sun_before := main.world._sun.light_volumetric_fog_energy
 			main.debug_toggle_rme4_fog()

@@ -22,7 +22,7 @@ uniform sampler3D density_noise : repeat_enable, filter_linear;
 
 // 0 = день, 1 = ночь. Двигает плотность, цвет и собственное свечение.
 uniform float night_factor : hint_range(0.0, 1.0) = 0.0;
-// [O]: 0 — прежний ровный слой, 1 — плотные массы и неровная граница.
+// [O]: 0 — прежний высокий слой, 1 — низкий туман у ватерлинии.
 uniform float mystery_profile : hint_range(0.0, 1.0) = 1.0;
 // [U] диагностика: обходим шум, высоту и зависимость видимости от света.
 uniform bool diagnostic_volume = false;
@@ -62,34 +62,39 @@ void fog() {
 
 	float patches = smoothstep(patch_threshold, patch_threshold + 0.24, n);
 	// Более тёмные просветы между массами, а не рост равномерной пелены.
-	float body = mix(mix(base_fill, 0.14, profile), 1.0, patches);
+	float body = mix(mix(base_fill, 0.20, profile), 1.0, patches);
 
 	// Одна дополнительная выборка: независимое от высоты поле потолка.
 	// Медленный мировой дрейф, без привязки к камере или лодке.
 	float height_noise = texture(density_noise,
 		vec3(wp.x * 0.024, 0.37, wp.z * 0.024) + wind * 0.45).r;
-	float ceiling = 10.0 + height_noise * 12.0;
+	float ceiling = 1.2 + height_noise * 1.4;
 	float legacy_height = 1.0 - smoothstep(7.0, 15.0, wp.y);
-	float bank_height = 1.0 - smoothstep(ceiling - 5.0, ceiling, wp.y);
-	float height_mask = smoothstep(0.0, 1.2, wp.y)
-		* mix(legacy_height, bank_height, profile);
+	// Верх корпуса входит в слой частично, рубка/мачта остаются выше.
+	float bank_height = smoothstep(-0.15, 0.25, wp.y)
+		* (1.0 - smoothstep(ceiling - 0.65, ceiling, wp.y));
+	float height_mask = mix(smoothstep(0.0, 1.2, wp.y) * legacy_height,
+		bank_height, profile);
 
-	// В Godot SDF — скалярное signed distance, внутри объёма отрицательное.
-	// Гасим край широкой полосой, иначе бокс читается стеклянным паралле-
-	// лелепипедом с видимой гранью.
-	// Ловушка: у FOG_VOLUME_SHAPE_WORLD SDF всегда остаётся -1.0, поэтому
-	// этот edgefade срезал бы плотность до 4 %. Объём обязан быть BOX.
-	float edge = smoothstep(0.0, 18.0, -SDF);
+	// Высоту уже задаёт bank_height. Полный SDF коробки у воды включает
+	// расстояние до нижней грани и дополнительно срезает тонкий слой.
+	// В новом профиле гасим ТОЛЬКО боковые стенки (UVW — координаты BOX).
+	vec2 side_distance = min(UVW.xz, vec2(1.0) - UVW.xz) * SIZE.xz;
+	float horizontal_edge = smoothstep(0.0, 18.0, min(side_distance.x, side_distance.y));
+	float edge = mix(smoothstep(0.0, 18.0, -SDF), horizontal_edge, profile);
 
 	float night = clamp(night_factor, 0.0, 1.0);
-	DENSITY = density_scale * mix(1.0, 1.55, profile)
+	DENSITY = density_scale * mix(1.0, 4.0, profile)
 		* body * height_mask * edge * mix(0.90, 1.12, night);
 
 	// Альбедо однократного рассеяния (НЕ домноженное на плотность — это
 	// сделает сам Godot). Тёплое на низком солнце, холодное ночью.
 	float low_sun = clamp(1.0 - sun_direction.y * 2.2, 0.0, 1.0);
 	vec3 albedo = mix(day_albedo, dusk_tint, low_sun * (1.0 - night));
-	ALBEDO = mix(albedo, night_albedo, night);
+	vec3 legacy_albedo = mix(albedo, night_albedo, night);
+	// Туман, а не чёрный дым: оставляем достаточно рассеяния для фонаря.
+	vec3 low_fog_albedo = mix(vec3(0.75, 0.80, 0.82), vec3(0.58, 0.65, 0.73), night);
+	ALBEDO = mix(legacy_albedo, low_fog_albedo, profile);
 
 	// Собственное свечение раньше заполняло ночные тени. Сохраняем лишь
 	// четверть в новом профиле: главный акцент должен давать реальный свет.
