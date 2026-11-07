@@ -178,6 +178,10 @@ func is_on_port_working_side(world_pos: Vector3) -> bool:
 func _physics_process(delta: float) -> void:
 	if water == null or coast == null:
 		return
+	var slick_previous_position := Vector2(global_position.x, global_position.z)
+	var slick_previous_trailer := Vector2.ZERO
+	if has_trailer and _trailer != null:
+		slick_previous_trailer = Vector2(_trailer.global_position.x, _trailer.global_position.z)
 	_anim_time += delta
 	_refine_flash = maxf(0.0, _refine_flash - delta * 1.8)
 	_impact_cooldown = maxf(0.0, _impact_cooldown - delta)
@@ -280,6 +284,16 @@ func _physics_process(delta: float) -> void:
 	_record_world_wake_trail(delta, heading)
 	_update_animations(delta)
 	_update_trailer(delta)
+	if main != null:
+		var slick_heading := Vector2(heading.x, heading.z).normalized()
+		var slick_current := Vector2(global_position.x, global_position.z)
+		for slick in main.slicks:
+			slick.react_to_sweep(slick_previous_position, slick_current, slick_heading, 4.7, 1.6, delta)
+			if has_trailer and _trailer != null:
+				var trailer_forward := -_trailer.global_basis.z
+				slick.react_to_sweep(slick_previous_trailer,
+					Vector2(_trailer.global_position.x, _trailer.global_position.z),
+					Vector2(trailer_forward.x, trailer_forward.z), 2.8, 1.4, delta)
 	_update_pump(delta)
 	_sync_water_shader()
 

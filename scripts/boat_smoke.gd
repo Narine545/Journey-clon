@@ -423,6 +423,7 @@ func _physics_process(_delta: float) -> void:
 		main.debug_warp_to_beacon()
 		_check(not main.nearby_dock_beacon().is_empty() and main.boat.speed == 0.0,
 			"[6] доставляет судно к бую без рывка двигателя")
+		_check_slick_disturbance()
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))
 		get_tree().quit(0 if failures == 0 else 1)
 
@@ -433,3 +434,40 @@ func _check(ok: bool, description: String) -> void:
 	else:
 		failures += 1
 		push_error("[BOAT SMOKE] FAIL " + description)
+
+
+func _check_slick_disturbance() -> void:
+	var probe := ResourceSlick.new()
+	main.add_child(probe)
+	var center := Vector2(main.boat.global_position.x, main.boat.global_position.z)
+	probe.setup(main.water, center, 0, 17.0)
+	var before := center + Vector2(0.0, 0.2)
+	var after := center - Vector2(0.0, 0.2)
+	var forward := Vector2(0.0, -1.0)
+	probe.react_to_sweep(center, center, forward, 4.7, 1.6, 0.1)
+	probe.react_to_sweep(before + Vector2(30.0, 0.0), after + Vector2(30.0, 0.0),
+		forward, 4.7, 1.6, 0.1)
+	probe.react_to_sweep(center + Vector2(0.0, 30.0), center - Vector2(0.0, 30.0),
+		forward, 4.7, 1.6, 0.1)
+	_check(is_zero_approx(probe._split_hold), "пятно не реагирует на стоянку, дальний проход и телепорт")
+	probe._glow_charge = 0.6
+	probe.react_to_sweep(before, after, forward, 4.7, 1.6, 0.1)
+	probe._update_disturbance(0.5)
+	_check(probe._split_amount > 0.9 and not probe.depleted and
+		is_equal_approx(probe._glow_charge, 0.6),
+		"проход корпуса разделяет пятно, не расходуя ресурс и ночной заряд")
+	probe._update_disturbance(10.0)
+	_check(is_zero_approx(probe._split_amount), "пятно самостоятельно срастается после прохода")
+	probe.react_to_sweep(before, after, forward, 2.8, 1.4, 0.1)
+	probe._update_disturbance(0.5)
+	_check(probe._split_amount > 0.9, "баржа тоже может разделить сросшееся пятно")
+	probe.relocate_smoothly(probe.position)
+	_check(is_zero_approx(probe._split_amount) and is_zero_approx(probe._split_hold),
+		"перенос пятна сбрасывает деформацию")
+	probe._fade = 1.0
+	probe.react_to_sweep(before, after, forward, 4.7, 1.6, 0.1)
+	probe.collect()
+	probe.react_to_sweep(before, after, forward, 4.7, 1.6, 0.1)
+	_check(probe.depleted and is_zero_approx(probe._split_hold),
+		"собранное пятно не реагирует и не сохраняет старый разрез")
+	probe.queue_free()

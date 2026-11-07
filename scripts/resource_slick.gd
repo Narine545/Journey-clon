@@ -9,6 +9,9 @@ const FLOAT_HEIGHT := 0.34
 const CHARGE_RATE := 2.0
 const GLOW_HOLD_SECONDS := 5.0
 const GLOW_FADE_SECONDS := 6.0
+const SPLIT_HOLD_SECONDS := 1.4
+const SPLIT_OPEN_RATE := 2.8
+const SPLIT_CLOSE_RATE := 0.28
 const COLORS: Array[Color] = [
 	Color("31c2bd"), # приливная бирюза
 	Color("f07b62"), # коралл
@@ -28,16 +31,21 @@ var _water: WaterSurface
 var _age := 0.0
 var _respawn := 0.0
 var _fade := 1.0
+var _split_amount := 0.0
+var _split_hold := 0.0
+var _split_strength := 0.0
+var _split_rng := RandomNumberGenerator.new()
 
 
 func setup(water: WaterSurface, at: Vector2, resource_kind: int, variation: float) -> void:
 	_water = water
+	_split_rng.seed = int(absf(variation) * 10000.0) + resource_kind * 137 + 41
 	kind = resource_kind % COLORS.size()
 	position = Vector3(at.x, water.surface_height(at.x, at.y) + FLOAT_HEIGHT, at.y)
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(5.6, 5.6)
-	plane.subdivide_width = 12
-	plane.subdivide_depth = 12
+	plane.size = Vector2(8.0, 8.0)
+	plane.subdivide_width = 18
+	plane.subdivide_depth = 18
 	mesh = plane
 	_mat = ShaderMaterial.new()
 	_mat.shader = SHADER
@@ -55,6 +63,7 @@ func setup(water: WaterSurface, at: Vector2, resource_kind: int, variation: floa
 
 func relocate_smoothly(new_pos: Vector3) -> void:
 	_reset_afterglow()
+	_reset_disturbance()
 	position = new_pos
 	_fade = 0.0
 	if _mat != null:
@@ -79,6 +88,7 @@ func _process(delta: float) -> void:
 			_mat.set_shader_parameter("wave_amp", _water.field.mega_amp)
 			_mat.set_shader_parameter("wave_power", _water.field.wind_power)
 			_mat.set_shader_parameter("wave_wind", _water.field.wind_dir)
+	_update_disturbance(delta)
 	_update_afterglow(delta)
 	if _mat != null:
 		_mat.set_shader_parameter("pulse", 0.5 + 0.5 * sin(_age * 2.2))
@@ -90,6 +100,7 @@ func collect() -> void:
 		return
 	depleted = true
 	_reset_afterglow()
+	_reset_disturbance()
 	visible = false
 	_respawn = 35.0
 	if _water != null and _water.field != null:
@@ -174,3 +185,60 @@ func _update_afterglow(delta: float) -> void:
 		_glow_charge = move_toward(_glow_charge, 0.0, fade_delta / GLOW_FADE_SECONDS)
 	if _mat != null:
 		_mat.set_shader_parameter("afterglow", _glow_charge)
+
+
+func react_to_sweep(from: Vector2, to: Vector2, heading: Vector2,
+		half_length: float, half_width: float, delta: float) -> void:
+	if depleted or _mat == null or _fade < 0.1 or delta <= 0.0:
+		return
+	var movement := to - from
+	var distance := movement.length()
+	var travel_speed := distance / delta
+	# Только движение, не качка/стоянка и не телепорт через весь мир.
+	if travel_speed < 0.25 or distance > maxf(1.5, delta * 30.0):
+		return
+	var axis := heading.normalized()
+	if axis.length_squared() < 0.5:
+		return
+	if movement.dot(axis) < 0.0:
+		axis = -axis
+	var a := from - axis * half_length
+	var b := to + axis * half_length
+	var point := Vector2(global_position.x, global_position.z)
+	var ab := b - a
+	var closest := a + ab * clampf((point - a).dot(ab) / maxf(ab.length_squared(), 0.001),
+		0.0, 1.0)
+	var gap := point.distance_to(closest)
+	var contact := 1.0 - smoothstep(half_width + 0.6, half_width + 1.8, gap)
+	if contact <= 0.01:
+		return
+	if _split_amount < 0.08 and _split_hold <= 0.0:
+		_split_strength = 0.0
+		# Одна случайность на событие, а не на каждый кадр/источник.
+		var lateral := Vector2(-axis.y, axis.x).rotated(_split_rng.randf_range(-0.22, 0.22))
+		var local_axis := global_basis.inverse() * Vector3(lateral.x, 0.0, lateral.y)
+		_mat.set_shader_parameter("split_axis", Vector2(local_axis.x, local_axis.z).normalized())
+		_mat.set_shader_parameter("split_bias", _split_rng.randf_range(-0.20, 0.20))
+		_mat.set_shader_parameter("split_asymmetry", _split_rng.randf_range(-0.15, 0.15))
+	_split_strength = maxf(_split_strength, clampf(travel_speed / 4.0, 0.35, 1.0) * contact)
+	_split_hold = SPLIT_HOLD_SECONDS
+
+
+func _update_disturbance(delta: float) -> void:
+	var opening_time := minf(delta, _split_hold)
+	if opening_time > 0.0:
+		_split_amount = move_toward(_split_amount, _split_strength, opening_time * SPLIT_OPEN_RATE)
+		_split_hold -= opening_time
+	var closing_time := delta - opening_time
+	if closing_time > 0.0:
+		_split_amount = move_toward(_split_amount, 0.0, closing_time * SPLIT_CLOSE_RATE)
+	if _mat != null:
+		_mat.set_shader_parameter("split_amount", _split_amount)
+
+
+func _reset_disturbance() -> void:
+	_split_amount = 0.0
+	_split_hold = 0.0
+	_split_strength = 0.0
+	if _mat != null:
+		_mat.set_shader_parameter("split_amount", 0.0)

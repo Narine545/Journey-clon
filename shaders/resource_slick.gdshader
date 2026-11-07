@@ -28,6 +28,11 @@ uniform float reveal_cos_outer = 0.8660254;
 uniform float reveal_cos_inner = 0.9135455;
 uniform float reveal_enabled = 0.0;
 uniform float afterglow : hint_range(0.0, 1.0) = 0.0;
+// Два временных куска одного логического ресурса.
+uniform float split_amount : hint_range(0.0, 1.0) = 0.0;
+uniform vec2 split_axis = vec2(1.0, 0.0);
+uniform float split_bias = 0.0;
+uniform float split_asymmetry = 0.0;
 varying vec3 surface_world_position;
 varying vec2 local_pos;
 varying vec2 world_xz;
@@ -65,9 +70,7 @@ void vertex() {
 	surface_world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 
-void fragment() {
-    vec2 p = local_pos * 0.82;
-    float t = TIME * 0.45 + seed;
+float slick_distance(vec2 p, float t) {
     float d = length(p + vec2(sin(t) * 0.10, cos(t * 0.8) * 0.10)) - 0.96;
     for (int i = 0; i < 4; i++) {
         float a = float(i) * 2.399963 + seed * 2.7;
@@ -78,8 +81,34 @@ void fragment() {
     // Непериодическая граница без радиальных/диагональных полос и
     // скачущего floor(TIME)-шума.
     d += (pigment_noise(p * 3.0 + vec2(seed, t * 0.08)) - 0.5) * 0.16;
+    return d;
+}
+
+void fragment() {
+    vec2 p = local_pos * 0.82;
+    float t = TIME * 0.45 + seed;
+    float intact = slick_distance(p, t);
+    float d = intact;
+    if (split_amount > 0.001) {
+        vec2 axis = normalize(split_axis);
+        vec2 shift_a = axis * split_amount * 0.90 * (1.0 + split_asymmetry);
+        vec2 shift_b = axis * split_amount * 0.90 * (1.0 - split_asymmetry);
+        vec2 source_a = p - shift_a;
+        vec2 source_b = p + shift_b;
+        float da = max(slick_distance(source_a, t), split_bias - dot(source_a, axis));
+        float db = max(slick_distance(source_b, t), dot(source_b, axis) - split_bias);
+        float pieces = smooth_union(da, db, 0.06);
+        d = mix(intact, pieces, smoothstep(0.0, 0.15, split_amount));
+        // Внутренний рисунок переносится вместе со своим куском.
+        p = da < db ? source_a : source_b;
+    }
     float aa = max(fwidth(d), 0.012);
     float body = 1.0 - smoothstep(-aa, aa, d);
+    // Расширенный quad нужен только для разлетающихся кусков. Пустые
+    // пиксели не считают дорогой внутренний параллакс/облачные слои.
+    if (body < 0.001 || fade < 0.001) {
+        discard;
+    }
     // Параллельный вектор взгляда для ортографической камеры; перспективная
     // камера использует направление от фрагмента (VIEW в view space).
     vec3 view_direction = PROJECTION_MATRIX[3][3] > 0.5 ? vec3(0.0, 0.0, 1.0) : VIEW;
@@ -88,7 +117,7 @@ void fragment() {
     vec3 surface_normal = normalize(vec3(-slope.x, 1.0, -slope.y));
     // Аналог normal_texture: производные непрерывного поля высоты линз.
     // Поле следует пятну; медленный дрейф не привязан к экрану.
-    vec2 normal_uv = local_pos * normal_scale + vec2(seed, -seed)
+    vec2 normal_uv = (p / 0.82) * normal_scale + vec2(seed, -seed)
         + vec2(wave_time * 0.055, -wave_time * 0.035);
     float ne = 0.12;
     vec2 lens_gradient = vec2(
