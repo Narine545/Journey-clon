@@ -6,7 +6,7 @@ from collections import defaultdict
 from island_reference import height, site, BERTH, BOAT_START
 
 ROOT = Path(__file__).resolve().parents[1]
-DEPTH, GRID = 3.8, 12
+DEPTH, GRID = 2.25, 12
 
 def depth(p):
     return max(0, -height(*p))
@@ -51,7 +51,7 @@ while True:
 assert len(path)==len(links), 'unexpected disconnected contours'
 path.append(path[0])
 length = sum(math.dist(a,b) for a,b in zip(path,path[1:]))
-count = min(20,max(14,round(length/85)))
+count = max(72,math.ceil(length/18))
 points=[];segment=1;traversed=0
 for i in range(count):
     target=length*(i+.37)/count
@@ -67,21 +67,54 @@ for i in range(count):
         p=x-gx/gl*correction,z-gz/gl*correction
     assert abs(depth(p)-DEPTH)<.15
     points.append(p)
-assert 14<=len(points)<=20
 beacons = [site(a)[1] for a in (-145,-78,12,100)]
 reefs = [(-142,-64),(-186,-78),(-136,22)]
 for bearing in (-40,45,138):
     _,_,shore,normal=site(bearing)
     p=shore[0]+40*normal[0],shore[1]+40*normal[1]
     if depth(p)>=3.5 and all(math.dist(p,b)>=25 for b in beacons):reefs.append(p)
-accepted=[]
-for p in points:
-    if any(math.dist(p,b)<30 for b in beacons):continue
+def profile(p):
+    nearest=math.inf;dry=p;area=0
+    for ix in range(-6,7):
+        for iz in range(-6,7):
+            off=ix*8,iz*8
+            dist=math.hypot(*off)
+            if dist>48:continue
+            q=p[0]+off[0],p[1]+off[1]
+            d=depth(q)
+            if d<=.15 and dist<nearest:nearest,dry=dist,q
+            elif .15<d<=2.6:area+=64
+    width=48
+    if math.isfinite(nearest):
+        lo,hi=0,1
+        for _ in range(12):
+            mid=(lo+hi)/2
+            if depth(lerp(p,dry,mid))<=.15:hi=mid
+            else:lo=mid
+        width=nearest*(lo+hi)/2
+    return width,width+area*.003
+candidates=[]
+for i,p in enumerate(points):
+    if any(math.dist(p,b)<16 for b in beacons):continue
     if any(math.dist(p,b)<14 for b in reefs):continue
-    if any(math.dist(p,b)<36 for b in accepted):continue
-    if any(math.dist(p,b)<r for b,r in [(BERTH,23),((-62,-55),22),((-62,-5),22)]):continue
-    accepted.append(p)
-assert 12<=len(accepted)<=20
+    if any(math.dist(p,b)<r for b,r in [(BERTH,23),((-62,-55),18),((-62,-5),18)]):continue
+    width,score=profile(p)
+    candidates.append(dict(at=p,width=width,score=score,sector=min(11,int(i*12/count))))
+candidates.sort(key=lambda x:x['score'],reverse=True)
+accepted=[];widths=[]
+def accept(c,separation):
+    if any(math.dist(c['at'],p)<separation for p in accepted):return False
+    accepted.append(c['at']);widths.append(c['width']);return True
+for sector in range(12):
+    for c in candidates:
+        if c['sector']==sector and accept(c,55):break
+median=candidates[len(candidates)//2]['score']
+for c in candidates:
+    if len(accepted)>=18:break
+    if c['score']>=median*1.12:accept(c,72)
+assert 10<=len(accepted)<=18
+assert sum(widths)/len(widths)>sum(c['width'] for c in candidates)/len(candidates), 'must prioritise broader banks'
+assert all(abs(depth(p)-2.25)<.15 for p in accepted)
 # Predict the complete hull before grounding, including reverse travel.
 def predicted(at,heading,speed):
     side=(-heading[1],heading[0]);travel=max(-12,min(28,speed*2.4))
@@ -139,8 +172,9 @@ main=(ROOT/'scripts/boat_main.gd').read_text()
 shoals=(ROOT/'scripts/shoal_markers.gd').read_text()
 architecture=(ROOT/'scripts/harbor_architecture.gd').read_text()
 harbor=(ROOT/'scripts/island_harbor.gd').read_text()
-assert 'not IslandLayout.permits_slick(at)' in main and 'not IslandLayout.permits_slick(candidate)' in main
-assert 'main.coast.water_depth' in shoals and 'const MAX_MARKERS := 20' in shoals
+zones=(ROOT/'scripts/resource_zones.gd').read_text()
+assert 'not IslandLayout.permits_slick(p)' in zones and 'resource_zones.setup(self)' in main
+assert 'main.coast.water_depth' in shoals and 'const MAX_MARKERS := 18' in shoals
 assert 'boat.speed * 2.4' in shoals and 'boat.has_trailer' in shoals
 assert '3.4 if warning else 2.8' in shoals and 'main.harbor.moored' in shoals
 assert 'p.distance_to(_danger_point) < 68.0' in shoals
@@ -149,5 +183,5 @@ assert 'mm.instance_count = transforms.size()' in architecture
 assert 'Basis.from_euler(rot) * Basis.from_scale(size)' in architecture
 assert '_gable(' in architecture and '_window(' in architecture
 assert 'IslandLayout.HARBOR_APRON, IslandLayout.HARBOR_LINK' in harbor
-print(f'OK: closed {length:.0f}m depth contour; {len(accepted)}/{count} accepted sparse marks at 3.8m; bay slick exclusion incl mesh; '
+print(f'OK: closed {length:.0f}m depth contour; {len(accepted)}/{count} bank-ranked marks at 2.25m; bay slick exclusion incl mesh; '
       'clear berth/trailer/departure/turn, nearby station camera bounds, warning wiring and batched architecture.')

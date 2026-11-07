@@ -86,7 +86,7 @@ assert 'minf(1800.0, main.camera.size * 1.18)' in inspector
 assert 'Input.is_physical_key_pressed' in inspector
 assert 'func inspection_active() -> bool:' in main
 assert 'inspector.update_camera(delta)' in main
-assert 'if not inspection_active():\n\t\t\t_stream_resources()' in main
+assert 'if not inspection_active():\n\t\tresource_zones.update(delta)' in main
 assert 'if main != null and main.inspection_active()' in vessel
 pump = vessel.split('func _update_pump',1)[1].split('func _update_trailer_pump',1)[0]
 assert 'if main.inspection_active()' in pump and '_trailer_pump_progress = 0.0' in pump

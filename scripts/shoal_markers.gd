@@ -1,13 +1,15 @@
 class_name ShoalMarkers
 extends Node3D
 ## Sparse marks on the REAL sampled depth contour, not a fixed shore offset.
-const DEPTH := 3.8
+const DEPTH := 2.25
 const GRID := 12.0
-const MAX_MARKERS := 20
+const MAX_MARKERS := 18
+const SECTORS := 12
 const IDLE := Color("f3cf84")
 const ALERT := Color("ff453d")
 var main: BoatMain
 var positions: Array[Vector2] = []
+var shelf_widths: Array[float] = []
 var warning := false
 var predicted_depth := 100.0
 var _danger_point := Vector2.ZERO
@@ -114,6 +116,67 @@ func _snap_depth(p: Vector2) -> Vector2:
 	return p
 
 
+func _clear_mark(p: Vector2) -> bool:
+	if absf(main.coast.water_depth(p.x, p.y) - DEPTH) > 0.15:
+		return false
+	for beacon in main.beacons:
+		var bp: Vector3 = beacon["buoy_pos"]
+		if p.distance_to(Vector2(bp.x, bp.z)) < 16.0:
+			return false
+	for rf in main.reefs:
+		var rp: Vector2 = rf["pos"]
+		if p.distance_to(rp) < 14.0:
+			return false
+	return p.distance_to(IslandLayout.BERTH) >= 23.0 \
+		and p.distance_to(Vector2(-62, -55)) >= 18.0 and p.distance_to(Vector2(-62, -5)) >= 18.0
+
+
+func _shelf_profile(p: Vector2) -> Dictionary:
+	# Actual nearest dry ground + shallow area, not distance to an elliptical island.
+	var nearest := INF
+	var dry := p
+	var area := 0.0
+	for ix in range(-6, 7):
+		for iz in range(-6, 7):
+			var offset := Vector2(float(ix), float(iz)) * 8.0
+			if offset.length_squared() > 48.0 * 48.0:
+				continue
+			var q := p + offset
+			var d := main.coast.water_depth(q.x, q.y)
+			if d <= 0.15 and offset.length() < nearest:
+				nearest = offset.length()
+				dry = q
+			elif d > 0.15 and d <= 2.6:
+				area += 64.0
+	var width := 48.0
+	if is_finite(nearest):
+		var lo := 0.0
+		var hi := 1.0
+		for _iteration in range(12):
+			var mid := (lo + hi) * 0.5
+			var q := p.lerp(dry, mid)
+			if main.coast.water_depth(q.x, q.y) <= 0.15:
+				hi = mid
+			else:
+				lo = mid
+		width = nearest * (lo + hi) * 0.5
+	return {"width": width, "area": area, "score": width + area * 0.003}
+
+
+func _higher_score(a: Dictionary, b: Dictionary) -> bool:
+	return float(a["score"]) > float(b["score"])
+
+
+func _accept_mark(candidate: Dictionary, separation: float) -> bool:
+	var p: Vector2 = candidate["at"]
+	for other in positions:
+		if p.distance_to(other) < separation:
+			return false
+	positions.append(p)
+	shelf_widths.append(float(candidate["width"]))
+	return true
+
+
 func setup(game: BoatMain) -> void:
 	main = game
 	name = "ShoalContourMarks"
@@ -124,7 +187,10 @@ func setup(game: BoatMain) -> void:
 	var length := 0.0
 	for i in range(1, path.size()):
 		length += path[i - 1].distance_to(path[i])
-	var count := mini(MAX_MARKERS, maxi(14, int(round(length / 85.0))))
+	# Dense candidates first. Prefer wide banks in each coastal sector, then
+	# use the remaining budget on the largest banks, not equal arc spacing.
+	var count := maxi(72, int(ceil(length / 18.0)))
+	var candidates: Array[Dictionary] = []
 	var segment := 1
 	var traversed := 0.0
 	for i in range(count):
@@ -134,23 +200,25 @@ func setup(game: BoatMain) -> void:
 			segment += 1
 		var span := path[segment - 1].distance_to(path[segment])
 		var p := _snap_depth(path[segment - 1].lerp(path[segment], (target - traversed) / maxf(span, 0.001)))
-		var clear := absf(main.coast.water_depth(p.x, p.y) - DEPTH) < 0.15
-		for beacon in main.beacons:
-			var bp: Vector3 = beacon["buoy_pos"]
-			if p.distance_to(Vector2(bp.x, bp.z)) < 30.0:
-				clear = false
-		for rf in main.reefs:
-			var rp: Vector2 = rf["pos"]
-			if p.distance_to(rp) < 14.0:
-				clear = false
-		for other in positions:
-			if p.distance_to(other) < 36.0:
-				clear = false
-		# No extra mark inside the docking slip or next to red/green lateral marks.
-		if p.distance_to(IslandLayout.BERTH) < 23.0 or p.distance_to(Vector2(-62, -55)) < 22.0 or p.distance_to(Vector2(-62, -5)) < 22.0:
-			clear = false
-		if clear:
-			positions.append(p)
+		if not _clear_mark(p):
+			continue
+		var profile := _shelf_profile(p)
+		profile["at"] = p
+		profile["sector"] = mini(SECTORS - 1, int(float(i) * float(SECTORS) / float(count)))
+		candidates.append(profile)
+	candidates.sort_custom(_higher_score)
+	for sector in range(SECTORS):
+		for candidate in candidates:
+			if int(candidate["sector"]) == sector and _accept_mark(candidate, 55.0):
+				break
+	if not candidates.is_empty():
+		var median_index := int(float(candidates.size()) * 0.5)
+		var median_score: float = candidates[median_index]["score"]
+		for candidate in candidates:
+			if positions.size() >= MAX_MARKERS:
+				break
+			if float(candidate["score"]) >= median_score * 1.12:
+				_accept_mark(candidate, 72.0)
 	var body := CylinderMesh.new()
 	body.top_radius = 0.28
 	body.bottom_radius = 0.60

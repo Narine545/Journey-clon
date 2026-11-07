@@ -72,6 +72,10 @@ func _build_map() -> void:
 			var color: Color
 			if height < 0.0:
 				color = Color("17434f").lerp(Color("398d90"), exp(height * 0.12))
+				if height > -1.7:
+					color = color.lerp(Color("c69865"), 0.75)
+				elif height > -2.6:
+					color = color.lerp(Color("ceb58a"), 0.45)
 			else:
 				color = Color("ceb58a").lerp(Color("6c7855"), clampf(height / 35.0, 0.0, 1.0))
 			image.set_pixel(x, y, color)
@@ -257,7 +261,7 @@ func make_report() -> Dictionary:
 		"map_span": _map_span,
 		"map_center_xz": [_map_center.x, _map_center.y],
 		"marker_index": selected + 1,
-		"point": _v3(markers[selected]) if selected >= 0 else null,
+		"point": null,
 		"camera_position": _v3(camera.global_position),
 		"camera_rotation_degrees": _v3(camera.global_rotation * (180.0 / PI)),
 		"camera_size": camera.size,
@@ -289,6 +293,8 @@ func make_report() -> Dictionary:
 		"terrain_bounds_xz": [map_bounds().position.x, map_bounds().position.y, map_bounds().end.x, map_bounds().end.y],
 		"terrain_edge_transition": Coast.EDGE_TRANSITION,
 	}
+	if selected >= 0:
+		report["point"] = _v3(markers[selected])
 	if main._rme4_volume != null:
 		report["fog_box_center"] = _v3(main._rme4_volume.global_position)
 		report["fog_box_size"] = _v3(main._rme4_volume.size)
@@ -306,6 +312,7 @@ func make_report() -> Dictionary:
 		var pivot: Node3D = beacon["beam_pivot"]
 		optics.append(pivot.rotation.y)
 	report["beacon_yaws"] = optics
+	report["resource_zones"] = main.resource_zones.summary()
 	report["island_layout"] = "closed-island-1"
 	report["harbor_berth_xz"] = [IslandLayout.BERTH.x, IslandLayout.BERTH.y]
 	report["harbor_moored"] = main.harbor != null and main.harbor.moored
@@ -313,6 +320,7 @@ func make_report() -> Dictionary:
 		report["shoal_warning"] = main.shoals.warning
 		report["shoal_probe_depth"] = main.shoals.predicted_depth
 		report["shoal_mark_count"] = main.shoals.positions.size()
+		report["shoal_shelf_widths"] = main.shoals.shelf_widths
 	return report
 
 
@@ -492,6 +500,7 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.025, 0.045, 0.06, 0.96))
 		_text(Vector2(28, 36), "КАРТА МИРА · X вправо, Z вниз · колесо — масштаб карты", Color("e0efea"), 19)
 		_text(Vector2(28, 63), "M / Esc — закрыть · F — свободная камера · Home — общий вид · Ctrl+S — снимок и отчёт")
+		_text(Vector2(28, 88), "Цветные круги — зоны пигмента · песочный цвет воды — опасная отмель", Color("c4c6ac"), 12)
 		var rect := _map_rect()
 		draw_rect(rect, Color("17434f"))
 		var terrain_rect := Rect2(world_to_map(map_bounds().position, rect, _map_span, _map_center), rect.size * Coast.SIZE / _map_span)
@@ -528,6 +537,18 @@ func _draw() -> void:
 		if water_rect.has_area():
 			draw_rect(water_rect, Color(0.4, 0.7, 1.0, 0.7), false, 1.0)
 		draw_rect(rect, Color("b5c6be"), false, 2.0)
+		for zone in main.resource_zones.zones:
+			var zone_center: Vector2 = zone["center"]
+			var zone_radius: float = zone["radius"]
+			var zone_color: Color = ResourceSlick.COLORS[int(zone["kind"])]
+			for k in range(40):
+				var a := world_to_map(zone_center + Vector2.from_angle(TAU * float(k) / 40.0) * zone_radius, rect, _map_span, _map_center)
+				var b := world_to_map(zone_center + Vector2.from_angle(TAU * float(k + 1) / 40.0) * zone_radius, rect, _map_span, _map_center)
+				if rect.has_point(a) and rect.has_point(b):
+					draw_line(a, b, zone_color, 1.5)
+			var label_at := world_to_map(zone_center, rect, _map_span, _map_center)
+			if rect.has_point(label_at) and _map_span <= 3600.0:
+				_text(label_at + Vector2(5, 14), str(zone["name"]), zone_color, 11)
 		var boat_point := world_to_map(Vector2(main.boat.global_position.x, main.boat.global_position.z), rect, _map_span, _map_center)
 		if rect.has_point(boat_point):
 			draw_circle(boat_point, 5.0, Color("7ae3d0"))

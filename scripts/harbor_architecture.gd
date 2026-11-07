@@ -15,12 +15,12 @@ var _unit_box := BoxMesh.new()
 var _unit_post := CylinderMesh.new()
 
 
-func _instance(key: String, mesh: Mesh, material: Material, transform: Transform3D) -> void:
+func _instance(key: String, mesh: Mesh, material: Material, instance_transform: Transform3D) -> void:
 	if not _groups.has(key):
 		_groups[key] = {"mesh": mesh, "material": material, "transforms": []}
 	var group: Dictionary = _groups[key]
 	var transforms: Array = group["transforms"]
-	transforms.append(transform)
+	transforms.append(instance_transform)
 
 
 func _box(key: String, at: Vector3, size: Vector3, material: Material, rot: Vector3 = Vector3.ZERO) -> void:
@@ -29,8 +29,8 @@ func _box(key: String, at: Vector3, size: Vector3, material: Material, rot: Vect
 
 func _beam(a: Vector3, b: Vector3, width: float, material: Material, key: String = "timber") -> void:
 	var direction := b - a
-	var basis := Basis(Quaternion(Vector3.UP, direction.normalized())) * Basis.from_scale(Vector3(width, direction.length(), width))
-	_instance(key, _unit_box, material, Transform3D(basis, (a + b) * 0.5))
+	var beam_basis := Basis(Quaternion(Vector3.UP, direction.normalized())) * Basis.from_scale(Vector3(width, direction.length(), width))
+	_instance(key, _unit_box, material, Transform3D(beam_basis, (a + b) * 0.5))
 
 
 func _post(x: float, z: float, top: float) -> void:

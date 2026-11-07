@@ -19,6 +19,7 @@ const NAMES: Array[String] = ["Бирюза", "Коралл", "Янтарь", "�
 
 var kind := 0
 var depleted := false
+var zone_managed := false
 var remaining_mass := 1.0
 var _mat: ShaderMaterial
 var _glow_charge := 0.0
@@ -71,10 +72,28 @@ func relocate_smoothly(new_pos: Vector3) -> void:
 		_mat.set_shader_parameter("fade", 0.0)
 
 
+func can_zone_shuffle() -> bool:
+	return not depleted and remaining_mass >= 1.0 and _film_blend <= 0.001 \
+		and (_night_factor <= 0.55 or _glow_charge <= 0.01)
+
+
+func renew_in_zone(at: Vector3) -> bool:
+	# Only exhausted stock can become a NEW deposit; never refill a partial blob.
+	if not zone_managed or not depleted:
+		return false
+	remaining_mass = 1.0
+	depleted = false
+	visible = true
+	relocate_smoothly(at)
+	return true
+
+
 func _process(delta: float) -> void:
 	_sync_reveal_light()
 	_age += delta
 	if depleted:
+		if zone_managed:
+			return
 		_respawn -= delta
 		if _respawn <= 0.0:
 			depleted = false

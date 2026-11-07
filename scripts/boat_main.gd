@@ -6,9 +6,6 @@ extends Node3D
 ## - Цепь из 4 Погасших Маяков с глубоководными причальными буями вдоль берега
 ## - Морские рифы, прочность корпуса и 3 активные судовые системы (Сонар, Ремонт, Форсаж)
 
-const SLICK_RECYCLE_DISTANCE := 60.0
-const SLICK_SPAWN_MIN := 38.0
-const SLICK_SPAWN_MAX := 57.0
 const TRAILER_COST := 2
 const DOCK_RANGE := 13.5
 const RME4_BOX_SIZE := Vector3(320.0, 60.0, 320.0)
@@ -27,6 +24,7 @@ var camera: Camera3D
 var hud: BoatHud
 var inspector: WorldInspector
 var slicks: Array[ResourceSlick] = []
+var resource_zones := ResourceZones.new()
 var debug_slick_parallax := true
 var raw := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var refined := PackedInt32Array([0, 0, 0, 0])
@@ -65,11 +63,8 @@ var _debug_night_step := 0
 
 var _capture_frames := 0
 var _camera_focus := Vector3.ZERO
-var _stream_timer := 0.0
-var _stream_cursor := 0
 var _beacon_anim_time := 0.0
 var _atmosphere_timer := 0.0
-var _slick_rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
@@ -105,16 +100,15 @@ func _ready() -> void:
 	boat.reset_physics_interpolation()
 	if OS.get_environment("JOURNEY_BOAT_SHOT_TRAILER") == "1":
 		boat.set_trailer_enabled(true)
-	_build_resources()
 	harbor = IslandHarbor.new()
 	add_child(harbor)
 	harbor.setup(self)
 	_build_beacons()
 	_build_reefs()
+	_build_resources()
 	shoals = ShoalMarkers.new()
 	add_child(shoals)
 	shoals.setup(self)
-	_slick_rng.seed = 845239
 	camera = Camera3D.new()
 	camera.name = "IsometricCamera"
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -147,6 +141,7 @@ func _ready() -> void:
 	if OS.get_environment("JOURNEY_BOAT_SHOT_DRIVE") == "1":
 		Input.action_press("boat_forward")
 	_apply_atmosphere(0.0)
+	announce("ПИГМЕНТЫ ТЕПЕРЬ В МОРСКИХ ЗОНАХ — СМОТРИТЕ ЦВЕТНЫЕ КРУГИ НА КАРТЕ [M].")
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") == "1":
 		var test := BoatSmoke.new()
 		add_child(test)
@@ -416,23 +411,7 @@ func _add_cyl(parent: Node3D, at: Vector3, rt: float, rb: float, h: float, mat: 
 
 
 func _build_resources() -> void:
-	var base := Vector2(boat.global_position.x, boat.global_position.z)
-	var samples := [
-		Vector2(-3, -11), Vector2(-17, -13), Vector2(-20, 3),
-		Vector2(-5, 21), Vector2(13, 28), Vector2(-29, 25),
-		Vector2(-40, -9), Vector2(6, -30), Vector2(-32, -38),
-		Vector2(-13, 42), Vector2(16, 45), Vector2(-47, 43),
-	]
-	for i in range(samples.size()):
-		var at: Vector2 = base + samples[i]
-		if not IslandLayout.permits_slick(at) or coast.water_depth(at.x, at.y) < 3.0:
-			continue
-		var slick := ResourceSlick.new()
-		slick.name = "PigmentSlick%d" % i
-		add_child(slick)
-		slick.setup(water, at, i % ResourceSlick.COLORS.size(), float(i) * 1.73)
-		slicks.append(slick)
-
+	resource_zones.setup(self)
 
 func _outside_boat_view(at: Vector2) -> bool:
 	var relative := Vector3(at.x - boat.global_position.x, 0.0,
@@ -449,44 +428,6 @@ func _outside_camera_view(at: Vector2) -> bool:
 	var viewport_size := get_viewport().get_visible_rect().size
 	return not Rect2(Vector2(-64.0, -64.0),
 		viewport_size + Vector2(128.0, 128.0)).has_point(screen_pos)
-
-
-func _stream_resources() -> void:
-	var center := Vector2(boat.global_position.x, boat.global_position.z)
-	var forward := Vector2(-boat.global_transform.basis.z.x,
-		-boat.global_transform.basis.z.z)
-	for offset in range(slicks.size()):
-		var index := (_stream_cursor + offset) % slicks.size()
-		var slick := slicks[index]
-		if slick.depleted:
-			continue
-		var current := Vector2(slick.position.x, slick.position.z)
-		if current.distance_to(center) <= SLICK_RECYCLE_DISTANCE or \
-				not _outside_boat_view(current) or not _outside_camera_view(current):
-			continue
-		_stream_cursor = (index + 1) % slicks.size()
-		for attempt in range(24):
-			var angle := _slick_rng.randf_range(-PI, PI)
-			var direction := Vector2.from_angle(angle)
-			if attempt < 12 and boat.speed > 0.5 and direction.dot(forward) < -0.15:
-				continue
-			var distance := _slick_rng.randf_range(SLICK_SPAWN_MIN, SLICK_SPAWN_MAX)
-			var candidate := center + direction * distance
-			if not _outside_boat_view(candidate) or not _outside_camera_view(candidate) or \
-					coast.water_depth(candidate.x, candidate.y) < 3.0 or not IslandLayout.permits_slick(candidate):
-				continue
-			var clear := true
-			for other in slicks:
-				if other == slick or other.depleted:
-					continue
-				if candidate.distance_to(Vector2(other.position.x, other.position.z)) < 9.0:
-					clear = false
-					break
-			if clear:
-				slick.relocate_smoothly(Vector3(candidate.x,
-					water.surface_height(candidate.x, candidate.y) + ResourceSlick.FLOAT_HEIGHT, candidate.y))
-				break
-		break
 
 
 func nearest_resource(at: Vector3, radius: float) -> ResourceSlick:
@@ -1126,11 +1067,8 @@ func _process(delta: float) -> void:
 		camera.global_position = desired
 		camera.look_at(_camera_focus, Vector3.UP)
 	notice_time = maxf(0.0, notice_time - delta)
-	_stream_timer -= delta
-	if _stream_timer <= 0.0:
-		_stream_timer = 0.12
-		if not inspection_active():
-			_stream_resources()
+	if not inspection_active():
+		resource_zones.update(delta)
 	hud.visible = not inspection_active()
 	hud.queue_redraw()
 	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":

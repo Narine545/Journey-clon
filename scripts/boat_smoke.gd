@@ -50,6 +50,7 @@ func _physics_process(_delta: float) -> void:
 		_check(safe_buoys, "каждый причальный буй на глубине не менее 4.5 м")
 		_check_island_harbor()
 		_check_shoal_navigation()
+		_check_resource_zones()
 		Input.action_press("boat_forward")
 	if ticks == 60:
 		trail_sample = main.boat._trail_buffer[2]
@@ -675,7 +676,7 @@ func _check_island_harbor() -> void:
 
 func _check_shoal_navigation() -> void:
 	var marks := main.shoals
-	_check(marks != null and marks.positions.size() >= 12 and marks.positions.size() <= 20,
+	_check(marks != null and marks.positions.size() >= 10 and marks.positions.size() <= ShoalMarkers.MAX_MARKERS,
 		"редкие буи по периметру отмели созданы")
 	for p in marks.positions:
 		_check(absf(main.coast.water_depth(p.x, p.y) - ShoalMarkers.DEPTH) < 0.15,
@@ -722,3 +723,39 @@ func _check_shoal_navigation() -> void:
 	_check(Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size).has_point(screen),
 		"рыбацкая станция в кадре обычной камеры у стоянки")
 	main.camera.global_transform = camera_transform
+
+
+func _check_resource_zones() -> void:
+	var pool := main.resource_zones
+	_check(pool.zones.size() == 4 and pool.slots.size() == 12, "четыре мировые зоны и фиксированный пул 12 пятен")
+	var old_positions: Array[Vector3] = []
+	for slot in pool.slots:
+		var slick: ResourceSlick = slot["slick"]
+		var zone: Dictionary = pool.zones[int(slot["zone"])]
+		var center: Vector2 = zone["center"]
+		old_positions.append(slick.position)
+		_check(slick.zone_managed and Vector2(slick.position.x, slick.position.z).distance_to(center) <= float(zone["radius"]) - 6.0,
+			"пятно принадлежит своей постоянной зоне")
+		_check(slick.kind == int(zone["kind"]) and IslandLayout.permits_slick(Vector2(slick.position.x, slick.position.z)),
+			"региональный пигмент и запрет бухты соблюдены")
+	var boat_at := main.boat.global_position
+	main.boat.global_position += Vector3(700, 0, 700)
+	pool.update(1.0)
+	for i in range(pool.slots.size()):
+		var slick: ResourceSlick = pool.slots[i]["slick"]
+		_check(slick.position == old_positions[i], "лодка не перетягивает пятна за собой")
+	main.boat.global_position = boat_at
+	main.boat.reset_physics_interpolation()
+	var temp := ResourceSlick.new()
+	temp.zone_managed = true
+	main.add_child(temp)
+	temp.setup(main.water, Vector2(-240, -200), 0, 0.1)
+	temp.remaining_mass = 0.25
+	_check(not temp.can_zone_shuffle() and not temp.renew_in_zone(Vector3(-240, 0, -200)) and temp.remaining_mass == 0.25,
+		"четверть пятна не перемещается и не восстанавливается до целого")
+	temp.collect()
+	temp._process(36.0)
+	_check(temp.depleted, "зональное пятно не возрождается само через прежние 35 секунд")
+	_check(temp.renew_in_zone(Vector3(-240, 0, -200)) and not temp.depleted and temp.remaining_mass == 1.0,
+		"новый запас появляется только из полностью исчерпанного слота")
+	temp.queue_free()
