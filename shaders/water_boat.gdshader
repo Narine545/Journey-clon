@@ -34,6 +34,8 @@ uniform float surface_light_detail = 0.0;
 uniform float night_surface_fill : hint_range(0.0, 0.3) = 0.0;
 // [I] — реакция воды на локальные лампы; солнце и глиттер не меняются.
 uniform float local_water_response : hint_range(0.0, 1.0) = 1.0;
+// Мелкие отражения реальных локальных ламп, не emission и не новые ячейки.
+uniform float local_glitter_strength : hint_range(0.0, 2.0) = 0.65;
 // Усиление существующего глиттера на гребнях; 0 = прежние блики.
 uniform float swell_light_detail : hint_range(0.0, 1.0) = 0.0;
 
@@ -79,6 +81,8 @@ uniform vec4 u_wake_trail[20]; // xy = world_xz, z = birth_time, w = speed_at_bi
 varying vec3 w_pos;
 // Fragment -> light varying: полная форма воды только для локальных ламп.
 varying vec3 local_light_normal;
+varying vec3 local_glitter_normal;
+varying float local_glitter_mask;
 
 const float PI_2 = 6.28318530718;
 
@@ -352,6 +356,14 @@ void fragment() {
 	float foam = edge * smoothstep(0.02, 0.40, fn) * (0.72 + 0.28 * fn2);
 	foam += edge2 * smoothstep(0.45, 0.85, fn2) * 0.55;
 	foam = clamp(max(foam, ship_wake_foam), 0.0, 1.0);
+	// Те же выбранные мировые ячейки, что у исходного глиттера.
+	// Включённость ячейки не зависит от движущейся волны или луча.
+	// Для наклона берём независимые hash-компоненты, иначе выбор cellid
+	// смещал бы все выбранные микрограни в одну сторону.
+	vec3 lamp_facet = normalize(N + vec3(cellb - 0.5, 0.0, cellc - 0.5) * 0.24);
+	local_glitter_normal = normalize((VIEW_MATRIX * vec4(lamp_facet, 0.0)).xyz);
+	local_glitter_mask = glint * glit_fade * (1.0 - foam)
+		* (1.0 + crest * swell_light_detail * 0.65);
 	base = mix(base, foam_col * (0.82 + 0.18 * ndl), foam * 0.92);
 
 	// ---------- дымка к горизонту ----------
@@ -434,6 +446,16 @@ void light() {
 	float local_diffuse = LIGHT_IS_DIRECTIONAL ? 1.0 : mix(3.0, 0.65, local_water_response);
 	float local_specular = LIGHT_IS_DIRECTIONAL ? direct_specular_amount
 		: mix(0.08, 0.22, local_water_response);
+
+	// Дополнительный художественный микроблик локальной лампы. Направление
+	// солнца здесь не участвует; ATTENUATION включает конус/дальность/тени.
+	// Маска ячеек статична, плавно меняется лишь отражение по нормали воды.
+	if (!LIGHT_IS_DIRECTIONAL) {
+		float alignment = max(dot(normalize(local_glitter_normal), h), 0.0);
+		float sparkle = pow(alignment, 48.0) * smoothstep(0.0, 0.18, nl);
+		SPECULAR_LIGHT += radiance * sparkle * local_glitter_mask
+			* local_glitter_strength * local_water_response;
+	}
 
 	if (proxima_test < 0.5) {
 		float a = max(ROUGHNESS * ROUGHNESS, 0.002);

@@ -714,7 +714,7 @@ func debug_toggle_local_water_response() -> void:
 	debug_local_water_response = not debug_local_water_response
 	water.set_param("local_water_response", 1.0 if debug_local_water_response else 0.0)
 	announce("[I] ВОДА ПОД ФОНАРЁМ: %s" % (
-		"ВОЛНОВОЕ ОТРАЖЕНИЕ" if debug_local_water_response else "ПРЕЖНЯЯ"))
+		"ВОЛНЫ + БЛИКИ ЛАМП" if debug_local_water_response else "ПРЕЖНЯЯ"))
 
 
 func debug_toggle_headlight() -> void:
