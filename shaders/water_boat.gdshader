@@ -437,11 +437,23 @@ void light() {
 	vec3 v = normalize(VIEW);
 	float nl = max(dot(n, l), 0.0);
 	float nv = clamp(dot(n, v), 1e-3, 1.0);
+	vec3 radiance = LIGHT_COLOR * ATTENUATION;
+	if (!LIGHT_IS_DIRECTIONAL) {
+		// A rough water-volume response, not just the camera-facing mirror lobe.
+		// Flat incidence prevents individual wave backfaces erasing the whole
+		// footprint. Real cone/range/shadow attenuation still gates everything.
+		vec3 water_up = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+		float broad_incidence = max(dot(water_up, l), 0.0);
+		float wave_relief = 0.65 + 0.35 * max(dot(n, l), 0.0);
+		// Reflection channel avoids multiplying this rough surface return by
+		// the almost-black deep-water ALBEDO a second time.
+		SPECULAR_LIGHT += radiance * vec3(0.12, 0.17, 0.19)
+			* sqrt(broad_incidence) * wave_relief * local_water_response;
+	}
 	if (nl > 0.0) {
 	vec3 h = normalize(v + l);
 	float nh = clamp(dot(h, n), 0.0, 1.0);
 	float hl = clamp(dot(h, l), 0.0, 1.0);
-	vec3 radiance = LIGHT_COLOR * ATTENUATION;
 	// Прежний local_diffuse=3 делал ровную матовую заливку как на пластике.
 	// Оставляем слабое объёмное рассеяние цвета; форму даёт отражение
 	// по нормали волн. Тонмаппер, солнечный specular и глиттер не меняем.

@@ -764,10 +764,10 @@ func _check_buoy_dynamics() -> void:
 	var resolved: Vector2 = contact["position"]
 	var offset: Vector2 = dynamics.floats[id]["offset"]
 	var angular: Vector2 = dynamics.floats[id]["angular_velocity"]
-	_check(bool(contact["hit"]) and resolved.x < anchor.x and not dynamics.overlaps(resolved, float(contact["yaw"]), 3.7, 1.7),
-		"быстрый проход лодки останавливается у буя, без туннелирования")
-	_check(offset.length() > 0.1 and offset.length() <= BuoyDynamics.MAX_OFFSET + 0.00001 and angular.length() > 0.01,
-		"контакт сдвигает и раскачивает буй в пределах якорного крепления")
+	_check(bool(contact["hit"]) and resolved.is_equal_approx(anchor + Vector2(12.0, 0.0)) and is_equal_approx(float(contact["speed_factor"]), 1.0),
+		"буй уступает быстрому проходу лодки, не сокращая путь и скорость")
+	_check(offset.length() > 0.1 and angular.length() > 0.01,
+		"контакт сдвигает буй в сторону и раскачивает его")
 	for _tick in range(600):
 		dynamics.step(1.0 / 60.0)
 	offset = dynamics.floats[id]["offset"]
@@ -793,14 +793,14 @@ func _check_buoy_dynamics() -> void:
 	dynamics.floats[id]["offset"] = Vector2.ZERO
 	boat._update_trailer(1.0)
 	var trailer_at := Vector2(boat._trailer.global_position.x, boat._trailer.global_position.z)
-	_check(trailer_at.x > anchor.x and dynamics.hull_distance(id, trailer_at, boat._trailer.rotation.y, 1.6, 1.5) >= -0.001,
-		"реальный метод следования плашкоута не протягивает его сквозь буй")
+	_check(trailer_at.x < anchor.x and dynamics.hull_distance(id, trailer_at, boat._trailer.rotation.y, 1.6, 1.5) >= -0.001,
+		"плашкоут проходит дальше, оттесняя буй в сторону")
 	dynamics.floats[id]["offset"] = Vector2.ZERO
 	boat.global_position = Vector3(anchor.x - 14.0, 0.0, anchor.y)
 	boat._trailer.global_position = Vector3(anchor.x - 14.0 + BoatVessel.TRAILER_CLEARANCE, 0.0, anchor.y)
 	boat._trailer.rotation.y = PI * 0.5
-	_check(not boat._make_room_for_trailer(Vector3(anchor.x - 8.0, 0.0, anchor.y)),
-		"задний ход блокируется, если плашкоут прижат к бую; повторного проталкивания нет")
+	_check(boat._make_room_for_trailer(Vector3(anchor.x - 8.0, 0.0, anchor.y)),
+		"буй не блокирует задний ход и уступает плашкоуту")
 	main.buoy_dynamics = original
 	boat.global_transform = saved_pose
 	boat.set_trailer_enabled(false)
@@ -808,7 +808,7 @@ func _check_buoy_dynamics() -> void:
 	var saved_near: Array[bool] = marks._near.duplicate()
 	var saved_colors: Array[Color] = marks._colors.duplicate()
 	var marker := marks.positions[0]
-	boat.global_position = Vector3(marker.x, 0.0, marker.y + 20.0)
+	boat.global_position = Vector3(marker.x, 0.0, marker.y + 12.0)
 	boat.rotation.y = 0.0
 	marks._process(0.3)
 	_check(marks._near[0] and marks._colors[0].r > marks._colors[0].g,

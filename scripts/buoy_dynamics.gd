@@ -2,7 +2,6 @@ class_name BuoyDynamics
 extends RefCounted
 ## Analytic moored floats for the game's kinematic (Node3D) vessels.
 ## Fixed physics steps + swept capsule/disc contacts; rendering is interpolated.
-const MAX_OFFSET := 1.35
 const MAX_TILT := 0.52
 const CONTACT_SLOP := 0.003
 const SWEEP_STEP := 0.22
@@ -61,8 +60,7 @@ func step(delta: float) -> void:
 		var h := dt / float(count)
 		for _iteration in range(count):
 			velocity += (-offset * 5.0 - velocity * 3.4) * h
-			offset = (offset + velocity * h).limit_length(MAX_OFFSET)
-			velocity = _bounded_velocity(offset, velocity, MAX_OFFSET)
+			offset = offset + velocity * h
 			var wave_tilt: Vector2 = item["wave_tilt"]
 			angular += ((wave_tilt - tilt) * 18.0 - angular * 5.0) * h
 			tilt = (tilt + angular * h).limit_length(MAX_TILT)
@@ -121,80 +119,50 @@ func overlaps(at: Vector2, yaw: float, half_segment: float, radius: float) -> bo
 
 
 func resolve_motion(from: Vector2, to: Vector2, old_yaw: float, new_yaw: float,
-		half_segment: float, radius: float, delta: float, is_trailer: bool = false) -> Dictionary:
+		half_segment: float, radius: float, delta: float, _is_trailer: bool = false) -> Dictionary:
+	# Soft mooring: contact moves ONLY the float. Never shorten the vessel's
+	# travel, reject its yaw or damp its speed because a tether is stretched.
 	var motion := to - from
 	var angle := angle_difference(old_yaw, new_yaw)
 	var distance := motion.length() + absf(angle) * (half_segment + radius)
-	var steps := maxi(1, int(ceil(distance / SWEEP_STEP)))
-	if steps > MAX_SWEEP_STEPS:
-		# A teleport is not a sweep: reject it, rather than testing only the end.
-		return {"position": from, "yaw": old_yaw, "hit": true, "speed_factor": 0.0, "yaw_kick": 0.0}
-	var at := from
-	var yaw := old_yaw
+	var steps := clampi(int(ceil(distance / SWEEP_STEP)), 1, MAX_SWEEP_STEPS)
 	var hit := false
-	var head_on := 0.0
-	var yaw_kick := 0.0
-	var travel_speed := motion.length() / maxf(delta, 0.001)
-	for _sweep in range(steps):
-		var trial := at + motion / float(steps)
-		var trial_yaw := yaw + angle / float(steps)
-		var changed: Dictionary = {}
-		for _pass in range(4):
-			for i in range(floats.size()):
-				var item: Dictionary = floats[i]
-				var p := center(i)
-				var reach := half_segment + radius + float(item["radius"]) + 0.1
-				if p.distance_squared_to(trial) > reach * reach:
-					continue
-				var nearest := capsule_point(p, trial, trial_yaw, half_segment)
-				var gap := p - nearest
-				var minimum := radius + float(item["radius"]) + CONTACT_SLOP
-				if gap.length_squared() >= minimum * minimum:
-					continue
-				if not changed.has(i):
-					changed[i] = [item["offset"], item["velocity"], item["angular_velocity"], item["contact_hold"]]
-				hit = true
-				var normal := gap.normalized()
-				if gap.length_squared() < 0.000001:
-					normal = Vector2(cos(trial_yaw), -sin(trial_yaw))
-				var penetration := minimum - gap.length()
-				var offset: Vector2 = item["offset"]
-				# The light float yields first. Once the tether is taut, residual
-				# penetration is resolved on the vessel: no passing through it.
-				var proposed := (offset + normal * penetration).limit_length(MAX_OFFSET)
-				var anchor: Vector2 = item["anchor"]
-				var moved := anchor + proposed
-				if main.coast.water_depth(moved.x, moved.y) < 0.5 or not _clear_of_hull(moved, float(item["radius"]), not is_trailer):
-					proposed = offset
-				var yield_distance := maxf(0.0, (proposed - offset).dot(normal))
-				item["offset"] = proposed
-				trial -= normal * maxf(0.0, penetration - yield_distance)
-				var impact := minf(1.2, travel_speed * 0.13 + penetration * 0.25)
-				var velocity: Vector2 = item["velocity"]
-				item["velocity"] = (velocity + normal * impact).limit_length(2.5)
-				var angular: Vector2 = item["angular_velocity"]
-				item["angular_velocity"] = (angular + Vector2(normal.y, -normal.x) * impact * 1.4).limit_length(2.8)
-				item["contact_hold"] = 1.0
-				if motion.length_squared() > 0.000001:
-					head_on = maxf(head_on, maxf(0.0, motion.normalized().dot(normal)))
-				var lever := nearest - trial
-				yaw_kick += (lever.x * normal.y - lever.y * normal.x) / maxf(half_segment, 0.1) * minf(0.025, penetration * 0.05)
-		if overlaps(trial, trial_yaw, half_segment, radius):
-			# Multi-contact corner or rotational pinch: keep the last clear pose
-			# AND restore floats touched by this rejected substep.
-			for key in changed:
-				var item: Dictionary = floats[int(key)]
-				var saved: Array = changed[key]
-				item["offset"] = saved[0]
-				item["velocity"] = saved[1]
-				item["angular_velocity"] = saved[2]
-				item["contact_hold"] = saved[3]
-			head_on = maxf(head_on, 0.9)
-			break
-		at = trial
-		yaw = trial_yaw
-	return {"position": at, "yaw": yaw, "hit": hit,
-		"speed_factor": 1.0 - head_on * 0.65, "yaw_kick": clampf(yaw_kick, -0.10, 0.10)}
+	for sweep in range(steps):
+		var weight := float(sweep + 1) / float(steps)
+		var trial := from.lerp(to, weight)
+		var yaw := lerp_angle(old_yaw, new_yaw, weight)
+		var side := Vector2(cos(yaw), -sin(yaw))
+		for i in range(floats.size()):
+			var item: Dictionary = floats[i]
+			var p := center(i)
+			var nearest := capsule_point(p, trial, yaw, half_segment)
+			var gap := p - nearest
+			var minimum := radius + float(item["radius"]) + CONTACT_SLOP
+			if gap.length_squared() >= minimum * minimum:
+				continue
+			hit = true
+			var normal := gap.normalized() if gap.length_squared() > 0.000001 else side
+			# Guide a head-on float sideways instead of carrying it at the bow.
+			var side_sign := 1.0 if (p - trial).dot(side) >= 0.0 else -1.0
+			var away := normal.lerp(side * side_sign, 0.72).normalized()
+			if away.dot(normal) < 0.15:
+				away = normal
+			var penetration := minimum - gap.length()
+			var moved := p + away * (penetration / maxf(away.dot(normal), 0.15))
+			# Project outside the current hull even on a large low-FPS step.
+			var edge := capsule_point(moved, trial, yaw, half_segment)
+			var outward := moved - edge
+			if outward.length() < minimum:
+				moved = edge + (outward.normalized() if outward.length_squared() > 0.000001 else side) * minimum
+			var anchor: Vector2 = item["anchor"]
+			item["offset"] = moved - anchor
+			var impact := minf(0.8, motion.length() / maxf(delta, 0.001) * 0.08 + penetration)
+			var velocity: Vector2 = item["velocity"]
+			item["velocity"] = (velocity + away * impact).limit_length(2.5)
+			var angular: Vector2 = item["angular_velocity"]
+			item["angular_velocity"] = (angular + Vector2(away.y, -away.x) * impact).limit_length(2.8)
+			item["contact_hold"] = 0.15
+	return {"position": to, "yaw": new_yaw, "hit": hit, "speed_factor": 1.0, "yaw_kick": 0.0}
 
 
 func render_pose(index: int) -> Transform3D:
@@ -218,3 +186,18 @@ func render_nodes() -> void:
 		var node: Node3D = floats[i]["node"]
 		if is_instance_valid(node):
 			node.global_transform = render_pose(i)
+
+
+static func add_glare(parent: Node3D, height: float, color: Color) -> ShaderMaterial:
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2(1.1, 1.1)
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://shaders/buoy_glare.gdshader")
+	material.set_shader_parameter("tint", color)
+	var node := MeshInstance3D.new()
+	node.mesh = mesh
+	node.material_override = material
+	node.position.y = height
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(node)
+	return material

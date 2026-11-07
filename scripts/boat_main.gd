@@ -345,6 +345,7 @@ func _build_beacons() -> void:
 			"lantern_mat": lantern_mat,
 			"lantern_mesh": lantern_mesh,
 			"buoy_lamp_mat": buoy_lamp_mat,
+			"buoy_glare": BuoyDynamics.add_glare(buoy, 1.65, Color("e88554")),
 			"buoy_lamp": buoy_lamp,
 			"buoy_light": buoy_light,
 			"top_light": top_light,
@@ -1043,12 +1044,14 @@ func _process(delta: float) -> void:
 		var bp: Vector3 = b["buoy_pos"]
 		# Буй имеет собственный плавный проблеск; emission и реальный
 		# источник синхронны. Цвет по-прежнему задаётся состоянием маяка.
-		var pulse := 0.15 + 0.85 * pow(maxf(0.0,
-			sin(_beacon_anim_time * TAU / 4.0 + bp.z * 0.1)), 8.0)
+		var pulse := ShoalMarkers.flash_strength(_beacon_anim_time, bp.z * 0.1)
 		var buoy_signal: OmniLight3D = b["buoy_light"]
 		var buoy_lens: StandardMaterial3D = b["buoy_lamp_mat"]
-		buoy_signal.light_energy = 0.35 * pulse
-		buoy_lens.emission_energy_multiplier = 1.4 * pulse
+		buoy_signal.light_energy = 1.0 * pulse
+		buoy_lens.emission_energy_multiplier = 5.5 * pulse
+		var glare: ShaderMaterial = b["buoy_glare"]
+		glare.set_shader_parameter("tint", buoy_signal.light_color)
+		glare.set_shader_parameter("flash_strength", pulse)
 		if b["lit"]:
 			var pivot: Node3D = b["beam_pivot"]
 			# Один полный оборот за 18 с; свет действительно движется,

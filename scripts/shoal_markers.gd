@@ -15,6 +15,7 @@ var predicted_depth := 100.0
 var _danger_point := Vector2.ZERO
 var _parts: Array[MultiMeshInstance3D] = []
 var _offsets: Array[float] = []
+var _glows: MultiMeshInstance3D
 var _lenses: MultiMeshInstance3D
 var _colors: Array[Color] = []
 var _float_ids: Array[int] = []
@@ -248,6 +249,13 @@ func setup(game: BoatMain) -> void:
 	shader.code = "shader_type spatial; render_mode unshaded; varying float flash; void vertex(){ flash=INSTANCE_CUSTOM.r; } void fragment(){ ALBEDO=COLOR.rgb*0.12; EMISSION=COLOR.rgb*mix(0.12,5.5,flash); }"
 	material.shader = shader
 	_lenses = _add_part(lens, material, 2.12, true)
+	var halo := QuadMesh.new()
+	halo.size = Vector2(1.1, 1.1)
+	var glow_material := ShaderMaterial.new()
+	glow_material.shader = preload("res://shaders/buoy_glare.gdshader")
+	glow_material.set_shader_parameter("instanced_mode", true)
+	_glows = _add_part(halo, glow_material, 2.12, true)
+	_glows.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for i in range(positions.size()):
 		_colors.append(IDLE)
 		_near.append(false)
@@ -332,10 +340,13 @@ func _process(delta: float) -> void:
 			var trailer := boat._trailer
 			var trailer_at := Vector2(trailer.global_position.x, trailer.global_position.z)
 			distance = minf(distance, main.buoy_dynamics.hull_distance(id, trailer_at, trailer.rotation.y, 1.6, 1.5))
-		_near[i] = distance < (35.0 if _near[i] else 28.0) or float(main.buoy_dynamics.floats[id]["contact_hold"]) > 0.0
+		_near[i] = distance < (15.0 if _near[i] else 13.0)
 		_colors[i] = _colors[i].lerp(ALERT if _near[i] else IDLE, 1.0 - exp(-delta * 10.0))
+		var flash := Color(flash_strength(_time, float(i) * 0.17), 0.0, 0.0, 1.0)
 		_lenses.multimesh.set_instance_color(i, _colors[i])
-		_lenses.multimesh.set_instance_custom_data(i, Color(flash_strength(_time, float(i) * 0.17), 0.0, 0.0, 1.0))
+		_lenses.multimesh.set_instance_custom_data(i, flash)
+		_glows.multimesh.set_instance_color(i, _colors[i])
+		_glows.multimesh.set_instance_custom_data(i, flash)
 		var pose := main.buoy_dynamics.render_pose(id)
 		for j in range(_parts.size()):
 			var part_pose := pose

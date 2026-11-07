@@ -232,7 +232,7 @@ func _physics_process(delta: float) -> void:
 					var edge := r_pos + gap.normalized() * clearance
 					away.x = edge.x
 					away.z = edge.y
-					if coast.water_depth(away.x, away.z) > 1.7 and not main.buoy_dynamics.overlaps(Vector2(away.x, away.z), rotation.y, 3.7, 1.7) and _make_room_for_trailer(away):
+					if coast.water_depth(away.x, away.z) > 1.7 and _make_room_for_trailer(away):
 						global_position = away
 				if _impact_cooldown <= 0.0 and absf(speed) > 1.5:
 					_impact_cooldown = 1.2
@@ -278,13 +278,6 @@ func _physics_process(delta: float) -> void:
 				hull_hp = maxf(15.0, hull_hp - 8.0)
 				main.announce("ПОСАДКА НА МЕЛЬ! КОРПУС %d%%" % int(round(hull_hp)))
 			speed = minf(speed, 0.0)
-
-	# A rejected pier/depth/trailer move must not leave its rotation inside a float.
-	if main != null and main.buoy_dynamics.overlaps(Vector2(global_position.x, global_position.z), rotation.y, 3.7, 1.7):
-		rotation.y = previous_yaw
-		speed = 0.0
-		heading = -global_transform.basis.z
-		right = global_transform.basis.x
 
 	# 5-точечный расчёт плавучести
 	var bow_pt := global_position + heading * 4.4
@@ -367,8 +360,6 @@ func _make_room_for_trailer(boat_next: Vector3) -> bool:
 		if resolved.distance_to(Vector2(boat_next.x, boat_next.z)) < TRAILER_CLEARANCE - 0.002:
 			return false
 		if coast.water_depth(resolved.x, resolved.y) < 1.2 or _harbor_blocks_trailer(resolved):
-			return false
-		if main.buoy_dynamics.overlaps(Vector2(boat_next.x, boat_next.z), rotation.y, 3.7, 1.7):
 			return false
 		pushed.x = resolved.x
 		pushed.z = resolved.y

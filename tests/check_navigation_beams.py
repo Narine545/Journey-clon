@@ -18,8 +18,8 @@ for nx, nz in ((1, 0), (0, -1), (-1, 0), (0, 1)):
 assert 'spot.position = Vector3(0.0, 0.0, -1.3)' in main
 assert 'spot.rotation = Vector3(-atan2(tower_pos.y + 10.3, 32.0), 0.0, 0.0)' in main
 assert 'delta * TAU / 18.0' in main
-assert 'buoy_signal.light_energy = 0.35 * pulse' in main
-assert 'buoy_lens.emission_energy_multiplier = 1.4 * pulse' in main
+assert 'buoy_signal.light_energy = 1.0 * pulse' in main
+assert 'buoy_lens.emission_energy_multiplier = 5.5 * pulse' in main
 height = 1.2+10.3
 old_horizontal = height/math.tan(.22)
 old_slant = math.hypot(height, old_horizontal)
