@@ -93,6 +93,11 @@ assert 'if not zone_managed or not depleted:' in renew
 process=slick.split('func _process',1)[1].split('func collect()',1)[0]
 assert 'if zone_managed:\n\t\t\treturn\n\t\t_respawn -= delta' in process
 assert 'main.resource_zones.zones' in inspector and 'main.resource_zones.summary()' in inspector
+# Scan ALL GDScript, including smoke/debug scripts parsed when the game loads.
+# A deleted member in an optional test script can prevent the whole scene loading.
+removed_members = re.compile(r'\b(?:SLICK_RECYCLE_DISTANCE|SLICK_SPAWN_MIN|SLICK_SPAWN_MAX|_stream_resources|_slick_rng|_stream_cursor|_stream_timer)\b')
+for gdscript in (root/'scripts').rglob('*.gd'):
+    assert not removed_members.search(gdscript.read_text()), f'stale streaming member in {gdscript.name}'
 # Exact reported warnings have their causes removed, not silenced globally.
 assert 'material: Material, transform: Transform3D' not in arch
 assert re.search(r'\bvar basis\b',arch) is None

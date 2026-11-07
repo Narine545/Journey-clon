@@ -172,31 +172,21 @@ func _physics_process(_delta: float) -> void:
 		_check(not main.boat.has_trailer and main.boat._trailer_target == null and
 			is_zero_approx(main.boat.trailer_pump_fraction()),
 			"отстыковка прицепа отключает автоматический насос")
-		# В новом районе пятна должны появляться снова, не оставаясь навсегда
-		# в стартовом круге. Уходим в открытое море, не заходя на берег.
+		# A voyage must not pull the world's deposits toward the vessel.
+		var zone_positions: Array[Vector3] = []
+		for zone_slot in main.resource_zones.slots:
+			var zone_slick: ResourceSlick = zone_slot["slick"]
+			zone_positions.append(zone_slick.position)
 		main.boat.global_position = origin + Vector3(-220.0, 0.0, 0.0)
 		main.boat.speed = 0.0
-		# Тест телепортирует лодку; для проверки видимого кадра переносим
-		# камеру тоже. При обычной езде она остаётся плавной и инерционной.
 		main._camera_focus = main.boat.global_position + Vector3.UP * 0.8
 		main.camera.global_position = main._camera_focus + Vector3(21.0, 26.2, 30.0)
 		main.camera.look_at(main._camera_focus, Vector3.UP)
-		# На экране игра переселяет не более одного пятна за тик.
-		for _i in range(main.slicks.size()):
-			main._stream_resources()
-		var nearby := 0
-		var popped_in_view := 0
-		for slick in main.slicks:
-			if slick.depleted:
-				continue
-			var slick_xz := Vector2(slick.position.x, slick.position.z)
-			if slick_xz.distance_to(Vector2(main.boat.global_position.x,
-				main.boat.global_position.z)) < BoatMain.SLICK_RECYCLE_DISTANCE:
-				nearby += 1
-				if not main._outside_boat_view(slick_xz):
-					popped_in_view += 1
-		_check(nearby >= 4, "пятна появляются близко к лодке в новом районе")
-		_check(popped_in_view == 0, "перемещённые пятна не возникают в кадре")
+		main.resource_zones.update(1.0)
+		for zone_index in range(main.resource_zones.slots.size()):
+			var zone_slick: ResourceSlick = main.resource_zones.slots[zone_index]["slick"]
+			_check(zone_slick.position == zone_positions[zone_index],
+				"выход в другой район не переселяет пятна к лодке")
 
 		# Новые способности: расходы, восстановление и изменение характеристик.
 		main.refined[0] = 1
