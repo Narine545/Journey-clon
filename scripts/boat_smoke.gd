@@ -431,6 +431,7 @@ func _physics_process(_delta: float) -> void:
 		_check_slick_disturbance()
 		_check_partial_slick_collection()
 		_check_weather()
+		_check_world_inspector()
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))
 		get_tree().quit(0 if failures == 0 else 1)
 
@@ -586,3 +587,51 @@ func _check_weather() -> void:
 	main.weather.fog_amount = old_fog
 	main.weather.cloud_amount = old_cloud
 	main._apply_atmosphere(main.night01)
+
+
+func _check_world_inspector() -> void:
+	var tool := main.inspector
+	var rect := Rect2(28.0, 92.0, 600.0, 600.0)
+	var bounds := WorldInspector.map_bounds()
+	var corner := WorldInspector.world_to_map(bounds.position, rect)
+	var round_trip := WorldInspector.map_to_world(corner, rect)
+	_check(corner.is_equal_approx(rect.position) and round_trip.is_equal_approx(bounds.position),
+		"карта использует мировые X/Z и правильные конечные границы рельефа")
+	var boat_position := main.boat.global_position
+	var old_size := main.camera.size
+	var old_far := main.camera.far
+	var old_transform := main.camera.global_transform
+	var old_fog := main.world._env.fog_enabled
+	var old_volume := main.world._env.volumetric_fog_enabled
+	var old_weather := main.weather.fog_amount
+	var old_markers: Array[Vector3] = tool.markers.duplicate()
+	var old_selected := tool.selected
+	tool.set_free_camera(true)
+	_check(main.inspection_active() and main.boat.global_position.is_equal_approx(boat_position),
+		"свободная камера включает отдельное управление, не телепортируя судно")
+	main.camera.global_position = Vector3(-100.0, 200.0, 0.0)
+	main.camera.look_at(Vector3(-100.0, 0.0, 0.0), Vector3.FORWARD)
+	var hit := tool.pick_surface(tool.size * 0.5)
+	var picked := Vector3.ZERO
+	if not hit.is_empty():
+		picked = hit["point"]
+	_check(not hit.is_empty() and picked.distance_to(Vector3(-100.0, 0.0, 0.0)) < 0.1,
+		"щелчок по морю даёт координату уровня воды, а не удалённого дна")
+	tool.add_marker(Vector3(-100.0, 0.0, 0.0))
+	var report := tool.make_report()
+	_check(report["point"] != null and report.has("camera_position") and
+		report.has("weather_fog") and report.has("volume_length") and report.has("ground_height"),
+		"отчёт содержит метку, камеру, погоду и границы рендерных областей")
+	tool.overview()
+	_check(tool.clear_view and main.camera.size > 900.0 and
+		not main.world._env.fog_enabled and not main.world._env.volumetric_fog_enabled and
+		is_equal_approx(main.weather.fog_amount, old_weather),
+		"общий вид показывает всю карту без дымки, не подменяя игровую погоду")
+	tool.set_free_camera(false)
+	_check(not main.inspection_active() and is_equal_approx(main.camera.size, old_size) and
+		is_equal_approx(main.camera.far, old_far) and main.world._env.fog_enabled == old_fog and
+		main.world._env.volumetric_fog_enabled == old_volume,
+		"выход возвращает обычную камеру и прежние флаги атмосферы")
+	main.camera.global_transform = old_transform
+	tool.markers = old_markers
+	tool.selected = old_selected

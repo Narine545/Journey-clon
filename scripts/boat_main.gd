@@ -25,6 +25,7 @@ var water: WaterSurface
 var boat: BoatVessel
 var camera: Camera3D
 var hud: BoatHud
+var inspector: WorldInspector
 var slicks: Array[ResourceSlick] = []
 var debug_slick_parallax := true
 var raw := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
@@ -126,6 +127,12 @@ func _ready() -> void:
 	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hud)
+	var inspection_layer := CanvasLayer.new()
+	inspection_layer.layer = 30
+	add_child(inspection_layer)
+	inspector = WorldInspector.new()
+	inspection_layer.add_child(inspector)
+	inspector.setup(self)
 	_setup_retro_debug()
 	_setup_rme4_atmosphere()
 	weather.setup()
@@ -191,6 +198,8 @@ func _apply_atmosphere(n01: float) -> void:
 		boat.update_night_lights(night01, overdrive_timer > 0.0)
 		for slick in slicks:
 			slick.configure_night_visibility(boat._bow_spot, night01)
+	if inspector != null:
+		inspector.apply_view_override()
 
 
 # ---------------------------------------------------------------------------
@@ -981,7 +990,13 @@ func debug_warp_to_beacon() -> void:
 	announce("ТЕСТ: У БУЯ «%s» — НАЖМИТЕ [E]" % target_b["name"].to_upper())
 
 
+func inspection_active() -> bool:
+	return inspector != null and inspector.is_active()
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if inspection_active():
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
 			KEY_R:
@@ -1090,20 +1105,25 @@ func _process(delta: float) -> void:
 		water.position = Vector3(boat.global_position.x, Coast.SEA_LEVEL,
 			boat.global_position.z)
 
-	# Рендерная камера должна следовать рендерной, а не последней тиковой
-	# позиции лодки. Иначе при 60 Гц физики и другом FPS видны ступеньки.
-	var target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
-	_camera_focus = _camera_focus.lerp(target, 1.0 - exp(-4.0 * delta))
-	var desired := _camera_focus + Vector3(21.0, 26.2, 30.0)
-	# Один фильтр для focus; второй лаг позиции менял угол взгляда камеры
-	# при разгоне и поворотах, хотя ракурс должен оставаться изометрическим.
-	camera.global_position = desired
-	camera.look_at(_camera_focus, Vector3.UP)
+	if inspector != null and inspector.free_camera:
+		inspector.update_camera(delta)
+	else:
+		# Рендерная камера должна следовать рендерной, а не последней тиковой
+		# позиции лодки. Иначе при 60 Гц физики и другом FPS видны ступеньки.
+		var target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
+		_camera_focus = _camera_focus.lerp(target, 1.0 - exp(-4.0 * delta))
+		var desired := _camera_focus + Vector3(21.0, 26.2, 30.0)
+		# Один фильтр для focus; второй лаг позиции менял угол взгляда камеры
+		# при разгоне и поворотах, хотя ракурс должен оставаться изометрическим.
+		camera.global_position = desired
+		camera.look_at(_camera_focus, Vector3.UP)
 	notice_time = maxf(0.0, notice_time - delta)
 	_stream_timer -= delta
 	if _stream_timer <= 0.0:
 		_stream_timer = 0.12
-		_stream_resources()
+		if not inspection_active():
+			_stream_resources()
+	hud.visible = not inspection_active()
 	hud.queue_redraw()
 	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":
 		_capture_frames += 1

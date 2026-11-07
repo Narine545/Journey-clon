@@ -15,6 +15,9 @@ func _draw() -> void:
 	var danger := Color("f07b62")
 	var backdrop := Color(0.035, 0.075, 0.10, 0.88)
 
+	draw_string(font, Vector2(28, size.y - 52), "[M] КАРТА МИРА   [F] СВОБОДНАЯ КАМЕРА / МЕТКИ ДЕФЕКТОВ",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, muted)
+
 	# 1. ГЛАВНАЯ ПАНЕЛЬ ЛАБОРАТОРИИ И РЕСУРСОВ
 	var panel := Rect2(22, 22, 412, 380)
 	draw_rect(panel, backdrop)

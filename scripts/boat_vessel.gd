@@ -188,6 +188,9 @@ func _physics_process(delta: float) -> void:
 
 	var throttle := Input.get_axis("boat_reverse", "boat_forward")
 	var steer := Input.get_axis("boat_left", "boat_right")
+	if main != null and main.inspection_active():
+		throttle = 0.0
+		steer = 0.0
 	_steer_visual = lerpf(_steer_visual, steer, minf(1.0, delta * 5.5))
 
 	var max_spd := effective_max_speed()
@@ -422,6 +425,18 @@ func _slick_pickup(slick: ResourceSlick, trailer: bool = false) -> Vector3:
 
 
 func _update_pump(delta: float) -> void:
+	if main.inspection_active():
+		_target = null
+		_trailer_target = null
+		_pump_progress = 0.0
+		_trailer_pump_progress = 0.0
+		_hose.visible = false
+		_intake_head.visible = false
+		if _trailer_hose != null:
+			_trailer_hose.visible = false
+		if _trailer_head != null:
+			_trailer_head.visible = false
+		return
 	# Ручной насос лодки по-прежнему работает только с левого борта.
 	var p_range := effective_pump_range()
 	var previous := _target
