@@ -47,6 +47,7 @@ func setup(game: BoatMain) -> void:
 		var col := Color("ef6857") if i == 0 else Color("77cda5")
 		var lens := main._mat(col, 0.0, 0.7, 0.3)
 		main._add_cyl(buoy, Vector3(0.0, 1.8, 0.0), 0.14, 0.14, 0.23, lens)
+		main.buoy_dynamics.register(Vector2(buoy.position.x, buoy.position.z), 0.72, buoy)
 		_entrance_buoys.append(buoy)
 		_buoy_materials.append(lens)
 	var rope_mat := main._mat(Color("4c473c"), 0.0, 0.0, 0.95)
@@ -107,8 +108,6 @@ func _process(delta: float) -> void:
 	_porch_lamp.light_energy = 0.03 + 0.35 * main.night01
 	_architecture.windows.emission_energy_multiplier = 0.03 + 0.4 * main.night01
 	for i in range(_entrance_buoys.size()):
-		var buoy := _entrance_buoys[i]
-		buoy.position.y = main.water.surface_height(buoy.position.x, buoy.position.z)
 		_buoy_materials[i].emission_energy_multiplier = 0.7 * (0.6 + 0.4 * sin(_time * 2.2 + float(i) * PI))
 	for i in range(_ropes.size()):
 		var rope := _ropes[i]

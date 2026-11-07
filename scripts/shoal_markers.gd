@@ -5,8 +5,8 @@ const DEPTH := 2.25
 const GRID := 12.0
 const MAX_MARKERS := 18
 const SECTORS := 12
-const IDLE := Color("f3cf84")
-const ALERT := Color("ff453d")
+const IDLE := Color("06f51b")
+const ALERT := Color("ff1008")
 var main: BoatMain
 var positions: Array[Vector2] = []
 var shelf_widths: Array[float] = []
@@ -17,6 +17,8 @@ var _parts: Array[MultiMeshInstance3D] = []
 var _offsets: Array[float] = []
 var _lenses: MultiMeshInstance3D
 var _colors: Array[Color] = []
+var _float_ids: Array[int] = []
+var _near: Array[bool] = []
 var _timer := 0.0
 var _time := 0.0
 
@@ -243,18 +245,22 @@ func setup(game: BoatMain) -> void:
 	lens.rings = 6
 	var material := ShaderMaterial.new()
 	var shader := Shader.new()
-	shader.code = "shader_type spatial; render_mode unshaded; void fragment(){ ALBEDO=COLOR.rgb; EMISSION=COLOR.rgb*0.55; }"
+	shader.code = "shader_type spatial; render_mode unshaded; varying float flash; void vertex(){ flash=INSTANCE_CUSTOM.r; } void fragment(){ ALBEDO=COLOR.rgb*0.12; EMISSION=COLOR.rgb*mix(0.12,5.5,flash); }"
 	material.shader = shader
 	_lenses = _add_part(lens, material, 2.12, true)
 	for i in range(positions.size()):
 		_colors.append(IDLE)
+		_near.append(false)
+		_float_ids.append(main.buoy_dynamics.register(positions[i], 0.75))
 
 
 func _add_part(mesh: Mesh, material: Material, y: float, colors: bool = false) -> MultiMeshInstance3D:
 	var node := MultiMeshInstance3D.new()
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	node.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	mm.use_colors = colors
+	mm.use_custom_data = colors
 	mm.mesh = mesh
 	mm.instance_count = positions.size()
 	node.multimesh = mm
@@ -298,6 +304,15 @@ func _check_course() -> void:
 		warning = false
 
 
+## Two distinct, short flashes per second, with a dim interval instead of a
+## washed-out sinusoid. Custom data stays in [0,1]; HDR gain lives in shader.
+static func flash_strength(time: float, phase: float = 0.0) -> float:
+	var t := fposmod(time + phase, 1.05)
+	var first := smoothstep(0.0, 0.025, t) * (1.0 - smoothstep(0.12, 0.18, t))
+	var second := smoothstep(0.26, 0.285, t) * (1.0 - smoothstep(0.38, 0.44, t))
+	return maxf(first, second)
+
+
 func _process(delta: float) -> void:
 	if main == null:
 		return
@@ -308,12 +323,21 @@ func _process(delta: float) -> void:
 		_check_course()
 	if _lenses == null:
 		return
-	var boat_at := Vector2(main.boat.global_position.x, main.boat.global_position.z)
+	var boat := main.boat
+	var boat_at := Vector2(boat.global_position.x, boat.global_position.z)
 	for i in range(positions.size()):
-		var p := positions[i]
-		var danger := warning and p.distance_to(_danger_point) < 68.0 and p.distance_to(boat_at) < 85.0
-		_colors[i] = _colors[i].lerp(ALERT if danger else IDLE, 1.0 - exp(-delta * 6.0))
+		var id := _float_ids[i]
+		var distance := main.buoy_dynamics.hull_distance(id, boat_at, boat.rotation.y, 3.7, 1.7)
+		if boat.has_trailer and boat._trailer != null:
+			var trailer := boat._trailer
+			var trailer_at := Vector2(trailer.global_position.x, trailer.global_position.z)
+			distance = minf(distance, main.buoy_dynamics.hull_distance(id, trailer_at, trailer.rotation.y, 1.6, 1.5))
+		_near[i] = distance < (35.0 if _near[i] else 28.0) or float(main.buoy_dynamics.floats[id]["contact_hold"]) > 0.0
+		_colors[i] = _colors[i].lerp(ALERT if _near[i] else IDLE, 1.0 - exp(-delta * 10.0))
 		_lenses.multimesh.set_instance_color(i, _colors[i])
-		var y := main.water.surface_height(p.x, p.y)
+		_lenses.multimesh.set_instance_custom_data(i, Color(flash_strength(_time, float(i) * 0.17), 0.0, 0.0, 1.0))
+		var pose := main.buoy_dynamics.render_pose(id)
 		for j in range(_parts.size()):
-			_parts[j].multimesh.set_instance_transform(i, Transform3D(Basis.IDENTITY, Vector3(p.x, y + _offsets[j], p.y)))
+			var part_pose := pose
+			part_pose.origin += pose.basis * Vector3(0.0, _offsets[j], 0.0)
+			_parts[j].multimesh.set_instance_transform(i, part_pose)

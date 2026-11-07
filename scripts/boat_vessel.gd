@@ -232,7 +232,7 @@ func _physics_process(delta: float) -> void:
 					var edge := r_pos + gap.normalized() * clearance
 					away.x = edge.x
 					away.z = edge.y
-					if coast.water_depth(away.x, away.z) > 1.7 and _make_room_for_trailer(away):
+					if coast.water_depth(away.x, away.z) > 1.7 and not main.buoy_dynamics.overlaps(Vector2(away.x, away.z), rotation.y, 3.7, 1.7) and _make_room_for_trailer(away):
 						global_position = away
 				if _impact_cooldown <= 0.0 and absf(speed) > 1.5:
 					_impact_cooldown = 1.2
@@ -245,6 +245,20 @@ func _physics_process(delta: float) -> void:
 				# Гасим скорость, не создавая отскок в обратную сторону.
 				speed = 0.0
 				break
+
+	if not hit_reef and main != null:
+		var contact := main.buoy_dynamics.resolve_motion(
+			Vector2(global_position.x, global_position.z), Vector2(next.x, next.z),
+			previous_yaw, rotation.y, 3.7, 1.7, delta)
+		var resolved: Vector2 = contact["position"]
+		next.x = resolved.x
+		next.z = resolved.y
+		rotation.y = float(contact["yaw"])
+		if bool(contact["hit"]):
+			speed *= float(contact["speed_factor"])
+			_roll_vel += float(contact["yaw_kick"]) * 0.3
+		heading = -global_transform.basis.z
+		right = global_transform.basis.x
 
 	if main != null and main.harbor != null and main.harbor.blocks_hull(Vector2(next.x, next.z), rotation.y):
 		hit_reef = true
@@ -264,6 +278,13 @@ func _physics_process(delta: float) -> void:
 				hull_hp = maxf(15.0, hull_hp - 8.0)
 				main.announce("ПОСАДКА НА МЕЛЬ! КОРПУС %d%%" % int(round(hull_hp)))
 			speed = minf(speed, 0.0)
+
+	# A rejected pier/depth/trailer move must not leave its rotation inside a float.
+	if main != null and main.buoy_dynamics.overlaps(Vector2(global_position.x, global_position.z), rotation.y, 3.7, 1.7):
+		rotation.y = previous_yaw
+		speed = 0.0
+		heading = -global_transform.basis.z
+		right = global_transform.basis.x
 
 	# 5-точечный расчёт плавучести
 	var bow_pt := global_position + heading * 4.4
@@ -336,6 +357,21 @@ func _make_room_for_trailer(boat_next: Vector3) -> bool:
 		return false
 	if coast.water_depth(pushed.x, pushed.z) < 1.2:
 		return false
+	if main != null:
+		var contact := main.buoy_dynamics.resolve_motion(
+			Vector2(_trailer.global_position.x, _trailer.global_position.z), Vector2(pushed.x, pushed.z),
+			_trailer.rotation.y, _trailer.rotation.y, 1.6, 1.5, get_physics_process_delta_time(), true)
+		var resolved: Vector2 = contact["position"]
+		# Never separate again after collision resolution: that would push the
+		# trailer back through the very buoy that stopped it. Stop the boat instead.
+		if resolved.distance_to(Vector2(boat_next.x, boat_next.z)) < TRAILER_CLEARANCE - 0.002:
+			return false
+		if coast.water_depth(resolved.x, resolved.y) < 1.2 or _harbor_blocks_trailer(resolved):
+			return false
+		if main.buoy_dynamics.overlaps(Vector2(boat_next.x, boat_next.z), rotation.y, 3.7, 1.7):
+			return false
+		pushed.x = resolved.x
+		pushed.z = resolved.y
 	_trailer.global_position = pushed
 	return true
 
@@ -575,6 +611,7 @@ func _update_trailer(delta: float) -> void:
 		return
 	var stern_center := _body.to_global(Vector3(0.0, 0.85, 4.95))
 	var trailer_pos := _trailer.global_position
+	var buoy_previous_yaw := _trailer.rotation.y
 	var to_hitch := stern_center - trailer_pos
 	to_hitch.y = 0.0
 	var dist := to_hitch.length()
@@ -598,6 +635,18 @@ func _update_trailer(delta: float) -> void:
 		trailer_pos = _trailer.global_position
 	else:
 		trailer_pos = separated
+	if main != null:
+		var contact := main.buoy_dynamics.resolve_motion(
+			Vector2(_trailer.global_position.x, _trailer.global_position.z), Vector2(trailer_pos.x, trailer_pos.z),
+			buoy_previous_yaw, _trailer.rotation.y, 1.6, 1.5, delta, true)
+		var resolved: Vector2 = contact["position"]
+		_trailer.rotation.y = float(contact["yaw"])
+		if resolved.distance_to(Vector2(global_position.x, global_position.z)) < TRAILER_CLEARANCE - 0.002 or coast.water_depth(resolved.x, resolved.y) < 1.2 or _harbor_blocks_trailer(resolved):
+			trailer_pos = _trailer.global_position
+			_trailer.rotation.y = buoy_previous_yaw
+		else:
+			trailer_pos.x = resolved.x
+			trailer_pos.z = resolved.y
 	var t_surf := water.surface_height(trailer_pos.x, trailer_pos.z)
 	trailer_pos.y = lerpf(trailer_pos.y, t_surf + 0.06, minf(1.0, delta * 3.8))
 	_trailer.global_position = trailer_pos

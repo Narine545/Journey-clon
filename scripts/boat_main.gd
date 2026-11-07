@@ -25,6 +25,7 @@ var hud: BoatHud
 var inspector: WorldInspector
 var slicks: Array[ResourceSlick] = []
 var resource_zones := ResourceZones.new()
+var buoy_dynamics := BuoyDynamics.new()
 var debug_slick_parallax := true
 var raw := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var refined := PackedInt32Array([0, 0, 0, 0])
@@ -90,6 +91,7 @@ func _ready() -> void:
 	water.configure_boat_waves()
 	water.set_ground(coast.height_tex, coast.grid_origin, coast.grid_cell, coast.grid_n, coast)
 	game.water = water
+	buoy_dynamics.setup(self)
 	boat = BoatVessel.new()
 	boat.name = "Vessel"
 	# Только физически движущаяся ветка: вода/камера/пятна живут в _process.
@@ -330,6 +332,7 @@ func _build_beacons() -> void:
 		buoy_light.light_volumetric_fog_energy = 0.2
 		buoy.add_child(buoy_light)
 
+		buoy_dynamics.register(Vector2(buoy_pos.x, buoy_pos.z), 1.32, buoy)
 		beacons.append({
 			"name": s["name"],
 			"cost": s["cost"],
@@ -1003,6 +1006,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			camera.size = minf(42.0, camera.size + 2.0)
 
 
+func _physics_process(delta: float) -> void:
+	if water != null:
+		buoy_dynamics.step(delta)
+
+
 func _process(delta: float) -> void:
 	if boat == null or camera == null:
 		return
@@ -1029,12 +1037,10 @@ func _process(delta: float) -> void:
 			_atmosphere_timer = 0.15
 			_apply_atmosphere(night01)
 
-	# Качка причальных буёв и вращение лучей зажжённых Маяков
+	buoy_dynamics.render_nodes()
+	# Вращение лучей зажжённых Маяков
 	for b in beacons:
 		var bp: Vector3 = b["buoy_pos"]
-		var buoy_node: Node3D = b["buoy_node"]
-		buoy_node.position.y = water.surface_height(bp.x, bp.z)
-		buoy_node.rotation.z = sin(_beacon_anim_time * 2.0 + bp.z * 0.1) * 0.08
 		# Буй имеет собственный плавный проблеск; emission и реальный
 		# источник синхронны. Цвет по-прежнему задаётся состоянием маяка.
 		var pulse := 0.15 + 0.85 * pow(maxf(0.0,

@@ -177,7 +177,7 @@ assert 'not IslandLayout.permits_slick(p)' in zones and 'resource_zones.setup(se
 assert 'main.coast.water_depth' in shoals and 'const MAX_MARKERS := 18' in shoals
 assert 'boat.speed * 2.4' in shoals and 'boat.has_trailer' in shoals
 assert '3.4 if warning else 2.8' in shoals and 'main.harbor.moored' in shoals
-assert 'p.distance_to(_danger_point) < 68.0' in shoals
+assert '35.0 if _near[i] else 28.0' in shoals # local hull proximity + hysteresis, not global hazard state
 assert 'OmniLight3D.new()' not in shoals # marks aren't a ring of costly point lights
 assert 'mm.instance_count = transforms.size()' in architecture
 assert 'Basis.from_euler(rot) * Basis.from_scale(size)' in architecture

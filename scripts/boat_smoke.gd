@@ -51,6 +51,7 @@ func _physics_process(_delta: float) -> void:
 		_check_island_harbor()
 		_check_shoal_navigation()
 		_check_resource_zones()
+		_check_buoy_dynamics()
 		Input.action_press("boat_forward")
 	if ticks == 60:
 		trail_sample = main.boat._trail_buffer[2]
@@ -749,3 +750,79 @@ func _check_resource_zones() -> void:
 	_check(temp.renew_in_zone(Vector3(-240, 0, -200)) and not temp.depleted and temp.remaining_mass == 1.0,
 		"новый запас появляется только из полностью исчерпанного слота")
 	temp.queue_free()
+
+
+func _check_buoy_dynamics() -> void:
+	# Real production solver, isolated deep-water fixture; not a replacement
+	# for running the scene in Godot and inspecting contacts visually.
+	var dynamics := BuoyDynamics.new()
+	dynamics.setup(main)
+	dynamics._interpolate = false
+	var anchor := Vector2(-480.0, -480.0)
+	var id := dynamics.register(anchor, 0.75)
+	var contact := dynamics.resolve_motion(anchor - Vector2(12.0, 0.0), anchor + Vector2(12.0, 0.0), PI * 0.5, PI * 0.5, 3.7, 1.7, 0.1)
+	var resolved: Vector2 = contact["position"]
+	var offset: Vector2 = dynamics.floats[id]["offset"]
+	var angular: Vector2 = dynamics.floats[id]["angular_velocity"]
+	_check(bool(contact["hit"]) and resolved.x < anchor.x and not dynamics.overlaps(resolved, float(contact["yaw"]), 3.7, 1.7),
+		"быстрый проход лодки останавливается у буя, без туннелирования")
+	_check(offset.length() > 0.1 and offset.length() <= BuoyDynamics.MAX_OFFSET + 0.00001 and angular.length() > 0.01,
+		"контакт сдвигает и раскачивает буй в пределах якорного крепления")
+	for _tick in range(600):
+		dynamics.step(1.0 / 60.0)
+	offset = dynamics.floats[id]["offset"]
+	_check(offset.length() < 0.01, "после контакта буй возвращается к якорю")
+	dynamics.floats[id]["wave_tilt"] = Vector2(0.12, -0.08)
+	dynamics.floats[id]["wave_timer"] = 1.0
+	for _tick in range(30):
+		dynamics.step(1.0 / 60.0)
+	_check(not dynamics.render_pose(id).basis.y.is_equal_approx(Vector3.UP),
+		"уклон волны наклоняет весь буй, а не только меняет высоту")
+
+	var boat := main.boat
+	var saved_pose := boat.global_transform
+	var saved_trailer := boat._trailer.global_transform
+	var saved_trailer_rotation := boat._trailer_body.rotation
+	var trailer_enabled := boat.has_trailer
+	var original := main.buoy_dynamics
+	main.buoy_dynamics = dynamics
+	boat.global_position = Vector3(anchor.x - 15.0, 0.0, anchor.y)
+	boat.rotation.y = PI * 0.5
+	boat.set_trailer_enabled(true)
+	boat._trailer.global_position = Vector3(anchor.x + 10.0, 0.0, anchor.y)
+	dynamics.floats[id]["offset"] = Vector2.ZERO
+	boat._update_trailer(1.0)
+	var trailer_at := Vector2(boat._trailer.global_position.x, boat._trailer.global_position.z)
+	_check(trailer_at.x > anchor.x and dynamics.hull_distance(id, trailer_at, boat._trailer.rotation.y, 1.6, 1.5) >= -0.001,
+		"реальный метод следования плашкоута не протягивает его сквозь буй")
+	dynamics.floats[id]["offset"] = Vector2.ZERO
+	boat.global_position = Vector3(anchor.x - 14.0, 0.0, anchor.y)
+	boat._trailer.global_position = Vector3(anchor.x - 14.0 + BoatVessel.TRAILER_CLEARANCE, 0.0, anchor.y)
+	boat._trailer.rotation.y = PI * 0.5
+	_check(not boat._make_room_for_trailer(Vector3(anchor.x - 8.0, 0.0, anchor.y)),
+		"задний ход блокируется, если плашкоут прижат к бую; повторного проталкивания нет")
+	main.buoy_dynamics = original
+	boat.global_transform = saved_pose
+	boat.set_trailer_enabled(false)
+	var marks := main.shoals
+	var saved_near: Array[bool] = marks._near.duplicate()
+	var saved_colors: Array[Color] = marks._colors.duplicate()
+	var marker := marks.positions[0]
+	boat.global_position = Vector3(marker.x, 0.0, marker.y + 20.0)
+	boat.rotation.y = 0.0
+	marks._process(0.3)
+	_check(marks._near[0] and marks._colors[0].r > marks._colors[0].g,
+		"при приближении лодки предупреждающий буй красный")
+	boat.global_position = Vector3(anchor.x, 0.0, anchor.y)
+	marks._process(0.3)
+	_check(not marks._near[0] and marks._colors[0].g > marks._colors[0].r,
+		"вдали от лодки предупреждающий буй зелёный")
+	marks._near = saved_near
+	marks._colors = saved_colors
+	boat.global_transform = saved_pose
+	boat.set_trailer_enabled(trailer_enabled)
+	boat._trailer.global_transform = saved_trailer
+	boat._trailer_body.rotation = saved_trailer_rotation
+	boat.reset_physics_interpolation()
+	boat._trailer.reset_physics_interpolation()
+	marks._check_course()
