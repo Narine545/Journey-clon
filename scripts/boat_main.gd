@@ -382,7 +382,6 @@ func _build_reefs() -> void:
 		locations.append(shore + outward * 40.0)
 	var rock_mat := _mat(Color("222a30"), 0.12, 0.0, 0.88)
 	var barnacle_mat := _mat(Color("3d4b4a"), 0.08, 0.0, 0.85)
-	var warn_mat := _mat(Color("f06848"), 0.1, 1.5, 0.3)
 
 	for i in range(locations.size()):
 		var rp: Vector2 = locations[i]
@@ -402,6 +401,9 @@ func _build_reefs() -> void:
 		_add_cyl(r_node, Vector3(0.0, 0.35, 0.0), 0.45, 2.25, 1.85, rock_mat, Vector3(0.12, float(i) * 1.1, -0.08), 7)
 		_add_cyl(r_node, Vector3(1.15, 0.05, 0.65), 0.35, 1.45, 1.15, barnacle_mat, Vector3(-0.15, 0.5, 0.18), 6)
 		_add_cyl(r_node, Vector3(-1.05, -0.05, -0.55), 0.30, 1.35, 0.95, rock_mat, Vector3(0.1, -0.7, -0.14), 6)
+		# Each reef needs its own material: only nearby hazards should flash.
+		var warn_mat := _mat(Color("ff3b18"), 0.1, 1.0, 0.3)
+		warn_mat.emission_energy_multiplier = 0.0
 		# Предупреждающая навигационная веха на рифе
 		_add_cyl(r_node, Vector3(0.0, 1.55, 0.0), 0.04, 0.05, 0.95, rock_mat)
 		_add_cyl(r_node, Vector3(0.0, 2.08, 0.0), 0.10, 0.10, 0.16, warn_mat)
@@ -410,7 +412,43 @@ func _build_reefs() -> void:
 			"pos": rp,
 			"radius": 2.65,
 			"node": r_node,
+			"signal_material": warn_mat,
+			"signal_glare": BuoyDynamics.add_glare(r_node, 2.08, Color("ff3b18")),
+			"signal_near": false,
+			"signal_phase": float(i) * 0.17,
 		})
+
+
+func _reef_signal_clearance(reef: Dictionary) -> float:
+	var at: Vector2 = reef["pos"]
+	var rock_radius: float = reef["radius"]
+	var boat_at := Vector2(boat.global_position.x, boat.global_position.z)
+	var point := buoy_dynamics.capsule_point(at, boat_at, boat.rotation.y, 3.7)
+	var distance := at.distance_to(point) - 1.7 - rock_radius
+	if boat.has_trailer and boat._trailer != null:
+		var trailer := boat._trailer
+		var trailer_at := Vector2(trailer.global_position.x, trailer.global_position.z)
+		point = buoy_dynamics.capsule_point(at, trailer_at, trailer.rotation.y, 1.6)
+		distance = minf(distance, at.distance_to(point) - 1.5 - rock_radius)
+	return distance
+
+
+func _update_reef_signals() -> void:
+	# Only twilight/night, not daytime fog or camera proximity.
+	var dusk := smoothstep(0.25, 0.45, night01)
+	for reef in reefs:
+		var distance := _reef_signal_clearance(reef)
+		var was_near: bool = reef["signal_near"]
+		var near := distance < (24.0 if was_near else 20.0)
+		reef["signal_near"] = near
+		var pulse := 0.0
+		if near and dusk > 0.0:
+			var approach := 1.0 - smoothstep(20.0, 24.0, distance)
+			pulse = ShoalMarkers.flash_strength(_beacon_anim_time, float(reef["signal_phase"])) * dusk * approach
+		var lens: StandardMaterial3D = reef["signal_material"]
+		var glare: ShaderMaterial = reef["signal_glare"]
+		lens.emission_energy_multiplier = 0.08 * dusk + 5.5 * pulse
+		glare.set_shader_parameter("flash_strength", pulse)
 
 
 func _add_cyl(parent: Node3D, at: Vector3, rt: float, rb: float, h: float, mat: Material, rot := Vector3.ZERO, segs := 12) -> MeshInstance3D:
@@ -1070,6 +1108,7 @@ func _process(delta: float) -> void:
 			_atmosphere_timer = 0.15
 			_apply_atmosphere(night01)
 
+	_update_reef_signals()
 	buoy_dynamics.render_nodes()
 	# Вращение лучей зажжённых Маяков
 	for b in beacons:

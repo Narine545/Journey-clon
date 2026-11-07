@@ -54,6 +54,7 @@ func _physics_process(_delta: float) -> void:
 		_check_buoy_dynamics()
 		_check_photo_mode()
 		_check_camera_framing()
+		_check_reef_signals()
 		Input.action_press("boat_forward")
 	if ticks == 60:
 		trail_sample = main.boat._trail_buffer[2]
@@ -880,3 +881,46 @@ func _check_camera_framing() -> void:
 		"безопасное отступление камеры сохраняет кадр и охват 2,25×")
 	camera.size = saved_size
 	camera.global_transform = saved_pose
+
+
+func _check_reef_signals() -> void:
+	if main.reefs.is_empty():
+		_check(false, "рифовые вехи созданы")
+		return
+	var reef: Dictionary = main.reefs[0]
+	var at: Vector2 = reef["pos"]
+	var lens: StandardMaterial3D = reef["signal_material"]
+	var glare: ShaderMaterial = reef["signal_glare"]
+	var boat := main.boat
+	var pose := boat.global_transform
+	var trailer_pose := boat._trailer.global_transform
+	var had_trailer := boat.has_trailer
+	var saved_night := main.night01
+	var saved_time := main._beacon_anim_time
+	boat.set_trailer_enabled(false)
+	boat.global_position = Vector3(at.x + 15.0, 0.0, at.y)
+	main._beacon_anim_time = 0.08 - float(reef["signal_phase"])
+	main.night01 = 0.0
+	main._update_reef_signals()
+	_check(is_zero_approx(lens.emission_energy_multiplier) and is_zero_approx(float(glare.get_shader_parameter("flash_strength"))),
+		"рифовая сигнализация не светится днём даже рядом с лодкой")
+	main.night01 = 0.88
+	main._update_reef_signals()
+	_check(lens.emission_energy_multiplier > 5.0 and float(glare.get_shader_parameter("flash_strength")) > 0.9,
+		"ночью близкий риф даёт яркий синхронный проблеск и ореол")
+	boat.global_position = Vector3(at.x + 100.0, 0.0, at.y)
+	main._update_reef_signals()
+	_check(lens.emission_energy_multiplier < 0.1 and is_zero_approx(float(glare.get_shader_parameter("flash_strength"))),
+		"ночью дальние рифы не мигают всем периметром")
+	boat.set_trailer_enabled(true)
+	boat._trailer.global_position = Vector3(at.x + 15.0, 0.0, at.y)
+	main._update_reef_signals()
+	_check(lens.emission_energy_multiplier > 5.0, "сигнал рифа также реагирует на плашкоут")
+	boat.global_transform = pose
+	boat.set_trailer_enabled(had_trailer)
+	boat._trailer.global_transform = trailer_pose
+	boat.reset_physics_interpolation()
+	boat._trailer.reset_physics_interpolation()
+	main.night01 = saved_night
+	main._beacon_anim_time = saved_time
+	main._update_reef_signals()
