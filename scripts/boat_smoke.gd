@@ -424,6 +424,7 @@ func _physics_process(_delta: float) -> void:
 		_check(not main.nearby_dock_beacon().is_empty() and main.boat.speed == 0.0,
 			"[6] доставляет судно к бую без рывка двигателя")
 		_check_slick_disturbance()
+		_check_partial_slick_collection()
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))
 		get_tree().quit(0 if failures == 0 else 1)
 
@@ -491,4 +492,48 @@ func _check_slick_disturbance() -> void:
 	probe.collect()
 	probe.react_to_sweep(before, after, forward, 4.7, 1.6, 0.1)
 	_check(probe.depleted and probe._film == null, "собранное пятно не хранит и не запускает плёнку")
+	probe.queue_free()
+
+
+func _check_partial_slick_collection() -> void:
+	var probe := ResourceSlick.new()
+	main.add_child(probe)
+	var center := Vector2(main.boat.global_position.x, main.boat.global_position.z)
+	probe.setup(main.water, center, 0, 17.0)
+	var film := SlickFilm.new()
+	film.setup(17.0, 17.0)
+	# Детерминированный fixture: два не связанных плотностью сгустка.
+	for i in range(film.positions.size()):
+		var side: float = -1.0 if film.positions[i].x < 0.0 else 1.0
+		film.positions[i] += Vector2(side * 1.2, 0.0)
+	film._upload()
+	probe._film = film
+	probe._film_blend = 1.0
+	probe._glow_charge = 0.6
+	var count := film.positions.size()
+	var stock := main.raw[0]
+	var first := probe.collect_portion(probe.global_position + Vector3.LEFT * 3.0)
+	main.receive_resource(0, first)
+	_check(first > 0.1 and first < 0.9 and not probe.depleted and
+		probe._film != null and film.positions.size() < count and
+		is_equal_approx(probe.remaining_mass + first, 1.0) and
+		is_equal_approx(probe._glow_charge, 0.6),
+		"сбор одной доли удаляет только её массу и сохраняет вторую с цветом/зарядом")
+	probe._update_disturbance(5.0)
+	probe.relocate_smoothly(probe.position + Vector3.RIGHT)
+	_check(probe._film == film and film.persistent and probe._film_blend > 0.9 and
+		is_equal_approx(probe.remaining_mass, 1.0 - first),
+		"частичный остаток не отрастает до целого при затихании и переносе")
+	var second := probe.collect_portion(probe.global_position + Vector3.RIGHT * 3.0)
+	main.receive_resource(0, second)
+	_check(probe.depleted and probe._film == null and
+		is_equal_approx(first + second, 1.0) and is_equal_approx(main.raw[0], stock + 1.0),
+		"две собранные доли дают ровно один исходный ресурс, без потерь и дублирования")
+	_check(is_zero_approx(probe.collect_portion(probe.global_position)),
+		"повторный сбор истощённого пятна не выдаёт ресурс")
+	probe._respawn = 0.0
+	probe._process(0.0)
+	_check(not probe.depleted and is_equal_approx(probe.remaining_mass, 1.0),
+		"обычный респавн восстанавливает полный запас только после истощения")
+	main.raw[0] = stock
 	probe.queue_free()

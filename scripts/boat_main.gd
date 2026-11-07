@@ -27,7 +27,7 @@ var camera: Camera3D
 var hud: BoatHud
 var slicks: Array[ResourceSlick] = []
 var debug_slick_parallax := true
-var raw := PackedInt32Array([0, 0, 0, 0])
+var raw := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var refined := PackedInt32Array([0, 0, 0, 0])
 var notice := ""
 var notice_time := 0.0
@@ -480,9 +480,21 @@ func nearest_resource(at: Vector3, radius: float) -> ResourceSlick:
 	return candidate
 
 
-func receive_resource(kind: int) -> void:
-	raw[kind] += 1
-	announce("СОБРАНО: %s" % ResourceSlick.NAMES[kind].to_upper())
+func receive_resource(kind: int, amount: float = 1.0) -> void:
+	if amount <= 0.0:
+		return
+	raw[kind] += amount
+	# Убираем лишь погрешность суммы долей, не округляем саму добычу.
+	var whole := roundf(raw[kind])
+	if absf(raw[kind] - whole) < 0.00000001:
+		raw[kind] = whole
+	announce("СОБРАНО: %s × %s" % [ResourceSlick.NAMES[kind].to_upper(), resource_amount_text(amount)])
+
+
+func resource_amount_text(amount: float) -> String:
+	if absf(amount - roundf(amount)) < 0.00000001:
+		return str(int(roundf(amount)))
+	return "%.2f" % amount
 
 
 func total_refined() -> int:
@@ -502,7 +514,7 @@ func refine() -> int:
 		produced += batches
 	if produced > 0 and boat != null:
 		boat.trigger_refine_effect()
-	announce("ПЕРЕРАБОТАНО: %d" % produced if produced > 0 else ("НУЖНО %d ПЯТНА ОДНОГО ЦВЕТА" % needed))
+	announce("ПЕРЕРАБОТАНО: %d" % produced if produced > 0 else ("НУЖНО %d ЕД. СЫРЬЯ ОДНОГО ЦВЕТА" % needed))
 	return produced
 
 
@@ -662,8 +674,8 @@ func interact_with_beacon() -> void:
 	for i in range(cost.size()):
 		var available := refined[i] + int(raw[i] / float(needed))
 		if available < cost[i]:
-			announce("МАЯК: НУЖНО %d %s (ЕСТЬ %d ГОТ. И %d СЫР.; %d СЫР. = 1 ГОТ.)" % [
-				cost[i], ResourceSlick.NAMES[i].to_upper(), refined[i], raw[i], needed])
+			announce("МАЯК: НУЖНО %d %s (ЕСТЬ %d ГОТ. И %s СЫР.; %d СЫР. = 1 ГОТ.)" % [
+				cost[i], ResourceSlick.NAMES[i].to_upper(), refined[i], resource_amount_text(raw[i]), needed])
 			return
 
 	for i in range(cost.size()):

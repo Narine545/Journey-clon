@@ -139,73 +139,78 @@ def components(pixels):
     return sorted(result, key=len, reverse=True)
 
 
-# Prewarmed/no-contact particles must retain the original organic contour,
-# even with a nearby moving hull that has not yet touched them.
-untouched = FilmReference(17, 17)
-original = [point[:] for point in untouched.positions]
-for tick in range(100):
-    untouched.step(hull_y=12, idle=tick * .025)
-assert untouched.positions == original
+def main():
+    # Prewarmed/no-contact particles must retain the original organic contour,
+    # even with a nearby moving hull that has not yet touched them.
+    untouched = FilmReference(17, 17)
+    original = [point[:] for point in untouched.positions]
+    for tick in range(100):
+        untouched.step(hull_y=12, idle=tick * .025)
+    assert untouched.positions == original
 
-for seed, phase in ((17, 17), (0, 0), (1, 3), (4, 9), (7, 4), (2, 14)):
-    film = FilmReference(seed, phase)
-    count = len(film.positions)
-    initial_mass = sum(film.raster())
-    assert 40 < count <= 128
-    assert len(components(film.raster())) == 1
+    for seed, phase in ((17, 17), (0, 0), (1, 3), (4, 9), (7, 4), (2, 14)):
+        film = FilmReference(seed, phase)
+        count = len(film.positions)
+        initial_mass = sum(film.raster())
+        assert 40 < count <= 128
+        assert len(components(film.raster())) == 1
+        for tick in range(70):
+            for _ in range(2):
+                film.step(hull_y=6 - tick * .2)
+        for tick in range(40):
+            film.step(idle=tick * .025)
+        pixels = film.raster()
+        parts = components(pixels)
+        assert len(parts) == 2, (seed, [len(part) for part in parts])
+        assert min(map(len, parts)) > 80  # Two substantial blobs, not one blob plus a speck.
+        for part in parts:
+            xs, ys = [i % 64 for i in part], [i // 64 for i in part]
+            box_area = (max(xs) - min(xs) + 1) * (max(ys) - min(ys) + 1)
+            assert len(part) / box_area < .9  # Not a filled rectangle / planar pair of doors.
+        assert len(film.positions) == count
+        assert abs(sum(pixels) / initial_mass - 1) < .005  # Discrete splat integration tolerance.
+        for tick in range(40, 90):
+            film.step(idle=tick * .025)
+        assert len(components(film.raster())) == 1, seed
+        assert all(math.isfinite(v) and abs(v) <= 3.55 for p in film.positions for v in p)
+        assert len(film.positions) == count
+
+    # The shorter barge also deforms matter. A stopped existing hull remains a
+    # barrier; this does not mean standing near an untouched slick starts a solver.
+    barge = FilmReference(17, 17)
+    barge_count = len(barge.positions)
     for tick in range(70):
         for _ in range(2):
-            film.step(hull_y=6 - tick * .2)
-    for tick in range(40):
-        film.step(idle=tick * .025)
-    pixels = film.raster()
-    parts = components(pixels)
-    assert len(parts) == 2, (seed, [len(part) for part in parts])
-    assert min(map(len, parts)) > 80  # Two substantial blobs, not one blob plus a speck.
-    for part in parts:
-        xs, ys = [i % 64 for i in part], [i // 64 for i in part]
-        box_area = (max(xs) - min(xs) + 1) * (max(ys) - min(ys) + 1)
-        assert len(part) / box_area < .9  # Not a filled rectangle / planar pair of doors.
-    assert len(film.positions) == count
-    assert abs(sum(pixels) / initial_mass - 1) < .005  # Discrete splat integration tolerance.
-    for tick in range(40, 90):
-        film.step(idle=tick * .025)
-    assert len(components(film.raster())) == 1, seed
-    assert all(math.isfinite(v) and abs(v) <= 3.55 for p in film.positions for v in p)
-    assert len(film.positions) == count
+            barge.step(hull_y=6 - tick * .2, width=1.4, half_length=2.8)
+    assert len(components(barge.raster())) == 2
+    assert len(barge.positions) == barge_count
+    stopped = FilmReference(17, 17)
+    for _ in range(100):
+        stopped.step(hull_y=0, speed=0)
+    assert all(abs(point[0]) > 1.3 for point in stopped.positions)
+    assert len(stopped.positions) == barge_count
 
-# The shorter barge also deforms matter. A stopped existing hull remains a
-# barrier; this does not mean standing near an untouched slick starts a solver.
-barge = FilmReference(17, 17)
-barge_count = len(barge.positions)
-for tick in range(70):
-    for _ in range(2):
-        barge.step(hull_y=6 - tick * .2, width=1.4, half_length=2.8)
-assert len(components(barge.raster())) == 2
-assert len(barge.positions) == barge_count
-stopped = FilmReference(17, 17)
-for _ in range(100):
-    stopped.step(hull_y=0, speed=0)
-assert all(abs(point[0]) > 1.3 for point in stopped.positions)
-assert len(stopped.positions) == barge_count
+    # Guard correspondence with production constants and transport/recovery paths.
+    source = Path('scripts/slick_film.gd').read_text()
+    for guard in ('const RESOLUTION := 64', 'const SPACING := 0.30', 'const KERNEL := 0.62',
+                  'const REST_DENSITY := 2.55', 'const STEP := 0.05', '-8.0, 24.0',
+                  '(-10.0 * pow(1.0 - distance / 1.8, 2.0))', 'exp(-2.4 * dt)',
+                  '.limit_length(2.0)', 'smoothstep(0.2, 1.2, idle)', 'Image.FORMAT_RGBAF',
+                  'pixels[slot + 1] += weight * origins[i].x', 'texture.update(image)',
+                  '_hulls[source_id] = [from, to, heading, half_length, half_width, speed]',
+                  'STEP * 2.0', '_rest_forces = forces.duplicate()',
+                  'forces[i] - _rest_forces[i] * (1.0 - activity)',
+                  'if distance < radius + 0.1:', 'disturbed = true'):
+        assert guard in source, guard
+    assert 'split_axis' not in source and 'split_bias' not in source
+    # An untyped array literal makes its loop element Variant in Godot. Multiplying
+    # a Vector2 by it prevented inference of curl (gdparse does not catch this).
+    assert 'for side in [-1.0, 1.0]' not in source
+    assert 'for side_index in range(2):' in source
+    assert 'var side: float =' in source
+    assert 'var curl: Vector2 =' in source
+    print('OK: no precontact collapse; fast reunion; 6 film passes + barge form two rounded density regions; mass, reunion, standing barrier, bounds.')
 
-# Guard correspondence with production constants and transport/recovery paths.
-source = Path('scripts/slick_film.gd').read_text()
-for guard in ('const RESOLUTION := 64', 'const SPACING := 0.30', 'const KERNEL := 0.62',
-              'const REST_DENSITY := 2.55', 'const STEP := 0.05', '-8.0, 24.0',
-              '(-10.0 * pow(1.0 - distance / 1.8, 2.0))', 'exp(-2.4 * dt)',
-              '.limit_length(2.0)', 'smoothstep(0.2, 1.2, idle)', 'Image.FORMAT_RGBAF',
-              'pixels[slot + 1] += weight * origins[i].x', 'texture.update(image)',
-              '_hulls[source_id] = [from, to, heading, half_length, half_width, speed]',
-              'STEP * 2.0', '_rest_forces = forces.duplicate()',
-              'forces[i] - _rest_forces[i] * (1.0 - activity)',
-              'if distance < radius + 0.1:', 'disturbed = true'):
-    assert guard in source, guard
-assert 'split_axis' not in source and 'split_bias' not in source
-# An untyped array literal makes its loop element Variant in Godot. Multiplying
-# a Vector2 by it prevented inference of curl (gdparse does not catch this).
-assert 'for side in [-1.0, 1.0]' not in source
-assert 'for side_index in range(2):' in source
-assert 'var side: float =' in source
-assert 'var curl: Vector2 =' in source
-print('OK: no precontact collapse; fast reunion; 6 film passes + barge form two rounded density regions; mass, reunion, standing barrier, bounds.')
+
+if __name__ == "__main__":
+    main()

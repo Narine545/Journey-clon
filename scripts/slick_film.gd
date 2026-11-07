@@ -9,9 +9,11 @@ const KERNEL := 0.62
 const REST_DENSITY := 2.55
 const STEP := 0.05
 const MAX_PARTICLES := 128
+const CELL_NEIGHBORS: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
 
 var positions := PackedVector2Array()
 var origins := PackedVector2Array()
+var rest_positions := PackedVector2Array()
 var velocities := PackedVector2Array()
 var densities := PackedFloat32Array()
 var forces := PackedVector2Array()
@@ -20,6 +22,8 @@ var previous_texture: ImageTexture
 var _last_image: Image
 var idle := 0.0
 var disturbed := false
+var persistent := false
+var _sleeping := false
 var _rest_forces := PackedVector2Array()
 var _accumulator := 0.0
 var _hulls: Dictionary = {}
@@ -41,6 +45,7 @@ func setup(variation: float, shape_time: float) -> void:
 				origins.append(at)
 				velocities.append(Vector2.ZERO)
 	assert(positions.size() <= MAX_PARTICLES)
+	rest_positions = positions.duplicate()
 	densities.resize(positions.size())
 	forces.resize(positions.size())
 	_compute_forces()
@@ -70,6 +75,15 @@ func push_hull(from: Vector2, to: Vector2, heading: Vector2,
 
 func advance(delta: float) -> bool:
 	idle += delta
+	# Остаток частично собранного пятна сохраняет собственную форму,
+	# но без корпуса поблизости не требует вечного CPU-решателя.
+	if persistent and idle > 3.5 and _hulls.is_empty():
+		if not _sleeping:
+			velocities.fill(Vector2.ZERO)
+			_accumulator = 0.0
+		_sleeping = true
+		return false
+	_sleeping = false
 	_accumulator = minf(_accumulator + delta, STEP * 2.0)
 	if _accumulator < STEP:
 		return false
@@ -85,6 +99,8 @@ func advance(delta: float) -> bool:
 
 
 func interpolation() -> float:
+	if _sleeping:
+		return 1.0
 	return clampf(_accumulator / STEP, 0.0, 1.0)
 
 
@@ -133,12 +149,12 @@ func _integrate(dt: float, hulls: Array) -> void:
 	for i in range(positions.size()):
 		# Художественное возвращение к исходной области после затихания:
 		# это сила, а не crossfade двух готовых половин.
-		var displacement := positions[i].distance_to(origins[i])
+		var displacement := positions[i].distance_to(rest_positions[i])
 		var activity := smoothstep(0.02, 0.35, displacement)
 		# Well-balanced старт: компенсируем собственное давление исходного
 		# контура, иначе сцепление округляет пятно ещё до удара носом.
 		var force := forces[i] - _rest_forces[i] * (1.0 - activity)
-		force += (origins[i] - positions[i]) * recovery
+		force += (rest_positions[i] - positions[i]) * recovery
 		velocities[i] = ((velocities[i] + force * dt) * exp(-2.4 * dt)).limit_length(2.0)
 		positions[i] += velocities[i] * dt
 		for hull in hulls:
@@ -184,6 +200,82 @@ func _collide(index: int, hull: Array, dt: float) -> void:
 		if r2 < 6.0:
 			var curl: Vector2 = Vector2(-r.y, r.x) * side * exp(-r2 * 0.7) / (r2 + 0.4)
 			velocities[index] += curl * minf(float(hull[5]), 8.0) * dt * 0.35
+
+
+func rest_for_relocation() -> void:
+	_hulls.clear()
+	velocities.fill(Vector2.ZERO)
+	_accumulator = 0.0
+	idle = 4.0
+	_sleeping = true
+
+
+func _cell(at: Vector2) -> Vector2i:
+	var pixel := (at + Vector2.ONE * EXTENT) * (RESOLUTION / (2.0 * EXTENT))
+	return Vector2i(clampi(int(pixel.x), 0, RESOLUTION - 1),
+		clampi(int(pixel.y), 0, RESOLUTION - 1))
+
+
+func remove_component_near(point: Vector2) -> float:
+	# Компонента видимой плотности, а не произвольные левая/правая доли.
+	# Тот же порог, что у film_distance в шейдере. Масса = число частиц,
+	# а не площадь на экране, зависящая от ракурса/плотности/сжатия.
+	if positions.is_empty():
+		return 0.0
+	var nearest := 0
+	var best := INF
+	for i in range(positions.size()):
+		var distance := positions[i].distance_squared_to(point)
+		if distance < best:
+			best = distance
+			nearest = i
+	var start := _cell(positions[nearest])
+	var visited := PackedByteArray()
+	visited.resize(RESOLUTION * RESOLUTION)
+	var pending: Array[Vector2i] = [start]
+	visited[start.y * RESOLUTION + start.x] = 1
+	var cursor := 0
+	while cursor < pending.size():
+		var cell := pending[cursor]
+		cursor += 1
+		for direction in CELL_NEIGHBORS:
+			var neighbor: Vector2i = cell + direction
+			if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= RESOLUTION or neighbor.y >= RESOLUTION:
+				continue
+			var slot := neighbor.y * RESOLUTION + neighbor.x
+			if visited[slot] == 0 and _last_image.get_pixel(neighbor.x, neighbor.y).r >= 0.70:
+				visited[slot] = 1
+				pending.append(neighbor)
+	var remaining_positions := PackedVector2Array()
+	var remaining_origins := PackedVector2Array()
+	var removed := 0
+	for i in range(positions.size()):
+		var cell := _cell(positions[i])
+		if visited[cell.y * RESOLUTION + cell.x] != 0:
+			removed += 1
+		else:
+			remaining_positions.append(positions[i])
+			remaining_origins.append(origins[i])
+	var fraction := float(removed) / float(positions.size())
+	if removed == 0 or removed == positions.size():
+		return fraction
+	positions = remaining_positions
+	origins = remaining_origins # Сохраняем исходные координаты рисунка.
+	rest_positions = positions.duplicate() # Остаток не тянется в исчезнувшую долю.
+	velocities.resize(positions.size())
+	velocities.fill(Vector2.ZERO)
+	densities.resize(positions.size())
+	forces.resize(positions.size())
+	_compute_forces()
+	_rest_forces = forces.duplicate()
+	persistent = true
+	_sleeping = false
+	disturbed = true
+	idle = 0.0
+	_upload()
+	# Не интерполировать через старую текстуру с уже собранной массой.
+	previous_texture.update(_last_image)
+	return fraction
 
 
 func _upload() -> void:

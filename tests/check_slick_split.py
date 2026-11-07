@@ -46,7 +46,7 @@ assert 'film.gb / max(film.r, 0.001)' in shader
 assert 'texture(film_previous' in shader and 'film_interpolation' in shader
 assert 'slick.pickup_position(from)' in vessel
 assert 'source_id: int = 0' in script
-assert '1.0 if _film.disturbed and _film.idle <= 3.5 else 0.0' in script
+assert '1.0 if _film.persistent or (_film.disturbed and _film.idle <= 3.5) else 0.0' in script
 assert 'delta * (1.5 if target == 0.0 else 6.0)' in script
 assert '2.8, 1.4, delta, 1)' in vessel
 assert 'if (body < 0.001 || fade < 0.001)' in shader

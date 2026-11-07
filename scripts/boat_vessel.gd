@@ -477,8 +477,8 @@ func _update_pump(delta: float) -> void:
 		var pulse_s := 1.0 + 0.10 * sin(_anim_time * 8.0)
 		_intake_head.scale = Vector3(pulse_s, 1.0, pulse_s)
 		if _pump_progress >= effective_pump_seconds():
-			main.receive_resource(_target.kind)
-			_target.collect()
+			var amount := _target.collect_portion(to)
+			main.receive_resource(_target.kind, amount)
 			_pump_progress = 0.0
 	else:
 		_pump_progress = maxf(0.0, _pump_progress - delta * 2.0)
@@ -533,8 +533,8 @@ func _update_trailer_pump(delta: float) -> void:
 	var pulse_s := 1.0 + 0.10 * sin(_anim_time * 8.0)
 	_trailer_head.scale = Vector3(pulse_s, 1.0, pulse_s)
 	if _trailer_pump_progress >= TRAILER_PUMP_SECONDS:
-		main.receive_resource(_trailer_target.kind)
-		_trailer_target.collect()
+		var amount := _trailer_target.collect_portion(to)
+		main.receive_resource(_trailer_target.kind, amount)
 		_trailer_pump_progress = 0.0
 
 

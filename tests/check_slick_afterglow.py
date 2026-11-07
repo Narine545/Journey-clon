@@ -27,7 +27,7 @@ for hz in (20, 30, 60, 144):
 source = Path('scripts/resource_slick.gd').read_text()
 assert 'func _beam_exposure()' in source
 assert 'func relocate_smoothly(new_pos: Vector3) -> void:\n\t_reset_afterglow()' in source
-assert 'depleted = true\n\t_reset_afterglow()' in source
+assert 'depleted = true\n\tremaining_mass = 0.0\n\t_reset_afterglow()' in source
 shader = Path('shaders/resource_slick.gdshader').read_text()
 assert 'max(flashlight, afterglow * 0.85)' in shader
 print('OK: charge, daylight/evening, hold, fade, refresh, frame-rate independence, resets.')

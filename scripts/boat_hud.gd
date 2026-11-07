@@ -34,7 +34,7 @@ func _draw() -> void:
 		draw_rect(Rect2(42, y - 15, 13, 13), ResourceSlick.COLORS[i])
 		draw_string(font, Vector2(64, y - 3), ResourceSlick.NAMES[i].to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 96, 15, ink)
 		draw_string(font, Vector2(158, y - 3), role_hints[i], HORIZONTAL_ALIGNMENT_LEFT, 86, 11, muted)
-		draw_string(font, Vector2(252, y - 3), "%02d сыр. → %02d гот." % [main.raw[i], main.refined[i]], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, ink)
+		draw_string(font, Vector2(252, y - 3), "%s сыр. → %02d гот." % [main.resource_amount_text(main.raw[i]), main.refined[i]], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, ink)
 		draw_rect(Rect2(252, y + 2, 160, 4), Color("273c41"))
 		draw_rect(Rect2(252, y + 2, 160.0 * clampf(float(main.raw[i]) / float(required), 0.0, 1.0), 4),
 			ResourceSlick.COLORS[i])

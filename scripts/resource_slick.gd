@@ -19,6 +19,7 @@ const NAMES: Array[String] = ["Бирюза", "Коралл", "Янтарь", "�
 
 var kind := 0
 var depleted := false
+var remaining_mass := 1.0
 var _mat: ShaderMaterial
 var _glow_charge := 0.0
 var _glow_hold := 0.0
@@ -59,7 +60,11 @@ func setup(water: WaterSurface, at: Vector2, resource_kind: int, variation: floa
 
 func relocate_smoothly(new_pos: Vector3) -> void:
 	_reset_afterglow()
-	_reset_disturbance()
+	# Частичный остаток переносится как есть, не отрастает до целого пятна.
+	if remaining_mass >= 1.0:
+		_reset_disturbance()
+	elif _film != null:
+		_film.rest_for_relocation()
 	position = new_pos
 	_fade = 0.0
 	if _mat != null:
@@ -73,6 +78,7 @@ func _process(delta: float) -> void:
 		_respawn -= delta
 		if _respawn <= 0.0:
 			depleted = false
+			remaining_mass = 1.0
 			visible = true
 			_fade = 0.0
 		return
@@ -95,12 +101,27 @@ func collect() -> void:
 	if depleted:
 		return
 	depleted = true
+	remaining_mass = 0.0
 	_reset_afterglow()
 	_reset_disturbance()
 	visible = false
 	_respawn = 35.0
 	if _water != null and _water.field != null:
 		_water.field.splash(Vector2(position.x, position.z), 1.2)
+
+
+func collect_portion(from: Vector3) -> float:
+	if depleted:
+		return 0.0
+	var fraction := 1.0
+	if _film != null and _film_blend >= 0.5:
+		var local_from := to_local(from)
+		fraction = _film.remove_component_near(Vector2(local_from.x, local_from.z))
+	var amount := remaining_mass * fraction
+	remaining_mass = maxf(0.0, remaining_mass - amount)
+	if fraction >= 1.0 or remaining_mass <= 0.00000001:
+		collect()
+	return amount
 
 
 func set_parallax_enabled(enabled: bool) -> void:
@@ -255,10 +276,10 @@ func _update_disturbance(delta: float) -> void:
 	_mat.set_shader_parameter("film_interpolation", _film.interpolation())
 	# После физического затихания возвращаем живой процедурный контур.
 	# Во время контакта и несколько секунд после него маска целиком из частиц.
-	var target := 1.0 if _film.disturbed and _film.idle <= 3.5 else 0.0
+	var target := 1.0 if _film.persistent or (_film.disturbed and _film.idle <= 3.5) else 0.0
 	_film_blend = move_toward(_film_blend, target, delta * (1.5 if target == 0.0 else 6.0))
 	_mat.set_shader_parameter("film_blend", _film_blend)
-	if _film_blend <= 0.0 and _film.idle > 3.5:
+	if not _film.persistent and _film_blend <= 0.0 and _film.idle > 3.5:
 		_reset_disturbance()
 
 
