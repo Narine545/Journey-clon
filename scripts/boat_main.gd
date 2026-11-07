@@ -17,6 +17,7 @@ const RME4_NOISE_PX := 32
 
 var game: GameState
 var world: GameWorld
+var shoals: ShoalMarkers
 var harbor: IslandHarbor
 var coast: Coast
 var sand: SandField
@@ -110,6 +111,9 @@ func _ready() -> void:
 	harbor.setup(self)
 	_build_beacons()
 	_build_reefs()
+	shoals = ShoalMarkers.new()
+	add_child(shoals)
+	shoals.setup(self)
 	_slick_rng.seed = 845239
 	camera = Camera3D.new()
 	camera.name = "IsometricCamera"
@@ -421,7 +425,7 @@ func _build_resources() -> void:
 	]
 	for i in range(samples.size()):
 		var at: Vector2 = base + samples[i]
-		if coast.water_depth(at.x, at.y) < 3.0:
+		if not IslandLayout.permits_slick(at) or coast.water_depth(at.x, at.y) < 3.0:
 			continue
 		var slick := ResourceSlick.new()
 		slick.name = "PigmentSlick%d" % i
@@ -469,7 +473,7 @@ func _stream_resources() -> void:
 			var distance := _slick_rng.randf_range(SLICK_SPAWN_MIN, SLICK_SPAWN_MAX)
 			var candidate := center + direction * distance
 			if not _outside_boat_view(candidate) or not _outside_camera_view(candidate) or \
-					coast.water_depth(candidate.x, candidate.y) < 3.0:
+					coast.water_depth(candidate.x, candidate.y) < 3.0 or not IslandLayout.permits_slick(candidate):
 				continue
 			var clear := true
 			for other in slicks:

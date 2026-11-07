@@ -49,6 +49,7 @@ func _physics_process(_delta: float) -> void:
 				safe_buoys = false
 		_check(safe_buoys, "каждый причальный буй на глубине не менее 4.5 м")
 		_check_island_harbor()
+		_check_shoal_navigation()
 		Input.action_press("boat_forward")
 	if ticks == 60:
 		trail_sample = main.boat._trail_buffer[2]
@@ -670,3 +671,54 @@ func _check_island_harbor() -> void:
 		main.boat.set_trailer_enabled(true)
 	main.boat._reset_trail(Vector2(saved.x, saved.z))
 	main.boat.reset_physics_interpolation()
+
+
+func _check_shoal_navigation() -> void:
+	var marks := main.shoals
+	_check(marks != null and marks.positions.size() >= 12 and marks.positions.size() <= 20,
+		"редкие буи по периметру отмели созданы")
+	for p in marks.positions:
+		_check(absf(main.coast.water_depth(p.x, p.y) - ShoalMarkers.DEPTH) < 0.15,
+			"предупреждающий буй стоит на настоящей изобате")
+	_check(not IslandLayout.permits_slick(IslandLayout.BERTH) and IslandLayout.permits_slick(IslandLayout.BOAT_START),
+		"бухта исключена из размещения пятен, море разрешено")
+	for slick in main.slicks:
+		_check(IslandLayout.permits_slick(Vector2(slick.position.x, slick.position.z)), "стартовое пятно вне бухты")
+	var saved := main.boat.global_position
+	var yaw := main.boat.rotation.y
+	var speed := main.boat.speed
+	var trailer_enabled := main.boat.has_trailer
+	main.boat.set_trailer_enabled(false)
+	var beacon: Dictionary = main.beacons[0]
+	var bp: Vector3 = beacon["buoy_pos"]
+	var outward: Vector2 = beacon["outward"]
+	main.boat.global_position = bp
+	main.boat.rotation.y = atan2(outward.x, outward.y)
+	main.boat.speed = 7.0
+	marks._check_course()
+	_check(marks.warning, "прогноз глубины предупреждает до касания отмели")
+	main.boat.global_position = saved
+	main.boat.rotation.y = yaw
+	main.boat.speed = 0.0
+	marks._check_course()
+	_check(not marks.warning, "на глубокой воде предупреждение гаснет")
+	main.boat.set_trailer_enabled(true)
+	main.boat._trailer.global_position = bp - Vector3(outward.x, 0.0, outward.y) * 12.0
+	marks._check_course()
+	_check(marks.warning, "отмель под прицепом также вызывает предупреждение")
+	main.boat.set_trailer_enabled(trailer_enabled)
+	main.boat.global_position = saved
+	main.boat.rotation.y = yaw
+	main.boat.speed = speed
+	main.boat._reset_trail(Vector2(saved.x, saved.z))
+	main.boat.reset_physics_interpolation()
+	marks._check_course()
+	# Frame the new station using the ordinary follow-camera geometry, no zoom.
+	var camera_transform := main.camera.global_transform
+	var focus := Vector3(IslandLayout.BERTH.x, 0.8, IslandLayout.BERTH.y)
+	main.camera.global_position = focus + Vector3(21.0, 26.2, 30.0)
+	main.camera.look_at(focus, Vector3.UP)
+	var screen := main.camera.unproject_position(Vector3(124.0, 4.0, -49.0))
+	_check(Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size).has_point(screen),
+		"рыбацкая станция в кадре обычной камеры у стоянки")
+	main.camera.global_transform = camera_transform

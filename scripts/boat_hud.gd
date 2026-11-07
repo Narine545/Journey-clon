@@ -18,6 +18,13 @@ func _draw() -> void:
 	draw_string(font, Vector2(28, size.y - 52), "[M] КАРТА МИРА   [F] СВОБОДНАЯ КАМЕРА / МЕТКИ ДЕФЕКТОВ",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, muted)
 
+	if main.shoals != null and main.shoals.warning:
+		var warning_at := Vector2(size.x * 0.5 - 165.0, 24.0)
+		draw_rect(Rect2(warning_at, Vector2(330, 48)), backdrop)
+		draw_rect(Rect2(warning_at, Vector2(330, 48)), danger, false, 1.0)
+		draw_string(font, warning_at + Vector2(13, 20), "ОТМЕЛЬ ПО КУРСУ — СНИЗЬТЕ ХОД", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, danger)
+		draw_string(font, warning_at + Vector2(13, 39), "Малая глубина под корпусом или впереди", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, ink)
+
 	# 1. ГЛАВНАЯ ПАНЕЛЬ ЛАБОРАТОРИИ И РЕСУРСОВ
 	var panel := Rect2(22, 22, 412, 380)
 	draw_rect(panel, backdrop)

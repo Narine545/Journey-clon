@@ -309,6 +309,10 @@ func make_report() -> Dictionary:
 	report["island_layout"] = "closed-island-1"
 	report["harbor_berth_xz"] = [IslandLayout.BERTH.x, IslandLayout.BERTH.y]
 	report["harbor_moored"] = main.harbor != null and main.harbor.moored
+	if main.shoals != null:
+		report["shoal_warning"] = main.shoals.warning
+		report["shoal_probe_depth"] = main.shoals.predicted_depth
+		report["shoal_mark_count"] = main.shoals.positions.size()
 	return report
 
 
@@ -530,6 +534,11 @@ func _draw() -> void:
 		var camera_point := world_to_map(Vector2(main.camera.global_position.x, main.camera.global_position.z), rect, _map_span, _map_center)
 		if rect.has_point(camera_point):
 			draw_circle(camera_point, 4.0, Color("ffffff"))
+		if main.shoals != null:
+			for point in main.shoals.positions:
+				var shoal := world_to_map(point, rect, _map_span, _map_center)
+				if rect.has_point(shoal):
+					draw_circle(shoal, 2.5, Color("d9b96f"))
 		var harbor_point := world_to_map(IslandLayout.BERTH, rect, _map_span, _map_center)
 		if rect.has_point(harbor_point):
 			draw_rect(Rect2(harbor_point - Vector2(4, 4), Vector2(8, 8)), Color("9ad1ee"))

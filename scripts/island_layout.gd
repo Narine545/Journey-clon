@@ -13,6 +13,17 @@ const SETTLEMENT := Vector2(188.0, -30.0)
 const PIER_RECT := Rect2(109.0, -33.0, 51.0, 6.0)
 
 
+# Keep complete slicks (including the 8 m mesh) outside the approach and basin.
+const HARBOR_NO_SLICKS := Rect2(-105.0, -124.0, 295.0, 188.0)
+const HARBOR_APRON := Rect2(118.0, -54.0, 13.0, 12.0)
+const HARBOR_LINK := Rect2(131.0, -48.0, 4.0, 21.0)
+
+
+static func permits_slick(p: Vector2) -> bool:
+	return not HARBOR_NO_SLICKS.grow(8.0).has_point(p)
+
+
+
 static func _smooth(a: float, lo: float, hi: float) -> float:
 	var t := clampf((a - lo) / (hi - lo), 0.0, 1.0)
 	return t * t * (3.0 - 2.0 * t)
