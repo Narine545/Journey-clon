@@ -31,7 +31,7 @@ for nl in (.001, .01, .1, .5, 1):
     nv = .57
     assert nl/(4*nl*nv) <= 1/(4*nv)+1e-12
 main = Path('scripts/boat_main.gd').read_text()
-assert 'KEY_I:' in main
+assert 'KEY_I:' not in main
 toggle = main.split('func debug_toggle_local_water_response()', 1)[1].split('func ', 1)[0]
 assert 'get_shader_parameter' not in toggle
 assert 'debug_local_water_response = not debug_local_water_response' in toggle

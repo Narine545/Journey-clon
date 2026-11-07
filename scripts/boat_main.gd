@@ -259,7 +259,8 @@ func _build_beacons() -> void:
 		var top_light := OmniLight3D.new()
 		top_light.light_color = s["color"]
 		top_light.light_energy = 0.0
-		top_light.omni_range = 28.0
+		top_light.omni_range = 12.0
+		top_light.light_volumetric_fog_energy = 0.3
 		top_light.position = Vector3(0.0, 10.4, 0.0)
 		tower.add_child(top_light)
 
@@ -271,6 +272,7 @@ func _build_beacons() -> void:
 		spot.light_color = s["color"]
 		spot.light_energy = 0.0
 		spot.spot_range = 58.0
+		spot.spot_attenuation = 2.0
 		spot.spot_angle = 20.0
 		spot.light_volumetric_fog_energy = 0.45
 		spot.rotation = Vector3(-0.22, PI * 0.5, 0.0)
@@ -284,6 +286,14 @@ func _build_beacons() -> void:
 		_add_cyl(buoy, Vector3(0.0, 0.95, 0.0), 0.18, 0.45, 1.2, iron_mat)
 		var buoy_lamp_mat := _mat(Color("e88554"), 0.1, 1.4, 0.25)
 		var buoy_lamp := _add_cyl(buoy, Vector3(0.0, 1.65, 0.0), 0.22, 0.22, 0.28, buoy_lamp_mat)
+		var buoy_light := OmniLight3D.new()
+		buoy_light.position = Vector3(0.0, 1.65, 0.0)
+		buoy_light.light_color = Color("e88554")
+		buoy_light.light_energy = 0.35
+		buoy_light.omni_range = 3.0
+		buoy_light.omni_attenuation = 2.0
+		buoy_light.light_volumetric_fog_energy = 0.2
+		buoy.add_child(buoy_light)
 
 		beacons.append({
 			"name": s["name"],
@@ -297,6 +307,7 @@ func _build_beacons() -> void:
 			"lantern_mesh": lantern_mesh,
 			"buoy_lamp_mat": buoy_lamp_mat,
 			"buoy_lamp": buoy_lamp,
+			"buoy_light": buoy_light,
 			"top_light": top_light,
 			"spot": spot,
 			"beam_pivot": beam_pivot,
@@ -647,6 +658,8 @@ func interact_with_beacon() -> void:
 	var b_mat: StandardMaterial3D = b["buoy_lamp_mat"]
 	b_mat.albedo_color = Color("52f29c")
 	b_mat.emission = Color("52f29c")
+	var buoy_light: OmniLight3D = b["buoy_light"]
+	buoy_light.light_color = Color("52f29c")
 
 	var top_l: OmniLight3D = b["top_light"]
 	top_l.light_energy = 1.4
@@ -720,6 +733,7 @@ func debug_toggle_local_water_response() -> void:
 func debug_toggle_headlight() -> void:
 	debug_headlight_enabled = not debug_headlight_enabled
 	boat._bow_spot.visible = debug_headlight_enabled
+	boat.update_headlight_lens()
 	announce("ТЕСТ: НОСОВОЙ ПРОЖЕКТОР %s" % ("ВКЛ" if debug_headlight_enabled else "ВЫКЛ"))
 
 
@@ -962,38 +976,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_9:
 				debug_adjust_fill(0.04)
 				get_viewport().set_input_as_handled()
-			KEY_L:
-				debug_toggle_lighting()
-				get_viewport().set_input_as_handled()
-			KEY_U:
-				debug_cycle_fog_diagnostic()
-				get_viewport().set_input_as_handled()
-			KEY_O:
-				debug_toggle_mystery_atmosphere()
-				get_viewport().set_input_as_handled()
-			KEY_Y:
-				debug_toggle_headlight_shadows()
-				get_viewport().set_input_as_handled()
-			KEY_P:
-				debug_toggle_slick_parallax()
-				get_viewport().set_input_as_handled()
-			KEY_K:
-				debug_toggle_wave_lighting()
-				get_viewport().set_input_as_handled()
-			KEY_I:
-				debug_toggle_local_water_response()
-				get_viewport().set_input_as_handled()
 			KEY_H:
 				debug_toggle_headlight()
-				get_viewport().set_input_as_handled()
-			KEY_G:
-				debug_toggle_volumetric_fog()
-				get_viewport().set_input_as_handled()
-			KEY_V:
-				debug_toggle_retro()
-				get_viewport().set_input_as_handled()
-			KEY_J:
-				debug_toggle_rme4_fog()
 				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:

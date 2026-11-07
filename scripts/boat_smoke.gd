@@ -306,6 +306,14 @@ func _physics_process(_delta: float) -> void:
 			main.boat._deck_light.light_energy > 0.4 and
 			main.boat._vat_mats[0].emission_energy_multiplier > 0.7,
 			"ночью светятся окна, рубка и приборы без глобальной засветки")
+		_check(main.boat._body.has_node("BridgeFrontWindow0") and
+			main.boat._body.has_node("BridgeFrontWindow1") and
+			main.boat._body.has_node("BridgeFrontWindow2"),
+			"носовая стенка мостика имеет три отдельных стекла")
+		_check(main.boat._practical_lights.size() == 4 and
+			main.boat._cargo_light.omni_range < 3.0 and
+			main.boat._intake_light.get_parent() == main.boat._intake_head,
+			"навигационные/мачтовые огни и груз имеют ограниченный локальный свет")
 		main.debug_toggle_headlight()
 		_check(not spot.visible and is_equal_approx(main.world._sun.light_energy, before_light) and
 			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
@@ -315,6 +323,8 @@ func _physics_process(_delta: float) -> void:
 			"ночная вода сохраняет собственный слабый фон при выключенном прожекторе")
 		main.debug_toggle_headlight()
 		_check(spot.visible, "[H] возвращает прожектор")
+		_check(main.boat._bow_lens_mat.emission_energy_multiplier > 0.0,
+			"[H] возвращает свечение линзы вместе с реальным прожектором")
 		main.debug_toggle_local_water_response()
 		_check(is_zero_approx(float(main.water.material().get_shader_parameter(
 			"local_water_response"))) and

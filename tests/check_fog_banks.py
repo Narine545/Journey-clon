@@ -55,5 +55,5 @@ for name in re.findall(r'_rme4_material.set_shader_parameter\("(\w+)"', main):
 assert 'debug_mystery_atmosphere := true' in main
 assert 'min(UVW.xz, vec2(1.0) - UVW.xz) * SIZE.xz' in shader
 assert 'while debug_fog_diagnostic != 0:' in main
-assert 'KEY_O:' in main and 'KEY_Y:' in main
+assert 'KEY_O:' not in main and 'KEY_Y:' not in main
 print('OK: legacy profile parity, finite density, height bounds, contrast, uniform names.')

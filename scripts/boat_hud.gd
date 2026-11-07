@@ -82,8 +82,8 @@ func _draw() -> void:
 	# Отладка всегда доступна в лодочном режиме; [0] прячет только панель.
 	if main.debug_panel_visible:
 		var dbg := Vector2(size.x - 355.0, 22.0)
-		draw_rect(Rect2(dbg, Vector2(333, 403)), backdrop)
-		draw_rect(Rect2(dbg, Vector2(333, 403)), Color("548c89"), false, 1.0)
+		draw_rect(Rect2(dbg, Vector2(333, 200)), backdrop)
+		draw_rect(Rect2(dbg, Vector2(333, 200)), Color("548c89"), false, 1.0)
 		draw_string(font, dbg + Vector2(12, 23), "БЫСТРАЯ ПРОВЕРКА  •  %d FPS" % Engine.get_frames_per_second(),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 14, accent)
 		draw_string(font, dbg + Vector2(12, 47), "[0] — СКРЫТЬ / ПОКАЗАТЬ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
@@ -92,45 +92,9 @@ func _draw() -> void:
 		draw_string(font, dbg + Vector2(12, 116), "[6] — К СЛЕДУЮЩЕМУ БУЮ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
 		draw_string(font, dbg + Vector2(12, 139), "[7] — ПРОДОЛЖИТЬ ВРЕМЯ", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
 		draw_string(font, dbg + Vector2(12, 162), "[8] / [9] — НОЧНОЙ ОБЪЁМ - / +", HORIZONTAL_ALIGNMENT_LEFT, 309, 13, ink)
-		draw_string(font, dbg + Vector2(12, 185), "[L] — ТОЛЬКО AgX / FILMIC: %s" % (
-			"AgX" if main.debug_lighting_profile else "FILMIC"),
+		draw_string(font, dbg + Vector2(12, 185),
+			"[H] — ПРОЖЕКТОР: %s" % ("ВКЛ" if main.debug_headlight_enabled else "ВЫКЛ"),
 			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
-		draw_string(font, dbg + Vector2(12, 207),
-			"[H] — ПРОЖЕКТОР ВКЛ / ВЫКЛ: %s" % ("ВКЛ" if main.debug_headlight_enabled else "ВЫКЛ"),
-			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
-		draw_string(font, dbg + Vector2(12, 230),
-			"НОЧЬ %d%%  %s  •  СВЕТ %.2f  ТУМАН %.3f" % [int(main.night01 * 100.0),
-				"ПАУЗА" if main.debug_night_paused else "ИДЁТ",
-				main.debug_night_fill, main.world._env.fog_density],
-			HORIZONTAL_ALIGNMENT_LEFT, 309, 11, muted)
-		draw_string(font, dbg + Vector2(12, 253),
-			"[G] ОБЪЁМ %s  •  RD %s  •  ПЛОТН. %.3f" % [
-				"ВКЛ" if main.world._env.volumetric_fog_enabled else "ВЫКЛ",
-				"ДА" if RenderingServer.get_rendering_device() != null else "НЕТ",
-				main.world._env.volumetric_fog_density],
-			HORIZONTAL_ALIGNMENT_LEFT, 309, 11, muted)
-		draw_string(font, dbg + Vector2(12, 276),
-			"[V] — FEARS TO FATHOM: %s" % ("ВКЛ" if main.debug_retro_enabled else "ВЫКЛ"),
-			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
-		draw_string(font, dbg + Vector2(12, 299),
-			"[J] — RME4 3D-ТУМАН: %s" % ("ВКЛ" if main.debug_rme4_enabled else "ВЫКЛ"),
-			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
-
-		draw_string(font, dbg + Vector2(12, 322),
-			"[O] — ТУМАН: %s" % ("НИЗКИЙ" if main.debug_mystery_atmosphere else "ВЫСОКИЙ"),
-			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
-		draw_string(font, dbg + Vector2(12, 345),
-			"[Y] — ТЕНИ ПРОЖЕКТОРА: %s" % (
-				"ВКЛ" if main.boat._bow_spot.shadow_enabled else "ВЫКЛ"),
-			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, accent)
-
-		draw_string(font, dbg + Vector2(12, 368),
-			"[U] — ПРОВЕРКА ТУМАНА: %s" % (
-				["ВЫКЛ", "GLOBAL", "FOGVOLUME"][main.debug_fog_diagnostic]),
-			HORIZONTAL_ALIGNMENT_LEFT, 309, 13, warn)
-
-		draw_string(font, dbg + Vector2(12, 391), "[I] — СРАВНИТЬ ВОДУ ПОД ФОНАРЁМ",
-			HORIZONTAL_ALIGNMENT_LEFT, 309, 12, accent)
 
 	# 3. КОНТЕКСТНАЯ ПОДСКАЗКА ДЕЙСТВИЯ ВНИЗУ ЭКРАНА
 	var dock_b := main.nearby_dock_beacon()

@@ -11,7 +11,7 @@ const DRAG := 1.8
 const TURN_RATE := 0.95
 const PUMP_RANGE := 6.5
 const PUMP_SECONDS := 1.4
-const SHIP_EMISSION_BOOST := 2.0
+const SHIP_EMISSION_BOOST := 1.7
 
 const START_WITH_TRAILER := false
 const TRAILER_DISTANCE := 9.3
@@ -56,6 +56,9 @@ var _bow_spot: SpotLight3D
 var _deck_light: OmniLight3D
 var _window_glass_mat: StandardMaterial3D
 var _window_light: OmniLight3D
+var _practical_lights: Array[OmniLight3D] = []
+var _cargo_light: OmniLight3D
+var _bow_lens_mat: StandardMaterial3D
 
 var _crane_turret: Node3D
 var _crane_boom: Node3D
@@ -64,6 +67,8 @@ var _hose: MeshInstance3D
 var _hose_mat: StandardMaterial3D
 var _intake_head: MeshInstance3D
 var _intake_mat: StandardMaterial3D
+var _intake_light: OmniLight3D
+var _trailer_intake_light: OmniLight3D
 
 var _vat_fills: Array[MeshInstance3D] = []
 var _vat_mats: Array[StandardMaterial3D] = []
@@ -117,7 +122,7 @@ func effective_pump_seconds() -> float:
 
 func update_night_lights(night01: float, overdrive: bool) -> void:
 	# Прожектор — короткий локальный луч перед носом, не замена лунному
-	# или фоновому свету всей сцены. [H] отключает его для честного A/B.
+	# или фоновому свету всей сцены. [H] — обычный выключатель.
 	if _bow_spot != null:
 		_bow_spot.light_energy = 12.0 * lerpf(0.12, 3.4, night01) * (1.35 if overdrive else 1.0)
 		_bow_spot.spot_range = lerpf(18.0, 28.0, night01) * (1.20 if overdrive else 1.0)
@@ -131,6 +136,13 @@ func update_night_lights(night01: float, overdrive: bool) -> void:
 		_window_glass_mat.emission_energy_multiplier = 0.85 * window_on
 	if _window_light != null:
 		_window_light.light_energy = 0.85 * window_on
+	for lamp in _practical_lights:
+		lamp.light_energy = float(lamp.get_meta("rated_energy")) * lerpf(0.20, 1.0, window_on)
+		var lens := lamp.get_meta("lens_material", null) as StandardMaterial3D
+		if lens != null:
+			lens.emission_energy_multiplier = float(lamp.get_meta("rated_emission")) \
+				* lerpf(0.30, 1.0, window_on)
+	update_headlight_lens()
 
 
 func set_trailer_enabled(enabled: bool) -> void:
@@ -344,18 +356,26 @@ func _update_animations(delta: float) -> void:
 		_prop_r.rotation.z -= prop_spin
 
 	if main != null and _vat_fills.size() == 4:
+		var cargo_color := Color.BLACK
+		var cargo_amount := 0.0
 		for i in range(4):
 			var amount := float(main.raw[i]) * 0.22 + float(main.refined[i]) * 0.34
 			var fill := clampf(0.10 + amount, 0.10, 1.0)
 			var mesh_node := _vat_fills[i]
 			mesh_node.scale.y = lerpf(mesh_node.scale.y, fill, minf(1.0, delta * 5.0))
 			mesh_node.position.y = 1.06 + mesh_node.scale.y * 0.34
+			cargo_color += ResourceSlick.COLORS[i] * fill
+			cargo_amount += fill
 			var mat := _vat_mats[i]
 			mat.emission_energy_multiplier = SHIP_EMISSION_BOOST * (0.35 + fill * 0.85 + _refine_flash * 1.5)
 			if has_trailer and i < _trailer_sight_fills.size():
 				var t_fill := clampf(0.12 + float(main.refined[i]) * 0.28, 0.12, 1.0)
 				var tf := _trailer_sight_fills[i]
 				tf.scale.y = lerpf(tf.scale.y, t_fill, minf(1.0, delta * 4.0))
+
+		if _cargo_light != null:
+			_cargo_light.light_color = cargo_color / maxf(cargo_amount, 0.001)
+			_cargo_light.light_energy = 0.12 + cargo_amount * 0.07 + _refine_flash * 0.18
 
 
 func trailer_pickup_distance(world_pos: Vector3) -> float:
@@ -424,6 +444,7 @@ func _update_pump(delta: float) -> void:
 		_hose_mat.emission_energy_multiplier = SHIP_EMISSION_BOOST * (0.65 + 0.35 * sin(_anim_time * 10.0))
 		_intake_mat.albedo_color = pigment_col.darkened(0.15)
 		_intake_mat.emission = pigment_col
+		_intake_light.light_color = pigment_col
 		_hose.visible = true
 		_place_cable(_hose, tip, to)
 		_intake_head.visible = true
@@ -481,6 +502,7 @@ func _update_trailer_pump(delta: float) -> void:
 	_place_cable(_trailer_hose, tip, to)
 	_trailer_head_mat.albedo_color = pigment_col.darkened(0.15)
 	_trailer_head_mat.emission = pigment_col
+	_trailer_intake_light.light_color = pigment_col
 	_trailer_head.visible = true
 	_trailer_head.global_position = to
 	var pulse_s := 1.0 + 0.10 * sin(_anim_time * 8.0)
@@ -714,6 +736,7 @@ func _build_appearance() -> void:
 	# светится тем же тёплым цветом, что и первый вариант рубки.
 	var bridge_glass := _material(Color(0.04, 0.09, 0.12, 0.24), 0.15, 0.0, 0.22)
 	bridge_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bridge_glass.cull_mode = BaseMaterial3D.CULL_DISABLED
 	bridge_glass.emission_enabled = true
 	bridge_glass.emission = Color("ffd49a")
 	bridge_glass.emission_energy_multiplier = 0.0
@@ -792,13 +815,31 @@ func _build_appearance() -> void:
 		_box_on(_body, Vector3(side * 1.42, 2.22, -1.08), Vector3(0.06, 0.38, 1.85), cabin_chalk)
 		var nav_col := Color("d93829") if side < 0.0 else Color("29b856")
 		_box_on(_body, Vector3(side * 1.44, 2.32, -1.72), Vector3(0.12, 0.16, 0.34), cabin_trim)
-		_cyl_on(_body, Vector3(side * 1.46, 2.32, -1.72), 0.05, 0.05, 0.12, _material(nav_col, 0.1, 1.8, 0.2))
+		var nav_mat := _material(nav_col, 0.1, 1.8, 0.2)
+		_cyl_on(_body, Vector3(side * 1.46, 2.32, -1.72), 0.05, 0.05, 0.12, nav_mat)
+		_practical_light(_body, Vector3(side * 1.51, 2.34, -1.72), nav_col, 0.35, 2.2, nav_mat)
 
-	_loft_segment(_body, -2.18, -2.42, -0.32, -0.28, 2.04, 2.82, 1.98, 2.12, 2.06, 1.98, cabin_chalk)
+	_loft_segment(_body, -2.18, -2.24, -0.32, -0.31, 2.04, 2.25,
+		1.98, 2.02, 2.06, 2.04, cabin_chalk)
+	_loft_segment(_body, -2.39, -2.42, -0.29, -0.28, 2.72, 2.82,
+		2.10, 2.12, 2.00, 1.98, cabin_chalk)
 	_box_on(_body, Vector3(0.0, 2.36, -1.45), Vector3(1.55, 0.32, 1.15), warm_interior)
-	_loft_segment(_body, -2.20, -2.40, -2.14, -2.34, 2.26, 2.72, 1.84, 1.96, 1.84, 1.96, bridge_glass)
-	for mx in [-0.58, 0.0, 0.58]:
-		_box_on(_body, Vector3(mx, 2.49, -2.31), Vector3(0.05, 0.50, 0.08), cabin_trim, Vector3(-0.38, 0.0, 0.0))
+	# Три настоящих оконных проёма вместо стекла внутри сплошной стенки.
+	for wi in range(3):
+		var cx := float(wi - 1) * 0.63
+		var pane := SurfaceTool.new()
+		pane.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_quad_outward(pane, Vector3(cx - 0.28, 2.27, -2.255),
+			Vector3(cx + 0.28, 2.27, -2.255), Vector3(cx + 0.28, 2.70, -2.395),
+			Vector3(cx - 0.28, 2.70, -2.395), Vector3(0.0, -0.31, -0.95).normalized())
+		var window_mesh := MeshInstance3D.new()
+		window_mesh.name = "BridgeFrontWindow%d" % wi
+		window_mesh.mesh = pane.commit()
+		window_mesh.material_override = bridge_glass
+		window_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_body.add_child(window_mesh)
+	for mx in [-0.96, -0.315, 0.315, 0.96]:
+		_box_on(_body, Vector3(mx, 2.49, -2.325), Vector3(0.05, 0.50, 0.08), cabin_trim, Vector3(-0.38, 0.0, 0.0))
 	for side in [-1.0, 1.0]:
 		_box_on(_body, Vector3(side * 1.02, 2.48, -1.32), Vector3(0.06, 0.44, 1.52), bridge_glass)
 		_box_on(_body, Vector3(side * 1.03, 2.48, -1.32), Vector3(0.07, 0.48, 0.06), cabin_trim)
@@ -818,8 +859,9 @@ func _build_appearance() -> void:
 		dark_iron, Vector3.ZERO, 12)
 	_cyl_on(_body, Vector3(0.0, 1.72, -5.62), 0.14, 0.14, 0.30,
 		dark_iron, Vector3(PI * 0.5 - 0.20, 0.0, 0.0), 12)
+	_bow_lens_mat = _material(Color("ffdf9e"), 0.1, 2.0, 0.2)
 	_cyl_on(_body, Vector3(0.0, 1.69, -5.78), 0.115, 0.115, 0.035,
-		_material(Color("ffdf9e"), 0.1, 2.0, 0.2),
+		_bow_lens_mat,
 		Vector3(PI * 0.5 - 0.20, 0.0, 0.0), 12)
 	_bow_spot = SpotLight3D.new()
 	_bow_spot.light_color = Color("ffe8ba")
@@ -842,7 +884,9 @@ func _build_appearance() -> void:
 	for side in [-1.0, 1.0]:
 		_cyl_on(_body, Vector3(side * 0.36, 3.68, -0.52), 0.03, 0.05, 1.62, dark_iron, Vector3(0.12, 0.0, side * 0.20), 8)
 	_cyl_on(_body, Vector3(0.0, 3.92, -0.60), 0.025, 0.025, 1.45, dark_iron, Vector3(0.0, 0.0, PI * 0.5), 8)
-	_cyl_on(_body, Vector3(0.0, 4.46, -0.62), 0.06, 0.06, 0.14, _material(Color("ffcf87"), 0.1, 1.8, 0.2))
+	var mast_mat := _material(Color("ffcf87"), 0.1, 1.8, 0.2)
+	_cyl_on(_body, Vector3(0.0, 4.46, -0.62), 0.06, 0.06, 0.14, mast_mat)
+	_practical_light(_body, Vector3(0.0, 4.49, -0.62), Color("ffcf87"), 0.45, 3.2, mast_mat)
 
 	# 5. МАШИННЫЙ КОЖУХ И ТРУБА ПО ПРАВОМУ БОРТУ
 	_box_on(_body, Vector3(0.46, 1.36, 0.95), Vector3(1.18, 0.88, 1.25), cabin_trim)
@@ -926,6 +970,12 @@ func _build_appearance() -> void:
 	_deck_light.omni_range = 9.5
 	_deck_light.position = Vector3(0.0, 2.35, 2.40)
 	_body.add_child(_deck_light)
+	# Лампа над палубой: раньше реальный свет не имел видимого плафона.
+	_cyl_on(_body, _deck_light.position + Vector3(0.0, 0.06, 0.0),
+		0.15, 0.19, 0.10, _material(Color("ffd296"), 0.0, 1.2, 0.25))
+	_cargo_light = _practical_light(_body, Vector3(0.0, 1.5, 2.1),
+		Color("459990"), 0.15, 2.2)
+	_practical_lights.erase(_cargo_light)
 
 	_hose = MeshInstance3D.new()
 	var tube := CylinderMesh.new()
@@ -950,6 +1000,10 @@ func _build_appearance() -> void:
 	_intake_head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_intake_head.visible = false
 	add_child(_intake_head)
+	_intake_light = _practical_light(_intake_head, Vector3(0.0, 0.12, 0.0),
+		Color("459990"), 0.25, 1.5)
+	_practical_lights.erase(_intake_light)
+	_intake_light.light_volumetric_fog_energy = 0.0
 
 
 func _build_propeller(at: Vector3, mat: Material) -> Node3D:
@@ -1011,7 +1065,10 @@ func _build_trailer() -> void:
 		_trailer_sight_fills.append(s_bar)
 
 	_cyl_on(_trailer_body, Vector3(0.0, 1.25, 2.65), 0.03, 0.04, 1.35, dark_iron)
-	_cyl_on(_trailer_body, Vector3(0.0, 1.96, 2.65), 0.07, 0.07, 0.14, _material(Color("ffdfa0"), 0.1, 1.8, 0.2))
+	var trailer_lens := _material(Color("ffdfa0"), 0.1, 1.8, 0.2)
+	_cyl_on(_trailer_body, Vector3(0.0, 1.96, 2.65), 0.07, 0.07, 0.14, trailer_lens)
+	_practical_light(_trailer_body, Vector3(0.0, 2.02, 2.65),
+		Color("ffdfa0"), 0.30, 2.4, trailer_lens)
 
 	# Одна поворотная рука обслуживает оба борта прицепа; центр и нос
 	# намеренно не входят в рабочую зону (is_on_trailer_working_side).
@@ -1044,6 +1101,10 @@ func _build_trailer() -> void:
 		0.14, _trailer_head_mat)
 	_trailer_head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_trailer_head.visible = false
+	_trailer_intake_light = _practical_light(_trailer_head, Vector3(0.0, 0.12, 0.0),
+		Color("459990"), 0.22, 1.4)
+	_practical_lights.erase(_trailer_intake_light)
+	_trailer_intake_light.light_volumetric_fog_energy = 0.0
 
 	var c_mesh := CylinderMesh.new()
 	c_mesh.top_radius = 0.032
@@ -1065,3 +1126,28 @@ func _build_trailer() -> void:
 	_tow_cable_r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_tow_cable_r.visible = false
 	add_child(_tow_cable_r)
+
+
+func update_headlight_lens() -> void:
+	if _bow_lens_mat != null and _bow_spot != null:
+		_bow_lens_mat.emission_energy_multiplier = 2.0 * SHIP_EMISSION_BOOST \
+			if _bow_spot.visible else 0.0
+
+
+func _practical_light(parent: Node3D, at: Vector3, color: Color,
+		energy: float, reach: float, lens: StandardMaterial3D = null) -> OmniLight3D:
+	var lamp := OmniLight3D.new()
+	lamp.position = at
+	lamp.light_color = color
+	lamp.light_energy = energy
+	lamp.omni_range = reach
+	lamp.omni_attenuation = 2.0
+	lamp.light_volumetric_fog_energy = 0.15
+	lamp.shadow_enabled = false
+	lamp.set_meta("rated_energy", energy)
+	if lens != null:
+		lamp.set_meta("lens_material", lens)
+		lamp.set_meta("rated_emission", lens.emission_energy_multiplier)
+	parent.add_child(lamp)
+	_practical_lights.append(lamp)
+	return lamp

@@ -6,7 +6,8 @@ main = Path('scripts/boat_main.gd').read_text()
 shader = Path('shaders/boat_rme4_fog.gdshader').read_text()
 assert 'debug_fog_diagnostic := 0' in main
 assert '(debug_fog_diagnostic + 1) % 3' in main
-assert 'KEY_U:' in main
+assert 'KEY_U:' not in main
+assert 'func debug_cycle_fog_diagnostic()' in main
 assert 'world._env.volumetric_fog_density = 0.06 if global_test else 0.0' in main
 assert '_rme4_volume.visible = not global_test' in main
 assert 'world._env.volumetric_fog_enabled = _fog_diagnostic_saved_enabled' in main
