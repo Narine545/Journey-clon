@@ -22,6 +22,8 @@ uniform sampler3D density_noise : repeat_enable, filter_linear;
 
 // 0 = день, 1 = ночь. Двигает плотность, цвет и собственное свечение.
 uniform float night_factor : hint_range(0.0, 1.0) = 0.0;
+// Погода управляет наличием низкого тумана, не формой принятого профиля.
+uniform float weather_fog : hint_range(0.0, 1.0) = 1.0;
 // [O]: 0 — прежний высокий слой, 1 — низкий туман у ватерлинии.
 uniform float mystery_profile : hint_range(0.0, 1.0) = 1.0;
 // [U] диагностика: обходим шум, высоту и зависимость видимости от света.
@@ -85,7 +87,7 @@ void fog() {
 
 	float night = clamp(night_factor, 0.0, 1.0);
 	DENSITY = density_scale * mix(1.0, 4.0, profile)
-		* body * height_mask * edge * mix(0.90, 1.12, night);
+		* body * height_mask * edge * mix(0.90, 1.12, night) * weather_fog;
 
 	// Альбедо однократного рассеяния (НЕ домноженное на плотность — это
 	// сделает сам Godot). Тёплое на низком солнце, холодное ночью.

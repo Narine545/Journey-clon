@@ -359,9 +359,11 @@ func boat_sun_dir(n01: float) -> Vector3:
 ## .glsl: total_density = params.base_density + local/1024), а не заменяет
 ## её, иначе к шумовому слою липнет равномерная пелена.
 func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
-		rme4_active: bool) -> void:
+		rme4_active: bool, weather_fog: float = 1.0, weather_cloud: float = 0.0) -> void:
 	game.night01 = clampf(n01, 0.0, 1.0)
 	var n: float = game.night01
+	var fog := clampf(weather_fog, 0.0, 1.0)
+	var cloud := clampf(weather_cloud, 0.0, 1.0)
 	var sunset := clampf((n - 0.16) / 0.58, 0.0, 1.0)
 
 	_sun.basis = Basis.looking_at(-sun.normalized(), Vector3.UP)
@@ -379,7 +381,7 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	_sun.light_color = daylight.lerp(Color(0.58, 0.71, 0.94),
 		smoothf(sunset, 0.55, 1.0))
 	var key := minf(0.42, fill_energy + 0.08) if boat_lighting_profile else fill_energy
-	_sun.light_energy = lerpf(0.85, key, sunset)
+	_sun.light_energy = lerpf(0.85, key, sunset) * lerpf(1.0, lerpf(0.68, 0.92, sunset), cloud)
 	# Ключ НЕ должен гаснуть в воздухе вместе с диском. Прежнее
 	# 0.75 * (1 - sunset) обнуляло его к ночи, и туман оставался плоским
 	# серым wash'ем от ambient_inject. Теперь вклад ключа умеренный:
@@ -388,11 +390,11 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 
 	# --- Небо ----------------------------------------------------------
 	if _using_sky_plus:
-		_sky_mat.set_shader_parameter("exposure", lerpf(13.5, 8.5, n))
-		_sky_mat.set_shader_parameter("coverage", lerpf(0.34, 0.48, n))
+		_sky_mat.set_shader_parameter("exposure", lerpf(13.5, 8.5, n) * lerpf(1.0, 0.92, cloud))
+		_sky_mat.set_shader_parameter("coverage", lerpf(lerpf(0.34, 0.48, n), 0.88, cloud))
 		_sky_mat.set_shader_parameter("sundisc_intensity", lerpf(32.0, 0.0, sunset))
 	else:
-		_sky_mat.set_shader_parameter("sun_intensity", lerpf(50.0, 0.0, sunset))
+		_sky_mat.set_shader_parameter("sun_intensity", lerpf(50.0, 0.0, sunset) * lerpf(1.0, 0.65, cloud))
 	# Дневное рассеяние уходит вместе с диском, иначе при выключенном солнце
 	# небо продолжало светиться как днём.
 	_sky_mat.set_shader_parameter("daylight_scatter", lerpf(1.0, 0.16, sunset))
@@ -407,11 +409,12 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	# получается двойная пелена и сцена теряет глубину.
 	_env.fog_density = lerpf(0.0012, 0.0035, n) if not compat_fallback \
 		else lerpf(0.0011, 0.012, n)
+	_env.fog_density *= lerpf(0.35, 1.0, fog)
 	_env.fog_aerial_perspective = lerpf(0.25, 0.42, n)
 	if rme4_active:
 		_env.volumetric_fog_density = 0.0
 	else:
-		_env.volumetric_fog_density = lerpf(0.010, 0.018, n)
+		_env.volumetric_fog_density = lerpf(0.010, 0.018, n) * fog
 	_env.volumetric_fog_albedo = Color(0.55, 0.60, 0.68).lerp(Color(0.30, 0.36, 0.48), n)
 	# ambient_inject в Godot умножается на ambient_light_energy, поэтому
 	# даже 0.10 днём давали бы вклад больше солнечного. Держим низким:

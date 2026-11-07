@@ -34,6 +34,7 @@ var notice_time := 0.0
 
 # Состояние игрового цикла (Маяки, Сумерки, Рифы, Сонар)
 var night01 := 0.0
+var weather := SeaWeather.new()
 var sonar_timer := 12.0 # со старта даём краткий пеленг, чтобы игрок сразу увидел цель
 var overdrive_timer := 0.0
 var beacons: Array[Dictionary] = []
@@ -127,6 +128,7 @@ func _ready() -> void:
 	layer.add_child(hud)
 	_setup_retro_debug()
 	_setup_rme4_atmosphere()
+	weather.setup()
 	_ensure_boat_input()
 	if OS.get_environment("JOURNEY_BOAT_SHOT_DRIVE") == "1":
 		Input.action_press("boat_forward")
@@ -149,11 +151,13 @@ func _apply_atmosphere(n01: float) -> void:
 	# apply_night01(), apply_sun() и fade_boat_sun(), и все три писали одни
 	# и те же свойства окружения — побеждал последний, а первые два были
 	# мёртвыми записями.
-	world.apply_boat_atmosphere(night01, sun, debug_night_fill, debug_rme4_enabled)
+	world.apply_boat_atmosphere(night01, sun, debug_night_fill, debug_rme4_enabled,
+		weather.fog_amount, weather.cloud_amount)
 	if debug_fog_diagnostic != 0:
 		_apply_fog_diagnostic()
 	if _rme4_material != null:
 		_rme4_material.set_shader_parameter("night_factor", night01)
+		_rme4_material.set_shader_parameter("weather_fog", weather.fog_amount)
 		_rme4_material.set_shader_parameter("sun_direction", sun)
 	coast.apply_sun(sun)
 	water.apply_sun(sun)
@@ -164,7 +168,12 @@ func _apply_atmosphere(n01: float) -> void:
 	water.set_param("water_deep", Color("0f5668").lerp(Color("04111c"), night01))
 	water.set_param("horizon_col", Color("6996a0").lerp(Color("1d2c3b"), night01))
 	water.set_param("sky_col", Color("447084").lerp(Color("0d1624"), night01))
-	water.set_param("sun_col", Color("ffcc85").lerp(Color("a8c9e3"), night01))
+	water.set_param("sun_col", Color("ffcc85").lerp(Color("a8c9e3"), night01)
+		* lerpf(1.0, 0.72, weather.cloud_amount))
+	# Одна дальняя дымка у моря и берега: ясность не создаёт нового стыка.
+	var haze_distance := lerpf(340.0, 130.0, night01) * lerpf(1.4, 1.0, weather.fog_amount)
+	water.set_param("fog_distance", haze_distance)
+	coast.set_sand("fog_distance", haze_distance)
 	water.set_param("mega_amp", lerpf(0.25, 0.31, night01))
 	water.set_param("ripple_strength", 0.10)
 	# Ночной фон только у моря: скрытые пятна не подсвечиваем.
@@ -1047,6 +1056,10 @@ func _process(delta: float) -> void:
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") != "1" and not debug_night_paused:
 		var night_rate := 0.0015 if all_beacons_lit else (0.0055 - float(lit_beacon_count()) * 0.0012)
 		night01 = minf(0.88, night01 + night_rate * delta)
+	# Погода продолжает жить и при достигнутой полной ночи, и при
+	# отладочной остановке часов. Smoke использует фиксированный fixture.
+	if OS.get_environment("JOURNEY_BOAT_SMOKE") != "1":
+		weather.advance(delta, night01)
 		_atmosphere_timer -= delta
 		if _atmosphere_timer <= 0.0:
 			_atmosphere_timer = 0.15

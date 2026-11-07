@@ -76,6 +76,9 @@ func _draw() -> void:
 	]
 	draw_string(font, Vector2(42, 369), sys_line, HORIZONTAL_ALIGNMENT_LEFT, 370, 12, accent if (main.sonar_timer > 0.0 or main.overdrive_timer > 0.0) else muted)
 
+	draw_string(font, Vector2(42, 390), "ПОГОДА: " + main.weather.label(),
+		HORIZONTAL_ALIGNMENT_LEFT, 370, 12, muted)
+
 	# 2. КРУГОВОЙ ПЕЛЕНГАТОР-КОМПАС (справа от главной панели)
 	_draw_beacon_compass(font, Vector2(505, 102), 58.0, backdrop, accent, warn, muted, ink)
 

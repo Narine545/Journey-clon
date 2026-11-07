@@ -10,6 +10,11 @@ var trail_sample := Vector4.ZERO
 
 func setup(boat_main: BoatMain) -> void:
 	main = boat_main
+	# Освещение ниже проверяется в прежнем фиксированном плотном тумане.
+	# Собственно погода отдельно проверяется без подмены игровых вероятностей.
+	main.weather.fog_amount = 1.0
+	main.weather.cloud_amount = 0.0
+	main._apply_atmosphere(main.night01)
 	origin = main.boat.global_position
 
 
@@ -425,6 +430,7 @@ func _physics_process(_delta: float) -> void:
 			"[6] доставляет судно к бую без рывка двигателя")
 		_check_slick_disturbance()
 		_check_partial_slick_collection()
+		_check_weather()
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))
 		get_tree().quit(0 if failures == 0 else 1)
 
@@ -537,3 +543,46 @@ func _check_partial_slick_collection() -> void:
 		"обычный респавн восстанавливает полный запас только после истощения")
 	main.raw[0] = stock
 	probe.queue_free()
+
+
+func _check_weather() -> void:
+	var model := SeaWeather.new()
+	model.setup(137)
+	var day := SeaWeather.weights(0.0)
+	var night := SeaWeather.weights(0.88)
+	_check(day[2] + day[3] < 0.3 and night[2] + night[3] > 0.75 and night[0] > 0.0,
+		"погода предпочитает ночной туман, но допускает ясную ночь и дневной туман")
+	model._from_fog = 0.0
+	model._target_fog = 1.0
+	model._from_cloud = 0.0
+	model._target_cloud = 0.8
+	model._transition_time = 20.0
+	model._transition_elapsed = 0.0
+	model.advance(10.0, 0.88)
+	_check(is_equal_approx(model.fog_amount, 0.5) and is_equal_approx(model.cloud_amount, 0.4),
+		"фронт плавно меняет туман и облачность при неподвижных часах ночи")
+	model.advance(10.0, 0.88)
+	_check(is_equal_approx(model.fog_amount, 1.0), "погодный переход доходит до цели без скачка")
+	var old_fog := main.weather.fog_amount
+	var old_cloud := main.weather.cloud_amount
+	main.weather.fog_amount = 0.0
+	main.weather.cloud_amount = 0.0
+	main._apply_atmosphere(main.night01)
+	var clear_density := main.world._env.fog_density
+	var clear_light := main.world._sun.light_energy
+	var spot_energy := main.boat._bow_spot.light_energy
+	var glitter: Variant = main.water.material().get_shader_parameter("glitter_amount")
+	if main._rme4_material != null:
+		_check(is_zero_approx(float(main._rme4_material.get_shader_parameter("weather_fog"))),
+			"ясная погода обнуляет низкую плёнку тумана, не отключая весь volumetric-pass")
+	main.weather.fog_amount = 1.0
+	main.weather.cloud_amount = 1.0
+	main._apply_atmosphere(main.night01)
+	_check(main.world._env.fog_density > clear_density and
+		main.world._sun.light_energy < clear_light and
+		is_equal_approx(main.boat._bow_spot.light_energy, spot_energy) and
+		main.water.material().get_shader_parameter("glitter_amount") == glitter,
+		"погода меняет дымку/ключ, не меняя энергию фонаря и рисунок водных искр")
+	main.weather.fog_amount = old_fog
+	main.weather.cloud_amount = old_cloud
+	main._apply_atmosphere(main.night01)
