@@ -23,6 +23,8 @@ var boat: BoatVessel
 var camera: Camera3D
 var hud: BoatHud
 var inspector: WorldInspector
+var photo_mode: BoatPhotoMode
+var camera_height := 26.2
 var slicks: Array[ResourceSlick] = []
 var resource_zones := ResourceZones.new()
 var buoy_dynamics := BuoyDynamics.new()
@@ -136,6 +138,12 @@ func _ready() -> void:
 	inspector = WorldInspector.new()
 	inspection_layer.add_child(inspector)
 	inspector.setup(self)
+	photo_mode = BoatPhotoMode.new()
+	var photo_layer := CanvasLayer.new()
+	photo_layer.layer = 40
+	add_child(photo_layer)
+	photo_layer.add_child(photo_mode)
+	photo_mode.setup(self)
 	_setup_retro_debug()
 	_setup_rme4_atmosphere()
 	weather.setup()
@@ -941,7 +949,7 @@ func debug_warp_to_beacon() -> void:
 
 
 func inspection_active() -> bool:
-	return inspector != null and inspector.is_active()
+	return (inspector != null and inspector.is_active()) or (photo_mode != null and photo_mode.active)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -949,6 +957,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
+			KEY_PAGEUP:
+				camera_height = minf(160.0, camera_height + 8.0)
+				get_viewport().set_input_as_handled()
+			KEY_PAGEDOWN:
+				camera_height = maxf(12.0, camera_height - 8.0)
+				get_viewport().set_input_as_handled()
 			KEY_R:
 				refine()
 				get_viewport().set_input_as_handled()
@@ -1004,7 +1018,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera.size = maxf(16.0, camera.size - 2.0)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			camera.size = minf(42.0, camera.size + 2.0)
+			camera.size = minf(160.0, camera.size + 2.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -1063,14 +1077,16 @@ func _process(delta: float) -> void:
 		water.position = Vector3(boat.global_position.x, Coast.SEA_LEVEL,
 			boat.global_position.z)
 
-	if inspector != null and inspector.free_camera:
+	if photo_mode != null and photo_mode.active:
+		photo_mode.update_camera(delta)
+	elif inspector != null and inspector.free_camera:
 		inspector.update_camera(delta)
 	else:
 		# Рендерная камера должна следовать рендерной, а не последней тиковой
 		# позиции лодки. Иначе при 60 Гц физики и другом FPS видны ступеньки.
 		var target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
 		_camera_focus = _camera_focus.lerp(target, 1.0 - exp(-4.0 * delta))
-		var desired := _camera_focus + Vector3(21.0, 26.2, 30.0)
+		var desired := _camera_focus + Vector3(21.0, camera_height, 30.0)
 		# Один фильтр для focus; второй лаг позиции менял угол взгляда камеры
 		# при разгоне и поворотах, хотя ракурс должен оставаться изометрическим.
 		camera.global_position = desired

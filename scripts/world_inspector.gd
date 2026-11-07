@@ -175,7 +175,7 @@ func update_camera(delta: float) -> void:
 	_focus += movement.limit_length(1.0) * speed * delta
 	_focus.x = clampf(_focus.x, -2200.0, 2200.0)
 	_focus.z = clampf(_focus.z, -2200.0, 2200.0)
-	_focus.y = clampf(_focus.y, -20.0, 400.0)
+	_focus.y = clampf(_focus.y, -20.0, 2000.0)
 	var distance := maxf(_entry_distance, camera.size * 0.9)
 	var direction := Vector3(sin(_yaw) * cos(_pitch), sin(_pitch), cos(_yaw) * cos(_pitch))
 	camera.global_position = _focus + direction * distance
@@ -380,6 +380,8 @@ func save_capture() -> void:
 
 func _input(event: InputEvent) -> void:
 	if main == null:
+		return
+	if main.photo_mode != null and main.photo_mode.active:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var handled := true

@@ -15,7 +15,7 @@ func _draw() -> void:
 	var danger := Color("f07b62")
 	var backdrop := Color(0.035, 0.075, 0.10, 0.88)
 
-	draw_string(font, Vector2(28, size.y - 52), "[M] КАРТА МИРА   [F] СВОБОДНАЯ КАМЕРА / МЕТКИ ДЕФЕКТОВ",
+	draw_string(font, Vector2(28, size.y - 52), "[M] КАРТА   [F] СВОБОДНАЯ КАМЕРА   [F2] ФОТО   [PgUp/PgDn] ВЫСОТА",
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 12, muted)
 
 	if main.shoals != null and main.shoals.warning:

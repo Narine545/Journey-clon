@@ -52,6 +52,7 @@ func _physics_process(_delta: float) -> void:
 		_check_shoal_navigation()
 		_check_resource_zones()
 		_check_buoy_dynamics()
+		_check_photo_mode()
 		Input.action_press("boat_forward")
 	if ticks == 60:
 		trail_sample = main.boat._trail_buffer[2]
@@ -826,3 +827,31 @@ func _check_buoy_dynamics() -> void:
 	boat.reset_physics_interpolation()
 	boat._trailer.reset_physics_interpolation()
 	marks._check_course()
+
+
+func _check_photo_mode() -> void:
+	var photo := main.photo_mode
+	var camera := main.camera
+	var pose := camera.global_transform
+	var projection := camera.projection
+	var near_clip := camera.near
+	var far_clip := camera.far
+	var attributes := camera.attributes
+	photo.set_active(true)
+	_check(photo.active and main.inspection_active() and camera.projection == Camera3D.PROJECTION_PERSPECTIVE,
+		"фоторежим использует перспективу и отключает управление судном")
+	for index in range(BoatPhotoMode.POINTS.size()):
+		photo._select_point(index)
+		photo.update_camera(0.0)
+		var body := main.boat._body.get_global_transform_interpolated()
+		var expected: Vector3 = body * BoatPhotoMode.POINTS[index]
+		_check(camera.global_position.distance_to(expected) < 0.001,
+			"точка фотокамеры следует интерполированному корпусу")
+	_check(is_equal_approx(BoatPhotoMode.exposure_gain(400, 4, 1.0 / 60.0, 0), 1.0) and
+		is_equal_approx(BoatPhotoMode.exposure_gain(800, 4, 1.0 / 60.0, 0), 2.0),
+		"фотоэкспозиция: исходный множитель 1, удвоение ISO даёт ступень")
+	photo.set_active(false)
+	photo._select_point(0)
+	_check(not photo.active and camera.projection == projection and camera.attributes == attributes and
+		is_equal_approx(camera.near, near_clip) and is_equal_approx(camera.far, far_clip) and
+		camera.global_transform.is_equal_approx(pose), "выход из фоторежима восстанавливает камеру")

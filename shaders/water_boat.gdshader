@@ -307,9 +307,11 @@ void fragment() {
 	base *= 0.80 + 0.32 * ndl;
 
 	// ---------- френель: небо в воде ----------
-	// Ортографическая камера: все лучи параллельны. Вектор от точки до
-	// положения камеры создавал ложную сферическую область бликов в кадре.
-	vec3 V = normalize((INV_VIEW_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
+	// Gameplay uses parallel orthographic rays; the onboard photo camera
+	// uses perspective rays. Do not apply an orthographic view to its water.
+	vec3 V = PROJECTION_MATRIX[3][3] > 0.5
+		? normalize((INV_VIEW_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz)
+		: normalize(CAMERA_POSITION_WORLD - w_pos);
 	vec3 R = reflect(-V, N_ambient);
 	float fres = pow(1.0 - clamp(dot(N_ambient, V), 0.0, 1.0), 3.2);
 	vec3 sky_ref = mix(horizon_col, sky_col, smoothstep(0.02, 0.42, R.y));
