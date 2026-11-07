@@ -439,16 +439,19 @@ void light() {
 	float nv = clamp(dot(n, v), 1e-3, 1.0);
 	vec3 radiance = LIGHT_COLOR * ATTENUATION;
 	if (!LIGHT_IS_DIRECTIONAL) {
-		// A rough water-volume response, not just the camera-facing mirror lobe.
-		// Flat incidence prevents individual wave backfaces erasing the whole
-		// footprint. Real cone/range/shadow attenuation still gates everything.
+		// Only the already-selected glitter facets return this broader lobe.
+		// No continuous water-volume term: it washed out waves as a white veil.
 		vec3 water_up = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
-		float broad_incidence = max(dot(water_up, l), 0.0);
-		float wave_relief = 0.65 + 0.35 * max(dot(n, l), 0.0);
-		// Reflection channel avoids multiplying this rough surface return by
-		// the almost-black deep-water ALBEDO a second time.
-		SPECULAR_LIGHT += radiance * vec3(0.12, 0.17, 0.19)
-			* sqrt(broad_incidence) * wave_relief * local_water_response;
+		float facet_incidence = max(dot(water_up, l), 0.0);
+		float facet_light = max(dot(normalize(local_glitter_normal), l), 0.0);
+		float facet_relief = 0.12 + 0.88 * facet_light * facet_light;
+		// Preserve the lamp hue and zero/off/cone attenuation, but bound this
+		// artistic extra return so a close/high-energy lamp cannot bleach cells.
+		float lamp_peak = max(max(radiance.r, radiance.g), radiance.b);
+		vec3 facet_radiance = radiance / (1.0 + lamp_peak * 0.1);
+		SPECULAR_LIGHT += facet_radiance * 0.09 * sqrt(facet_incidence)
+			* facet_relief * local_glitter_mask
+			* local_glitter_strength * local_water_response;
 	}
 	if (nl > 0.0) {
 	vec3 h = normalize(v + l);
