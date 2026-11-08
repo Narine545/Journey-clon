@@ -14,10 +14,12 @@ assert 'enemy["boss_attack_phase"] = phase(enemy)' in boss
 assert 'result = directions(enemy)' in boss
 assert 'enemy["boss_cycle"] = int(enemy["boss_cycle"]) + 1' in boss
 assert 'int(enemy["boss_cycle"]) % 2' in boss
-assert 'var volley := RaidBoss.step(enemy, delta, target)' in run
-assert 'for aim in volley:' in run and 'aim * RaidBoss.shell_speed(enemy)' in run
-assert 'if RaidBoss.preparing(enemy):\n\t\t\t\t\tdirection = Vector2.ZERO' in run
-assert 'if kind != 3:' in run  # no double decrement of boss recovery clock
+motion = (root / 'scripts/raid_motion.gd').read_text()
+assert 'RaidMotion.move_enemies(self, delta)' in run
+assert 'var volley := RaidBoss.step(enemy, delta, target)' in motion
+assert 'for aim in volley:' in motion and 'aim * RaidBoss.shell_speed(enemy)' in motion
+assert 'if RaidBoss.preparing(enemy):\n\t\t\t\t\tdirection = Vector2.ZERO' in motion
+assert 'if kind != 3:' in motion  # no double decrement of boss recovery clock
 assert 'RaidBoss.directions(enemy)' in hud and 'RaidBoss.warning_length(enemy)' in hud
 assert 'RaidBoss.phase(enemy)' in hud and '_draw_boss_warning(enemy)' in hud
 assert '_check_raid_boss()' in smoke

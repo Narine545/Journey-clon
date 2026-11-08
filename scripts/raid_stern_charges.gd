@@ -175,6 +175,7 @@ func _detonate(charge: Dictionary) -> void:
 			)
 			enemy["hp"] = float(enemy["hp"]) - float(charge["power"])
 			enemy["flash"] = 0.2
+			RaidMotion.kick(enemy, at, 5.0, reach)
 
 
 func render(blend: float = 1.0) -> void:

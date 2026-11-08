@@ -403,57 +403,7 @@ func _step_elites() -> void:
 
 
 func _move_enemies(delta: float) -> void:
-	var target := boat_at()
-	for enemy in enemies:
-		enemy["previous"] = enemy["at"]
-		if float(enemy["hp"]) <= 0.0:
-			continue
-		if float(enemy["born"]) > 0.0:
-			enemy["born"] = maxf(0.0, float(enemy["born"]) - delta)
-			continue
-		var at: Vector2 = enemy["at"]
-		var to_boat := target - at
-		var direction := to_boat.normalized()
-		var kind: int = enemy["kind"]
-		if kind != 3:
-			enemy["timer"] = float(enemy["timer"]) - delta
-		enemy["flash"] = maxf(0.0, float(enemy["flash"]) - delta)
-		var speed := 2.8 + elapsed / 180.0
-		if kind == 1:
-			if float(enemy["charge"]) > 0.0:
-				enemy["charge"] = maxf(0.0, float(enemy["charge"]) - delta)
-				direction = enemy["aim"]
-				speed = 14.0
-			elif float(enemy["timer"]) <= 0.0:
-				enemy["charge"] = 0.7
-				enemy["timer"] = 3.8
-			elif float(enemy["timer"]) < 1.1:
-				speed = 0.0
-				# Lock direction when warning starts, not at the instant of impact.
-				if float(enemy["timer"]) > 1.1 - delta:
-					enemy["aim"] = direction
-		elif kind >= 2:
-			speed = 1.8 if kind == 3 else 2.2
-			if to_boat.length() < 18.0:
-				direction = -direction if to_boat.length() < 12.0 else Vector2.ZERO
-			if kind == 3:
-				var volley := RaidBoss.step(enemy, delta, target)
-				for aim in volley:
-					_add_shot(at, aim * RaidBoss.shell_speed(enemy), 12.0, true)
-				if RaidBoss.preparing(enemy):
-					direction = Vector2.ZERO
-			elif float(enemy["timer"]) <= 0.0:
-				_add_shot(at, to_boat.normalized() * 12.0, 12.0, true)
-				enemy["timer"] = 3.8
-		var step := RaidContacts.slide_motion(self, enemy, direction * speed * delta)
-		if navigable(at + step, float(enemy["radius"])):
-			enemy["at"] = at + step
-		else:
-			for turn in [-PI * 0.5, PI * 0.5]:
-				var slide := at + step.rotated(turn)
-				if navigable(slide, float(enemy["radius"])):
-					enemy["at"] = slide
-					break
+	RaidMotion.move_enemies(self, delta)
 
 
 func _cell(at: Vector2) -> Vector2i:
@@ -641,6 +591,7 @@ func pulse() -> void:
 			stats.record_damage(RaidStats.Channel.PULSE, float(enemy["hp"]), pulse_damage)
 			enemy["hp"] = float(enemy["hp"]) - pulse_damage
 			enemy["flash"] = 0.25
+			RaidMotion.kick(enemy, boat_at(), 4.0, pulse_radius)
 	if resonant_pulse:
 		for index in range(shots.size() - 1, -1, -1):
 			if (

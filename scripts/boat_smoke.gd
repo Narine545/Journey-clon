@@ -976,6 +976,7 @@ func _check_raid() -> void:
 	_check_raid_stats()
 	_check_raid_result_layout()
 	_check_raid_contacts_and_buoyancy()
+	_check_raid_motion()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1692,3 +1693,36 @@ func _check_raid_contacts_and_buoyancy() -> void:
 	_check(RaidBuoyancy.pose(floating, 0.0, 0.0).is_equal_approx(before)
 		and RaidBuoyancy.pose(floating, 1.0, 0.0).x > before.x,
 		"плавучесть сглаживается на боевом тике и интерполируется при отрисовке")
+
+
+func _check_raid_motion() -> void:
+	var enemy := {"kind": 0, "hp": 100.0, "radius": 1.1, "born": 0.0, "at": Vector2(2, 0)}
+	var displacement := RaidMotion.step(enemy, Vector2(4, 0), 0.1)
+	_check(displacement.x > 0.0 and displacement.x < 0.4,
+		"враг разгоняется плавно, а не получает полную скорость сразу")
+	RaidMotion.kick(enemy, Vector2.ZERO, 5.0, 10.0)
+	var push: Vector2 = enemy["push_velocity"]
+	_check(push.x > 0.0 and push.length() <= RaidMotion.MAX_PUSH,
+		"взрыв сообщает ограниченный импульс от центра")
+	var heavy := {"kind": 3, "hp": 100.0, "radius": 3.4, "born": 0.0, "at": Vector2(2, 0)}
+	RaidMotion.kick(heavy, Vector2.ZERO, 5.0, 10.0)
+	var heavy_push: Vector2 = heavy["push_velocity"]
+	_check(heavy_push.length() < push.length(), "крупная цель получает меньшую скорость от толчка")
+	for _hit in range(20):
+		RaidMotion.kick(enemy, Vector2.ZERO, 5.0, 10.0)
+	push = enemy["push_velocity"]
+	_check(push.length() <= RaidMotion.MAX_PUSH + 0.0001, "цепь взрывов не накапливает бесконечную скорость")
+	RaidMotion.feedback(enemy, Vector2.RIGHT)
+	push = enemy["push_velocity"]
+	_check(push.dot(Vector2.RIGHT) <= 0.0001, "препятствие гасит входящую скорость вместо отскока")
+	var dasher := {"kind": 1, "hp": 100.0, "radius": 1.1, "born": 0.0,
+		"at": Vector2.ZERO, "timer": 3.8, "charge": 0.5, "push_velocity": Vector2(5, 0)}
+	_check(RaidMotion.step(dasher, Vector2(14, 0), 0.1).is_equal_approx(Vector2(1.4, 0)),
+		"фаза рывка сохраняет заданную скорость без добавочного дрейфа")
+	dasher["charge"] = 0.0
+	_check(RaidMotion.step(dasher, Vector2(3, 0), 0.1).is_equal_approx(Vector2(0.3, 0)),
+		"после рывка нет лишнего скоростного выпада")
+	dasher["timer"] = 0.5
+	RaidMotion.kick(dasher, Vector2(-1, 0), 5.0, 10.0)
+	_check(RaidMotion.step(dasher, Vector2.ZERO, 0.1).is_zero_approx(),
+		"предупреждение атаки остаётся неподвижным и не копит запоздалый толчок")

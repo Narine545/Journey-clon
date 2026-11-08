@@ -31,7 +31,7 @@ for token in ('const ENEMY_CAP := 80', 'const SHOT_CAP := 160',
               'speed = 14.0', 'enemy["charge"] = 0.7',
               'elif float(enemy["timer"]) < 1.1:',
               'elapsed >= 240.0', 'const DURATION := 300.0'):
-    assert token in run, token
+    assert token in run + (root / "scripts/raid_motion.gd").read_text(), token
 assert '_draw_elite_marker(enemy)' in hud and 'ЭЛИТА · %d%%' in hud
 assert 'at.distance_to(run.boat_at()) > 60.0' in hud
 assert '_check_raid_elites()' in smoke and 'run.salvage.remaining() == 8' in smoke

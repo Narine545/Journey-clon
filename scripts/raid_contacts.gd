@@ -7,9 +7,9 @@ const SEPARATION_SPEED := 6.0
 
 
 static func mobility(enemy: Dictionary) -> float:
-	if int(enemy["kind"]) == 3:
+	if int(enemy.get("kind", 0)) == 3:
 		return 0.0 if RaidBoss.preparing(enemy) else 0.25
-	if int(enemy["kind"]) == 1 and float(enemy.get("timer", 2.0)) < 1.1:
+	if int(enemy.get("kind", 0)) == 1 and float(enemy.get("timer", 2.0)) < 1.1:
 		return 0.0
 	return 1.0
 
@@ -136,6 +136,7 @@ static func resolve(run: RaidRun, delta: float) -> void:
 					axis.rotated(PI * 0.5)
 				)
 				at = RaidContacts.safe_move(at, desired, radius, clear)
+		RaidMotion.from_contact(enemy, at - Vector2(enemy["at"]), run.main.boat.speed)
 		enemy["at"] = at
 
 

@@ -62,7 +62,7 @@ for x, z in ((0, 0), (.5, 0), (0, 4), (-.5, -4), (10, 0)):
     assert math.hypot(x, z - max(-3.7, min(3.7, z))) >= 2.82 - 1e-9
 print('PASS: bounded pair separation, locked/heavy roles, capsule exterior and integration guards (not engine)')
 
-assert "RaidContacts.slide_motion(self, enemy, direction * speed * delta)" in run
+assert "RaidContacts.slide_motion(run, enemy, requested)" in (root / "scripts/raid_motion.gd").read_text()
 assert "result += normal * (approach - gap)" in source
 
 # A fast dash cannot advance through the tangent plane of a neighbor in a single step.
