@@ -10,7 +10,7 @@ const MOBILITY_MAX_RANK := 3
 const SPEED_PER_RANK := 0.12
 const TURN_PER_RANK := 0.15
 const XP_MAX_RANK := 4
-const COLORS := [Color("d5806d"), Color("ffcb76"), Color("bb97e9"), Color("f05c75")]
+const COLORS := [Color("ff4b35"), Color("ffe144"), Color("be62ff"), Color("39a9ff")]
 const UPGRADES := [
 	["Усиленные снаряды", "+8 базового урона орудий"],
 	["Скоростные затворы", "До −12% перезарядки орудий"],
@@ -195,7 +195,12 @@ func _batch(capacity: int, projectile: bool) -> MultiMesh:
 	var material := StandardMaterial3D.new()
 	material.vertex_color_use_as_albedo = true
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	sphere.material = material
+	if projectile:
+		sphere.material = material
+	else:
+		var enemy_material := ShaderMaterial.new()
+		enemy_material.shader = preload("res://shaders/raid_enemy.gdshader")
+		sphere.material = enemy_material
 	var batch := MultiMesh.new()
 	batch.transform_format = MultiMesh.TRANSFORM_3D
 	batch.use_colors = true
@@ -764,6 +769,31 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 
+func _enemy_visual_color(enemy: Dictionary) -> Color:
+	var tint: Color = COLORS[int(enemy["kind"])]
+	# Keep archetype hue even during frequent hits; never flatten the whole enemy to white.
+	return tint.lerp(Color.WHITE, 0.25) if float(enemy["flash"]) > 0.0 else tint
+
+
+func _enemy_visual_basis(enemy: Dictionary, radius: float) -> Basis:
+	var kind: int = enemy["kind"]
+	var proportions := Vector3(1.0, 0.65, 1.0)
+	var yaw := 0.0
+	if kind == 1:
+		proportions = Vector3(0.65, 0.70, 1.0)
+		var direction: Vector2 = boat_at() - enemy["at"]
+		if float(enemy.get("charge", 0.0)) > 0.0 or float(enemy.get("timer", 2.0)) < 1.1:
+			var locked: Vector2 = enemy.get("aim", Vector2.ZERO)
+			if locked.length_squared() > 0.0001:
+				direction = locked
+		yaw = atan2(-direction.x, -direction.y)
+	elif kind == 2:
+		proportions = Vector3(0.85, 1.15, 0.85)
+	elif kind == 3:
+		proportions = Vector3(1.0, 0.85, 1.0)
+	return Basis(Vector3.UP, yaw) * Basis.from_scale(proportions * radius)
+
+
 func _process(_delta: float) -> void:
 	if main == null:
 		return
@@ -781,13 +811,11 @@ func _process(_delta: float) -> void:
 			var enemy := enemies[index]
 			var at: Vector2 = enemy["previous"].lerp(enemy["at"], blend)
 			var radius: float = float(enemy["radius"]) * (1.0 - float(enemy["born"]) * 1.3)
-			var enemy_basis := Basis.IDENTITY.scaled(Vector3(radius, radius * 0.65, radius))
+			var enemy_basis := _enemy_visual_basis(enemy, radius)
 			_enemy_batch.set_instance_transform(
 				index, Transform3D(enemy_basis, Vector3(at.x, Coast.SEA_LEVEL + 1.0, at.y))
 			)
-			_enemy_batch.set_instance_color(
-				index, Color.WHITE if float(enemy["flash"]) > 0.0 else COLORS[int(enemy["kind"])]
-			)
+			_enemy_batch.set_instance_color(index, _enemy_visual_color(enemy))
 		_enemy_batch.visible_instance_count = enemies.size()
 		for index in range(shots.size()):
 			var shot := shots[index]

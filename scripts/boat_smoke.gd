@@ -968,6 +968,7 @@ func _check_raid() -> void:
 	_check_raid_stern()
 	_check_raid_evolutions()
 	_check_raid_boss()
+	_check_raid_colors()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1083,6 +1084,13 @@ func _check_raid_fx() -> void:
 	fx.render()
 	_check(fx._batch.instance_count == 6 and fx._batch.visible_instance_count == 6,
 		"дульная вспышка использует фиксированные шесть side/face-квадов")
+	fx.step(0.04)
+	fx.render()
+	var body_pose := main.boat._body.get_global_transform_interpolated()
+	_check(is_equal_approx(fx._batch.get_instance_custom_data(0).r, 1.0)
+		and fx._material.render_priority == 10
+		and fx._batch.get_instance_transform(0).origin.is_equal_approx(body_pose * RaidWeaponFx.MOUNTS[0]),
+		"вспышка сохраняет яркую фазу, следует за корпусом и рисуется после прозрачного моря")
 	var remaining := fx._remaining[0]
 	run.toggle_pause()
 	run._physics_process(0.5)
@@ -1341,3 +1349,26 @@ func _check_raid_boss() -> void:
 	run.enemies.clear()
 	run.shots.clear()
 	run.grid.clear()
+
+
+func _check_raid_colors() -> void:
+	var run := main.raid
+	var hues_ok := true
+	for kind in range(4):
+		var enemy := {"kind": kind, "at": run.boat_at() + Vector2(0, 10),
+			"aim": Vector2.UP, "flash": 0.0}
+		if run._enemy_visual_color(enemy) != RaidRun.COLORS[kind]:
+			hues_ok = false
+		enemy["flash"] = 0.1
+		if run._enemy_visual_color(enemy) == Color.WHITE:
+			hues_ok = false
+		var shape := run._enemy_visual_basis(enemy, 1.0)
+		if kind == 1 and shape.x.length() >= shape.z.length():
+			hues_ok = false
+		if kind == 2 and shape.y.length() <= shape.x.length():
+			hues_ok = false
+	_check(hues_ok, "типы врагов сохраняют свои цвета при попадании и имеют разные пропорции")
+	var enemy_mesh := run._enemy_batch.mesh as PrimitiveMesh
+	var material := enemy_mesh.material as ShaderMaterial
+	_check(material != null and material.shader == preload("res://shaders/raid_enemy.gdshader"),
+		"цвет врагов выводится отдельным материалом без локального тумана")

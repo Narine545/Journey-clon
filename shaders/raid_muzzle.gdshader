@@ -2,6 +2,7 @@
 // Reference idea: shadecore_dev's Z-axis billboard; no texture asset required.
 shader_type spatial;
 render_mode unshaded, blend_add, cull_disabled, depth_draw_never, fog_disabled;
+uniform float flash_scale : hint_range(1.0, 1.6) = 1.0;
 varying float flash_strength;
 varying float face_pass;
 void vertex() {
@@ -14,10 +15,10 @@ void vertex() {
 	float face_weight = smoothstep(0.55, 0.90, abs(view_axis.z));
 	face_pass = INSTANCE_CUSTOM.g;
 	flash_strength = INSTANCE_CUSTOM.r * mix(1.0 - face_weight, face_weight, face_pass);
-	vec2 side_offset = along * ((VERTEX.x + 0.5) * 2.2) + across * VERTEX.y * 0.9;
-	vec2 face_offset = VERTEX.xy * 1.1;
+	vec2 side_offset = along * ((VERTEX.x + 0.5) * 3.6) + across * VERTEX.y * 1.6;
+	vec2 face_offset = VERTEX.xy * 2.0;
 	vec3 center_view = (MODELVIEW_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-	POSITION = PROJECTION_MATRIX * vec4(center_view + vec3(mix(side_offset, face_offset, face_pass), 0.0), 1.0);
+	POSITION = PROJECTION_MATRIX * vec4(center_view + vec3(mix(side_offset, face_offset, face_pass) * flash_scale, 0.0), 1.0);
 }
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;

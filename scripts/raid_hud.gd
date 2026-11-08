@@ -215,6 +215,8 @@ func _bar(rect: Rect2, amount: float, color: Color) -> void:
 
 func _set_effects(enabled: bool) -> void:
 	run.effects_enabled = enabled
+	if enabled:
+		run.weapon_fx.preview()
 	_title.material = _title_material if enabled else null
 	queue_redraw()
 
@@ -314,6 +316,11 @@ func _draw() -> void:
 	draw_line(center, center + run.forward() * 12, accent, 2.0, true)
 	draw_circle(center, 3, accent)
 	_text(center + Vector2(-53, 86), "РАДАР · 55 М", 15)
+	var roles := ["Преследователь", "Рывок", "Стрелок", "Босс"]
+	for kind in range(4):
+		var key_at := Vector2(size.x - 190, 314 + kind * 24)
+		draw_circle(key_at, 4.0, RaidRun.COLORS[kind])
+		_text(key_at + Vector2(12, 5), roles[kind], 16, RaidRun.COLORS[kind])
 	var panel := Rect2(Vector2(size.x * 0.5 - 295, size.y - 108), Vector2(590, 88))
 	draw_rect(panel, Color(0.025, 0.06, 0.08, 0.9))
 	_text(

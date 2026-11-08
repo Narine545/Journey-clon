@@ -16,10 +16,10 @@ assert run.count('weapon_fx.reset()') == 2
 assert 'weapon_fx.step(delta)' in run and 'weapon_fx.render()' in run
 assert run.index('weapon_fx.emit(weapon, aim)') < run.index('for pellet in range(')
 assert 'instance_count = 6' in fx and 'use_custom_data = true' in fx
-assert 'const LIFE := 0.09' in fx and 'visible_instance_count = 6 if active else 0' in fx
+assert 'const LIFE := 0.16' in fx and 'visible_instance_count = 6 if active else 0' in fx
 assert 'get_global_transform_interpolated()' in fx
 assert 'if not run.effects_enabled' in fx
-assert 'extra_cull_margin = 4.0' in fx
+assert 'extra_cull_margin = 8.0' in fx
 assert 'INSTANCE_CUSTOM.g' in muzzle and 'INSTANCE_CUSTOM.r' in muzzle
 assert 'projected_length > 0.0001' in muzzle
 assert 'depth_draw_never' in muzzle and 'depth_test_disabled' not in muzzle
@@ -79,10 +79,10 @@ for angle in range(181):
     assert math.isclose(face + (1 - face), 1)
     assert 0 <= face <= 1
 for fps in (19, 26, 60, 120):
-    remaining = 0.09
+    remaining = 0.16
     frames = 0
     while remaining > 0:
         remaining = max(0, remaining - 1 / fps)
         frames += 1
-    assert frames <= math.ceil(0.09 * fps) + 1
+    assert frames <= math.ceil(0.16 * fps) + 1
 print('PASS: UI/muzzle wiring, bounds, fill endpoints, billboard head-on safety and lifetime (not shader/runtime)')
