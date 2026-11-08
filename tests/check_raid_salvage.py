@@ -18,7 +18,7 @@ assert 'clearance <= PICKUP_CLEARANCE' in loot
 assert 'run._hull_distance(at)' in loot and 'run.main.boat._trailer' in loot
 assert 'run.navigable(next, 0.15)' in loot and 'travel / 0.4' in loot
 assert 'salvage.drop(enemies[index]["at"], 4 if kind == 2 else 2)' in run
-assert 'xp += salvage.step(delta)' in run
+assert 'credit_xp(salvage.step(delta))' in run
 assert 'xp += 4 if kind == 2 else 2' not in run
 assert run.count('salvage.reset()') == 2  # start and leave
 assert 'salvage.render(blend, elapsed)' in run

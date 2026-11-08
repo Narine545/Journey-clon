@@ -179,7 +179,7 @@ func _summary() -> String:
 	return (
 		(
 			"Время %02d:%02d · уничтожено %d · уровень %d.\n"
-			+ "Собрано опыта: %d · оставлено на воде: %d."
+			+ "Базовый сбор: %d · осталось: %d.\nНачислено с бонусами: %d XP."
 		)
 		% [
 			floori(run.elapsed / 60.0),
@@ -187,7 +187,8 @@ func _summary() -> String:
 			run.kills,
 			run.level,
 			run.salvage.collected,
-			run.salvage.remaining()
+			run.salvage.remaining(),
+			run.xp_awarded
 		]
 	)
 
@@ -240,18 +241,38 @@ func _draw() -> void:
 	for bar in _bars:
 		bar.visible = false
 	var main := run.main
+	var available_speed := (
+		BoatVessel.REVERSE_SPEED * main.boat.raid_speed_factor()
+		if main.boat.speed < -0.05
+		else main.boat.effective_max_speed()
+	)
 	var accent := Color("78dfcb")
 	_bar(Rect2(0, 0, size.x, 10), float(run.xp) / run.xp_needed, accent)
-	draw_rect(Rect2(20, 22, 310, 98), Color(0.025, 0.06, 0.08, 0.9))
+	draw_rect(Rect2(20, 22, 310, 146), Color(0.025, 0.06, 0.08, 0.9))
 	_text(Vector2(34, 46), "КОРПУС %d%% · УР. %d" % [int(ceil(main.boat.hull_hp)), run.level])
 	_bar(Rect2(34, 58, 280, 9), main.boat.hull_hp / 100.0, Color("ed846d"))
-	_text(
-		Vector2(34, 86), "ОПЫТ %d/%d · ЦЕЛЕЙ %d" % [run.xp, run.xp_needed, run.enemies.size()], 16
-	)
+	_text(Vector2(34, 86), "ОПЫТ %d/%d · ×%.2f" % [run.xp, run.xp_needed, run.xp_multiplier()], 16)
 	_text(
 		Vector2(34, 111),
-		"ХОД ×%.2f · РУЛЬ ×%.2f" % [run.speed_multiplier(), run.turn_multiplier()],
+		"ХОД %.1f/%.1f · РУЛЬ ×%.2f" % [main.boat.speed, available_speed, run.turn_multiplier()],
 		15
+	)
+	_text(
+		Vector2(34, 135),
+		(
+			"ДВИГ ×%.2f · КОРПУС −%d%% ХОДА"
+			% [run.speed_multiplier(), roundi((1.0 - main.boat.hull_speed_factor()) * 100.0)]
+		),
+		14
+	)
+	_text(
+		Vector2(34, 157),
+		(
+			"ФОРСАЖ: %.0f с (временный)" % main.overdrive_timer
+			if main.overdrive_timer > 0.0
+			else "БОНУСЫ — ДО КОНЦА РЕЙДА"
+		),
+		14
 	)
 	_text(
 		Vector2(size.x * 0.5 - 48, 45),

@@ -964,6 +964,7 @@ func _check_raid() -> void:
 	_check_raid_mobility()
 	_check_raid_fx()
 	_check_raid_waves()
+	_check_raid_xp_bonus()
 	_check_raid_stern()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
@@ -1172,4 +1173,61 @@ func _check_raid_stern() -> void:
 	run.enemies.clear()
 	run.grid.clear()
 	ordnance.reset()
+	run.hud.refresh()
+
+
+func _check_raid_xp_bonus() -> void:
+	var run := main.raid
+	var old_level := run.level
+	var old_needed := run.xp_needed
+	var old_xp := run.xp
+	var old_awarded := run.xp_awarded
+	var old_fraction := run._xp_quarters
+	var old_rank := run.xp_rank
+	run.xp_rank = 0
+	run._xp_quarters = 0
+	for rank_index in range(RaidRun.XP_MAX_RANK):
+		run.xp = run.xp_needed
+		run.choices = [9, 0, 1]
+		run.state = RaidRun.State.CHOOSING
+		run.choose(0)
+		if rank_index == 0:
+			run.credit_xp(2)
+			run.credit_xp(2)
+			_check(run.xp == 5 and run._xp_quarters == 0,
+				"два трофея по 2 XP при ×1.25 дают 5 XP, дробь не теряется")
+	_check(is_equal_approx(run.xp_multiplier(), 2.0), "четыре карточки команды дают ×2 опыта")
+	var before := run.xp
+	run.credit_xp(2)
+	_check(run.xp == before + 4, "множитель применяется к подбору один раз")
+	run._offer_upgrade()
+	_check(not run.choices.has(9), "максимальный множитель опыта исключён из предложений")
+	var saved_hull := main.boat.hull_hp
+	var saved_engine := run.speed_rank
+	var saved_boost := main.overdrive_timer
+	run.speed_rank = 1
+	main.boat.hull_hp = 100.0
+	main.overdrive_timer = 0.0
+	var healthy_speed := main.boat.effective_max_speed()
+	main.boat.hull_hp = 50.0
+	_check(is_equal_approx(main.boat.effective_max_speed(), healthy_speed * 0.8) and run.speed_rank == 1,
+		"потеря корпуса снижает ход, но не снимает улучшение двигателя")
+	main.boat.hull_hp = 100.0
+	main.overdrive_timer = 1.0
+	_check(is_equal_approx(main.boat.effective_max_speed(), healthy_speed * 1.35),
+		"временный форсаж — отдельный множитель поверх карточки двигателя")
+	main.overdrive_timer = 0.0
+	_check(is_equal_approx(main.boat.effective_max_speed(), healthy_speed),
+		"окончание форсажа оставляет постоянный бонус рейда")
+	main.boat.hull_hp = saved_hull
+	run.speed_rank = saved_engine
+	main.overdrive_timer = saved_boost
+	run.level = old_level
+	run.xp_needed = old_needed
+	run.xp = old_xp
+	run.xp_awarded = old_awarded
+	run._xp_quarters = old_fraction
+	run.xp_rank = old_rank
+	run.choices.clear()
+	run.state = RaidRun.State.RUNNING
 	run.hud.refresh()

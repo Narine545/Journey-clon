@@ -107,9 +107,13 @@ func steering_yaw_delta(steer: float, current_speed: float, delta: float) -> flo
 
 func effective_max_speed() -> float:
 	var base := MAX_SPEED + (2.0 if has_trailer else 0.0)
-	var hp_factor := lerpf(0.60, 1.0, clampf(hull_hp / 100.0, 0.0, 1.0))
+	var hp_factor := hull_speed_factor()
 	var boost := 1.35 if (main != null and main.overdrive_timer > 0.0) else 1.0
 	return base * hp_factor * boost * raid_speed_factor()
+
+
+func hull_speed_factor() -> float:
+	return lerpf(0.60, 1.0, clampf(hull_hp / 100.0, 0.0, 1.0))
 
 
 func raid_speed_factor() -> float:

@@ -9,6 +9,7 @@ const CELL := 8.0
 const MOBILITY_MAX_RANK := 3
 const SPEED_PER_RANK := 0.12
 const TURN_PER_RANK := 0.15
+const XP_MAX_RANK := 4
 const COLORS := [Color("d5806d"), Color("ffcb76"), Color("bb97e9"), Color("f05c75")]
 const UPGRADES := [
 	["Усиленные снаряды", "+8 базового урона орудий"],
@@ -20,6 +21,7 @@ const UPGRADES := [
 	["Форсированный двигатель", "+12% базового хода, разгона и торможения"],
 	["Усиленный руль", "+15% базовой скорости поворота на ходу"],
 	["Кормовые заряды", "Открыть / усилить мины против преследователей"],
+	["Опытная команда", "+25% опыта с трофеев до конца рейда"],
 ]
 var effects_enabled := true
 var weapon_fx: RaidWeaponFx
@@ -33,6 +35,8 @@ var kills := 0
 var level := 1
 var xp := 0
 var xp_needed := 8
+var xp_rank := 0
+var xp_awarded := 0
 var damage := 22.0
 var reload_scale := 1.0
 var pellets := 1
@@ -48,6 +52,7 @@ var enemies: Array[Dictionary] = []
 var shots: Array[Dictionary] = []
 var grid: Dictionary = {}
 var rng := RandomNumberGenerator.new()
+var _xp_quarters := 0
 var _water_cells: Dictionary = {}
 var _enemy_batch: MultiMesh
 var _shot_batch: MultiMesh
@@ -110,6 +115,9 @@ func start() -> void:
 	level = 1
 	xp = 0
 	xp_needed = 8
+	xp_rank = 0
+	xp_awarded = 0
+	_xp_quarters = 0
 	damage = 22.0
 	reload_scale = 1.0
 	pellets = 1
@@ -145,6 +153,9 @@ func leave() -> void:
 	if not engaged():
 		return
 	state = State.IDLE
+	xp_rank = 0
+	xp_awarded = 0
+	_xp_quarters = 0
 	speed_rank = 0
 	turn_rank = 0
 	stern_rank = 0
@@ -298,7 +309,7 @@ func _physics_process(delta: float) -> void:
 			if kind == 3:
 				_finish(State.WON)
 				return
-	xp += salvage.step(delta)
+	credit_xp(salvage.step(delta))
 	if main.boat.hull_hp <= 0.0:
 		_finish(State.LOST)
 	elif elapsed >= DURATION:
@@ -522,7 +533,9 @@ func pulse() -> void:
 func _offer_upgrade() -> void:
 	state = State.CHOOSING
 	choices.clear()
-	var available: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+	var available: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+	if xp_rank >= XP_MAX_RANK:
+		available.erase(9)
 	if stern_rank >= 3:
 		available.erase(8)
 	if speed_rank >= MOBILITY_MAX_RANK:
@@ -564,6 +577,8 @@ func choose(index: int) -> void:
 			turn_rank = mini(MOBILITY_MAX_RANK, turn_rank + 1)
 		8:
 			stern_rank = mini(3, stern_rank + 1)
+		9:
+			xp_rank = mini(XP_MAX_RANK, xp_rank + 1)
 	xp -= xp_needed
 	level += 1
 	xp_needed = 8 + (level - 1) * 5
@@ -629,7 +644,27 @@ func upgrade_preview(kind: int) -> String:
 					RaidSternCharges.interval(next_rank)
 				]
 			)
+		9:
+			preview = (
+				"Опыт: ×%.2f → ×%.2f"
+				% [xp_multiplier(), 1.0 + float(mini(XP_MAX_RANK, xp_rank + 1)) * 0.25]
+			)
 	return preview
+
+
+func xp_multiplier() -> float:
+	return 1.0 + float(xp_rank) * 0.25
+
+
+func credit_xp(amount: int) -> void:
+	if amount <= 0:
+		return
+	# Quarter-XP carry avoids rounding 2 * 1.25 down on every small trophy.
+	var units := amount * (4 + xp_rank) + _xp_quarters
+	var gained := floori(float(units) * 0.25)
+	_xp_quarters = units % 4
+	xp += gained
+	xp_awarded += gained
 
 
 func speed_multiplier() -> float:
