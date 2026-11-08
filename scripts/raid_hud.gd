@@ -16,6 +16,8 @@ var _retry: Button
 var _bars: Array[ColorRect] = []
 var _bar_index := 0
 var _title_material: ShaderMaterial
+var _god_toggle: CheckButton
+var _clear_toggle: CheckButton
 var _fx_toggle: CheckButton
 var _leave: Button
 
@@ -40,6 +42,19 @@ func setup() -> void:
 	_fx_toggle.button_pressed = run.effects_enabled
 	_fx_toggle.toggled.connect(_set_effects)
 	add_child(_fx_toggle)
+	_god_toggle = CheckButton.new()
+	_god_toggle.text = "БЕССМЕРТИЕ"
+	_god_toggle.tooltip_text = "Отладка: блокирует урон корпусу, но не останавливает таймер рейда."
+	_god_toggle.toggled.connect(_set_invulnerable)
+	add_child(_god_toggle)
+	_clear_toggle = CheckButton.new()
+	_clear_toggle.text = "ЗАЧИСТКА ЭКРАНА"
+	_clear_toggle.tooltip_text = (
+		"Отладка: убивает врагов в кадре, пока включена. "
+		+ "Босс тоже погибает — победа."
+	)
+	_clear_toggle.toggled.connect(_set_clear_screen)
+	add_child(_clear_toggle)
 	_launch = Button.new()
 	_launch.text = "НАЧАТЬ РЕЙД · ПРОТОТИП"
 	_launch.pressed.connect(run.start)
@@ -125,6 +140,10 @@ func _layout() -> void:
 	_pause.size = Vector2(146, 32)
 	_fx_toggle.position = Vector2(size.x - 190, 254)
 	_fx_toggle.size = Vector2(166, 28)
+	_god_toggle.position = Vector2(size.x - 248, 420)
+	_god_toggle.size = Vector2(224, 30)
+	_clear_toggle.position = Vector2(size.x - 248, 458)
+	_clear_toggle.size = Vector2(224, 30)
 	var width := minf(1120.0, size.x - 32.0)
 	_cards.columns = 3 if width >= 1000.0 else 1
 	var height := minf(
@@ -139,6 +158,12 @@ func refresh() -> void:
 		return
 	_launch.visible = not run.engaged()
 	_fx_toggle.visible = run.engaged()
+	_god_toggle.visible = run.engaged()
+	_clear_toggle.visible = run.engaged()
+	_god_toggle.disabled = run.state in [RaidRun.State.WON, RaidRun.State.LOST]
+	_clear_toggle.disabled = _god_toggle.disabled
+	_god_toggle.set_pressed_no_signal(run.debug_invulnerable)
+	_clear_toggle.set_pressed_no_signal(run.debug_clear_screen)
 	for bar in _bars:
 		bar.visible = false
 	_pause.visible = run.state == RaidRun.State.RUNNING
@@ -219,6 +244,16 @@ func _bar(rect: Rect2, amount: float, color: Color) -> void:
 	bar_material.set_shader_parameter("fill_color", color)
 	bar_material.set_shader_parameter("effect_time", run.elapsed)
 	bar_material.set_shader_parameter("motion", 1.0 if run.effects_enabled else 0.0)
+
+
+func _set_invulnerable(enabled: bool) -> void:
+	run.debug_invulnerable = enabled
+	queue_redraw()
+
+
+func _set_clear_screen(enabled: bool) -> void:
+	run.debug_clear_screen = enabled
+	queue_redraw()
 
 
 func _set_effects(enabled: bool) -> void:

@@ -192,6 +192,8 @@ func is_on_port_working_side(world_pos: Vector3) -> bool:
 
 
 func apply_hull_damage(amount: float) -> void:
+	if main != null and main.raid != null and main.raid.engaged() and main.raid.debug_invulnerable:
+		return
 	# Exploration keeps its forgiving floor; a raid must permit real defeat.
 	var minimum := 0.0 if main != null and main.raid != null and main.raid.engaged() else 15.0
 	hull_hp = maxf(minimum, hull_hp - maxf(0.0, amount))

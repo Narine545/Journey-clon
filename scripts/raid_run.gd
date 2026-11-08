@@ -29,6 +29,8 @@ const UPGRADES := [
 	["Цепной подрыв", "ЭВОЛЮЦИЯ: мины запускают соседние взведённые заряды"],
 ]
 var effects_enabled := true
+var debug_invulnerable := false
+var debug_clear_screen := false
 var weapon_fx: RaidWeaponFx
 var stern_charges: RaidSternCharges
 var salvage: RaidSalvage
@@ -134,6 +136,8 @@ func start() -> void:
 	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
+	debug_invulnerable = false
+	debug_clear_screen = false
 	rerolls_left = REROLLS
 	xp_awarded = 0
 	_xp_quarters = 0
@@ -179,6 +183,8 @@ func leave() -> void:
 	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
+	debug_invulnerable = false
+	debug_clear_screen = false
 	rerolls_left = REROLLS
 	xp_awarded = 0
 	_xp_quarters = 0
@@ -332,6 +338,7 @@ func _physics_process(delta: float) -> void:
 		if enemies.size() >= ENEMY_CAP:
 			enemies.remove_at(0)
 		boss_spawned = _spawn(3)
+	_debug_clear_visible()
 	_move_enemies(delta)
 	_rebuild_grid()
 	stern_charges.step(delta)
@@ -354,6 +361,18 @@ func _physics_process(delta: float) -> void:
 		_finish(State.LOST)
 	elif xp >= xp_needed:
 		_offer_upgrade()
+
+
+func _debug_clear_visible() -> void:
+	if not debug_clear_screen or state != State.RUNNING or main.inspection_active():
+		return
+	for enemy in enemies:
+		if float(enemy["hp"]) <= 0.0:
+			continue
+		var at: Vector2 = enemy["at"]
+		var world_at := Vector3(at.x, Coast.SEA_LEVEL + 1.0, at.y)
+		if main.camera.is_position_in_frustum(world_at):
+			enemy["hp"] = 0.0
 
 
 func _step_elites() -> void:
@@ -581,7 +600,7 @@ func _move_shots(delta: float) -> void:
 
 
 func _hurt(amount: float) -> void:
-	if _hurt_timer > 0.0:
+	if debug_invulnerable or _hurt_timer > 0.0:
 		return
 	main.boat.apply_hull_damage(amount)
 	_hurt_timer = 0.65

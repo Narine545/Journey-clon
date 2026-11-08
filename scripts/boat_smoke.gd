@@ -972,6 +972,7 @@ func _check_raid() -> void:
 	_check_raid_elites()
 	_check_raid_tactical_evolutions()
 	_check_raid_rerolls()
+	_check_raid_debug()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1534,4 +1535,44 @@ func _check_raid_rerolls() -> void:
 	run.rerolls_left = saved_rerolls
 	run.state = RaidRun.State.RUNNING
 	run.choices.clear()
+	run.hud.refresh()
+
+
+func _check_raid_debug() -> void:
+	var run := main.raid
+	var saved_hp := main.boat.hull_hp
+	var saved_hurt := run._hurt_timer
+	run.debug_invulnerable = true
+	run._hurt_timer = 0.0
+	main.boat.apply_hull_damage(200.0)
+	run._hurt(200.0)
+	_check(is_equal_approx(main.boat.hull_hp, saved_hp) and is_zero_approx(run._hurt_timer),
+		"отладочное бессмертие блокирует общий и боевой урон без вспышки попадания")
+	run.debug_invulnerable = false
+	main.boat.apply_hull_damage(1.0)
+	_check(is_equal_approx(main.boat.hull_hp, saved_hp - 1.0),
+		"выключение бессмертия сразу возвращает урон")
+	main.boat.hull_hp = saved_hp
+	run._hurt_timer = saved_hurt
+	var camera := main.camera
+	var pixel := get_viewport().get_visible_rect().size * 0.5
+	var ray_start := camera.project_ray_origin(pixel)
+	var ray_direction := camera.project_ray_normal(pixel)
+	var point := ray_start + ray_direction * ((Coast.SEA_LEVEL + 1.0 - ray_start.y) / ray_direction.y)
+	var visible_at := Vector2(point.x, point.z)
+	var far_point := camera.global_position + camera.global_basis.z * 10000.0
+	var outside_at := Vector2(far_point.x, far_point.z)
+	run.enemies.append({"at": visible_at, "hp": 100.0})
+	run.enemies.append({"at": outside_at, "hp": 100.0})
+	run.debug_clear_screen = true
+	run.toggle_pause()
+	run._debug_clear_visible()
+	_check(float(run.enemies[0]["hp"]) == 100.0, "зачистка не работает в паузе")
+	run.toggle_pause()
+	run._debug_clear_visible()
+	_check(float(run.enemies[0]["hp"]) == 0.0 and float(run.enemies[1]["hp"]) == 100.0,
+		"зачистка убивает цель в кадре и оставляет цель вне кадра")
+	run.debug_clear_screen = false
+	run.enemies.clear()
+	run.grid.clear()
 	run.hud.refresh()
