@@ -11,15 +11,30 @@ var _cards: HBoxContainer
 var _card_buttons: Array[Button] = []
 var _resume: Button
 var _retry: Button
-var _bar_skin: StyleBoxFlat
+var _bars: Array[ColorRect] = []
+var _bar_index := 0
+var _title_material: ShaderMaterial
+var _fx_toggle: CheckButton
 var _leave: Button
 
 
 func setup() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bar_skin = StyleBoxFlat.new()
-	_bar_skin.bg_color = Color(0.025, 0.06, 0.08, 0.88)
+	for _index in range(3):
+		var bar := ColorRect.new()
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.visible = false
+		var bar_material := ShaderMaterial.new()
+		bar_material.shader = preload("res://shaders/raid_progress.gdshader")
+		bar.material = bar_material
+		add_child(bar)
+		_bars.append(bar)
+	_fx_toggle = CheckButton.new()
+	_fx_toggle.text = "ЭФФЕКТЫ"
+	_fx_toggle.button_pressed = run.effects_enabled
+	_fx_toggle.toggled.connect(_set_effects)
+	add_child(_fx_toggle)
 	_launch = Button.new()
 	_launch.text = "НАЧАТЬ РЕЙД · ПРОТОТИП"
 	_launch.pressed.connect(run.start)
@@ -45,6 +60,12 @@ func setup() -> void:
 	_modal.add_child(box)
 	_title = Label.new()
 	_title.add_theme_font_size_override("font_size", 25)
+	_title.add_theme_constant_override("outline_size", 2)
+	_title.add_theme_color_override("font_outline_color", Color("08141d"))
+	_title_material = ShaderMaterial.new()
+	_title_material.shader = preload("res://shaders/raid_title.gdshader")
+	_title.material = _title_material if run.effects_enabled else null
+	_title.resized.connect(_sync_title)
 	box.add_child(_title)
 	_detail = Label.new()
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -84,6 +105,8 @@ func _layout() -> void:
 	_launch.size = Vector2(236, 36)
 	_pause.position = Vector2(size.x - 170, 28)
 	_pause.size = Vector2(146, 32)
+	_fx_toggle.position = Vector2(size.x - 190, 254)
+	_fx_toggle.size = Vector2(166, 28)
 	var width := minf(960.0, size.x - 32.0)
 	_modal.position = Vector2((size.x - width) * 0.5, maxf(90.0, size.y * 0.5 - 180.0))
 	_modal.size.x = width
@@ -93,6 +116,9 @@ func refresh() -> void:
 	if _launch == null:
 		return
 	_launch.visible = not run.engaged()
+	_fx_toggle.visible = run.engaged()
+	for bar in _bars:
+		bar.visible = false
 	_pause.visible = run.state == RaidRun.State.RUNNING
 	_modal.visible = run.modal()
 	_cards.visible = run.state == RaidRun.State.CHOOSING
@@ -121,6 +147,12 @@ func refresh() -> void:
 				+ ("КОРПУС ПОТЕРЯН" if run.main.boat.hull_hp <= 0.0 else "ВРЕМЯ ВЫШЛО")
 			)
 			_detail.text = _summary()
+	_title_material.set_shader_parameter(
+		"fluid_top", Color("ffca91") if run.state == RaidRun.State.LOST else Color("a6ffe0")
+	)
+	_title_material.set_shader_parameter(
+		"fluid_bottom", Color("e66e67") if run.state == RaidRun.State.LOST else Color("379dc7")
+	)
 	_modal.reset_size()
 	_layout()
 
@@ -147,10 +179,29 @@ func _text(at: Vector2, text: String, font_size: int = 16, color: Color = Color(
 
 
 func _bar(rect: Rect2, amount: float, color: Color) -> void:
-	draw_style_box(_bar_skin, rect)
-	draw_rect(
-		Rect2(rect.position, Vector2(rect.size.x * clampf(amount, 0.0, 1.0), rect.size.y)), color
-	)
+	if _bar_index >= _bars.size():
+		return
+	var bar := _bars[_bar_index]
+	_bar_index += 1
+	bar.position = rect.position
+	bar.size = rect.size
+	bar.visible = not run.modal()
+	var bar_material := bar.material as ShaderMaterial
+	bar_material.set_shader_parameter("progress", clampf(amount, 0.0, 1.0))
+	bar_material.set_shader_parameter("bar_size", rect.size)
+	bar_material.set_shader_parameter("fill_color", color)
+	bar_material.set_shader_parameter("effect_time", run.elapsed)
+	bar_material.set_shader_parameter("motion", 1.0 if run.effects_enabled else 0.0)
+
+
+func _set_effects(enabled: bool) -> void:
+	run.effects_enabled = enabled
+	_title.material = _title_material if enabled else null
+	queue_redraw()
+
+
+func _sync_title() -> void:
+	_title_material.set_shader_parameter("label_size", _title.size)
 
 
 func _wrap(text: String) -> String:
@@ -167,6 +218,9 @@ func _wrap(text: String) -> String:
 func _draw() -> void:
 	if run == null or not run.engaged():
 		return
+	_bar_index = 0
+	for bar in _bars:
+		bar.visible = false
 	var main := run.main
 	var accent := Color("78dfcb")
 	_bar(Rect2(0, 0, size.x, 6), float(run.xp) / run.xp_needed, accent)

@@ -20,6 +20,8 @@ const UPGRADES := [
 	["Форсированный двигатель", "+12% базового хода, разгона и торможения"],
 	["Усиленный руль", "+15% базовой скорости поворота на ходу"],
 ]
+var effects_enabled := true
+var weapon_fx: RaidWeaponFx
 var salvage: RaidSalvage
 var hud: RaidHud
 var main: BoatMain
@@ -63,6 +65,9 @@ func setup(scene: BoatMain) -> void:
 	salvage = RaidSalvage.new()
 	add_child(salvage)
 	salvage.setup(self)
+	weapon_fx = RaidWeaponFx.new()
+	add_child(weapon_fx)
+	weapon_fx.setup(self)
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	add_child(layer)
@@ -119,6 +124,7 @@ func start() -> void:
 	_water_cells.clear()
 	choices.clear()
 	salvage.reset()
+	weapon_fx.reset()
 	hud.refresh()
 
 
@@ -144,6 +150,7 @@ func leave() -> void:
 	_enemy_batch.visible_instance_count = 0
 	_shot_batch.visible_instance_count = 0
 	salvage.reset()
+	weapon_fx.reset()
 	hud.refresh()
 
 
@@ -245,6 +252,7 @@ func _physics_process(delta: float) -> void:
 		_finish(State.LOST)
 		return
 	elapsed += delta
+	weapon_fx.step(delta)
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	pulse_cooldown = maxf(0.0, pulse_cooldown - delta)
 	_pulse_flash = maxf(0.0, _pulse_flash - delta)
@@ -380,6 +388,9 @@ func _fire_weapons(delta: float) -> void:
 		if chosen < 0:
 			continue
 		var aim: Vector2 = (enemies[chosen]["at"] - boat_at()).normalized()
+		# One flash per mount/salvo, not per pellet. No extra light source.
+		if shots.size() < SHOT_CAP:
+			weapon_fx.emit(weapon, aim)
 		for pellet in range(1 if weapon == 0 else pellets):
 			var angle := (float(pellet) - float(pellets - 1) * 0.5) * 0.13 if weapon > 0 else 0.0
 			_add_shot(
@@ -635,6 +646,7 @@ func _process(_delta: float) -> void:
 			else Engine.get_physics_interpolation_fraction()
 		)
 		salvage.render(blend, elapsed)
+		weapon_fx.render()
 		for index in range(enemies.size()):
 			var enemy := enemies[index]
 			var at: Vector2 = enemy["previous"].lerp(enemy["at"], blend)

@@ -962,6 +962,7 @@ func _check_raid() -> void:
 	_check(run.state == RaidRun.State.RUNNING and run.level == 2 and run.xp == 0
 		and is_equal_approx(run.reload_scale, 0.88), "карточка применяет эффект и списывает опыт")
 	_check_raid_mobility()
+	_check_raid_fx()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1065,4 +1066,40 @@ func _check_raid_mobility() -> void:
 	run.xp_needed = old_needed
 	run.choices.clear()
 	run.state = RaidRun.State.RUNNING
+	run.hud.refresh()
+
+
+func _check_raid_fx() -> void:
+	var run := main.raid
+	var fx := run.weapon_fx
+	var previous_setting := run.effects_enabled
+	run.effects_enabled = true
+	fx.emit(0, run.forward())
+	fx.render()
+	_check(fx._batch.instance_count == 6 and fx._batch.visible_instance_count == 6,
+		"дульная вспышка использует фиксированные шесть side/face-квадов")
+	var remaining := fx._remaining[0]
+	run.toggle_pause()
+	run._physics_process(0.5)
+	_check(is_equal_approx(fx._remaining[0], remaining), "дульная вспышка заморожена с боевым временем")
+	run.toggle_pause()
+	fx.step(RaidWeaponFx.LIFE + 0.01)
+	fx.render()
+	_check(fx._batch.visible_instance_count == 0, "истёкшая вспышка не рисуется")
+	run.effects_enabled = false
+	fx.emit(1, run.forward())
+	fx.render()
+	_check(fx._batch.visible_instance_count == 0 and is_zero_approx(fx._remaining[1]),
+		"отключение эффектов выключает дульные вспышки")
+	run.hud._bar_index = 0
+	run.hud._bar(Rect2(0, 0, 100, 8), -2.0, Color.WHITE)
+	run.hud._bar(Rect2(0, 10, 100, 8), 2.0, Color.WHITE)
+	var empty_material := run.hud._bars[0].material as ShaderMaterial
+	var full_material := run.hud._bars[1].material as ShaderMaterial
+	_check(run.hud._bars.size() == 3
+		and is_zero_approx(float(empty_material.get_shader_parameter("progress")))
+		and is_equal_approx(float(full_material.get_shader_parameter("progress")), 1.0),
+		"полосы ограничивают прогресс нулём и единицей")
+	run.effects_enabled = previous_setting
+	fx.reset()
 	run.hud.refresh()
