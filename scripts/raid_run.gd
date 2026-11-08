@@ -19,9 +19,11 @@ const UPGRADES := [
 	["Сборщики трофеев", "+3 м притяжения боевого опыта"],
 	["Форсированный двигатель", "+12% базового хода, разгона и торможения"],
 	["Усиленный руль", "+15% базовой скорости поворота на ходу"],
+	["Кормовые заряды", "Открыть / усилить мины против преследователей"],
 ]
 var effects_enabled := true
 var weapon_fx: RaidWeaponFx
+var stern_charges: RaidSternCharges
 var salvage: RaidSalvage
 var hud: RaidHud
 var main: BoatMain
@@ -36,6 +38,7 @@ var reload_scale := 1.0
 var pellets := 1
 var speed_rank := 0
 var turn_rank := 0
+var stern_rank := 0
 var pulse_radius := 13.0
 var pulse_damage := 35.0
 var pulse_cooldown := 0.0
@@ -68,6 +71,9 @@ func setup(scene: BoatMain) -> void:
 	weapon_fx = RaidWeaponFx.new()
 	add_child(weapon_fx)
 	weapon_fx.setup(self)
+	stern_charges = RaidSternCharges.new()
+	add_child(stern_charges)
+	stern_charges.setup(self)
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	add_child(layer)
@@ -109,6 +115,7 @@ func start() -> void:
 	pellets = 1
 	speed_rank = 0
 	turn_rank = 0
+	stern_rank = 0
 	pulse_radius = 13.0
 	pulse_damage = 35.0
 	pulse_cooldown = 0.0
@@ -125,6 +132,7 @@ func start() -> void:
 	choices.clear()
 	salvage.reset()
 	weapon_fx.reset()
+	stern_charges.reset()
 	hud.refresh()
 
 
@@ -139,6 +147,7 @@ func leave() -> void:
 	state = State.IDLE
 	speed_rank = 0
 	turn_rank = 0
+	stern_rank = 0
 	main.boat.hull_hp = _saved_hp
 	main.boat.speed = 0.0
 	main.debug_panel_visible = _saved_debug
@@ -151,6 +160,7 @@ func leave() -> void:
 	_shot_batch.visible_instance_count = 0
 	salvage.reset()
 	weapon_fx.reset()
+	stern_charges.reset()
 	hud.refresh()
 
 
@@ -275,6 +285,7 @@ func _physics_process(delta: float) -> void:
 		boss_spawned = _spawn(3)
 	_move_enemies(delta)
 	_rebuild_grid()
+	stern_charges.step(delta)
 	_fire_weapons(delta)
 	_move_shots(delta)
 	for index in range(enemies.size() - 1, -1, -1):
@@ -511,7 +522,9 @@ func pulse() -> void:
 func _offer_upgrade() -> void:
 	state = State.CHOOSING
 	choices.clear()
-	var available: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7]
+	var available: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+	if stern_rank >= 3:
+		available.erase(8)
 	if speed_rank >= MOBILITY_MAX_RANK:
 		available.erase(6)
 	if turn_rank >= MOBILITY_MAX_RANK:
@@ -549,6 +562,8 @@ func choose(index: int) -> void:
 			speed_rank = mini(MOBILITY_MAX_RANK, speed_rank + 1)
 		7:
 			turn_rank = mini(MOBILITY_MAX_RANK, turn_rank + 1)
+		8:
+			stern_rank = mini(3, stern_rank + 1)
 	xp -= xp_needed
 	level += 1
 	xp_needed = 8 + (level - 1) * 5
@@ -602,6 +617,18 @@ func upgrade_preview(kind: int) -> String:
 					1.0 + float(mini(MOBILITY_MAX_RANK, turn_rank + 1)) * TURN_PER_RANK
 				]
 			)
+		8:
+			var next_rank := mini(3, stern_rank + 1)
+			preview = (
+				"Урон: %.0f → %.0f\nРадиус: %.0f → %.0f м\nСброс: %.1f с"
+				% [
+					RaidSternCharges.power(stern_rank),
+					RaidSternCharges.power(next_rank),
+					RaidSternCharges.radius(stern_rank),
+					RaidSternCharges.radius(next_rank),
+					RaidSternCharges.interval(next_rank)
+				]
+			)
 	return preview
 
 
@@ -651,6 +678,7 @@ func _process(_delta: float) -> void:
 		)
 		salvage.render(blend, elapsed)
 		weapon_fx.render()
+		stern_charges.render()
 		for index in range(enemies.size()):
 			var enemy := enemies[index]
 			var at: Vector2 = enemy["previous"].lerp(enemy["at"], blend)

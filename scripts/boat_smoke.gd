@@ -964,6 +964,7 @@ func _check_raid() -> void:
 	_check_raid_mobility()
 	_check_raid_fx()
 	_check_raid_waves()
+	_check_raid_stern()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1119,3 +1120,56 @@ func _check_raid_waves() -> void:
 			if RaidWaves.choose_kind(seconds, RaidWaves.ranged_cap(seconds), float(roll_index) / 100.0) == 2:
 				caps_ok = false
 	_check(caps_ok, "достигнутый лимит стрелков запрещает появление следующего")
+
+
+func _check_raid_stern() -> void:
+	var run := main.raid
+	var ordnance := run.stern_charges
+	var old_level := run.level
+	var old_xp := run.xp
+	var old_needed := run.xp_needed
+	run.xp = run.xp_needed
+	run.choices = [8, 0, 1]
+	run.state = RaidRun.State.CHOOSING
+	run.choose(0)
+	_check(run.stern_rank == 1, "карточка устанавливает кормовой модуль")
+	ordnance.step(0.01)
+	_check(ordnance.charges.size() == 1 and not ordnance._try_drop(),
+		"кормовой заряд сброшен в воду, стационарная куча не создаётся")
+	if not ordnance.charges.is_empty():
+		var charge: Dictionary = ordnance.charges[0]
+		var at: Vector2 = charge["at"]
+		run.enemies.append({"at": at + Vector2(1, 0), "hp": 200.0, "radius": 1.1, "flash": 0.0})
+		run._rebuild_grid()
+		ordnance.step(0.1)
+		_check(is_equal_approx(float(run.enemies[0]["hp"]), 200.0), "заряд не срабатывает до взведения")
+		ordnance.step(RaidSternCharges.ARM_TIME)
+		_check(is_equal_approx(float(run.enemies[0]["hp"]), 158.0), "взведённый заряд наносит площадной урон")
+		ordnance._detonate(charge)
+		_check(is_equal_approx(float(run.enemies[0]["hp"]), 158.0), "один заряд не наносит повторный урон")
+		run.toggle_pause()
+		var age: float = charge["blast"]
+		run._physics_process(0.5)
+		_check(is_equal_approx(float(charge["blast"]), age), "пауза замораживает кормовые заряды")
+		run.toggle_pause()
+		ordnance.step(RaidSternCharges.BLAST_TIME + 0.01)
+		_check(ordnance.charges.is_empty(), "взорванный заряд освобождает ограниченный пул")
+	var had_trailer := main.boat.has_trailer
+	var trailer_pose := main.boat._trailer.global_transform
+	main.boat.set_trailer_enabled(true)
+	var trailer := main.boat._trailer
+	var center := Vector2(trailer.global_position.x, trailer.global_position.z)
+	var backwards := Vector2(sin(trailer.global_rotation.y), cos(trailer.global_rotation.y))
+	_check(is_equal_approx((ordnance.drop_point() - center).dot(backwards), 4.5),
+		"с плашкоутом заряд сбрасывается за кормой плашкоута")
+	main.boat.set_trailer_enabled(had_trailer)
+	main.boat._trailer.global_transform = trailer_pose
+	main.boat._trailer.reset_physics_interpolation()
+	run.stern_rank = 0
+	run.level = old_level
+	run.xp = old_xp
+	run.xp_needed = old_needed
+	run.enemies.clear()
+	run.grid.clear()
+	ordnance.reset()
+	run.hud.refresh()

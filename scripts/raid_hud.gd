@@ -304,7 +304,19 @@ func _draw() -> void:
 	)
 	_text(
 		panel.position + Vector2(15, 48),
-		"Зелёные трофеи — опыт · подойдите корпусом или плашкоутом",
+		(
+			(
+				"КОРМА %d · заряд %.1f с · урон %.0f · радиус %.0f м"
+				% [
+					run.stern_rank,
+					run.stern_charges.cooldown,
+					RaidSternCharges.power(run.stern_rank),
+					RaidSternCharges.radius(run.stern_rank)
+				]
+			)
+			if run.stern_rank > 0
+			else "Зелёные трофеи — опыт · подойдите корпусом или плашкоутом"
+		),
 		15
 	)
 	_text(
