@@ -967,6 +967,7 @@ func _check_raid() -> void:
 	_check_raid_xp_bonus()
 	_check_raid_stern()
 	_check_raid_evolutions()
+	_check_raid_boss()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1299,3 +1300,44 @@ func _check_raid_evolutions() -> void:
 	run.piercing_harpoon = false
 	run.resonant_pulse = false
 	run.hud.refresh()
+
+
+func _check_raid_boss() -> void:
+	var enemy := {"at": Vector2.ZERO, "hp": 100.0, "max_hp": 100.0}
+	_check(RaidBoss.step(enemy, 0.0, Vector2(20, 0)).is_empty()
+		and not RaidBoss.preparing(enemy), "у босса есть пауза после появления")
+	RaidBoss.step(enemy, RaidBoss.ARRIVAL_GRACE, Vector2(20, 0))
+	var warning := RaidBoss.directions(enemy)
+	_check(warning.size() == 3 and RaidBoss.preparing(enemy), "первая атака — предупреждённый веер")
+	enemy["hp"] = 40.0
+	RaidBoss.step(enemy, 0.25, Vector2(0, 20))
+	_check(enemy["boss_aim"] == Vector2.RIGHT and RaidBoss.directions(enemy) == warning,
+		"предупреждённая атака не доворачивает за игроком и не меняется на половине HP")
+	var fired := RaidBoss.step(enemy, RaidBoss.FAN_WARNING, Vector2(0, 20))
+	_check(fired == warning and not RaidBoss.preparing(enemy), "выстрел совпадает с показанным веером")
+	RaidBoss.step(enemy, 3.1, Vector2(0, 20))
+	_check(int(enemy["boss_pattern"]) == 1 and RaidBoss.directions(enemy).size() == 12,
+		"вторая фаза чередует веер и расширенное кольцо")
+	_check(RaidBoss.step(enemy, RaidBoss.RING_WARNING, Vector2(20, 0)).size() == 12,
+		"кольцо срабатывает после полного предупреждения")
+	RaidBoss.step(enemy, 2.6, Vector2(20, 0))
+	_check(RaidBoss.directions(enemy).size() == 5, "следующий веер второй фазы содержит пять направлений")
+	# Integrate with the actual enemy update, not just the pure attack helper.
+	var run := main.raid
+	var at := run.boat_at() + run.forward() * 20.0
+	run.enemies.append({"at": at, "previous": at, "hp": 100.0, "max_hp": 100.0,
+		"kind": 3, "born": 0.0, "timer": 0.0, "flash": 0.0, "radius": 3.4})
+	run._move_enemies(RaidBoss.ARRIVAL_GRACE)
+	_check(run.enemies[0]["at"] == at and run.shots.is_empty(),
+		"босс останавливается при подготовке и не стреляет до конца предупреждения")
+	run.toggle_pause()
+	var windup: float = run.enemies[0]["boss_windup"]
+	run._physics_process(0.5)
+	_check(is_equal_approx(float(run.enemies[0]["boss_windup"]), windup),
+		"пауза замораживает подготовку атаки босса")
+	run.toggle_pause()
+	run._move_enemies(RaidBoss.FAN_WARNING)
+	_check(run.shots.size() == 3, "реальный менеджер создаёт только показанные снаряды босса")
+	run.enemies.clear()
+	run.shots.clear()
+	run.grid.clear()

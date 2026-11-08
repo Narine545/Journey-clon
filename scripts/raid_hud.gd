@@ -290,6 +290,12 @@ func _draw() -> void:
 				float(enemy["hp"]) / float(enemy["max_hp"]),
 				Color("f05c75")
 			)
+			_text(
+				Vector2(size.x * 0.3, 61),
+				"КРУПНАЯ ЦЕЛЬ · ФАЗА %d" % RaidBoss.phase(enemy),
+				16,
+				Color("f5b4a4")
+			)
 	var center := Vector2(size.x - 104, 155)
 	draw_circle(center, 66, Color(0.025, 0.06, 0.08, 0.88))
 	draw_arc(center, 66, 0, TAU, 48, Color("497f7d"), 1.0, true)
@@ -372,6 +378,9 @@ func _draw_telegraphs() -> void:
 	for enemy in run.enemies:
 		var kind: int = enemy["kind"]
 		var timer: float = enemy["timer"]
+		if kind == 3:
+			_draw_boss_warning(enemy)
+			continue
 		if not ((kind == 1 and timer < 1.1) or (kind >= 2 and timer < 0.9)):
 			continue
 		var at: Vector2 = enemy["at"]
@@ -398,3 +407,26 @@ func _draw_telegraphs() -> void:
 			2,
 			true
 		)
+
+
+func _draw_boss_warning(enemy: Dictionary) -> void:
+	if not RaidBoss.preparing(enemy):
+		return
+	var camera := run.main.camera
+	var at: Vector2 = enemy["at"]
+	var origin := Vector3(at.x, Coast.SEA_LEVEL + 1.5, at.y)
+	if camera.is_position_behind(origin):
+		return
+	var screen := camera.unproject_position(origin)
+	var ink := Color("ffc18e") if int(enemy["boss_attack_phase"]) == 1 else Color("f789a4")
+	var progress := 1.0 - float(enemy["boss_windup"]) / RaidBoss.warning_length(enemy)
+	draw_arc(
+		screen, 26, -PI * 0.5, -PI * 0.5 + TAU * clampf(progress, 0.0, 1.0), 40, ink, 3.0, true
+	)
+	for direction in RaidBoss.directions(enemy):
+		var end := origin + Vector3(direction.x, 0, direction.y) * 26.0
+		if not camera.is_position_behind(end):
+			draw_line(screen, camera.unproject_position(end), Color(ink, 0.45), 2.0, true)
+	_text(
+		screen + Vector2(30, -24), "ВЕЕР" if int(enemy["boss_pattern"]) == 0 else "КОЛЬЦО", 18, ink
+	)
