@@ -167,6 +167,9 @@ func _detonate(charge: Dictionary) -> void:
 			continue
 		var enemy_at: Vector2 = enemy["at"]
 		if at.distance_to(enemy_at) <= reach + float(enemy["radius"]) and _line_clear(at, enemy_at):
+			run.stats.record_damage(
+				RaidStats.Channel.MINES, float(enemy["hp"]), float(charge["power"])
+			)
 			enemy["hp"] = float(enemy["hp"]) - float(charge["power"])
 			enemy["flash"] = 0.2
 

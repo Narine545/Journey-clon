@@ -50,8 +50,7 @@ func setup() -> void:
 	_clear_toggle = CheckButton.new()
 	_clear_toggle.text = "ЗАЧИСТКА ЭКРАНА"
 	_clear_toggle.tooltip_text = (
-		"Отладка: убивает врагов в кадре, пока включена. "
-		+ "Босс тоже погибает — победа."
+		"Отладка: убивает врагов в кадре, пока включена. " + "Босс тоже погибает — победа."
 	)
 	_clear_toggle.toggled.connect(_set_clear_screen)
 	add_child(_clear_toggle)
@@ -211,19 +210,42 @@ func refresh() -> void:
 func _summary() -> String:
 	return (
 		(
-			"Время %02d:%02d · уничтожено %d · уровень %d.\n"
-			+ "Базовый сбор: %d · осталось: %d.\nНачислено с бонусами: %d XP."
+			(
+				"Время %02d:%02d · уничтожено %d · уровень %d.\n"
+				+ "Базовый сбор: %d · осталось: %d.\nНачислено с бонусами: %d XP."
+			)
+			% [
+				floori(run.elapsed / 60.0),
+				int(run.elapsed) % 60,
+				run.kills,
+				run.level,
+				run.salvage.collected,
+				run.salvage.remaining(),
+				run.xp_awarded
+			]
 		)
-		% [
-			floori(run.elapsed / 60.0),
-			int(run.elapsed) % 60,
-			run.kills,
-			run.level,
-			run.salvage.collected,
-			run.salvage.remaining(),
-			run.xp_awarded
-		]
+		+ _combat_summary()
 	)
+
+
+func _combat_summary() -> String:
+	var report := "\n\nФАКТИЧЕСКИЙ УРОН ПО ЦЕЛЯМ"
+	var labels := ["Нос", "Борта", "Импульс Q", "Кормовые заряды"]
+	var total: float = run.stats.total_damage()
+	for index in range(labels.size()):
+		var amount: float = run.stats.dealt[index]
+		var share := amount * 100.0 / total if total > 0.0 else 0.0
+		report += "\n%s: %.0f · %.0f%%" % [labels[index], amount, share]
+	report += "\nПолучено корпусом: %.0f" % run.stats.received
+	var names := ["Гарпун", "Резонанс", "Штормовая картечь", "Цепной подрыв"]
+	report += "\nЭволюции (боевое время):"
+	for index in range(names.size()):
+		var seconds: float = run.stats.evolution_times[index]
+		report += "\n%s: " % names[index]
+		report += "%02d:%02d" % [floori(seconds / 60.0), int(seconds) % 60] if seconds >= 0 else "—"
+	if run.stats.debug_used:
+		report += "\nОТЛАДОЧНЫЙ РЕЙД — бессмертие / зачистка использовались."
+	return report
 
 
 func _text(at: Vector2, text: String, font_size: int = 20, color: Color = Color("dfefea")) -> void:
@@ -248,11 +270,13 @@ func _bar(rect: Rect2, amount: float, color: Color) -> void:
 
 func _set_invulnerable(enabled: bool) -> void:
 	run.debug_invulnerable = enabled
+	run.stats.debug_used = run.stats.debug_used or enabled
 	queue_redraw()
 
 
 func _set_clear_screen(enabled: bool) -> void:
 	run.debug_clear_screen = enabled
+	run.stats.debug_used = run.stats.debug_used or enabled
 	queue_redraw()
 
 

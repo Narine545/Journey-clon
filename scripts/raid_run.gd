@@ -28,6 +28,7 @@ const UPGRADES := [
 	["Штормовая картечь", "ЭВОЛЮЦИЯ: широкий бортовой веер, пробитие 2 целей"],
 	["Цепной подрыв", "ЭВОЛЮЦИЯ: мины запускают соседние взведённые заряды"],
 ]
+var stats := RaidStats.new()
 var effects_enabled := true
 var debug_invulnerable := false
 var debug_clear_screen := false
@@ -136,6 +137,7 @@ func start() -> void:
 	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
+	stats.reset()
 	debug_invulnerable = false
 	debug_clear_screen = false
 	rerolls_left = REROLLS
@@ -183,6 +185,7 @@ func leave() -> void:
 	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
+	stats.reset()
 	debug_invulnerable = false
 	debug_clear_screen = false
 	rerolls_left = REROLLS
@@ -315,6 +318,7 @@ func _physics_process(delta: float) -> void:
 	if main.boat.hull_hp <= 0.0:
 		_finish(State.LOST)
 		return
+	stats.debug_used = stats.debug_used or debug_invulnerable or debug_clear_screen
 	elapsed += delta
 	weapon_fx.step(delta)
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
@@ -501,7 +505,8 @@ func _fire_weapons(delta: float) -> void:
 				aim.rotated(angle) * 38.0,
 				damage if weapon == 0 else damage * 0.7,
 				false,
-				_weapon_hit_limit(weapon)
+				_weapon_hit_limit(weapon),
+				RaidStats.Channel.NOSE if weapon == 0 else RaidStats.Channel.SIDES
 			)
 		if weapon == 0:
 			_bow_timer = 0.65 * reload_scale
@@ -511,7 +516,12 @@ func _fire_weapons(delta: float) -> void:
 
 
 func _add_shot(
-	at: Vector2, velocity: Vector2, power: float, hostile: bool, hit_limit: int = 1
+	at: Vector2,
+	velocity: Vector2,
+	power: float,
+	hostile: bool,
+	hit_limit: int = 1,
+	channel: int = RaidStats.Channel.NOSE
 ) -> void:
 	if shots.size() < SHOT_CAP:
 		shots.append(
@@ -520,6 +530,7 @@ func _add_shot(
 				"previous": at,
 				"velocity": velocity,
 				"power": power,
+				"channel": channel,
 				"hostile": hostile,
 				"hits_left": clampi(hit_limit, 1, 3),
 				"hit_ids": [],
@@ -588,6 +599,11 @@ func _move_shots(delta: float) -> void:
 						best_distance = distance
 						victim = enemy_index
 				if victim >= 0:
+					stats.record_damage(
+						int(shot.get("channel", RaidStats.Channel.NOSE)),
+						float(enemies[victim]["hp"]),
+						float(shot["power"])
+					)
 					enemies[victim]["hp"] = float(enemies[victim]["hp"]) - float(shot["power"])
 					enemies[victim]["flash"] = 0.12
 					shot["hit_ids"].append(enemies[victim]["combat_id"])
@@ -611,6 +627,7 @@ func pulse() -> void:
 		return
 	for enemy in enemies:
 		if boat_at().distance_to(enemy["at"]) < pulse_radius + float(enemy["radius"]):
+			stats.record_damage(RaidStats.Channel.PULSE, float(enemy["hp"]), pulse_damage)
 			enemy["hp"] = float(enemy["hp"]) - pulse_damage
 			enemy["flash"] = 0.25
 	if resonant_pulse:
@@ -732,6 +749,8 @@ func choose(index: int) -> void:
 			if not _can_evolve_chain():
 				return
 			chain_mines = true
+	if choices[index] >= 10:
+		stats.record_evolution(choices[index], elapsed)
 	xp -= xp_needed
 	level += 1
 	xp_needed = 8 + (level - 1) * 5

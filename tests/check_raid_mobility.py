@@ -18,7 +18,9 @@ assert 'TURN_RATE * raid_turn_factor()' in boat
 assert 'base * hp_factor * boost * raid_speed_factor()' in boat
 assert 'REVERSE_SPEED * raid_speed_factor()' in boat
 assert '(ACCELERATION if absf(throttle) > 0.01 else DRAG) * raid_speed_factor()' in boat
-assert boat.count('main.raid != null and main.raid.engaged():') == 2
+for method in ('raid_speed_factor', 'raid_turn_factor'):
+    body = boat.split(f'func {method}()', 1)[1].split('\n\nfunc ', 1)[0]
+    assert 'main.raid != null and main.raid.engaged():' in body
 assert '_check_raid_mobility()' in smoke
 
 

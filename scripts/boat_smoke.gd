@@ -973,6 +973,7 @@ func _check_raid() -> void:
 	_check_raid_tactical_evolutions()
 	_check_raid_rerolls()
 	_check_raid_debug()
+	_check_raid_stats()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1576,3 +1577,46 @@ func _check_raid_debug() -> void:
 	run.enemies.clear()
 	run.grid.clear()
 	run.hud.refresh()
+
+
+func _check_raid_stats() -> void:
+	var stats := RaidStats.new()
+	stats.record_damage(RaidStats.Channel.NOSE, 10.0, 100.0)
+	stats.record_damage(RaidStats.Channel.NOSE, -90.0, 100.0)
+	stats.record_damage(RaidStats.Channel.NOSE, 100.0, -1.0)
+	_check(is_equal_approx(stats.total_damage(), 10.0), "статистика не считает overkill и мёртвые цели")
+	stats.record_evolution(12, 65.5)
+	stats.record_evolution(12, 99.0)
+	_check(is_equal_approx(stats.evolution_times[2], 65.5), "эволюция хранит первое боевое время")
+	stats.reset()
+	var run := main.raid
+	var saved_stats := run.stats
+	var saved_pulse := run.pulse_cooldown
+	var saved_hp := main.boat.hull_hp
+	var saved_hurt := run._hurt_timer
+	run.stats = stats
+	var at := run.boat_at() + run.forward() * 10.0
+	run.enemies.append({"at": at, "hp": 10.0, "radius": 1.1, "flash": 0.0})
+	run._rebuild_grid()
+	run._add_shot(run.boat_at(), run.forward() * 38.0, 22.0, false, 1, RaidStats.Channel.SIDES)
+	run._move_shots(0.5)
+	_check(is_equal_approx(stats.dealt[RaidStats.Channel.SIDES], 10.0)
+		and is_zero_approx(stats.dealt[RaidStats.Channel.NOSE]), "снаряд сохраняет канал бортов")
+	run.enemies[0]["hp"] = 10.0
+	run.pulse_cooldown = 0.0
+	run.pulse()
+	_check(is_equal_approx(stats.dealt[RaidStats.Channel.PULSE], 10.0), "Q считает только снятый HP")
+	run.enemies[0]["hp"] = 10.0
+	run.stern_charges._detonate({"at": at, "blast": -1.0, "radius": 8.0, "power": 78.0})
+	_check(is_equal_approx(stats.dealt[RaidStats.Channel.MINES], 10.0), "мина считает только снятый HP")
+	run._hurt_timer = 0.0
+	run._hurt(1000.0)
+	_check(is_equal_approx(stats.received, saved_hp), "полученный урон ограничен оставшимся корпусом")
+	main.boat.hull_hp = saved_hp
+	run.stats = saved_stats
+	run.pulse_cooldown = saved_pulse
+	run._pulse_flash = 0.0
+	run._hurt_timer = saved_hurt
+	run.enemies.clear()
+	run.shots.clear()
+	run.grid.clear()
