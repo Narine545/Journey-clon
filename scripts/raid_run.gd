@@ -580,7 +580,7 @@ func _move_shots(delta: float) -> void:
 				break
 			if bool(shot["hostile"]):
 				if _hull_distance(p) < 0.4:
-					_hurt(float(shot["power"]))
+					_hurt(float(shot["power"]), RaidStats.Cause.SHELL)
 					consumed = true
 					break
 			else:
@@ -615,10 +615,10 @@ func _move_shots(delta: float) -> void:
 			shots.remove_at(index)
 
 
-func _hurt(amount: float) -> void:
+func _hurt(amount: float, cause: int = RaidStats.Cause.CONTACT) -> void:
 	if debug_invulnerable or _hurt_timer > 0.0:
 		return
-	main.boat.apply_hull_damage(amount)
+	main.boat.apply_hull_damage(amount, cause)
 	_hurt_timer = 0.65
 
 
@@ -637,6 +637,7 @@ func pulse() -> void:
 				and boat_at().distance_to(shots[index]["at"]) <= pulse_radius
 			):
 				shots.remove_at(index)
+	stats.pulses += 1
 	pulse_cooldown = 9.0
 	_pulse_flash = 0.5
 
@@ -722,6 +723,8 @@ func choose(index: int) -> void:
 			pulse_radius += 5.0
 			pulse_damage += 15.0
 		4:
+			stats.repairs += 1
+			stats.repaired += minf(30.0, 100.0 - main.boat.hull_hp)
 			main.boat.hull_hp = minf(100.0, main.boat.hull_hp + 30.0)
 		5:
 			salvage.magnet_range += 3.0
@@ -730,6 +733,8 @@ func choose(index: int) -> void:
 		7:
 			turn_rank = mini(MOBILITY_MAX_RANK, turn_rank + 1)
 		8:
+			if stern_rank == 0:
+				stats.stern_unlocked_at = elapsed
 			stern_rank = mini(3, stern_rank + 1)
 		9:
 			xp_rank = mini(XP_MAX_RANK, xp_rank + 1)

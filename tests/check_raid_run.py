@@ -27,7 +27,7 @@ assert 'shot["hostile"]' in run and "previous.distance_to(next) / 0.45" in run
 assert "main.harbor.blocks_hull(at," in run
 assert "water_depth(center.x, center.y) >= 2.5" in run
 assert 'reef["radius"]' in run
-assert "main.boat.apply_hull_damage(amount)" in run
+assert "main.boat.apply_hull_damage(amount, cause)" in run
 assert "else 15.0" in boat and "maxf(minimum, hull_hp - maxf(0.0, amount))" in boat
 assert "_hurt_timer = 0.65" in run
 assert "main.boat._trailer" in run and "global_rotation.y" in run

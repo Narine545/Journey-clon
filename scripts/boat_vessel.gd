@@ -191,7 +191,7 @@ func is_on_port_working_side(world_pos: Vector3) -> bool:
 	return local.x < -0.30 and local.z > -4.8 and local.z < 4.8
 
 
-func apply_hull_damage(amount: float) -> void:
+func apply_hull_damage(amount: float, cause: int = RaidStats.Cause.OTHER) -> void:
 	if main != null and main.raid != null and main.raid.engaged() and main.raid.debug_invulnerable:
 		main.raid.stats.debug_used = true
 		return
@@ -200,7 +200,7 @@ func apply_hull_damage(amount: float) -> void:
 	var hp_before: float = hull_hp
 	hull_hp = maxf(minimum, hull_hp - maxf(0.0, amount))
 	if main != null and main.raid != null and main.raid.engaged():
-		main.raid.stats.received += maxf(0.0, hp_before - hull_hp)
+		main.raid.stats.record_received(cause, maxf(0.0, hp_before - hull_hp), main.raid.elapsed)
 
 
 func _physics_process(delta: float) -> void:
@@ -267,7 +267,7 @@ func _physics_process(delta: float) -> void:
 				if _impact_cooldown <= 0.0 and absf(speed) > 1.5:
 					_impact_cooldown = 1.2
 					var dmg := clampf(absf(speed) * 2.8, 6.0, 24.0)
-					apply_hull_damage(dmg)
+					apply_hull_damage(dmg, RaidStats.Cause.REEF)
 					_roll_vel += (0.45 if _steer_visual >= 0.0 else -0.45)
 					if water.field != null:
 						water.field.splash(next_xz, 1.8)
@@ -305,7 +305,7 @@ func _physics_process(delta: float) -> void:
 		else:
 			if _impact_cooldown <= 0.0 and absf(speed) > 4.5 and OS.get_environment("JOURNEY_BOAT_SMOKE") != "1":
 				_impact_cooldown = 1.2
-				apply_hull_damage(8.0)
+				apply_hull_damage(8.0, RaidStats.Cause.SHOAL)
 				main.announce("ПОСАДКА НА МЕЛЬ! КОРПУС %d%%" % int(round(hull_hp)))
 			speed = minf(speed, 0.0)
 

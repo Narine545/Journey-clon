@@ -19,7 +19,7 @@ assert 'int(shot.get("channel", RaidStats.Channel.NOSE))' in run
 assert 'stats.record_damage(RaidStats.Channel.PULSE' in run
 assert 'RaidStats.Channel.MINES, float(enemy["hp"]), float(charge["power"])' in mines
 assert 'stats.record_evolution(choices[index], elapsed)' in run
-assert 'main.raid.stats.received += maxf(0.0, hp_before - hull_hp)' in boat
+assert 'main.raid.stats.record_received(cause, maxf(0.0, hp_before - hull_hp), main.raid.elapsed)' in boat
 assert 'stats.debug_used = stats.debug_used or debug_invulnerable or debug_clear_screen' in run
 assert hud.count('run.stats.debug_used = run.stats.debug_used or enabled') == 2
 assert 'ОТЛАДОЧНЫЙ РЕЙД' in hud and '_combat_summary()' in hud

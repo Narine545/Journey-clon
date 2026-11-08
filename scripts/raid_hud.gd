@@ -236,15 +236,90 @@ func _combat_summary() -> String:
 		var amount: float = run.stats.dealt[index]
 		var share := amount * 100.0 / total if total > 0.0 else 0.0
 		report += "\n%s: %.0f · %.0f%%" % [labels[index], amount, share]
-	report += "\nПолучено корпусом: %.0f" % run.stats.received
+	report += _incoming_summary()
 	var names := ["Гарпун", "Резонанс", "Штормовая картечь", "Цепной подрыв"]
 	report += "\nЭволюции (боевое время):"
 	for index in range(names.size()):
 		var seconds: float = run.stats.evolution_times[index]
 		report += "\n%s: " % names[index]
 		report += "%02d:%02d" % [floori(seconds / 60.0), int(seconds) % 60] if seconds >= 0 else "—"
+	report += _build_summary()
 	if run.stats.debug_used:
 		report += "\nОТЛАДОЧНЫЙ РЕЙД — бессмертие / зачистка использовались."
+	return report
+
+
+func _report_time(seconds: float) -> String:
+	return "%02d:%02d" % [floori(seconds / 60.0), int(seconds) % 60] if seconds >= 0 else "—"
+
+
+func _incoming_summary() -> String:
+	var report := "\n\nПОЛУЧЕНО КОРПУСОМ: %.0f" % run.stats.received
+	var labels := ["Контакт с врагами", "Вражеские снаряды", "Рифы", "Мели", "Прочее"]
+	for index in range(labels.size()):
+		var amount: float = run.stats.incoming[index]
+		var share := amount * 100.0 / run.stats.received if run.stats.received > 0.0 else 0.0
+		report += (
+			"\n%s: %.0f · %.0f%% · ударов %d"
+			% [labels[index], amount, share, run.stats.incoming_hits[index]]
+		)
+	if run.stats.last_cause >= 0:
+		report += (
+			"\nПоследний урон: %s · %s"
+			% [labels[run.stats.last_cause], _report_time(run.stats.last_hit_at)]
+		)
+	else:
+		report += "\nПоследний урон: —"
+	report += (
+		"\nРемонтных карточек: %d · восстановлено %.0f HP" % [run.stats.repairs, run.stats.repaired]
+	)
+	return report
+
+
+func _build_summary() -> String:
+	var report := "\n\nИТОГОВАЯ СБОРКА"
+	report += (
+		"\nУрон: нос %.0f / борт %.1f · картечь ×%d" % [run.damage, run.damage * 0.7, run.pellets]
+	)
+	report += (
+		"\nПерезарядка: нос %.2f с / борта %.2f с"
+		% [0.65 * run.reload_scale, 1.25 * run.reload_scale]
+	)
+	report += (
+		"\nДвигатель %d/3 (×%.2f) · руль %d/3 (×%.2f)"
+		% [run.speed_rank, run.speed_multiplier(), run.turn_rank, run.turn_multiplier()]
+	)
+	report += (
+		"\nОпытная команда %d/4 (×%.2f) · притяжение %.0f м"
+		% [run.xp_rank, run.xp_multiplier(), run.salvage.magnet_range]
+	)
+	report += (
+		"\nQ: %.0f урона / %.0f м · применений %d"
+		% [run.pulse_damage, run.pulse_radius, run.stats.pulses]
+	)
+	if run.stern_rank > 0:
+		report += (
+			"\nКорма %d/3: %.0f урона / %.0f м / %.1f с"
+			% [
+				run.stern_rank,
+				RaidSternCharges.power(run.stern_rank),
+				RaidSternCharges.radius(run.stern_rank),
+				RaidSternCharges.interval(run.stern_rank)
+			]
+		)
+		report += (
+			"\nУстановлена в %s · сброшено %d · взорвано %d"
+			% [
+				_report_time(run.stats.stern_unlocked_at),
+				run.stats.charges_dropped,
+				run.stats.charges_exploded
+			]
+		)
+	else:
+		report += "\nКорма: не установлена"
+	report += (
+		"\nПеребросов использовано: %d/%d" % [RaidRun.REROLLS - run.rerolls_left, RaidRun.REROLLS]
+	)
 	return report
 
 

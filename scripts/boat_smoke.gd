@@ -1588,7 +1588,19 @@ func _check_raid_stats() -> void:
 	stats.record_evolution(12, 65.5)
 	stats.record_evolution(12, 99.0)
 	_check(is_equal_approx(stats.evolution_times[2], 65.5), "эволюция хранит первое боевое время")
+	stats.record_received(RaidStats.Cause.CONTACT, 9.0, 1.0)
+	stats.record_received(RaidStats.Cause.SHELL, 12.0, 2.0)
+	stats.record_received(RaidStats.Cause.REEF, 24.0, 3.0)
+	stats.record_received(RaidStats.Cause.SHOAL, 8.0, 4.0)
+	stats.record_received(999, 1.0, 5.0)
+	stats.record_received(RaidStats.Cause.SHELL, 0.0, 6.0)
+	_check(is_equal_approx(stats.received, 54.0) and stats.incoming_hits[1] == 1
+		and stats.last_cause == RaidStats.Cause.OTHER and is_equal_approx(stats.last_hit_at, 5.0),
+		"причины урона суммируются, нулевые удары не считаются и не меняют последний удар")
 	stats.reset()
+	_check(is_zero_approx(stats.received) and stats.last_cause == -1
+		and stats.incoming_hits[1] == 0 and is_zero_approx(stats.incoming[2]),
+		"подробные счётчики сбрасываются вместе со статистикой рейда")
 	var run := main.raid
 	var saved_stats := run.stats
 	var saved_pulse := run.pulse_cooldown
@@ -1611,7 +1623,9 @@ func _check_raid_stats() -> void:
 	_check(is_equal_approx(stats.dealt[RaidStats.Channel.MINES], 10.0), "мина считает только снятый HP")
 	run._hurt_timer = 0.0
 	run._hurt(1000.0)
-	_check(is_equal_approx(stats.received, saved_hp), "полученный урон ограничен оставшимся корпусом")
+	_check(is_equal_approx(stats.received, saved_hp)
+		and is_equal_approx(stats.incoming[RaidStats.Cause.CONTACT], saved_hp),
+		"полученный урон ограничен оставшимся корпусом и записан как контакт")
 	main.boat.hull_hp = saved_hp
 	run.stats = saved_stats
 	run.pulse_cooldown = saved_pulse

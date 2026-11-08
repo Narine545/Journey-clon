@@ -2,10 +2,21 @@ class_name RaidStats
 extends RefCounted
 ## Bounded, in-memory raid measurements. No per-hit history, nodes, timers or saves.
 enum Channel { NOSE, SIDES, PULSE, MINES }
+enum Cause { CONTACT, SHELL, REEF, SHOAL, OTHER }
 var dealt := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var evolution_times := PackedFloat64Array([-1.0, -1.0, -1.0, -1.0])
 var received := 0.0
 var debug_used := false
+var incoming := PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0])
+var incoming_hits := PackedInt32Array([0, 0, 0, 0, 0])
+var last_cause := -1
+var last_hit_at := -1.0
+var repairs := 0
+var repaired := 0.0
+var stern_unlocked_at := -1.0
+var charges_dropped := 0
+var charges_exploded := 0
+var pulses := 0
 
 
 func reset() -> void:
@@ -13,6 +24,16 @@ func reset() -> void:
 	evolution_times.fill(-1.0)
 	received = 0.0
 	debug_used = false
+	incoming.fill(0.0)
+	incoming_hits.fill(0)
+	last_cause = -1
+	last_hit_at = -1.0
+	repairs = 0
+	repaired = 0.0
+	stern_unlocked_at = -1.0
+	charges_dropped = 0
+	charges_exploded = 0
+	pulses = 0
 
 
 func record_damage(channel: int, hp_before: float, power: float) -> void:
@@ -33,3 +54,14 @@ func total_damage() -> float:
 	for value in dealt:
 		total += value
 	return total
+
+
+func record_received(cause: int, actual: float, seconds: float) -> void:
+	if actual <= 0.0:
+		return
+	var index := cause if cause >= 0 and cause < incoming.size() else Cause.OTHER
+	received += actual
+	incoming[index] += actual
+	incoming_hits[index] += 1
+	last_cause = index
+	last_hit_at = seconds

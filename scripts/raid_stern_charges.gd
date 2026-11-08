@@ -98,6 +98,7 @@ func _try_drop() -> bool:
 			"detonate_at": -1.0
 		}
 	)
+	run.stats.charges_dropped += 1
 	return true
 
 
@@ -148,6 +149,7 @@ func _detonate(charge: Dictionary) -> void:
 	if float(charge["blast"]) >= 0.0:
 		return
 	charge["blast"] = 0.0
+	run.stats.charges_exploded += 1
 	var at: Vector2 = charge["at"]
 	var reach: float = charge["radius"]
 	if bool(charge.get("chain", false)):
