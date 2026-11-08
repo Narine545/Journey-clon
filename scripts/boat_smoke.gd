@@ -974,6 +974,7 @@ func _check_raid() -> void:
 	_check_raid_rerolls()
 	_check_raid_debug()
 	_check_raid_stats()
+	_check_raid_result_layout()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1634,3 +1635,23 @@ func _check_raid_stats() -> void:
 	run.enemies.clear()
 	run.shots.clear()
 	run.grid.clear()
+
+
+func _check_raid_result_layout() -> void:
+	var run := main.raid
+	var saved_state := run.state
+	run.state = RaidRun.State.LOST
+	run.hud.refresh()
+	var hud := run.hud
+	_check(hud._results.visible and hud._result_columns.size() == 2
+		and hud._result_columns[0].text.contains("ПОЛУЧЕНО КОРПУСОМ")
+		and hud._result_columns[1].text.contains("ИТОГОВАЯ СБОРКА")
+		and hud._result_columns[1].text.contains("ЭВОЛЮЦИИ"),
+		"итоги разделены на боевые результаты и сборку без потери статистики")
+	_check(hud._retry.get_parent() == hud._modal_footer
+		and hud._leave.get_parent() == hud._modal_footer
+		and not hud._modal_scroll.is_ancestor_of(hud._modal_footer),
+		"кнопки результатов находятся вне прокрутки")
+	run.state = saved_state
+	hud.refresh()
+	_check(not hud._results.visible, "сетка результатов скрыта во время боя")

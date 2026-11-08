@@ -4,8 +4,12 @@ extends Control
 var run: RaidRun
 var _launch: Button
 var _pause: Button
+var _modal_scroll: ScrollContainer
 var _modal: PanelContainer
 var _title: Label
+var _results: GridContainer
+var _result_columns: Array[Label] = []
+var _modal_footer: VBoxContainer
 var _detail: Label
 var _cards: GridContainer
 var _modal_content: VBoxContainer
@@ -75,8 +79,17 @@ func setup() -> void:
 	_modal.add_theme_stylebox_override("panel", skin)
 	add_child(_modal)
 	var scroll := ScrollContainer.new()
+	_modal_scroll = scroll
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_modal.add_child(scroll)
+	var shell := VBoxContainer.new()
+	shell.add_theme_constant_override("separation", 16)
+	_modal.add_child(shell)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	shell.add_child(scroll)
+	_modal_footer = VBoxContainer.new()
+	_modal_footer.add_theme_constant_override("separation", 12)
+	_modal_footer.minimum_size_changed.connect(_layout, CONNECT_DEFERRED)
+	shell.add_child(_modal_footer)
 	var box := VBoxContainer.new()
 	_modal_content = box
 	box.minimum_size_changed.connect(_layout, CONNECT_DEFERRED)
@@ -97,6 +110,19 @@ func setup() -> void:
 	_detail.add_theme_font_size_override("font_size", 20)
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_detail)
+	_results = GridContainer.new()
+	_results.columns = 2
+	_results.add_theme_constant_override("h_separation", 24)
+	_results.add_theme_constant_override("v_separation", 18)
+	box.add_child(_results)
+	for _index in range(2):
+		var column := Label.new()
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		column.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		column.add_theme_font_size_override("font_size", 20)
+		_results.add_child(column)
+		_result_columns.append(column)
 	_cards = GridContainer.new()
 	_cards.columns = 3
 	_cards.add_theme_constant_override("h_separation", 16)
@@ -112,19 +138,19 @@ func setup() -> void:
 		_card_buttons.append(card)
 	_reroll = Button.new()
 	_reroll.pressed.connect(run._reroll_choices)
-	box.add_child(_reroll)
+	_modal_footer.add_child(_reroll)
 	_resume = Button.new()
 	_resume.text = "ПРОДОЛЖИТЬ"
 	_resume.pressed.connect(run.toggle_pause)
-	box.add_child(_resume)
+	_modal_footer.add_child(_resume)
 	_retry = Button.new()
 	_retry.text = "ЕЩЁ ОДИН РЕЙД"
 	_retry.pressed.connect(run.restart)
-	box.add_child(_retry)
+	_modal_footer.add_child(_retry)
 	_leave = Button.new()
 	_leave.text = "ВЕРНУТЬСЯ К ПЛАВАНИЮ"
 	_leave.pressed.connect(run.leave)
-	box.add_child(_leave)
+	_modal_footer.add_child(_leave)
 	resized.connect(_layout)
 	_layout()
 	refresh()
@@ -143,10 +169,20 @@ func _layout() -> void:
 	_god_toggle.size = Vector2(224, 30)
 	_clear_toggle.position = Vector2(size.x - 248, 458)
 	_clear_toggle.size = Vector2(224, 30)
-	var width := minf(1120.0, size.x - 32.0)
+	var is_result := run.state in [RaidRun.State.WON, RaidRun.State.LOST]
+	var width := minf(1280.0 if is_result else 1120.0, size.x - 32.0)
+	_results.columns = 2 if width >= 1000.0 else 1
 	_cards.columns = 3 if width >= 1000.0 else 1
 	var height := minf(
-		maxf(180.0, _modal_content.get_combined_minimum_size().y + 48.0), size.y - 32.0
+		maxf(
+			180.0,
+			(
+				_modal_content.get_combined_minimum_size().y
+				+ _modal_footer.get_combined_minimum_size().y
+				+ 64.0
+			)
+		),
+		size.y - 32.0
 	)
 	_modal.size = Vector2(width, height)
 	_modal.position = Vector2((size.x - width) * 0.5, maxf(16.0, (size.y - height) * 0.5))
@@ -167,6 +203,11 @@ func refresh() -> void:
 		bar.visible = false
 	_pause.visible = run.state == RaidRun.State.RUNNING
 	_modal.visible = run.modal()
+	_results.visible = run.state in [RaidRun.State.WON, RaidRun.State.LOST]
+	if _results.visible:
+		_modal_scroll.set_deferred("scroll_vertical", 0)
+		_result_columns[0].text = _combat_summary().strip_edges()
+		_result_columns[1].text = (_build_summary() + "\n" + _evolution_summary()).strip_edges()
 	_cards.visible = run.state == RaidRun.State.CHOOSING
 	_reroll.visible = run.state == RaidRun.State.CHOOSING
 	_reroll.text = "ПЕРЕБРОСИТЬ · осталось %d/%d" % [run.rerolls_left, RaidRun.REROLLS]
@@ -224,7 +265,11 @@ func _summary() -> String:
 				run.xp_awarded
 			]
 		)
-		+ _combat_summary()
+		+ (
+			"\nОТЛАДОЧНЫЙ РЕЙД — бессмертие / зачистка использовались."
+			if run.stats.debug_used
+			else ""
+		)
 	)
 
 
@@ -237,15 +282,15 @@ func _combat_summary() -> String:
 		var share := amount * 100.0 / total if total > 0.0 else 0.0
 		report += "\n%s: %.0f · %.0f%%" % [labels[index], amount, share]
 	report += _incoming_summary()
+	return report
+
+
+func _evolution_summary() -> String:
 	var names := ["Гарпун", "Резонанс", "Штормовая картечь", "Цепной подрыв"]
-	report += "\nЭволюции (боевое время):"
+	var report := "ЭВОЛЮЦИИ (боевое время)"
 	for index in range(names.size()):
 		var seconds: float = run.stats.evolution_times[index]
-		report += "\n%s: " % names[index]
-		report += "%02d:%02d" % [floori(seconds / 60.0), int(seconds) % 60] if seconds >= 0 else "—"
-	report += _build_summary()
-	if run.stats.debug_used:
-		report += "\nОТЛАДОЧНЫЙ РЕЙД — бессмертие / зачистка использовались."
+		report += "\n%s: %s" % [names[index], _report_time(seconds)]
 	return report
 
 
