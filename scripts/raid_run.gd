@@ -61,6 +61,7 @@ var _next_enemy_id := 0
 var _water_cells: Dictionary = {}
 var _enemy_batch: MultiMesh
 var _shot_batch: MultiMesh
+var _elites := RaidElites.new()
 var _spawn_timer := 0.0
 var _bow_timer := 0.0
 var _side_timer := 0.0
@@ -124,6 +125,7 @@ func start() -> void:
 	piercing_harpoon = false
 	resonant_pulse = false
 	_next_enemy_id = 0
+	_elites.reset()
 	xp_awarded = 0
 	_xp_quarters = 0
 	damage = 22.0
@@ -165,6 +167,7 @@ func leave() -> void:
 	piercing_harpoon = false
 	resonant_pulse = false
 	_next_enemy_id = 0
+	_elites.reset()
 	xp_awarded = 0
 	_xp_quarters = 0
 	speed_rank = 0
@@ -252,10 +255,13 @@ func navigable(at: Vector2, radius: float = 1.0) -> bool:
 	return true
 
 
-func _spawn(kind: int) -> bool:
+func _spawn(kind: int, elite: bool = false) -> bool:
 	if enemies.size() >= ENEMY_CAP:
 		return false
+	var promoted := elite and kind == 1
 	var radius := 3.4 if kind == 3 else (1.7 if kind == 2 else 1.1)
+	if promoted:
+		radius *= RaidElites.RADIUS_SCALE
 	for _attempt in range(24):
 		var at := (
 			boat_at() + Vector2.from_angle(rng.randf_range(-PI, PI)) * rng.randf_range(36.0, 48.0)
@@ -263,6 +269,8 @@ func _spawn(kind: int) -> bool:
 		if not navigable(at, radius):
 			continue
 		var hp := (650.0 if kind == 3 else 25.0 + kind * 14.0) * (1.0 + elapsed / 400.0)
+		if promoted:
+			hp *= RaidElites.HP_SCALE
 		enemies.append(
 			{
 				"at": at,
@@ -270,6 +278,7 @@ func _spawn(kind: int) -> bool:
 				"hp": hp,
 				"max_hp": hp,
 				"kind": kind,
+				"elite": promoted,
 				"radius": radius,
 				"timer": rng.randf_range(1.3, 2.5),
 				"charge": 0.0,
@@ -298,6 +307,7 @@ func _physics_process(delta: float) -> void:
 		if int(enemies[index]["kind"]) != 3 and boat_at().distance_to(enemies[index]["at"]) > 100.0:
 			enemies.remove_at(index)
 	_spawn_timer -= delta
+	_step_elites()
 	if _spawn_timer <= 0.0 and not RaidWaves.respite(elapsed):
 		_spawn_timer = RaidWaves.interval(elapsed)
 		var ranged_count := 0
@@ -319,7 +329,7 @@ func _physics_process(delta: float) -> void:
 		if float(enemies[index]["hp"]) <= 0.0:
 			var kind: int = enemies[index]["kind"]
 			if kind != 3:
-				salvage.drop(enemies[index]["at"], 4 if kind == 2 else 2)
+				salvage.drop(enemies[index]["at"], RaidElites.reward(enemies[index]))
 			enemies.remove_at(index)
 			kills += 1
 			if kind == 3:
@@ -332,6 +342,16 @@ func _physics_process(delta: float) -> void:
 		_finish(State.LOST)
 	elif xp >= xp_needed:
 		_offer_upgrade()
+
+
+func _step_elites() -> void:
+	if not _elites.due(elapsed, enemies):
+		return
+	var spawned := _spawn(1, true)
+	_elites.attempted(elapsed, spawned)
+	if spawned:
+		# Replace this tick's ordinary spawn; never add a burst on top of it.
+		_spawn_timer = maxf(_spawn_timer, RaidWaves.interval(elapsed))
 
 
 func _move_enemies(delta: float) -> void:

@@ -309,6 +309,8 @@ func _draw() -> void:
 				3 if int(enemy["kind"]) < 3 else 5,
 				RaidRun.COLORS[int(enemy["kind"])]
 			)
+			if bool(enemy.get("elite", false)):
+				draw_arc(center + relative, 6, 0, TAU, 16, Color("ffe144"), 1.5, true)
 	for entry in run.salvage.drops:
 		var relative: Vector2 = (entry["at"] - run.boat_at()) * (66.0 / 55.0)
 		if relative.length() < 64:
@@ -383,6 +385,8 @@ func _draw() -> void:
 func _draw_telegraphs() -> void:
 	var camera := run.main.camera
 	for enemy in run.enemies:
+		if bool(enemy.get("elite", false)):
+			_draw_elite_marker(enemy)
 		var kind: int = enemy["kind"]
 		var timer: float = enemy["timer"]
 		if kind == 3:
@@ -414,6 +418,21 @@ func _draw_telegraphs() -> void:
 			2,
 			true
 		)
+
+
+func _draw_elite_marker(enemy: Dictionary) -> void:
+	var at: Vector2 = enemy["at"]
+	if at.distance_to(run.boat_at()) > 60.0 or float(enemy["hp"]) <= 0.0:
+		return
+	var world_at := Vector3(at.x, Coast.SEA_LEVEL + 2.0, at.y)
+	var camera := run.main.camera
+	if camera.is_position_behind(world_at):
+		return
+	var screen := camera.unproject_position(world_at)
+	var ink := RaidRun.COLORS[1]
+	draw_arc(screen, 26, 0, TAU, 24, ink, 2.0, true)
+	var percent := ceili(100.0 * float(enemy["hp"]) / float(enemy["max_hp"]))
+	_text(screen + Vector2(28, -28), "ЭЛИТА · %d%%" % percent, 18, ink)
 
 
 func _draw_boss_warning(enemy: Dictionary) -> void:

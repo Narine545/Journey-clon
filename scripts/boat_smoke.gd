@@ -969,6 +969,7 @@ func _check_raid() -> void:
 	_check_raid_evolutions()
 	_check_raid_boss()
 	_check_raid_colors()
+	_check_raid_elites()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1372,3 +1373,50 @@ func _check_raid_colors() -> void:
 	var material := enemy_mesh.material as ShaderMaterial
 	_check(material != null and material.shader == preload("res://shaders/raid_enemy.gdshader"),
 		"цвет врагов выводится отдельным материалом без локального тумана")
+
+
+func _check_raid_elites() -> void:
+	var schedule := RaidElites.new()
+	_check(not schedule.due(64.99, []) and schedule.due(65.0, []),
+		"элита не появляется раньше первой минуты")
+	schedule.attempted(65.0, false)
+	_check(not schedule.due(65.5, []) and schedule.due(66.0, []),
+		"небезопасная вода повторяется не чаще раза в секунду")
+	schedule.attempted(66.0, true)
+	_check(not schedule.due(66.0, []) and not schedule.due(130.0, [{"elite": true}]),
+		"событие одноразовое и живые элиты не складываются")
+	_check(schedule.due(131.0, []), "следующая элита разрешена после удаления предыдущей")
+	schedule.attempted(131.0, true)
+	_check(not schedule.due(207.0, []) and not schedule.due(240.0, []),
+		"пропущенные элиты не догоняют игрока перед боссом")
+	schedule.reset()
+	_check(schedule.cursor == 0 and schedule.due(65.0, []), "повтор рейда сбрасывает расписание элит")
+	_check(RaidElites.reward({"kind": 1, "elite": true}) == 8
+		and RaidElites.reward({"kind": 1}) == 2
+		and RaidElites.reward({"kind": 2}) == 4
+		and RaidElites.reward({"kind": 3}) == 0, "элитная награда не меняет обычные трофеи и босса")
+	# Exercise actual death cleanup and pooled loot; no instant credit or extra kill count.
+	var run := main.raid
+	var saved_elapsed := run.elapsed
+	var saved_kills := run.kills
+	var saved_spawn := run._spawn_timer
+	var saved_bow := run._bow_timer
+	var saved_side := run._side_timer
+	var saved_xp := run.xp
+	var at := run.boat_at() + run.forward() * 25.0
+	run._spawn_timer = 10.0
+	run.enemies.append({"at": at, "previous": at, "hp": 0.0, "max_hp": 120.0,
+		"kind": 1, "elite": true, "radius": 1.485, "born": 0.0,
+		"timer": 2.0, "charge": 0.0, "aim": Vector2.ZERO, "flash": 0.0})
+	run._physics_process(0.001)
+	_check(run.salvage.remaining() == 8 and run.kills == saved_kills + 1 and run.xp == saved_xp,
+		"элита оставляет 8 XP на воде без дистанционного начисления")
+	run.salvage.reset()
+	run.enemies.clear()
+	run.shots.clear()
+	run.grid.clear()
+	run.elapsed = saved_elapsed
+	run.kills = saved_kills
+	run._spawn_timer = saved_spawn
+	run._bow_timer = saved_bow
+	run._side_timer = saved_side
