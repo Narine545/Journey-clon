@@ -24,6 +24,8 @@ const UPGRADES := [
 	["Опытная команда", "+25% опыта с трофеев до конца рейда"],
 	["Пробивной гарпун", "ЭВОЛЮЦИЯ: носовой снаряд пробивает до 3 целей"],
 	["Резонансный импульс", "ЭВОЛЮЦИЯ: Q уничтожает вражеские снаряды"],
+	["Штормовая картечь", "ЭВОЛЮЦИЯ: широкий бортовой веер, пробитие 2 целей"],
+	["Цепной подрыв", "ЭВОЛЮЦИЯ: мины запускают соседние взведённые заряды"],
 ]
 var effects_enabled := true
 var weapon_fx: RaidWeaponFx
@@ -40,6 +42,8 @@ var xp_needed := 8
 var xp_rank := 0
 var piercing_harpoon := false
 var resonant_pulse := false
+var storm_broadside := false
+var chain_mines := false
 var xp_awarded := 0
 var damage := 22.0
 var reload_scale := 1.0
@@ -124,6 +128,8 @@ func start() -> void:
 	xp_rank = 0
 	piercing_harpoon = false
 	resonant_pulse = false
+	storm_broadside = false
+	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
 	xp_awarded = 0
@@ -166,6 +172,8 @@ func leave() -> void:
 	xp_rank = 0
 	piercing_harpoon = false
 	resonant_pulse = false
+	storm_broadside = false
+	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
 	xp_awarded = 0
@@ -463,13 +471,14 @@ func _fire_weapons(delta: float) -> void:
 		if shots.size() < SHOT_CAP:
 			weapon_fx.emit(weapon, aim)
 		for pellet in range(1 if weapon == 0 else pellets):
-			var angle := (float(pellet) - float(pellets - 1) * 0.5) * 0.13 if weapon > 0 else 0.0
+			var spread := 0.26 if storm_broadside else 0.13
+			var angle := (float(pellet) - float(pellets - 1) * 0.5) * spread if weapon > 0 else 0.0
 			_add_shot(
 				boat_at() + axis * 3.0,
 				aim.rotated(angle) * 38.0,
 				damage if weapon == 0 else damage * 0.7,
 				false,
-				3 if weapon == 0 and piercing_harpoon else 1
+				_weapon_hit_limit(weapon)
 			)
 		if weapon == 0:
 			_bow_timer = 0.65 * reload_scale
@@ -600,6 +609,10 @@ func _offer_upgrade() -> void:
 		available.append(10)
 	if can_evolve_pulse():
 		available.append(11)
+	if _can_evolve_broadside():
+		available.append(12)
+	if _can_evolve_chain():
+		available.append(13)
 	if xp_rank >= XP_MAX_RANK:
 		available.erase(9)
 	if stern_rank >= 3:
@@ -653,6 +666,14 @@ func choose(index: int) -> void:
 			if not can_evolve_pulse():
 				return
 			resonant_pulse = true
+		12:
+			if not _can_evolve_broadside():
+				return
+			storm_broadside = true
+		13:
+			if not _can_evolve_chain():
+				return
+			chain_mines = true
 	xp -= xp_needed
 	level += 1
 	xp_needed = 8 + (level - 1) * 5
@@ -729,6 +750,10 @@ func upgrade_preview(kind: int) -> String:
 			preview = (
 				"Q: урон + перехват\nРадиус перехвата: %.0f м\nПерезарядка: 9 с" % pulse_radius
 			)
+		12:
+			preview = "Веер бортов: ×2 шире\nЦелей снарядом: 1 → 2\nУрон и темп прежние"
+		13:
+			preview = "Новые мины: цепной подрыв\nПередача: до 8 м, 0.20 с\nТолько взведённые, без преград"
 	return preview
 
 
@@ -738,6 +763,20 @@ func can_evolve_harpoon() -> bool:
 
 func can_evolve_pulse() -> bool:
 	return not resonant_pulse and pulse_radius >= 23.0 and salvage.magnet_range >= 16.0
+
+
+func _can_evolve_broadside() -> bool:
+	return not storm_broadside and pellets >= 3 and turn_rank >= 1
+
+
+func _can_evolve_chain() -> bool:
+	return not chain_mines and stern_rank >= 3 and pulse_radius >= 18.0
+
+
+func _weapon_hit_limit(weapon: int) -> int:
+	if weapon > 0 and storm_broadside:
+		return 2
+	return 3 if weapon == 0 and piercing_harpoon else 1
 
 
 func xp_multiplier() -> float:

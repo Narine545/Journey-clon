@@ -5,9 +5,11 @@ const CAPACITY := 12
 const ARM_TIME := 0.65
 const LIFETIME := 9.0
 const BLAST_TIME := 0.38
+const CHAIN_DELAY := 0.20
 var run: RaidRun
 var charges: Array[Dictionary] = []
 var cooldown := 0.0
+var _clock := 0.0
 var _bodies: MultiMesh
 var _rings: MultiMesh
 
@@ -61,6 +63,7 @@ func _make_batch(mesh: PrimitiveMesh) -> MultiMesh:
 func reset() -> void:
 	charges.clear()
 	cooldown = 0.0
+	_clock = 0.0
 	_bodies.visible_instance_count = 0
 	_rings.visible_instance_count = 0
 
@@ -90,7 +93,9 @@ func _try_drop() -> bool:
 			"age": 0.0,
 			"blast": -1.0,
 			"power": power(run.stern_rank),
-			"radius": radius(run.stern_rank)
+			"radius": radius(run.stern_rank),
+			"chain": run.chain_mines,
+			"detonate_at": -1.0
 		}
 	)
 	return true
@@ -99,9 +104,14 @@ func _try_drop() -> bool:
 func step(delta: float) -> void:
 	if run.stern_rank <= 0:
 		return
+	_clock += delta
 	cooldown = maxf(0.0, cooldown - delta)
 	if cooldown <= 0.0:
 		cooldown = interval(run.stern_rank) if _try_drop() else 0.5
+	# Age every live charge first so arming eligibility is independent of array order.
+	for charge in charges:
+		if float(charge["blast"]) < 0.0:
+			charge["age"] = float(charge["age"]) + delta
 	for index in range(charges.size() - 1, -1, -1):
 		var charge := charges[index]
 		if float(charge["blast"]) >= 0.0:
@@ -109,11 +119,11 @@ func step(delta: float) -> void:
 			if float(charge["blast"]) >= BLAST_TIME:
 				charges.remove_at(index)
 			continue
-		charge["age"] = float(charge["age"]) + delta
 		if float(charge["age"]) < ARM_TIME:
 			continue
 		var at: Vector2 = charge["at"]
-		var trigger := float(charge["age"]) >= LIFETIME
+		var deadline := float(charge.get("detonate_at", -1.0))
+		var trigger := float(charge["age"]) >= LIFETIME or (deadline >= 0.0 and _clock >= deadline)
 		for enemy_index in run._near(at, 6.0):
 			var enemy := run.enemies[enemy_index]
 			if (
@@ -140,6 +150,17 @@ func _detonate(charge: Dictionary) -> void:
 	charge["blast"] = 0.0
 	var at: Vector2 = charge["at"]
 	var reach: float = charge["radius"]
+	if bool(charge.get("chain", false)):
+		for neighbor in charges:
+			if (
+				float(neighbor["blast"]) < 0.0
+				and bool(neighbor.get("chain", false))
+				and float(neighbor["age"]) >= ARM_TIME
+				and float(neighbor.get("detonate_at", -1.0)) < 0.0
+				and at.distance_to(neighbor["at"]) <= reach
+				and _line_clear(at, neighbor["at"])
+			):
+				neighbor["detonate_at"] = _clock + CHAIN_DELAY
 	for enemy_index in run._near(at, reach + 4.0):
 		var enemy := run.enemies[enemy_index]
 		if float(enemy["hp"]) <= 0.0:
@@ -164,7 +185,12 @@ func render() -> void:
 				Vector3(at.x, Coast.SEA_LEVEL + 0.8, at.y)
 			)
 		)
-		_bodies.set_instance_color(index, Color("ffbd69") if armed else Color("778e94"))
+		var tint := Color("ffbd69") if armed else Color("778e94")
+		if armed and bool(charge.get("chain", false)):
+			tint = Color("65e8e0")
+		if float(charge.get("detonate_at", -1.0)) >= 0.0:
+			tint = Color("e5fff7")
+		_bodies.set_instance_color(index, tint)
 		var ring_radius := 1.4 if armed else 0.7
 		if blast >= 0.0:
 			ring_radius = (
@@ -179,6 +205,9 @@ func render() -> void:
 				Vector3(at.x, Coast.SEA_LEVEL + 1.0, at.y)
 			)
 		)
-		_rings.set_instance_color(index, Color("ffe3a2") if blast >= 0.0 else Color("c29462"))
+		var ring_tint := Color("ffe3a2") if blast >= 0.0 else Color("c29462")
+		if bool(charge.get("chain", false)):
+			ring_tint = Color("b5fff5") if blast >= 0.0 else tint
+		_rings.set_instance_color(index, ring_tint)
 	_bodies.visible_instance_count = charges.size()
 	_rings.visible_instance_count = charges.size()

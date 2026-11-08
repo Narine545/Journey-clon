@@ -970,6 +970,7 @@ func _check_raid() -> void:
 	_check_raid_boss()
 	_check_raid_colors()
 	_check_raid_elites()
+	_check_raid_tactical_evolutions()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1420,3 +1421,77 @@ func _check_raid_elites() -> void:
 	run._spawn_timer = saved_spawn
 	run._bow_timer = saved_bow
 	run._side_timer = saved_side
+
+
+func _check_raid_tactical_evolutions() -> void:
+	var run := main.raid
+	var saved := [run.pellets, run.turn_rank, run.stern_rank, run.pulse_radius,
+		run.level, run.xp, run.xp_needed, run.piercing_harpoon]
+	run.pellets = 3
+	run.turn_rank = 1
+	run.stern_rank = 3
+	run.pulse_radius = 18.0
+	_check(run._can_evolve_broadside() and run._can_evolve_chain(),
+		"две тактические эволюции открываются нужными модулями")
+	run.xp = run.xp_needed
+	run.choices = [12, 0, 1]
+	run.state = RaidRun.State.CHOOSING
+	run.choose(0)
+	run.xp = run.xp_needed
+	run.choices = [13, 0, 1]
+	run.state = RaidRun.State.CHOOSING
+	run.choose(0)
+	_check(run.storm_broadside and run.chain_mines
+		and not run._can_evolve_broadside() and not run._can_evolve_chain(),
+		"карточки применяются вместе и больше не предлагаются")
+	run.piercing_harpoon = true
+	_check(run._weapon_hit_limit(0) == 3 and run._weapon_hit_limit(1) == 2
+		and run._weapon_hit_limit(2) == 2, "гарпун и штормовая картечь имеют разные лимиты пробития")
+	var origin := run.boat_at()
+	for distance in [4.0, 7.0, 10.0]:
+		var at := origin + run.forward() * distance
+		run.enemies.append({"at": at, "previous": at, "hp": 100.0,
+			"radius": 1.1, "flash": 0.0})
+	run._rebuild_grid()
+	run._add_shot(origin, run.forward() * 38.0, 22.0, false, run._weapon_hit_limit(1))
+	run._move_shots(0.5)
+	_check(is_equal_approx(float(run.enemies[0]["hp"]), 78.0)
+		and is_equal_approx(float(run.enemies[1]["hp"]), 78.0)
+		and is_equal_approx(float(run.enemies[2]["hp"]), 100.0) and run.shots.is_empty(),
+		"бортовой снаряд проходит две разные цели и не повреждает третью")
+	run.enemies.clear()
+	run.grid.clear()
+	run.shots.clear()
+	var ordnance := run.stern_charges
+	ordnance.reset()
+	ordnance.cooldown = 10.0
+	origin = ordnance.drop_point()
+	var axis := run.forward().rotated(PI * 0.5)
+	for offset in [0.0, 6.0, 12.0]:
+		ordnance.charges.append({"at": origin + axis * offset, "age": 0.65,
+			"blast": -1.0, "power": 78.0, "radius": 8.0,
+			"chain": true, "detonate_at": -1.0})
+	ordnance._detonate(ordnance.charges[0])
+	_check(float(ordnance.charges[1]["detonate_at"]) > 0.0
+		and float(ordnance.charges[2]["detonate_at"]) < 0.0,
+		"взрыв запускает только ближайший заряд, не всю дорожку мгновенно")
+	ordnance.step(0.19)
+	_check(float(ordnance.charges[1]["blast"]) < 0.0, "цепной подрыв соблюдает задержку")
+	ordnance.step(0.02)
+	_check(float(ordnance.charges[1]["blast"]) >= 0.0
+		and float(ordnance.charges[2]["detonate_at"]) > ordnance._clock,
+		"соседний заряд передаёт запал дальше после своего взрыва")
+	ordnance.step(0.21)
+	_check(float(ordnance.charges.back()["blast"]) >= 0.0, "цепь доходит до третьего заряда")
+	ordnance.reset()
+	run.pellets = saved[0]
+	run.turn_rank = saved[1]
+	run.stern_rank = saved[2]
+	run.pulse_radius = saved[3]
+	run.level = saved[4]
+	run.xp = saved[5]
+	run.xp_needed = saved[6]
+	run.piercing_harpoon = saved[7]
+	run.storm_broadside = false
+	run.chain_mines = false
+	run.hud.refresh()
