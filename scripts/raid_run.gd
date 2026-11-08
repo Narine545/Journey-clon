@@ -10,6 +10,7 @@ const MOBILITY_MAX_RANK := 3
 const SPEED_PER_RANK := 0.12
 const TURN_PER_RANK := 0.15
 const XP_MAX_RANK := 4
+const REROLLS := 2
 const COLORS := [Color("ff4b35"), Color("ffe144"), Color("be62ff"), Color("39a9ff")]
 const UPGRADES := [
 	["Усиленные снаряды", "+8 базового урона орудий"],
@@ -55,6 +56,7 @@ var pulse_radius := 13.0
 var pulse_damage := 35.0
 var pulse_cooldown := 0.0
 var boss_spawned := false
+var rerolls_left := REROLLS
 var choices: Array[int] = []
 var enemies: Array[Dictionary] = []
 var shots: Array[Dictionary] = []
@@ -132,6 +134,7 @@ func start() -> void:
 	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
+	rerolls_left = REROLLS
 	xp_awarded = 0
 	_xp_quarters = 0
 	damage = 22.0
@@ -176,6 +179,7 @@ func leave() -> void:
 	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
+	rerolls_left = REROLLS
 	xp_awarded = 0
 	_xp_quarters = 0
 	speed_rank = 0
@@ -601,9 +605,7 @@ func pulse() -> void:
 	_pulse_flash = 0.5
 
 
-func _offer_upgrade() -> void:
-	state = State.CHOOSING
-	choices.clear()
+func _upgrade_pool() -> Array[int]:
 	var available: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 	if can_evolve_harpoon():
 		available.append(10)
@@ -627,10 +629,47 @@ func _offer_upgrade() -> void:
 		available.erase(2)
 	if reload_scale <= 0.38:
 		available.erase(1)
+	return available
+
+
+func _can_reroll() -> bool:
+	if state != State.CHOOSING or rerolls_left <= 0:
+		return false
+	for kind in _upgrade_pool():
+		if not choices.has(kind):
+			return true
+	return false
+
+
+func _reroll_choices() -> void:
+	if not _can_reroll():
+		return
+	var previous: Array[int] = choices.duplicate()
+	_deal_choices(previous)
+	rerolls_left -= 1
+	hud.refresh()
+
+
+func _offer_upgrade() -> void:
+	state = State.CHOOSING
+	_deal_choices([])
+	hud.refresh()
+
+
+func _deal_choices(previous: Array[int]) -> void:
+	var available := _upgrade_pool()
+	var fresh: Array[int] = []
+	for kind in available:
+		if not previous.has(kind):
+			fresh.append(kind)
+	choices.clear()
+	if not previous.is_empty() and not fresh.is_empty():
+		var forced: int = fresh[rng.randi_range(0, fresh.size() - 1)]
+		choices.append(forced)
+		available.erase(forced)
 	while choices.size() < 3:
 		var index := rng.randi_range(0, available.size() - 1)
 		choices.append(available.pop_at(index))
-	hud.refresh()
 
 
 func choose(index: int) -> void:

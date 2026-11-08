@@ -971,6 +971,7 @@ func _check_raid() -> void:
 	_check_raid_colors()
 	_check_raid_elites()
 	_check_raid_tactical_evolutions()
+	_check_raid_rerolls()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1447,13 +1448,13 @@ func _check_raid_tactical_evolutions() -> void:
 	run.piercing_harpoon = true
 	_check(run._weapon_hit_limit(0) == 3 and run._weapon_hit_limit(1) == 2
 		and run._weapon_hit_limit(2) == 2, "гарпун и штормовая картечь имеют разные лимиты пробития")
-	var origin: Vector2 = run.boat_at()
+	var test_center: Vector2 = run.boat_at()
 	for distance in [4.0, 7.0, 10.0]:
-		var at: Vector2 = origin + run.forward() * float(distance)
+		var at: Vector2 = test_center + run.forward() * float(distance)
 		run.enemies.append({"at": at, "previous": at, "hp": 100.0,
 			"radius": 1.1, "flash": 0.0})
 	run._rebuild_grid()
-	run._add_shot(origin, run.forward() * 38.0, 22.0, false, run._weapon_hit_limit(1))
+	run._add_shot(test_center, run.forward() * 38.0, 22.0, false, run._weapon_hit_limit(1))
 	run._move_shots(0.5)
 	_check(is_equal_approx(float(run.enemies[0]["hp"]), 78.0)
 		and is_equal_approx(float(run.enemies[1]["hp"]), 78.0)
@@ -1465,10 +1466,10 @@ func _check_raid_tactical_evolutions() -> void:
 	var ordnance := run.stern_charges
 	ordnance.reset()
 	ordnance.cooldown = 10.0
-	origin = ordnance.drop_point()
+	test_center = ordnance.drop_point()
 	var axis: Vector2 = run.forward().rotated(PI * 0.5)
 	for offset in [0.0, 6.0, 12.0]:
-		ordnance.charges.append({"at": origin + axis * float(offset), "age": 0.65,
+		ordnance.charges.append({"at": test_center + axis * float(offset), "age": 0.65,
 			"blast": -1.0, "power": 78.0, "radius": 8.0,
 			"chain": true, "detonate_at": -1.0})
 	ordnance._detonate(ordnance.charges[0])
@@ -1494,4 +1495,43 @@ func _check_raid_tactical_evolutions() -> void:
 	run.piercing_harpoon = saved[7]
 	run.storm_broadside = false
 	run.chain_mines = false
+	run.hud.refresh()
+
+
+func _check_raid_rerolls() -> void:
+	var run := main.raid
+	var saved_rerolls := run.rerolls_left
+	var saved_xp := run.xp
+	var saved_level := run.level
+	var saved_needed := run.xp_needed
+	var saved_elapsed := run.elapsed
+	run.rerolls_left = RaidRun.REROLLS
+	run._offer_upgrade()
+	for attempt in range(RaidRun.REROLLS):
+		var previous: Array[int] = run.choices.duplicate()
+		run._reroll_choices()
+		var fresh := false
+		for kind in run.choices:
+			if not previous.has(kind):
+				fresh = true
+		_check(fresh and run.choices.size() == 3
+			and run.choices[0] != run.choices[1] and run.choices[1] != run.choices[2]
+			and run.choices[0] != run.choices[2]
+			and run.rerolls_left == RaidRun.REROLLS - attempt - 1,
+			"переброс даёт новую карточку, три разных предложения и тратит одну попытку")
+	var exhausted: Array[int] = run.choices.duplicate()
+	run._reroll_choices()
+	run._physics_process(0.5)
+	_check(run.choices == exhausted and run.rerolls_left == 0
+		and run.xp == saved_xp and run.level == saved_level and run.xp_needed == saved_needed
+		and is_equal_approx(run.elapsed, saved_elapsed),
+		"исчерпанные перебросы не действуют, XP/уровень и боевое время не меняются")
+	run.state = RaidRun.State.PAUSED
+	run.rerolls_left = 1
+	run._reroll_choices()
+	_check(run.rerolls_left == 1 and run.choices == exhausted,
+		"переброс доступен только при выборе карточек")
+	run.rerolls_left = saved_rerolls
+	run.state = RaidRun.State.RUNNING
+	run.choices.clear()
 	run.hud.refresh()

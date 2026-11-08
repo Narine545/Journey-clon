@@ -10,6 +10,7 @@ var _detail: Label
 var _cards: GridContainer
 var _modal_content: VBoxContainer
 var _card_buttons: Array[Button] = []
+var _reroll: Button
 var _resume: Button
 var _retry: Button
 var _bars: Array[ColorRect] = []
@@ -95,6 +96,9 @@ func setup() -> void:
 		card.pressed.connect(run.choose.bind(index))
 		_cards.add_child(card)
 		_card_buttons.append(card)
+	_reroll = Button.new()
+	_reroll.pressed.connect(run._reroll_choices)
+	box.add_child(_reroll)
 	_resume = Button.new()
 	_resume.text = "ПРОДОЛЖИТЬ"
 	_resume.pressed.connect(run.toggle_pause)
@@ -140,6 +144,10 @@ func refresh() -> void:
 	_pause.visible = run.state == RaidRun.State.RUNNING
 	_modal.visible = run.modal()
 	_cards.visible = run.state == RaidRun.State.CHOOSING
+	_reroll.visible = run.state == RaidRun.State.CHOOSING
+	_reroll.text = "ПЕРЕБРОСИТЬ · осталось %d/%d" % [run.rerolls_left, RaidRun.REROLLS]
+	_reroll.disabled = not run._can_reroll()
+	_reroll.tooltip_text = "Без расхода XP. Хотя бы одна новая карточка. Две попытки на весь рейд."
 	_resume.visible = run.state == RaidRun.State.PAUSED
 	_retry.visible = run.state in [RaidRun.State.WON, RaidRun.State.LOST]
 	_leave.visible = run.state != RaidRun.State.CHOOSING

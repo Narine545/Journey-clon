@@ -33,9 +33,9 @@ assert '_clock = 0.0' in mines.split('func reset()', 1)[1].split('func drop_poin
 assert 'state != State.RUNNING or main.inspection_active()' in run
 assert '_check_raid_tactical_evolutions()' in smoke
 # Literal Array loop elements are Variant in Godot; gdparse cannot catch inference failures.
-assert 'var at: Vector2 = origin + run.forward() * float(distance)' in smoke
-assert 'origin + axis * float(offset)' in smoke
-assert 'var at := origin + run.forward() * distance' not in smoke
+assert 'var at: Vector2 = test_center + run.forward() * float(distance)' in smoke
+assert 'test_center + axis * float(offset)' in smoke
+assert 'var at := test_center + run.forward() * distance' not in smoke
 assert 'const ENEMY_CAP := 80' in run and 'const SHOT_CAP := 160' in run
 for token in ('Time.', 'create_timer', 'OmniLight3D', 'SubViewport'):
     assert token not in mines
@@ -121,3 +121,5 @@ for fps in (19, 26, 60, 120):
     assert all(.2 - 1e-9 <= b - a <= .2 + 1 / fps + 1e-9
                for a, b in zip(times, times[1:]))
 print('PASS: tactical eligibility/reset, two-hit broadside fan and bounded delayed chain/arming/LoS mirrors (not runtime)')
+
+assert "var origin" not in smoke.split("func _check_raid_tactical_evolutions()", 1)[1]
