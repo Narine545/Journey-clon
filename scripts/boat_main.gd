@@ -28,6 +28,7 @@ var camera: Camera3D
 var hud: BoatHud
 var inspector: WorldInspector
 var photo_mode: BoatPhotoMode
+var raid: RaidRun
 var camera_height := 26.2
 var camera_framing := BoatCameraFraming.new()
 var slicks: Array[ResourceSlick] = []
@@ -150,6 +151,9 @@ func _ready() -> void:
 	add_child(photo_layer)
 	photo_layer.add_child(photo_mode)
 	photo_mode.setup(self)
+	raid = RaidRun.new()
+	add_child(raid)
+	raid.setup(self)
 	_setup_retro_debug()
 	_setup_rme4_atmosphere()
 	weather.setup()
@@ -1008,10 +1012,18 @@ func inspection_active() -> bool:
 	return (inspector != null and inspector.is_active()) or (photo_mode != null and photo_mode.active)
 
 
+func gameplay_paused() -> bool:
+	return raid != null and raid.engaged() and (raid.modal() or inspection_active())
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if inspection_active():
+	if inspection_active() or gameplay_paused():
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
+		# Raid has its own equipment; do not spend exploration pigments or dock mid-fight.
+		if raid != null and raid.engaged() and event.physical_keycode in [KEY_R, KEY_B, KEY_T, KEY_E, KEY_1, KEY_2, KEY_3]:
+			get_viewport().set_input_as_handled()
+			return
 		match event.physical_keycode:
 			KEY_PAGEUP:
 				camera_height = minf(160.0, camera_height + 8.0)
@@ -1089,9 +1101,10 @@ func _process(delta: float) -> void:
 		_rme4_volume.global_position = Vector3(boat.global_position.x, RME4_BOX_Y,
 			boat.global_position.z)
 	_beacon_anim_time += delta
-	sonar_timer = maxf(0.0, sonar_timer - delta)
+	var gameplay_delta := 0.0 if gameplay_paused() else delta
+	sonar_timer = maxf(0.0, sonar_timer - gameplay_delta)
 	var had_overdrive := overdrive_timer > 0.0
-	overdrive_timer = maxf(0.0, overdrive_timer - delta)
+	overdrive_timer = maxf(0.0, overdrive_timer - gameplay_delta)
 	if had_overdrive and overdrive_timer <= 0.0:
 		boat.update_night_lights(night01, false)
 
@@ -1150,9 +1163,9 @@ func _process(delta: float) -> void:
 		camera.global_position = desired
 		camera.look_at(_camera_focus, Vector3.UP)
 	notice_time = maxf(0.0, notice_time - delta)
-	if not inspection_active():
+	if not inspection_active() and not gameplay_paused():
 		resource_zones.update(delta)
-	hud.visible = not inspection_active()
+	hud.visible = not inspection_active() and not (raid != null and raid.engaged())
 	hud.queue_redraw()
 	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":
 		_capture_frames += 1

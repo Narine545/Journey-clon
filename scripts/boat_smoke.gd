@@ -55,6 +55,7 @@ func _physics_process(_delta: float) -> void:
 		_check_photo_mode()
 		_check_camera_framing()
 		_check_reef_signals()
+		_check_raid()
 		Input.action_press("boat_forward")
 	if ticks == 60:
 		trail_sample = main.boat._trail_buffer[2]
@@ -924,3 +925,65 @@ func _check_reef_signals() -> void:
 	main.night01 = saved_night
 	main._beacon_anim_time = saved_time
 	main._update_reef_signals()
+
+
+func _check_raid() -> void:
+	# Native integration regression, exercised only by JOURNEY_BOAT_SMOKE=1.
+	var run := main.raid
+	var saved_hp := main.boat.hull_hp
+	var saved_speed := main.boat.speed
+	var saved_debug := main.debug_panel_visible
+	var saved_raw := main.raw.duplicate()
+	var saved_refined := main.refined.duplicate()
+	var saved_sonar := main.sonar_timer
+	var saved_overdrive := main.overdrive_timer
+	_check(run != null and run.state == RaidRun.State.IDLE, "рейд выключен при обычном запуске")
+	_check(is_equal_approx(RaidRun.segment_distance(Vector2(5, 3), Vector2.ZERO, Vector2(10, 0)), 3.0),
+		"аналитическая геометрия боевых капсул")
+	run.start()
+	_check(run.state == RaidRun.State.RUNNING and is_equal_approx(main.boat.hull_hp, 100.0),
+		"рейд запускается на глубокой воде с отдельной прочностью")
+	main.boat.speed = 3.0
+	run.toggle_pause()
+	var at := main.boat.global_transform
+	var elapsed := run.elapsed
+	main.boat._physics_process(0.5)
+	run._physics_process(0.5)
+	_check(main.boat.global_transform.is_equal_approx(at) and is_equal_approx(run.elapsed, elapsed)
+		and main.gameplay_paused(), "пауза замораживает движение судна и боевые часы")
+	run.toggle_pause()
+	run.xp = run.xp_needed
+	run._offer_upgrade()
+	_check(run.choices.size() == 3 and run.choices[0] != run.choices[1]
+		and run.choices[1] != run.choices[2] and run.choices[0] != run.choices[2],
+		"три различных предложения улучшения")
+	run.choices = [0, 1, 2]
+	run.choose(1)
+	_check(run.state == RaidRun.State.RUNNING and run.level == 2 and run.xp == 0
+		and is_equal_approx(run.reload_scale, 0.88), "карточка применяет эффект и списывает опыт")
+	# Real manager grid and projectile path, not a Python port of the hit algorithm.
+	var target := run.boat_at() + run.forward() * 10.0
+	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
+		"max_hp": 10.0, "radius": 1.1, "kind": 0, "flash": 0.0, "born": 0.0,
+		"timer": 2.0, "charge": 0.0, "aim": Vector2.ZERO})
+	run._rebuild_grid()
+	run._add_shot(run.boat_at(), run.forward() * 38.0, 22.0, false)
+	run._move_shots(0.5)
+	_check(float(run.enemies[0]["hp"]) < 0.0 and run.shots.is_empty(),
+		"быстрый снаряд попадает между концами шага и расходуется один раз")
+	run.enemies.clear()
+	run.grid.clear()
+	run._hurt_timer = 0.0
+	run._hurt(200.0)
+	run._physics_process(0.01)
+	_check(run.state == RaidRun.State.LOST and is_zero_approx(main.boat.hull_hp),
+		"боевой урон достигает нуля и завершает рейд")
+	run.leave()
+	_check(run.state == RaidRun.State.IDLE and run.enemies.is_empty() and run.shots.is_empty()
+		and is_equal_approx(main.boat.hull_hp, saved_hp) and main.debug_panel_visible == saved_debug,
+		"выход очищает бой и возвращает дорейдовую прочность и интерфейс")
+	_check(main.raw == saved_raw and main.refined == saved_refined,
+		"карточки и боевой импульс не расходуют экспедиционные пигменты")
+	main.boat.speed = saved_speed
+	main.sonar_timer = saved_sonar
+	main.overdrive_timer = saved_overdrive
