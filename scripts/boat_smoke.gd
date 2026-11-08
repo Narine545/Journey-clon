@@ -975,6 +975,7 @@ func _check_raid() -> void:
 	_check_raid_debug()
 	_check_raid_stats()
 	_check_raid_result_layout()
+	_check_raid_contacts_and_buoyancy()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1655,3 +1656,39 @@ func _check_raid_result_layout() -> void:
 	run.state = saved_state
 	hud.refresh()
 	_check(not hud._results.visible, "сетка результатов скрыта во время боя")
+
+
+func _check_raid_contacts_and_buoyancy() -> void:
+	var crowd: Array[Dictionary] = [
+		{"at": Vector2.ZERO, "kind": 0, "hp": 20.0, "radius": 1.1, "combat_id": 1},
+		{"at": Vector2.ZERO, "kind": 0, "hp": 20.0, "radius": 1.1, "combat_id": 2}
+	]
+	var clear := func(_at: Vector2, _radius: float) -> bool: return true
+	for _tick in range(60):
+		RaidContacts.separate(crowd, 1.0 / 60.0, clear)
+	var left: Vector2 = crowd[0]["at"]
+	var right: Vector2 = crowd[1]["at"]
+	_check(left.distance_to(right) > 2.19 and (left + right).length() < 0.001,
+		"совпадающие враги плавно расходятся без смещения центра пары")
+	var projected := RaidContacts.outside_capsule(
+		Vector2.ZERO, Vector2(0, -3.7), Vector2(0, 3.7), 2.82, Vector2.RIGHT
+	)
+	_check(is_equal_approx(projected.x, 2.82) and is_zero_approx(projected.y),
+		"контакт в центре капсулы получает устойчивое направление наружу")
+	var blocked := func(at: Vector2, _radius: float) -> bool: return at.x < 0.7
+	var stopped := RaidContacts.safe_move(Vector2.ZERO, Vector2(2, 0), 1.1, blocked)
+	_check(stopped.x < 0.7, "коррекция контакта не проходит сквозь препятствие")
+	var floating: Dictionary = {}
+	var sample_at := main.raid.boat_at()
+	RaidBuoyancy.step(floating, sample_at, 1.0, 1.0, 6.0, 0.01, main.water)
+	var pose_at := RaidBuoyancy.pose(floating, 1.0, 0.0)
+	_check(is_equal_approx(pose_at.x, main.water.surface_height(sample_at.x, sample_at.y) + 1.0)
+		and absf(pose_at.y) <= RaidBuoyancy.MAX_TILT and absf(pose_at.z) <= RaidBuoyancy.MAX_TILT,
+		"плавучесть использует существующую воду и ограничивает наклон")
+	var before: Vector3 = floating["float_pose"]
+	floating["float_target"] = before + Vector3(1, 0, 0)
+	floating["float_timer"] = 1.0
+	RaidBuoyancy.step(floating, sample_at, 1.0, 1.0, 6.0, 0.01, main.water)
+	_check(RaidBuoyancy.pose(floating, 0.0, 0.0).is_equal_approx(before)
+		and RaidBuoyancy.pose(floating, 1.0, 0.0).x > before.x,
+		"плавучесть сглаживается на боевом тике и интерполируется при отрисовке")

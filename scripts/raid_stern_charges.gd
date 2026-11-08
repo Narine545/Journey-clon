@@ -111,6 +111,7 @@ func step(delta: float) -> void:
 		cooldown = interval(run.stern_rank) if _try_drop() else 0.5
 	# Age every live charge first so arming eligibility is independent of array order.
 	for charge in charges:
+		RaidBuoyancy.step(charge, charge["at"], 1.0, 0.8, 6.0, delta, run.main.water)
 		if float(charge["blast"]) < 0.0:
 			charge["age"] = float(charge["age"]) + delta
 	for index in range(charges.size() - 1, -1, -1):
@@ -176,18 +177,19 @@ func _detonate(charge: Dictionary) -> void:
 			enemy["flash"] = 0.2
 
 
-func render() -> void:
+func render(blend: float = 1.0) -> void:
 	for index in range(charges.size()):
 		var charge := charges[index]
 		var at: Vector2 = charge["at"]
+		var floating := RaidBuoyancy.pose(charge, blend, Coast.SEA_LEVEL + 0.8)
 		var blast: float = charge["blast"]
 		var armed := float(charge["age"]) >= ARM_TIME
 		var body_scale := 0.001 if blast >= 0.0 else 1.0
 		_bodies.set_instance_transform(
 			index,
 			Transform3D(
-				Basis.IDENTITY.scaled(Vector3.ONE * body_scale),
-				Vector3(at.x, Coast.SEA_LEVEL + 0.8, at.y)
+				RaidBuoyancy.tilt_basis(floating).scaled(Vector3.ONE * body_scale),
+				Vector3(at.x, floating.x, at.y)
 			)
 		)
 		var tint := Color("ffbd69") if armed else Color("778e94")
@@ -207,7 +209,7 @@ func render() -> void:
 			index,
 			Transform3D(
 				Basis.IDENTITY.scaled(Vector3(ring_radius, 0.6, ring_radius)),
-				Vector3(at.x, Coast.SEA_LEVEL + 1.0, at.y)
+				Vector3(at.x, floating.x + 0.2, at.y)
 			)
 		)
 		var ring_tint := Color("ffe3a2") if blast >= 0.0 else Color("c29462")

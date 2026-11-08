@@ -28,7 +28,7 @@ for token in ('float(neighbor["blast"]) < 0.0', 'bool(neighbor.get("chain", fals
               'at.distance_to(neighbor["at"]) <= reach', '_line_clear(at, neighbor["at"])'):
     assert token in mines, token
 assert mines.count('charge["age"] = float(charge["age"]) + delta') == 1
-assert mines.index('for charge in charges:\n\t\tif float(charge["blast"]) < 0.0:') < mines.index('for index in range(charges.size() - 1, -1, -1):')
+assert mines.index('charge["age"] = float(charge["age"]) + delta') < mines.index('for index in range(charges.size() - 1, -1, -1):')
 assert '_clock = 0.0' in mines.split('func reset()', 1)[1].split('func drop_point()', 1)[0]
 assert 'state != State.RUNNING or main.inspection_active()' in run
 assert '_check_raid_tactical_evolutions()' in smoke

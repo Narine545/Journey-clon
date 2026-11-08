@@ -29,7 +29,7 @@ assert 'available.erase(8)' in run and 'stern_rank = mini(3, stern_rank + 1)' in
 physics = run.split('func _physics_process', 1)[1].split('func _move_enemies', 1)[0]
 assert physics.index('_rebuild_grid()') < physics.index('stern_charges.step(delta)') < physics.index('_move_shots(delta)')
 assert 'state != State.RUNNING or main.inspection_active()' in physics
-assert 'stern_charges.render()' in run
+assert 'stern_charges.render(blend)' in run
 assert 'run.stern_charges.cooldown' in hud
 assert '_check_raid_stern()' in smoke
 for forbidden in ('OmniLight3D', 'SpotLight3D', 'RigidBody3D', 'SubViewport', 'queue_free', 'hull_hp =', 'raw[', 'refined['):

@@ -29,7 +29,7 @@ assert 'salvage.drop(enemies[index]["at"], RaidElites.reward(enemies[index]))' i
 # Unchanged dash readability/strength, same pool and boss timing.
 for token in ('const ENEMY_CAP := 80', 'const SHOT_CAP := 160',
               'speed = 14.0', 'enemy["charge"] = 0.7',
-              'elif float(enemy["timer"]) < 1.1:', '_hurt(9.0 if kind < 3 else 20.0)',
+              'elif float(enemy["timer"]) < 1.1:',
               'elapsed >= 240.0', 'const DURATION := 300.0'):
     assert token in run, token
 assert '_draw_elite_marker(enemy)' in hud and 'ЭЛИТА · %d%%' in hud
@@ -96,3 +96,5 @@ for seconds in (65, 130, 195):
     assert math.isclose(1.1 * 1.35, 1.485)
 assert 8 * 2 == 16  # fully upgraded crew; not a direct kill reward
 print('PASS: elite timing/retries/no backlog/one alive, spawn limits/geometry, reward and markers (not runtime)')
+
+assert 'run._hurt(9.0 if int(enemy["kind"]) < 3 else 20.0)' in (root / "scripts/raid_contacts.gd").read_text()

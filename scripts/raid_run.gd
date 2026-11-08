@@ -289,6 +289,16 @@ func _spawn(kind: int, elite: bool = false) -> bool:
 		)
 		if not navigable(at, radius):
 			continue
+		var crowded := false
+		for other in enemies:
+			if (
+				float(other["hp"]) > 0.0
+				and at.distance_to(other["at"]) < radius + float(other["radius"]) + 0.1
+			):
+				crowded = true
+				break
+		if crowded:
+			continue
 		var hp := (650.0 if kind == 3 else 25.0 + kind * 14.0) * (1.0 + elapsed / 400.0)
 		if promoted:
 			hp *= RaidElites.HP_SCALE
@@ -343,7 +353,10 @@ func _physics_process(delta: float) -> void:
 			enemies.remove_at(0)
 		boss_spawned = _spawn(3)
 	_debug_clear_visible()
+	_rebuild_grid()
 	_move_enemies(delta)
+	RaidContacts.resolve(self, delta)
+	RaidBuoyancy.step_enemies(enemies, delta, main.water)
 	_rebuild_grid()
 	stern_charges.step(delta)
 	_fire_weapons(delta)
@@ -432,7 +445,7 @@ func _move_enemies(delta: float) -> void:
 			elif float(enemy["timer"]) <= 0.0:
 				_add_shot(at, to_boat.normalized() * 12.0, 12.0, true)
 				enemy["timer"] = 3.8
-		var step := direction * speed * delta
+		var step := RaidContacts.slide_motion(self, enemy, direction * speed * delta)
 		if navigable(at + step, float(enemy["radius"])):
 			enemy["at"] = at + step
 		else:
@@ -441,8 +454,6 @@ func _move_enemies(delta: float) -> void:
 				if navigable(slide, float(enemy["radius"])):
 					enemy["at"] = slide
 					break
-		if _hull_distance(enemy["at"]) < float(enemy["radius"]):
-			_hurt(9.0 if kind < 3 else 20.0)
 
 
 func _cell(at: Vector2) -> Vector2i:
@@ -947,14 +958,17 @@ func _process(_delta: float) -> void:
 		)
 		salvage.render(blend, elapsed)
 		weapon_fx.render()
-		stern_charges.render()
+		stern_charges.render(blend)
 		for index in range(enemies.size()):
 			var enemy := enemies[index]
 			var at: Vector2 = enemy["previous"].lerp(enemy["at"], blend)
 			var radius: float = float(enemy["radius"]) * (1.0 - float(enemy["born"]) * 1.3)
-			var enemy_basis := _enemy_visual_basis(enemy, radius)
+			var floating := RaidBuoyancy.pose(enemy, blend, Coast.SEA_LEVEL + 1.0)
+			var enemy_basis := (
+				RaidBuoyancy.tilt_basis(floating) * _enemy_visual_basis(enemy, radius)
+			)
 			_enemy_batch.set_instance_transform(
-				index, Transform3D(enemy_basis, Vector3(at.x, Coast.SEA_LEVEL + 1.0, at.y))
+				index, Transform3D(enemy_basis, Vector3(at.x, floating.x, at.y))
 			)
 			_enemy_batch.set_instance_color(index, _enemy_visual_color(enemy))
 		_enemy_batch.visible_instance_count = enemies.size()

@@ -86,6 +86,8 @@ func step(delta: float) -> int:
 				break
 			at = next
 		entry["at"] = at
+	for entry in drops:
+		RaidBuoyancy.step(entry, entry["at"], 1.0, 1.2, 7.0, delta, run.main.water, false)
 	collected += gained
 	return gained
 
@@ -96,7 +98,8 @@ func render(blend: float, time: float) -> void:
 		var at: Vector2 = entry["previous"].lerp(entry["at"], blend)
 		var scale_factor := minf(1.8, 1.0 + log(float(entry["amount"])) * 0.15)
 		var crystal_basis := Basis(Vector3.UP, time * 0.7).scaled(Vector3.ONE * scale_factor)
-		var height := Coast.SEA_LEVEL + 1.2 + sin(time * 2.0 + at.x) * 0.12
+		var floating := RaidBuoyancy.pose(entry, blend, Coast.SEA_LEVEL + 1.2)
+		var height := floating.x + sin(time * 2.0 + at.x) * 0.12
 		_batch.set_instance_transform(
 			index, Transform3D(crystal_basis, Vector3(at.x, height, at.y))
 		)
