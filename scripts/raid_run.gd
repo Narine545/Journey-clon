@@ -552,9 +552,9 @@ func _process(_delta: float) -> void:
 			var enemy := enemies[index]
 			var at: Vector2 = enemy["previous"].lerp(enemy["at"], blend)
 			var radius: float = float(enemy["radius"]) * (1.0 - float(enemy["born"]) * 1.3)
-			var basis := Basis.IDENTITY.scaled(Vector3(radius, radius * 0.65, radius))
+			var enemy_basis := Basis.IDENTITY.scaled(Vector3(radius, radius * 0.65, radius))
 			_enemy_batch.set_instance_transform(
-				index, Transform3D(basis, Vector3(at.x, Coast.SEA_LEVEL + 1.0, at.y))
+				index, Transform3D(enemy_basis, Vector3(at.x, Coast.SEA_LEVEL + 1.0, at.y))
 			)
 			_enemy_batch.set_instance_color(
 				index, Color.WHITE if float(enemy["flash"]) > 0.0 else COLORS[int(enemy["kind"])]

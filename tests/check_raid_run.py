@@ -10,6 +10,11 @@ main = (ROOT / "scripts/boat_main.gd").read_text()
 boat = (ROOT / "scripts/boat_vessel.gd").read_text()
 smoke = (ROOT / "scripts/boat_smoke.gd").read_text()
 
+# Node3D already owns basis; local declarations must not shadow it.
+assert "var basis" not in run
+assert "var enemy_basis :=" in run
+assert "Transform3D(enemy_basis," in run
+
 assert "const ENEMY_CAP := 80" in run
 assert "const SHOT_CAP := 160" in run
 assert "const DURATION := 300.0" in run
