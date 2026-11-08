@@ -32,6 +32,10 @@ assert mines.index('for charge in charges:\n\t\tif float(charge["blast"]) < 0.0:
 assert '_clock = 0.0' in mines.split('func reset()', 1)[1].split('func drop_point()', 1)[0]
 assert 'state != State.RUNNING or main.inspection_active()' in run
 assert '_check_raid_tactical_evolutions()' in smoke
+# Literal Array loop elements are Variant in Godot; gdparse cannot catch inference failures.
+assert 'var at: Vector2 = origin + run.forward() * float(distance)' in smoke
+assert 'origin + axis * float(offset)' in smoke
+assert 'var at := origin + run.forward() * distance' not in smoke
 assert 'const ENEMY_CAP := 80' in run and 'const SHOT_CAP := 160' in run
 for token in ('Time.', 'create_timer', 'OmniLight3D', 'SubViewport'):
     assert token not in mines

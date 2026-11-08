@@ -1447,9 +1447,9 @@ func _check_raid_tactical_evolutions() -> void:
 	run.piercing_harpoon = true
 	_check(run._weapon_hit_limit(0) == 3 and run._weapon_hit_limit(1) == 2
 		and run._weapon_hit_limit(2) == 2, "гарпун и штормовая картечь имеют разные лимиты пробития")
-	var origin := run.boat_at()
+	var origin: Vector2 = run.boat_at()
 	for distance in [4.0, 7.0, 10.0]:
-		var at := origin + run.forward() * distance
+		var at: Vector2 = origin + run.forward() * float(distance)
 		run.enemies.append({"at": at, "previous": at, "hp": 100.0,
 			"radius": 1.1, "flash": 0.0})
 	run._rebuild_grid()
@@ -1466,9 +1466,9 @@ func _check_raid_tactical_evolutions() -> void:
 	ordnance.reset()
 	ordnance.cooldown = 10.0
 	origin = ordnance.drop_point()
-	var axis := run.forward().rotated(PI * 0.5)
+	var axis: Vector2 = run.forward().rotated(PI * 0.5)
 	for offset in [0.0, 6.0, 12.0]:
-		ordnance.charges.append({"at": origin + axis * offset, "age": 0.65,
+		ordnance.charges.append({"at": origin + axis * float(offset), "age": 0.65,
 			"blast": -1.0, "power": 78.0, "radius": 8.0,
 			"chain": true, "detonate_at": -1.0})
 	ordnance._detonate(ordnance.charges[0])
