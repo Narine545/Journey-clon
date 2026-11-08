@@ -963,6 +963,7 @@ func _check_raid() -> void:
 		and is_equal_approx(run.reload_scale, 0.88), "карточка применяет эффект и списывает опыт")
 	_check_raid_mobility()
 	_check_raid_fx()
+	_check_raid_waves()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1103,3 +1104,18 @@ func _check_raid_fx() -> void:
 	run.effects_enabled = previous_setting
 	fx.reset()
 	run.hud.refresh()
+
+
+func _check_raid_waves() -> void:
+	_check(RaidWaves.phase(59.9) == 0 and RaidWaves.phase(60.0) == 1
+		and RaidWaves.phase(180.0) == 3 and RaidWaves.phase(240.0) == 5,
+		"границы фаз волн определяются боевыми часами")
+	_check(not RaidWaves.respite(224.9) and RaidWaves.respite(225.0)
+		and RaidWaves.respite(239.9) and not RaidWaves.respite(240.0),
+		"15 секунд передышки перед боссом без обычного спавна")
+	var caps_ok := true
+	for seconds in [0.0, 35.0, 60.0, 120.0, 180.0, 240.0]:
+		for roll_index in range(100):
+			if RaidWaves.choose_kind(seconds, RaidWaves.ranged_cap(seconds), float(roll_index) / 100.0) == 2:
+				caps_ok = false
+	_check(caps_ok, "достигнутый лимит стрелков запрещает появление следующего")

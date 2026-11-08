@@ -261,9 +261,13 @@ func _physics_process(delta: float) -> void:
 		if int(enemies[index]["kind"]) != 3 and boat_at().distance_to(enemies[index]["at"]) > 100.0:
 			enemies.remove_at(index)
 	_spawn_timer -= delta
-	if _spawn_timer <= 0.0:
-		_spawn_timer = maxf(0.24, 1.15 - elapsed / 330.0)
-		_spawn(0 if elapsed < 15.0 else rng.randi_range(0, 2))
+	if _spawn_timer <= 0.0 and not RaidWaves.respite(elapsed):
+		_spawn_timer = RaidWaves.interval(elapsed)
+		var ranged_count := 0
+		for enemy in enemies:
+			if int(enemy["kind"]) == 2 and float(enemy["hp"]) > 0.0:
+				ranged_count += 1
+		_spawn(RaidWaves.choose_kind(elapsed, ranged_count, rng.randf()))
 	# Warning begins at 225s. Reserve room for boss even at the population cap.
 	if elapsed >= 240.0 and not boss_spawned:
 		if enemies.size() >= ENEMY_CAP:

@@ -7,7 +7,8 @@ var _pause: Button
 var _modal: PanelContainer
 var _title: Label
 var _detail: Label
-var _cards: HBoxContainer
+var _cards: GridContainer
+var _modal_content: VBoxContainer
 var _card_buttons: Array[Button] = []
 var _resume: Button
 var _retry: Button
@@ -21,6 +22,9 @@ var _leave: Button
 func setup() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ui_theme := Theme.new()
+	ui_theme.default_font_size = 18
+	theme = ui_theme
 	for _index in range(3):
 		var bar := ColorRect.new()
 		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -55,11 +59,18 @@ func setup() -> void:
 	skin.content_margin_bottom = 24
 	_modal.add_theme_stylebox_override("panel", skin)
 	add_child(_modal)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_modal.add_child(scroll)
 	var box := VBoxContainer.new()
+	_modal_content = box
+	box.minimum_size_changed.connect(_layout, CONNECT_DEFERRED)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_theme_constant_override("separation", 18)
-	_modal.add_child(box)
+	scroll.add_child(box)
 	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 25)
+	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_title.add_theme_font_size_override("font_size", 36)
 	_title.add_theme_constant_override("outline_size", 2)
 	_title.add_theme_color_override("font_outline_color", Color("08141d"))
 	_title_material = ShaderMaterial.new()
@@ -68,16 +79,19 @@ func setup() -> void:
 	_title.resized.connect(_sync_title)
 	box.add_child(_title)
 	_detail = Label.new()
+	_detail.add_theme_font_size_override("font_size", 20)
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_detail)
-	_cards = HBoxContainer.new()
-	_cards.add_theme_constant_override("separation", 14)
+	_cards = GridContainer.new()
+	_cards.columns = 3
+	_cards.add_theme_constant_override("h_separation", 16)
+	_cards.add_theme_constant_override("v_separation", 16)
 	box.add_child(_cards)
 	for index in range(3):
 		var card := Button.new()
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.custom_minimum_size = Vector2(0, 190)
-		card.add_theme_font_size_override("font_size", 15)
+		card.custom_minimum_size = Vector2(0, 240)
+		card.add_theme_font_size_override("font_size", 20)
 		card.pressed.connect(run.choose.bind(index))
 		_cards.add_child(card)
 		_card_buttons.append(card)
@@ -101,15 +115,19 @@ func setup() -> void:
 func _layout() -> void:
 	if _launch == null:
 		return
-	_launch.position = Vector2(size.x - 260, size.y - 104)
-	_launch.size = Vector2(236, 36)
+	_launch.position = Vector2(size.x - 324, size.y - 104)
+	_launch.size = Vector2(300, 42)
 	_pause.position = Vector2(size.x - 170, 28)
 	_pause.size = Vector2(146, 32)
 	_fx_toggle.position = Vector2(size.x - 190, 254)
 	_fx_toggle.size = Vector2(166, 28)
-	var width := minf(960.0, size.x - 32.0)
-	_modal.position = Vector2((size.x - width) * 0.5, maxf(90.0, size.y * 0.5 - 180.0))
-	_modal.size.x = width
+	var width := minf(1120.0, size.x - 32.0)
+	_cards.columns = 3 if width >= 1000.0 else 1
+	var height := minf(
+		maxf(180.0, _modal_content.get_combined_minimum_size().y + 48.0), size.y - 32.0
+	)
+	_modal.size = Vector2(width, height)
+	_modal.position = Vector2((size.x - width) * 0.5, maxf(16.0, (size.y - height) * 0.5))
 
 
 func refresh() -> void:
@@ -174,7 +192,7 @@ func _summary() -> String:
 	)
 
 
-func _text(at: Vector2, text: String, font_size: int = 16, color: Color = Color("dfefea")) -> void:
+func _text(at: Vector2, text: String, font_size: int = 20, color: Color = Color("dfefea")) -> void:
 	draw_string(ThemeDB.fallback_font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
 
 
@@ -223,29 +241,31 @@ func _draw() -> void:
 		bar.visible = false
 	var main := run.main
 	var accent := Color("78dfcb")
-	_bar(Rect2(0, 0, size.x, 6), float(run.xp) / run.xp_needed, accent)
-	draw_rect(Rect2(20, 22, 275, 98), Color(0.025, 0.06, 0.08, 0.9))
-	_text(Vector2(34, 46), "КОРПУС %d%% · УРОВЕНЬ %d" % [int(ceil(main.boat.hull_hp)), run.level])
-	_bar(Rect2(34, 58, 245, 6), main.boat.hull_hp / 100.0, Color("ed846d"))
+	_bar(Rect2(0, 0, size.x, 10), float(run.xp) / run.xp_needed, accent)
+	draw_rect(Rect2(20, 22, 310, 98), Color(0.025, 0.06, 0.08, 0.9))
+	_text(Vector2(34, 46), "КОРПУС %d%% · УР. %d" % [int(ceil(main.boat.hull_hp)), run.level])
+	_bar(Rect2(34, 58, 280, 9), main.boat.hull_hp / 100.0, Color("ed846d"))
 	_text(
-		Vector2(34, 86), "ОПЫТ %d/%d · ЦЕЛЕЙ %d" % [run.xp, run.xp_needed, run.enemies.size()], 13
+		Vector2(34, 86), "ОПЫТ %d/%d · ЦЕЛЕЙ %d" % [run.xp, run.xp_needed, run.enemies.size()], 16
 	)
 	_text(
 		Vector2(34, 111),
 		"ХОД ×%.2f · РУЛЬ ×%.2f" % [run.speed_multiplier(), run.turn_multiplier()],
-		12
+		15
 	)
 	_text(
 		Vector2(size.x * 0.5 - 48, 45),
 		"%02d:%02d" % [floori(run.elapsed / 60.0), int(run.elapsed) % 60],
-		24
+		30
 	)
 	if run.elapsed >= 225.0 and not run.boss_spawned:
-		_text(Vector2(size.x * 0.5 - 165, 78), "КРУПНАЯ ЦЕЛЬ ПРИБЛИЖАЕТСЯ", 17, Color("ffb37e"))
+		_text(Vector2(size.x * 0.5 - 180, 104), "КРУПНАЯ ЦЕЛЬ ПРИБЛИЖАЕТСЯ", 20, Color("ffb37e"))
+	else:
+		_text(Vector2(size.x * 0.5 - 150, 104), RaidWaves.label(run.elapsed), 18, accent)
 	for enemy in run.enemies:
 		if int(enemy["kind"]) == 3:
 			_bar(
-				Rect2(size.x * 0.3, 65, size.x * 0.4, 8),
+				Rect2(size.x * 0.3, 65, size.x * 0.4, 12),
 				float(enemy["hp"]) / float(enemy["max_hp"]),
 				Color("f05c75")
 			)
@@ -266,7 +286,7 @@ func _draw() -> void:
 			draw_circle(center + relative, 1.5, accent)
 	draw_line(center, center + run.forward() * 12, accent, 2.0, true)
 	draw_circle(center, 3, accent)
-	_text(center + Vector2(-53, 86), "РАДАР · 55 М", 12)
+	_text(center + Vector2(-53, 86), "РАДАР · 55 М", 15)
 	var panel := Rect2(Vector2(size.x * 0.5 - 295, size.y - 108), Vector2(590, 88))
 	draw_rect(panel, Color(0.025, 0.06, 0.08, 0.9))
 	_text(
@@ -279,20 +299,20 @@ func _draw() -> void:
 				"ГОТОВ" if run.pulse_cooldown <= 0 else "%.1f с" % run.pulse_cooldown
 			]
 		),
-		15,
+		18,
 		accent
 	)
 	_text(
 		panel.position + Vector2(15, 48),
 		"Зелёные трофеи — опыт · подойдите корпусом или плашкоутом",
-		12
+		15
 	)
 	_text(
-		panel.position + Vector2(15, 72), "WASD — курс · M/F/F2 — осмотр с паузой · Esc — пауза", 12
+		panel.position + Vector2(15, 72), "WASD — курс · M/F/F2 — осмотр с паузой · Esc — пауза", 15
 	)
 	if main.shoals != null and main.shoals.warning:
 		_text(
-			Vector2(size.x * 0.5 - 165, 110), "ОТМЕЛЬ ПО КУРСУ — СНИЗЬТЕ ХОД", 15, Color("ffb37e")
+			Vector2(size.x * 0.5 - 190, 134), "ОТМЕЛЬ ПО КУРСУ — СНИЗЬТЕ ХОД", 18, Color("ffb37e")
 		)
 	if main.debug_panel_visible:
 		var debug_at := Vector2(22, size.y - 250)
