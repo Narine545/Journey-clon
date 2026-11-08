@@ -966,6 +966,7 @@ func _check_raid() -> void:
 	_check_raid_waves()
 	_check_raid_xp_bonus()
 	_check_raid_stern()
+	_check_raid_evolutions()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1230,4 +1231,71 @@ func _check_raid_xp_bonus() -> void:
 	run.xp_rank = old_rank
 	run.choices.clear()
 	run.state = RaidRun.State.RUNNING
+	run.hud.refresh()
+
+
+func _check_raid_evolutions() -> void:
+	var run := main.raid
+	var old_damage := run.damage
+	var old_reload := run.reload_scale
+	var old_radius := run.pulse_radius
+	var old_magnet := run.salvage.magnet_range
+	var old_cooldown := run.pulse_cooldown
+	var old_level := run.level
+	var old_needed := run.xp_needed
+	var old_xp := run.xp
+	_check(not run.can_evolve_harpoon() and not run.can_evolve_pulse(),
+		"эволюции не открыты без сочетания улучшений")
+	run.damage = 46.0
+	run.reload_scale = 0.7744
+	run.pulse_radius = 23.0
+	run.salvage.magnet_range = 16.0
+	_check(run.can_evolve_harpoon() and run.can_evolve_pulse(), "синергии открывают обе эволюции")
+	for evolution in [10, 11]:
+		run.xp = run.xp_needed
+		run.choices = [evolution, 0, 1]
+		run.state = RaidRun.State.CHOOSING
+		run.choose(0)
+	_check(run.piercing_harpoon and run.resonant_pulse
+		and not run.can_evolve_harpoon() and not run.can_evolve_pulse(),
+		"эволюции применяются один раз через карточки")
+	for distance in [5.0, 9.0, 13.0, 17.0]:
+		var at := run.boat_at() + run.forward() * float(distance)
+		run.enemies.append({"at": at, "hp": 100.0, "radius": 1.1, "flash": 0.0})
+	run._rebuild_grid()
+	run._add_shot(run.boat_at(), run.forward() * 38.0, 22.0, false, 3)
+	run._move_shots(0.12)
+	_check(is_equal_approx(float(run.enemies[0]["hp"]), 78.0),
+		"пробивной снаряд не бьёт одну цель повторно на подшагах")
+	run.enemies.remove_at(0)
+	run._rebuild_grid()
+	run._move_shots(0.35)
+	_check(run.shots.is_empty() and is_equal_approx(float(run.enemies[0]["hp"]), 78.0)
+		and is_equal_approx(float(run.enemies[1]["hp"]), 78.0)
+		and is_equal_approx(float(run.enemies[2]["hp"]), 100.0),
+		"гарпун пробивает ровно три разные цели, ID переживают сдвиг индексов")
+	run.enemies.clear()
+	run.grid.clear()
+	run._add_shot(run.boat_at() + run.forward() * 5.0, Vector2.ZERO, 1.0, true)
+	run._add_shot(run.boat_at() + run.forward() * 30.0, Vector2.ZERO, 1.0, true)
+	run._add_shot(run.boat_at(), Vector2.ZERO, 1.0, false)
+	run.pulse_cooldown = 0.0
+	run.pulse()
+	_check(run.shots.size() == 2 and bool(run.shots[0]["hostile"])
+		and not bool(run.shots[1]["hostile"]),
+		"резонанс удаляет только вражеский снаряд внутри радиуса")
+	run._add_shot(run.boat_at(), Vector2.ZERO, 1.0, true)
+	run.pulse()
+	_check(run.shots.size() == 3, "резонанс не обходит перезарядку Q")
+	run.shots.clear()
+	run.damage = old_damage
+	run.reload_scale = old_reload
+	run.pulse_radius = old_radius
+	run.salvage.magnet_range = old_magnet
+	run.pulse_cooldown = old_cooldown
+	run.level = old_level
+	run.xp_needed = old_needed
+	run.xp = old_xp
+	run.piercing_harpoon = false
+	run.resonant_pulse = false
 	run.hud.refresh()

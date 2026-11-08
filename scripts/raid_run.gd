@@ -22,6 +22,8 @@ const UPGRADES := [
 	["Усиленный руль", "+15% базовой скорости поворота на ходу"],
 	["Кормовые заряды", "Открыть / усилить мины против преследователей"],
 	["Опытная команда", "+25% опыта с трофеев до конца рейда"],
+	["Пробивной гарпун", "ЭВОЛЮЦИЯ: носовой снаряд пробивает до 3 целей"],
+	["Резонансный импульс", "ЭВОЛЮЦИЯ: Q уничтожает вражеские снаряды"],
 ]
 var effects_enabled := true
 var weapon_fx: RaidWeaponFx
@@ -36,6 +38,8 @@ var level := 1
 var xp := 0
 var xp_needed := 8
 var xp_rank := 0
+var piercing_harpoon := false
+var resonant_pulse := false
 var xp_awarded := 0
 var damage := 22.0
 var reload_scale := 1.0
@@ -53,6 +57,7 @@ var shots: Array[Dictionary] = []
 var grid: Dictionary = {}
 var rng := RandomNumberGenerator.new()
 var _xp_quarters := 0
+var _next_enemy_id := 0
 var _water_cells: Dictionary = {}
 var _enemy_batch: MultiMesh
 var _shot_batch: MultiMesh
@@ -116,6 +121,9 @@ func start() -> void:
 	xp = 0
 	xp_needed = 8
 	xp_rank = 0
+	piercing_harpoon = false
+	resonant_pulse = false
+	_next_enemy_id = 0
 	xp_awarded = 0
 	_xp_quarters = 0
 	damage = 22.0
@@ -154,6 +162,9 @@ func leave() -> void:
 		return
 	state = State.IDLE
 	xp_rank = 0
+	piercing_harpoon = false
+	resonant_pulse = false
+	_next_enemy_id = 0
 	xp_awarded = 0
 	_xp_quarters = 0
 	speed_rank = 0
@@ -375,6 +386,9 @@ func _cell(at: Vector2) -> Vector2i:
 func _rebuild_grid() -> void:
 	grid.clear()
 	for index in range(enemies.size()):
+		if not enemies[index].has("combat_id"):
+			enemies[index]["combat_id"] = _next_enemy_id
+			_next_enemy_id += 1
 		var key := _cell(enemies[index]["at"])
 		if not grid.has(key):
 			grid[key] = []
@@ -423,7 +437,8 @@ func _fire_weapons(delta: float) -> void:
 				boat_at() + axis * 3.0,
 				aim.rotated(angle) * 38.0,
 				damage if weapon == 0 else damage * 0.7,
-				false
+				false,
+				3 if weapon == 0 and piercing_harpoon else 1
 			)
 		if weapon == 0:
 			_bow_timer = 0.65 * reload_scale
@@ -432,7 +447,9 @@ func _fire_weapons(delta: float) -> void:
 		_side_timer = 1.25 * reload_scale
 
 
-func _add_shot(at: Vector2, velocity: Vector2, power: float, hostile: bool) -> void:
+func _add_shot(
+	at: Vector2, velocity: Vector2, power: float, hostile: bool, hit_limit: int = 1
+) -> void:
 	if shots.size() < SHOT_CAP:
 		shots.append(
 			{
@@ -441,6 +458,9 @@ func _add_shot(at: Vector2, velocity: Vector2, power: float, hostile: bool) -> v
 				"velocity": velocity,
 				"power": power,
 				"hostile": hostile,
+				"hits_left": clampi(hit_limit, 1, 3),
+				"hit_ids": [],
+				"piercing": not hostile and hit_limit > 1,
 				"life": 3.5 if hostile else 0.9
 			}
 		)
@@ -498,6 +518,7 @@ func _move_shots(delta: float) -> void:
 					var distance := at.distance_to(p)
 					if (
 						float(enemy["hp"]) > 0.0
+						and not shot["hit_ids"].has(enemy["combat_id"])
 						and distance < float(enemy["radius"]) + 0.3
 						and distance < best_distance
 					):
@@ -506,8 +527,11 @@ func _move_shots(delta: float) -> void:
 				if victim >= 0:
 					enemies[victim]["hp"] = float(enemies[victim]["hp"]) - float(shot["power"])
 					enemies[victim]["flash"] = 0.12
-					consumed = true
-					break
+					shot["hit_ids"].append(enemies[victim]["combat_id"])
+					shot["hits_left"] = int(shot["hits_left"]) - 1
+					if int(shot["hits_left"]) <= 0:
+						consumed = true
+						break
 		if consumed or float(shot["life"]) <= 0.0:
 			shots.remove_at(index)
 
@@ -526,6 +550,13 @@ func pulse() -> void:
 		if boat_at().distance_to(enemy["at"]) < pulse_radius + float(enemy["radius"]):
 			enemy["hp"] = float(enemy["hp"]) - pulse_damage
 			enemy["flash"] = 0.25
+	if resonant_pulse:
+		for index in range(shots.size() - 1, -1, -1):
+			if (
+				bool(shots[index]["hostile"])
+				and boat_at().distance_to(shots[index]["at"]) <= pulse_radius
+			):
+				shots.remove_at(index)
 	pulse_cooldown = 9.0
 	_pulse_flash = 0.5
 
@@ -534,6 +565,10 @@ func _offer_upgrade() -> void:
 	state = State.CHOOSING
 	choices.clear()
 	var available: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+	if can_evolve_harpoon():
+		available.append(10)
+	if can_evolve_pulse():
+		available.append(11)
 	if xp_rank >= XP_MAX_RANK:
 		available.erase(9)
 	if stern_rank >= 3:
@@ -579,6 +614,14 @@ func choose(index: int) -> void:
 			stern_rank = mini(3, stern_rank + 1)
 		9:
 			xp_rank = mini(XP_MAX_RANK, xp_rank + 1)
+		10:
+			if not can_evolve_harpoon():
+				return
+			piercing_harpoon = true
+		11:
+			if not can_evolve_pulse():
+				return
+			resonant_pulse = true
 	xp -= xp_needed
 	level += 1
 	xp_needed = 8 + (level - 1) * 5
@@ -649,7 +692,21 @@ func upgrade_preview(kind: int) -> String:
 				"Опыт: ×%.2f → ×%.2f"
 				% [xp_multiplier(), 1.0 + float(mini(XP_MAX_RANK, xp_rank + 1)) * 0.25]
 			)
+		10:
+			preview = "Целей одним носовым\nснарядом: 1 → 3\nУрон не снижается"
+		11:
+			preview = (
+				"Q: урон + перехват\nРадиус перехвата: %.0f м\nПерезарядка: 9 с" % pulse_radius
+			)
 	return preview
+
+
+func can_evolve_harpoon() -> bool:
+	return not piercing_harpoon and damage >= 46.0 and reload_scale <= 0.78
+
+
+func can_evolve_pulse() -> bool:
+	return not resonant_pulse and pulse_radius >= 23.0 and salvage.magnet_range >= 16.0
 
 
 func xp_multiplier() -> float:
@@ -739,7 +796,12 @@ func _process(_delta: float) -> void:
 				)
 			)
 			_shot_batch.set_instance_color(
-				index, Color("ff6f99") if bool(shot["hostile"]) else Color("a5ffe3")
+				index,
+				(
+					Color("ff6f99")
+					if bool(shot["hostile"])
+					else (Color("ffd589") if bool(shot["piercing"]) else Color("a5ffe3"))
+				)
 			)
 		_shot_batch.visible_instance_count = shots.size()
 	hud.queue_redraw()

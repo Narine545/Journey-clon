@@ -313,10 +313,12 @@ func _draw() -> void:
 	_text(
 		panel.position + Vector2(15, 24),
 		(
-			"НОС: %.0f   |   БОРТА: ×%d   |   [Q] ИМПУЛЬС: %s"
+			"НОС%s: %.0f | БОРТА ×%d | Q %s: %s"
 			% [
+				"[П]" if run.piercing_harpoon else "",
 				run.damage,
 				run.pellets,
+				"РЕЗОНАНС" if run.resonant_pulse else "ИМПУЛЬС",
 				"ГОТОВ" if run.pulse_cooldown <= 0 else "%.1f с" % run.pulse_cooldown
 			]
 		),
