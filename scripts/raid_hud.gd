@@ -55,7 +55,7 @@ func setup() -> void:
 	for index in range(3):
 		var card := Button.new()
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.custom_minimum_size = Vector2(0, 130)
+		card.custom_minimum_size = Vector2(0, 190)
 		card.add_theme_font_size_override("font_size", 15)
 		card.pressed.connect(run.choose.bind(index))
 		_cards.add_child(card)
@@ -105,7 +105,10 @@ func refresh() -> void:
 			_detail.text = "Бой и судно остановлены. Выберите улучшение сборки."
 			for index in range(run.choices.size()):
 				var data: Array = RaidRun.UPGRADES[run.choices[index]]
-				_card_buttons[index].text = "%s\n\n%s" % [data[0], _wrap(String(data[1]))]
+				_card_buttons[index].text = (
+					"%s\n\n%s\n\n%s"
+					% [data[0], _wrap(String(data[1])), run.upgrade_preview(run.choices[index])]
+				)
 		RaidRun.State.PAUSED:
 			_title.text = "РЕЙД ПРИОСТАНОВЛЕН"
 			_detail.text = "Курс и перезарядки сохранены. При выходе вернётся дорейдовая прочность."
@@ -126,9 +129,16 @@ func _summary() -> String:
 	return (
 		(
 			"Время %02d:%02d · уничтожено %d · уровень %d.\n"
-			+ "Прототип: опыт начисляется за уничтожение, без отдельной добычи."
+			+ "Собрано опыта: %d · оставлено на воде: %d."
 		)
-		% [floori(run.elapsed / 60.0), int(run.elapsed) % 60, run.kills, run.level]
+		% [
+			floori(run.elapsed / 60.0),
+			int(run.elapsed) % 60,
+			run.kills,
+			run.level,
+			run.salvage.collected,
+			run.salvage.remaining()
+		]
 	)
 
 
@@ -191,10 +201,14 @@ func _draw() -> void:
 				3 if int(enemy["kind"]) < 3 else 5,
 				RaidRun.COLORS[int(enemy["kind"])]
 			)
+	for entry in run.salvage.drops:
+		var relative: Vector2 = (entry["at"] - run.boat_at()) * (66.0 / 55.0)
+		if relative.length() < 64:
+			draw_circle(center + relative, 1.5, accent)
 	draw_line(center, center + run.forward() * 12, accent, 2.0, true)
 	draw_circle(center, 3, accent)
 	_text(center + Vector2(-53, 86), "РАДАР · 55 М", 12)
-	var panel := Rect2(Vector2(size.x * 0.5 - 295, size.y - 84), Vector2(590, 63))
+	var panel := Rect2(Vector2(size.x * 0.5 - 295, size.y - 108), Vector2(590, 88))
 	draw_rect(panel, Color(0.025, 0.06, 0.08, 0.9))
 	_text(
 		panel.position + Vector2(15, 24),
@@ -211,8 +225,11 @@ func _draw() -> void:
 	)
 	_text(
 		panel.position + Vector2(15, 48),
-		"WASD — курс · орудия автоматические · M/F/F2 — пауза и осмотр",
+		"Зелёные трофеи — опыт · подойдите корпусом или плашкоутом",
 		12
+	)
+	_text(
+		panel.position + Vector2(15, 72), "WASD — курс · M/F/F2 — осмотр с паузой · Esc — пауза", 12
 	)
 	if main.shoals != null and main.shoals.warning:
 		_text(

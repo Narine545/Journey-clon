@@ -971,8 +971,12 @@ func _check_raid() -> void:
 	run._move_shots(0.5)
 	_check(float(run.enemies[0]["hp"]) < 0.0 and run.shots.is_empty(),
 		"быстрый снаряд попадает между концами шага и расходуется один раз")
+	run._physics_process(0.001)
+	_check(run.kills == 1 and run.xp == 0 and run.salvage.remaining() == 2,
+		"боевой цикл создаёт трофей на месте гибели, но не выдаёт опыт дистанционно")
 	run.enemies.clear()
 	run.grid.clear()
+	_check_raid_salvage()
 	run._hurt_timer = 0.0
 	run._hurt(200.0)
 	run._physics_process(0.01)
@@ -987,3 +991,40 @@ func _check_raid() -> void:
 	main.boat.speed = saved_speed
 	main.sonar_timer = saved_sonar
 	main.overdrive_timer = saved_overdrive
+
+
+func _check_raid_salvage() -> void:
+	var run := main.raid
+	var loot := run.salvage
+	loot.reset()
+	var xp_before := run.xp
+	loot.drop(run.boat_at() + run.forward() * 25.0, 4)
+	_check(run.xp == xp_before and loot.remaining() == 4,
+		"уничтожение оставляет опыт в мире, без дистанционного начисления")
+	run.toggle_pause()
+	var loot_at: Vector2 = loot.drops[0]["at"]
+	run._physics_process(0.5)
+	_check(loot.drops[0]["at"] == loot_at and loot.collected == 0,
+		"боевой опыт не двигается и не собирается на паузе")
+	run.toggle_pause()
+	loot.drop(run.boat_at(), 2)
+	run._physics_process(0.02)
+	_check(run.xp == xp_before + 2 and loot.collected == 2 and loot.remaining() == 4,
+		"корпус собирает только ближайший опыт через боевой тик")
+	var had_trailer := main.boat.has_trailer
+	var trailer_pose := main.boat._trailer.global_transform
+	main.boat.set_trailer_enabled(true)
+	main.boat._trailer.global_position = main.boat.global_position + Vector3(0, 0, 50)
+	loot.drop(Vector2(main.boat._trailer.global_position.x, main.boat._trailer.global_position.z), 3)
+	_check(loot.step(0.0) == 3 and loot.collected == 5,
+		"плашкоут подбирает боевые трофеи своим корпусом")
+	main.boat.set_trailer_enabled(had_trailer)
+	main.boat._trailer.global_transform = trailer_pose
+	main.boat._trailer.reset_physics_interpolation()
+	loot.reset()
+	for index in range(RaidSalvage.CAPACITY + 20):
+		loot.drop(Vector2(float(index) * 3.0, 0), 2)
+	_check(loot.drops.size() == RaidSalvage.CAPACITY
+		and loot.remaining() == (RaidSalvage.CAPACITY + 20) * 2,
+		"лимит трофеев объединяет остаток без потери массы опыта")
+	loot.reset()

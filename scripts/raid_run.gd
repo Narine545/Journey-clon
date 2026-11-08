@@ -9,11 +9,13 @@ const CELL := 8.0
 const COLORS := [Color("d5806d"), Color("ffcb76"), Color("bb97e9"), Color("f05c75")]
 const UPGRADES := [
 	["Усиленные снаряды", "+8 базового урона орудий"],
-	["Скоростные затворы", "−12% перезарядки обоих орудий"],
+	["Скоростные затворы", "До −12% перезарядки орудий"],
 	["Бортовая картечь", "+1 снаряд в каждом бортовом залпе"],
 	["Резонатор", "+5 м радиуса и +15 урона импульса"],
 	["Ремонтная команда", "Восстановить 30% прочности корпуса"],
+	["Сборщики трофеев", "+3 м притяжения боевого опыта"],
 ]
+var salvage: RaidSalvage
 var hud: RaidHud
 var main: BoatMain
 var state := State.IDLE
@@ -51,6 +53,9 @@ func setup(scene: BoatMain) -> void:
 	rng.randomize()
 	_enemy_batch = _batch(ENEMY_CAP, false)
 	_shot_batch = _batch(SHOT_CAP, true)
+	salvage = RaidSalvage.new()
+	add_child(salvage)
+	salvage.setup(self)
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	add_child(layer)
@@ -104,6 +109,7 @@ func start() -> void:
 	grid.clear()
 	_water_cells.clear()
 	choices.clear()
+	salvage.reset()
 	hud.refresh()
 
 
@@ -126,6 +132,7 @@ func leave() -> void:
 	choices.clear()
 	_enemy_batch.visible_instance_count = 0
 	_shot_batch.visible_instance_count = 0
+	salvage.reset()
 	hud.refresh()
 
 
@@ -250,12 +257,14 @@ func _physics_process(delta: float) -> void:
 	for index in range(enemies.size() - 1, -1, -1):
 		if float(enemies[index]["hp"]) <= 0.0:
 			var kind: int = enemies[index]["kind"]
+			if kind != 3:
+				salvage.drop(enemies[index]["at"], 4 if kind == 2 else 2)
 			enemies.remove_at(index)
 			kills += 1
-			xp += 4 if kind == 2 else 2
 			if kind == 3:
 				_finish(State.WON)
 				return
+	xp += salvage.step(delta)
 	if main.boat.hull_hp <= 0.0:
 		_finish(State.LOST)
 	elif elapsed >= DURATION:
@@ -476,7 +485,9 @@ func pulse() -> void:
 func _offer_upgrade() -> void:
 	state = State.CHOOSING
 	choices.clear()
-	var available: Array[int] = [0, 1, 2, 3, 4]
+	var available: Array[int] = [0, 1, 2, 3, 4, 5]
+	if main.boat.hull_hp >= 100.0:
+		available.erase(4)
 	if pellets >= 5:
 		available.erase(2)
 	if reload_scale <= 0.38:
@@ -502,6 +513,8 @@ func choose(index: int) -> void:
 			pulse_damage += 15.0
 		4:
 			main.boat.hull_hp = minf(100.0, main.boat.hull_hp + 30.0)
+		5:
+			salvage.magnet_range += 3.0
 	xp -= xp_needed
 	level += 1
 	xp_needed = 8 + (level - 1) * 5
@@ -510,6 +523,36 @@ func choose(index: int) -> void:
 	if xp >= xp_needed:
 		_offer_upgrade()
 	hud.refresh()
+
+
+func upgrade_preview(kind: int) -> String:
+	var preview := ""
+	match kind:
+		0:
+			preview = (
+				"Нос: %.0f → %.0f\nБорт: %.1f → %.1f"
+				% [damage, damage + 8.0, damage * 0.7, (damage + 8.0) * 0.7]
+			)
+		1:
+			var next_scale := maxf(0.35, reload_scale * 0.88)
+			preview = (
+				"Нос: %.2f → %.2f с\nБорта: %.2f → %.2f с"
+				% [0.65 * reload_scale, 0.65 * next_scale, 1.25 * reload_scale, 1.25 * next_scale]
+			)
+		2:
+			preview = "Залп с борта: %d → %d" % [pellets, pellets + 1]
+		3:
+			preview = (
+				"Радиус: %.0f → %.0f м\nУрон: %.0f → %.0f"
+				% [pulse_radius, pulse_radius + 5.0, pulse_damage, pulse_damage + 15.0]
+			)
+		4:
+			preview = (
+				"Корпус: %.0f → %.0f%%" % [main.boat.hull_hp, minf(100.0, main.boat.hull_hp + 30.0)]
+			)
+		5:
+			preview = "Радиус: %.0f → %.0f м" % [salvage.magnet_range, salvage.magnet_range + 3.0]
+	return preview
 
 
 func toggle_pause() -> void:
@@ -548,6 +591,7 @@ func _process(_delta: float) -> void:
 			if modal() or main.inspection_active()
 			else Engine.get_physics_interpolation_fraction()
 		)
+		salvage.render(blend, elapsed)
 		for index in range(enemies.size()):
 			var enemy := enemies[index]
 			var at: Vector2 = enemy["previous"].lerp(enemy["at"], blend)
