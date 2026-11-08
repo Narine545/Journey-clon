@@ -961,6 +961,7 @@ func _check_raid() -> void:
 	run.choose(1)
 	_check(run.state == RaidRun.State.RUNNING and run.level == 2 and run.xp == 0
 		and is_equal_approx(run.reload_scale, 0.88), "карточка применяет эффект и списывает опыт")
+	_check_raid_mobility()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -984,7 +985,8 @@ func _check_raid() -> void:
 		"боевой урон достигает нуля и завершает рейд")
 	run.leave()
 	_check(run.state == RaidRun.State.IDLE and run.enemies.is_empty() and run.shots.is_empty()
-		and is_equal_approx(main.boat.hull_hp, saved_hp) and main.debug_panel_visible == saved_debug,
+		and is_equal_approx(main.boat.hull_hp, saved_hp) and main.debug_panel_visible == saved_debug
+		and is_equal_approx(main.boat.raid_speed_factor(), 1.0) and is_equal_approx(main.boat.raid_turn_factor(), 1.0),
 		"выход очищает бой и возвращает дорейдовую прочность и интерфейс")
 	_check(main.raw == saved_raw and main.refined == saved_refined,
 		"карточки и боевой импульс не расходуют экспедиционные пигменты")
@@ -1028,3 +1030,39 @@ func _check_raid_salvage() -> void:
 		and loot.remaining() == (RaidSalvage.CAPACITY + 20) * 2,
 		"лимит трофеев объединяет остаток без потери массы опыта")
 	loot.reset()
+
+
+func _check_raid_mobility() -> void:
+	var run := main.raid
+	var old_level := run.level
+	var old_xp := run.xp
+	var old_needed := run.xp_needed
+	var baseline_speed := main.boat.effective_max_speed()
+	var baseline_turn := main.boat.steering_yaw_delta(1.0, 5.0, 0.1)
+	run.xp = run.xp_needed
+	run.choices = [6, 7, 0]
+	run.state = RaidRun.State.CHOOSING
+	run.choose(0)
+	_check(is_equal_approx(main.boat.effective_max_speed(), baseline_speed * 1.12),
+		"карточка двигателя реально повышает максимальный ход")
+	run.xp = run.xp_needed
+	run.choices = [6, 7, 0]
+	run.state = RaidRun.State.CHOOSING
+	run.choose(1)
+	_check(is_equal_approx(main.boat.steering_yaw_delta(1.0, 5.0, 0.1), baseline_turn * 1.15)
+		and is_zero_approx(main.boat.steering_yaw_delta(1.0, 0.0, 0.1))
+		and main.boat.steering_yaw_delta(1.0, -5.0, 0.1) > 0.0,
+		"карточка руля ускоряет поворот, сохраняя нулевой ход и инверсию заднего хода")
+	run.speed_rank = RaidRun.MOBILITY_MAX_RANK
+	run.turn_rank = RaidRun.MOBILITY_MAX_RANK
+	run._offer_upgrade()
+	_check(not run.choices.has(6) and not run.choices.has(7),
+		"максимальные двигатель и руль исключены из предложений")
+	run.speed_rank = 0
+	run.turn_rank = 0
+	run.level = old_level
+	run.xp = old_xp
+	run.xp_needed = old_needed
+	run.choices.clear()
+	run.state = RaidRun.State.RUNNING
+	run.hud.refresh()

@@ -6,6 +6,9 @@ const ENEMY_CAP := 80
 const SHOT_CAP := 160
 const DURATION := 300.0
 const CELL := 8.0
+const MOBILITY_MAX_RANK := 3
+const SPEED_PER_RANK := 0.12
+const TURN_PER_RANK := 0.15
 const COLORS := [Color("d5806d"), Color("ffcb76"), Color("bb97e9"), Color("f05c75")]
 const UPGRADES := [
 	["Усиленные снаряды", "+8 базового урона орудий"],
@@ -14,6 +17,8 @@ const UPGRADES := [
 	["Резонатор", "+5 м радиуса и +15 урона импульса"],
 	["Ремонтная команда", "Восстановить 30% прочности корпуса"],
 	["Сборщики трофеев", "+3 м притяжения боевого опыта"],
+	["Форсированный двигатель", "+12% базового хода, разгона и торможения"],
+	["Усиленный руль", "+15% базовой скорости поворота на ходу"],
 ]
 var salvage: RaidSalvage
 var hud: RaidHud
@@ -27,6 +32,8 @@ var xp_needed := 8
 var damage := 22.0
 var reload_scale := 1.0
 var pellets := 1
+var speed_rank := 0
+var turn_rank := 0
 var pulse_radius := 13.0
 var pulse_damage := 35.0
 var pulse_cooldown := 0.0
@@ -95,6 +102,8 @@ func start() -> void:
 	damage = 22.0
 	reload_scale = 1.0
 	pellets = 1
+	speed_rank = 0
+	turn_rank = 0
 	pulse_radius = 13.0
 	pulse_damage = 35.0
 	pulse_cooldown = 0.0
@@ -122,6 +131,8 @@ func leave() -> void:
 	if not engaged():
 		return
 	state = State.IDLE
+	speed_rank = 0
+	turn_rank = 0
 	main.boat.hull_hp = _saved_hp
 	main.boat.speed = 0.0
 	main.debug_panel_visible = _saved_debug
@@ -485,7 +496,11 @@ func pulse() -> void:
 func _offer_upgrade() -> void:
 	state = State.CHOOSING
 	choices.clear()
-	var available: Array[int] = [0, 1, 2, 3, 4, 5]
+	var available: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7]
+	if speed_rank >= MOBILITY_MAX_RANK:
+		available.erase(6)
+	if turn_rank >= MOBILITY_MAX_RANK:
+		available.erase(7)
 	if main.boat.hull_hp >= 100.0:
 		available.erase(4)
 	if pellets >= 5:
@@ -515,6 +530,10 @@ func choose(index: int) -> void:
 			main.boat.hull_hp = minf(100.0, main.boat.hull_hp + 30.0)
 		5:
 			salvage.magnet_range += 3.0
+		6:
+			speed_rank = mini(MOBILITY_MAX_RANK, speed_rank + 1)
+		7:
+			turn_rank = mini(MOBILITY_MAX_RANK, turn_rank + 1)
 	xp -= xp_needed
 	level += 1
 	xp_needed = 8 + (level - 1) * 5
@@ -552,7 +571,31 @@ func upgrade_preview(kind: int) -> String:
 			)
 		5:
 			preview = "Радиус: %.0f → %.0f м" % [salvage.magnet_range, salvage.magnet_range + 3.0]
+		6:
+			preview = (
+				"Ход: ×%.2f → ×%.2f\nРазгон / тормоз: так же"
+				% [
+					speed_multiplier(),
+					1.0 + float(mini(MOBILITY_MAX_RANK, speed_rank + 1)) * SPEED_PER_RANK
+				]
+			)
+		7:
+			preview = (
+				"Поворот: ×%.2f → ×%.2f"
+				% [
+					turn_multiplier(),
+					1.0 + float(mini(MOBILITY_MAX_RANK, turn_rank + 1)) * TURN_PER_RANK
+				]
+			)
 	return preview
+
+
+func speed_multiplier() -> float:
+	return 1.0 + float(speed_rank) * SPEED_PER_RANK
+
+
+func turn_multiplier() -> float:
+	return 1.0 + float(turn_rank) * TURN_PER_RANK
 
 
 func toggle_pause() -> void:

@@ -102,14 +102,26 @@ func setup(boat_main: BoatMain, water_ref: WaterSurface, coast_ref: Coast) -> vo
 
 
 func steering_yaw_delta(steer: float, current_speed: float, delta: float) -> float:
-	return -steer * TURN_RATE * delta * clampf(absf(current_speed) / 3.5, 0.0, 1.0) * (1.0 if current_speed >= 0.0 else -1.0)
+	return -steer * TURN_RATE * raid_turn_factor() * delta * clampf(absf(current_speed) / 3.5, 0.0, 1.0) * (1.0 if current_speed >= 0.0 else -1.0)
 
 
 func effective_max_speed() -> float:
 	var base := MAX_SPEED + (2.0 if has_trailer else 0.0)
 	var hp_factor := lerpf(0.60, 1.0, clampf(hull_hp / 100.0, 0.0, 1.0))
 	var boost := 1.35 if (main != null and main.overdrive_timer > 0.0) else 1.0
-	return base * hp_factor * boost
+	return base * hp_factor * boost * raid_speed_factor()
+
+
+func raid_speed_factor() -> float:
+	if main != null and main.raid != null and main.raid.engaged():
+		return main.raid.speed_multiplier()
+	return 1.0
+
+
+func raid_turn_factor() -> float:
+	if main != null and main.raid != null and main.raid.engaged():
+		return main.raid.turn_multiplier()
+	return 1.0
 
 
 func effective_pump_range() -> float:
@@ -206,9 +218,9 @@ func _physics_process(delta: float) -> void:
 	_steer_visual = lerpf(_steer_visual, steer, minf(1.0, delta * 5.5))
 
 	var max_spd := effective_max_speed()
-	var target_speed := throttle * (max_spd if throttle >= 0.0 else REVERSE_SPEED)
+	var target_speed := throttle * (max_spd if throttle >= 0.0 else REVERSE_SPEED * raid_speed_factor())
 	var prev_speed := speed
-	speed = move_toward(speed, target_speed, (ACCELERATION if absf(throttle) > 0.01 else DRAG) * delta)
+	speed = move_toward(speed, target_speed, (ACCELERATION if absf(throttle) > 0.01 else DRAG) * raid_speed_factor() * delta)
 	var accel_rate := (speed - prev_speed) / maxf(delta, 0.001)
 
 	# При текущем ракурсе положительный yaw ведёт нос ВЛЕВО на экране.

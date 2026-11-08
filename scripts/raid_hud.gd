@@ -170,11 +170,16 @@ func _draw() -> void:
 	var main := run.main
 	var accent := Color("78dfcb")
 	_bar(Rect2(0, 0, size.x, 6), float(run.xp) / run.xp_needed, accent)
-	draw_rect(Rect2(20, 22, 275, 77), Color(0.025, 0.06, 0.08, 0.9))
+	draw_rect(Rect2(20, 22, 275, 98), Color(0.025, 0.06, 0.08, 0.9))
 	_text(Vector2(34, 46), "КОРПУС %d%% · УРОВЕНЬ %d" % [int(ceil(main.boat.hull_hp)), run.level])
 	_bar(Rect2(34, 58, 245, 6), main.boat.hull_hp / 100.0, Color("ed846d"))
 	_text(
 		Vector2(34, 86), "ОПЫТ %d/%d · ЦЕЛЕЙ %d" % [run.xp, run.xp_needed, run.enemies.size()], 13
+	)
+	_text(
+		Vector2(34, 111),
+		"ХОД ×%.2f · РУЛЬ ×%.2f" % [run.speed_multiplier(), run.turn_multiplier()],
+		12
 	)
 	_text(
 		Vector2(size.x * 0.5 - 48, 45),
