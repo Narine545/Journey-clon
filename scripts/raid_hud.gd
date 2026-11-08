@@ -22,6 +22,7 @@ var _bar_index := 0
 var _title_material: ShaderMaterial
 var _god_toggle: CheckButton
 var _clear_toggle: CheckButton
+var _damage_preview: Button
 var _fx_toggle: CheckButton
 var _leave: Button
 
@@ -58,6 +59,11 @@ func setup() -> void:
 	)
 	_clear_toggle.toggled.connect(_set_clear_screen)
 	add_child(_clear_toggle)
+	_damage_preview = Button.new()
+	_damage_preview.text = "ТЕСТ ГЛИТЧА УРОНА"
+	_damage_preview.tooltip_text = "Короткий тест изображения без потери HP. Нужны включённые ЭФФЕКТЫ."
+	_damage_preview.pressed.connect(run.damage_fx.preview)
+	add_child(_damage_preview)
 	_launch = Button.new()
 	_launch.text = "НАЧАТЬ РЕЙД · ПРОТОТИП"
 	_launch.pressed.connect(run.start)
@@ -169,6 +175,8 @@ func _layout() -> void:
 	_god_toggle.size = Vector2(224, 30)
 	_clear_toggle.position = Vector2(size.x - 248, 458)
 	_clear_toggle.size = Vector2(224, 30)
+	_damage_preview.position = Vector2(size.x - 248, 498)
+	_damage_preview.size = Vector2(224, 32)
 	var is_result := run.state in [RaidRun.State.WON, RaidRun.State.LOST]
 	var width := minf(1280.0 if is_result else 1120.0, size.x - 32.0)
 	_results.columns = 2 if width >= 1000.0 else 1
@@ -193,6 +201,10 @@ func refresh() -> void:
 		return
 	_launch.visible = not run.engaged()
 	_fx_toggle.visible = run.engaged()
+	_damage_preview.visible = run.engaged()
+	_damage_preview.disabled = run.state != RaidRun.State.RUNNING or not run.effects_enabled
+	if run.modal():
+		run.damage_fx.reset()
 	_god_toggle.visible = run.engaged()
 	_clear_toggle.visible = run.engaged()
 	_god_toggle.disabled = run.state in [RaidRun.State.WON, RaidRun.State.LOST]
@@ -402,6 +414,9 @@ func _set_clear_screen(enabled: bool) -> void:
 
 func _set_effects(enabled: bool) -> void:
 	run.effects_enabled = enabled
+	_damage_preview.disabled = run.state != RaidRun.State.RUNNING or not enabled
+	if not enabled:
+		run.damage_fx.reset()
 	if enabled:
 		run.weapon_fx.preview()
 	_title.material = _title_material if enabled else null
@@ -565,8 +580,6 @@ func _draw() -> void:
 		_text(debug_at + Vector2(12, 74), "[7] время · [8/9] ночной объём", 13)
 		_text(debug_at + Vector2(12, 99), "[H] прожектор · это тестовые команды", 13)
 	_draw_telegraphs()
-	if run._hurt_timer > 0.45:
-		draw_rect(Rect2(3, 3, size.x - 6, size.y - 6), Color(1, 0.3, 0.25, 0.6), false, 5)
 	if run.modal():
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.005, 0.015, 0.025, 0.65))
 

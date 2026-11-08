@@ -977,6 +977,7 @@ func _check_raid() -> void:
 	_check_raid_result_layout()
 	_check_raid_contacts_and_buoyancy()
 	_check_raid_motion()
+	_check_raid_damage_fx()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1726,3 +1727,37 @@ func _check_raid_motion() -> void:
 	RaidMotion.kick(dasher, Vector2(-1, 0), 5.0, 10.0)
 	_check(RaidMotion.step(dasher, Vector2.ZERO, 0.1).is_zero_approx(),
 		"предупреждение атаки остаётся неподвижным и не копит запоздалый толчок")
+
+
+func _check_raid_damage_fx() -> void:
+	var run := main.raid
+	var fx := run.damage_fx
+	var saved_effects := run.effects_enabled
+	var saved_hp := main.boat.hull_hp
+	var saved_xp := run.xp
+	var saved_received := run.stats.received
+	run.effects_enabled = true
+	fx.reset()
+	fx.hit(0.0)
+	_check(not fx._rect.visible, "нулевой урон не запускает глитч")
+	fx.preview()
+	_check(fx._rect.visible and fx._copy.visible and fx.layer < 20
+		and fx._rect.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and fx._rect.size.is_equal_approx(get_viewport().get_visible_rect().size),
+		"тестовый глитч покрывает окно под HUD и не перехватывает мышь")
+	_check(is_equal_approx(main.boat.hull_hp, saved_hp) and run.xp == saved_xp
+		and is_equal_approx(run.stats.received, saved_received), "демонстрация не наносит урон и не меняет статистику")
+	fx._process(RaidDamageFx.LIFE + 0.01)
+	_check(not fx._rect.visible and not fx._copy.visible, "глитч и копирование экрана выключаются по окончании")
+	run.effects_enabled = false
+	fx.hit(12.0)
+	_check(not fx._rect.visible, "переключатель эффектов блокирует глитч")
+	run.effects_enabled = true
+	fx.preview()
+	run.toggle_pause()
+	fx._process(0.01)
+	_check(not fx._rect.visible, "пауза убирает глитч вместо замораживания поверх меню")
+	run.toggle_pause()
+	run.effects_enabled = saved_effects
+	fx.reset()
+	run.hud.refresh()

@@ -32,6 +32,7 @@ var stats := RaidStats.new()
 var effects_enabled := true
 var debug_invulnerable := false
 var debug_clear_screen := false
+var damage_fx: RaidDamageFx
 var weapon_fx: RaidWeaponFx
 var stern_charges: RaidSternCharges
 var salvage: RaidSalvage
@@ -94,6 +95,9 @@ func setup(scene: BoatMain) -> void:
 	stern_charges = RaidSternCharges.new()
 	add_child(stern_charges)
 	stern_charges.setup(self)
+	damage_fx = RaidDamageFx.new()
+	add_child(damage_fx)
+	damage_fx.setup(self)
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	add_child(layer)
@@ -165,6 +169,7 @@ func start() -> void:
 	choices.clear()
 	salvage.reset()
 	weapon_fx.reset()
+	damage_fx.reset()
 	stern_charges.reset()
 	hud.refresh()
 
@@ -206,6 +211,7 @@ func leave() -> void:
 	_shot_batch.visible_instance_count = 0
 	salvage.reset()
 	weapon_fx.reset()
+	damage_fx.reset()
 	stern_charges.reset()
 	hud.refresh()
 

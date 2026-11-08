@@ -201,6 +201,7 @@ func apply_hull_damage(amount: float, cause: int = RaidStats.Cause.OTHER) -> voi
 	hull_hp = maxf(minimum, hull_hp - maxf(0.0, amount))
 	if main != null and main.raid != null and main.raid.engaged():
 		main.raid.stats.record_received(cause, maxf(0.0, hp_before - hull_hp), main.raid.elapsed)
+		main.raid.damage_fx.hit(maxf(0.0, hp_before - hull_hp))
 
 
 func _physics_process(delta: float) -> void:
