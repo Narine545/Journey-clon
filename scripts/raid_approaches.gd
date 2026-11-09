@@ -57,6 +57,10 @@ func _plan(run: RaidRun) -> void:
 		var at := center + direction * (extent + 22.0)
 		if mode != 2:
 			at += axis.orthogonal() * (float(index) - 2.0) * 5.5
+		if mode == 0:
+			# Loose approach: scatter in depth as well as sideways, outside the frame margin.
+			at += axis * run.rng.randf_range(0.0, 12.0)
+			at += axis.orthogonal() * run.rng.randf_range(-1.0, 1.0)
 		slots.append(
 			{
 				"at": at,
@@ -65,3 +69,10 @@ func _plan(run: RaidRun) -> void:
 				"mode": mode
 			}
 		)
+	if mode == 0:
+		# Use the raid RNG, not Array.shuffle's global RNG; no left-to-right conveyor.
+		for index in range(slots.size() - 1, 0, -1):
+			var other := run.rng.randi_range(0, index)
+			var saved := slots[index]
+			slots[index] = slots[other]
+			slots[other] = saved

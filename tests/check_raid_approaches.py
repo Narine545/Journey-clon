@@ -33,3 +33,10 @@ assert 5.5 > 2*1.1+.1
 assert 'RaidWaves.interval(elapsed)' in r and 'const ENEMY_CAP := 80' in r
 assert '_spawn(' not in s
 print('PASS anchored groups, offscreen guard, open arc, finite crossing and boss retries')
+# Ordinary approaches have bounded two-axis scatter and shuffled arrival order.
+assert 'at += axis * run.rng.randf_range(0.0, 12.0)' in s
+assert 'at += axis.orthogonal() * run.rng.randf_range(-1.0, 1.0)' in s
+assert 'run.rng.randi_range(0, index)' in s
+assert 'slots[other] = saved' in s
+# Lateral jitter still leaves normal bodies separated; depth only moves farther offshore.
+assert 5.5 - 2.0 > 2 * 1.1 + .1
