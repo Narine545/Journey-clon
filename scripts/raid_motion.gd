@@ -48,7 +48,7 @@ static func step(enemy: Dictionary, target: Vector2, delta: float) -> Vector2:
 		enemy["motion_velocity"] = Vector2.ZERO
 		enemy["push_velocity"] = Vector2.ZERO
 		enemy["motion_dash"] = false
-		return Vector2.ZERO
+		target = Vector2.ZERO
 	var previous: Vector2 = enemy.get("motion_velocity", Vector2.ZERO)
 	var dash := int(enemy["kind"]) == 1 and target.length_squared() > 100.0
 	var response := 3.0 if int(enemy["kind"]) == 3 else 6.0
@@ -64,14 +64,21 @@ static func step(enemy: Dictionary, target: Vector2, delta: float) -> Vector2:
 	var push: Vector2 = Vector2.ZERO if dash else enemy.get("push_velocity", Vector2.ZERO)
 	var damping := exp(-PUSH_DRAG * delta)
 	enemy["push_velocity"] = push * damping
-	return displacement + push * ((1.0 - damping) / PUSH_DRAG)
+	var field_push: Vector2 = enemy.get("sphere_velocity", Vector2.ZERO)
+	var field_decay := exp(-2.2 * delta)
+	enemy["sphere_velocity"] = field_push * field_decay
+	return (
+		displacement
+		+ push * ((1.0 - damping) / PUSH_DRAG)
+		+ field_push * ((1.0 - field_decay) / 2.2)
+	)
 
 
 static func feedback(enemy: Dictionary, blocked_motion: Vector2) -> void:
 	if blocked_motion.length_squared() <= 0.000001:
 		return
 	var normal := blocked_motion.normalized()
-	for key in ["motion_velocity", "push_velocity"]:
+	for key in ["motion_velocity", "push_velocity", "sphere_velocity"]:
 		var velocity: Vector2 = enemy.get(key, Vector2.ZERO)
 		# Remove the blocked component, never reflect or increase kinetic energy.
 		enemy[key] = velocity - normal * maxf(0.0, velocity.dot(normal))
@@ -124,7 +131,11 @@ static func move_enemies(run: RaidRun, delta: float) -> void:
 		var displacement := RaidContacts.slide_motion(run, enemy, requested)
 		var clear := Callable(run, "navigable")
 		var moved := RaidContacts.safe_move(at, at + displacement, float(enemy["radius"]), clear)
-		if moved.is_equal_approx(at) and displacement.length_squared() > 0.000001:
+		if (
+			moved.is_equal_approx(at)
+			and displacement.length_squared() > 0.000001
+			and Vector2(enemy.get("sphere_velocity", Vector2.ZERO)).length_squared() < 0.01
+		):
 			for turn in [-PI * 0.5, PI * 0.5]:
 				var slide := RaidContacts.slide_motion(run, enemy, requested.rotated(turn))
 				var candidate := RaidContacts.safe_move(
@@ -136,3 +147,23 @@ static func move_enemies(run: RaidRun, delta: float) -> void:
 		enemy["at"] = moved
 
 		feedback(enemy, requested - (Vector2(enemy["at"]) - at))
+
+
+static func sphere_contact(enemy: Dictionary, normal: Vector2, surface_speed: float) -> void:
+	# Frictionless finite-mass impact: only the normal component changes.
+	# Kept separate from authored dash/push, so dash recovery cannot erase the impulse.
+	if float(enemy["hp"]) <= 0.0 or float(enemy.get("born", 0.0)) > 0.0:
+		return
+	var external: Vector2 = enemy.get("sphere_velocity", Vector2.ZERO)
+	var velocity: Vector2 = (
+		Vector2(enemy.get("motion_velocity", Vector2.ZERO))
+		+ Vector2(enemy.get("push_velocity", Vector2.ZERO))
+		+ external
+	)
+	var closing := surface_speed - velocity.dot(normal)
+	if closing <= 0.0:
+		return
+	var inv_mass := inverse_mass(enemy)
+	# Field's effective mass is four light enemies. No per-frame pressure stacking.
+	var impulse := minf(24.0, 1.1 * closing / (inv_mass + 0.25))
+	enemy["sphere_velocity"] = external + normal * impulse * inv_mass

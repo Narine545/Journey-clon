@@ -49,7 +49,7 @@ func setup() -> void:
 	add_child(_fx_toggle)
 	_sphere_toggle = CheckButton.new()
 	_sphere_toggle.text = "ТЕСТ: СФЕРИЧЕСКИЕ МИНЫ"
-	_sphere_toggle.tooltip_text = "Автовыпуск за кормой. Волны при раскрытии и схлопывании. Без урона/щита."
+	_sphere_toggle.tooltip_text = "Автовыпуск за кормой. Толчок при раскрытии, волны при схлопывании. Без урона/щита."
 	_sphere_toggle.toggled.connect(run.sphere_mines.set_enabled)
 	add_child(_sphere_toggle)
 	_god_toggle = CheckButton.new()

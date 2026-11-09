@@ -1,6 +1,6 @@
 class_name SphereMines
 extends Node3D
-## Debug-only visual ordnance. No damage, shielding, RNG or progression changes.
+## Debug-only contact ordnance. No damage, shielding, RNG or progression changes.
 const CAPACITY := 4
 const INTERVAL := 3.5
 const FUSE := 0.85
@@ -37,9 +37,11 @@ func step(delta: float) -> void:
 		_drop()
 	for index in range(mines.size() - 1, -1, -1):
 		var mine := mines[index]
-		var age := float(mine["age"]) + delta
+		var previous_age := float(mine["age"])
+		var age := previous_age + delta
 		mine["age"] = age
 		var at: Vector2 = mine["at"]
+		_expansion_contacts(mine, previous_age, age)
 		if age >= FUSE and not bool(mine["opened"]):
 			mine["opened"] = true
 			run.main.water.field.splash(at, 2.0)
@@ -87,4 +89,40 @@ func _drop() -> void:
 	node.scale = Vector3.ONE * 0.35
 	node.position = Vector3(at.x, Coast.SEA_LEVEL + 0.2, at.y)
 	add_child(node)
-	mines.append({"at": at, "age": 0.0, "opened": false, "node": node})
+	mines.append({"at": at, "age": 0.0, "opened": false, "node": node, "touched": {}})
+
+
+func _expansion_contacts(mine: Dictionary, before: float, after: float) -> void:
+	if after <= FUSE or before >= FUSE + 0.3:
+		return
+	var radius_before := 4.5 * clampf((before - FUSE) / 0.3, 0.0, 1.0)
+	var radius_after := 4.5 * clampf((after - FUSE) / 0.3, 0.0, 1.0)
+	var center: Vector2 = mine["at"]
+	var touched: Dictionary = mine["touched"]
+	for enemy in run.enemies:
+		var identity := int(enemy["combat_id"])
+		if touched.has(identity) or float(enemy["hp"]) <= 0.0:
+			continue
+		if float(enemy.get("born", 0.0)) > 0.0:
+			continue
+		var position: Vector2 = enemy["at"]
+		var previous: Vector2 = enemy.get("previous", position)
+		var body_radius := float(enemy["radius"])
+		var old_gap := previous.distance_to(center) - body_radius - radius_before
+		var new_gap := position.distance_to(center) - body_radius - radius_after
+		# Linear swept gap catches a fast crossing between fixed steps.
+		if new_gap > 0.0 or (old_gap < 0.0 and before > FUSE):
+			continue
+		var fraction := clampf(old_gap / maxf(old_gap - new_gap, 0.0001), 0.0, 1.0)
+		var contact := previous.lerp(position, fraction)
+		if not run.stern_charges._line_clear(center, contact):
+			continue
+		var offset := contact - center
+		var normal := (
+			offset.normalized()
+			if offset.length_squared() > 0.000001
+			else Vector2.from_angle(float(identity) * 2.399963)
+		)
+		touched[identity] = true
+		# Visual growth is 15 m/s; limit coupled water/body impulse to 6 m/s.
+		RaidMotion.sphere_contact(enemy, normal, 6.0)

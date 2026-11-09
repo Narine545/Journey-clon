@@ -13,7 +13,7 @@ assert 'age >= FUSE and not bool(mine["opened"])' in s
 assert 'age >= FUSE + FIELD_TIME' in s
 assert 'run.navigable(at, 1.0)' in s and 'run._hull_distance(at)' in s
 assert 'run.stats.debug_used = true' in s
-assert '"hp"' not in s and 'damage' not in s.split('const CAPACITY')[1]
+assert 'enemy["hp"] =' not in s and 'record_damage' not in s
 assert 'sphere_mines.step(delta)' in r and r.count('sphere_mines.reset()') == 2
 assert 'toggled.connect(run.sphere_mines.set_enabled)' in h
 assert 'event_ring_height(w_pos.xz) * shore_wave_fade' in w
