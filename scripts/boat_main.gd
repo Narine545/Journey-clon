@@ -22,6 +22,7 @@ var shoals: ShoalMarkers
 var harbor: IslandHarbor
 var coast: Coast
 var sand: SandField
+var sea_look_trial: SeaLookTrial
 var water: WaterSurface
 var boat: BoatVessel
 var camera: Camera3D
@@ -156,6 +157,9 @@ func _ready() -> void:
 	raid.setup(self)
 	_setup_retro_debug()
 	_setup_rme4_atmosphere()
+	sea_look_trial = SeaLookTrial.new()
+	add_child(sea_look_trial)
+	sea_look_trial.setup(self)
 	weather.setup()
 	_ensure_boat_input()
 	if OS.get_environment("JOURNEY_BOAT_SHOT_DRIVE") == "1":

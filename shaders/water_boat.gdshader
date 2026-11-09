@@ -10,6 +10,9 @@ render_mode diffuse_burley, specular_schlick_ggx, blend_mix, depth_draw_opaque;
 uniform vec3 water_shallow : source_color = vec3(0.30, 0.66, 0.62);
 uniform vec3 water_mid : source_color = vec3(0.10, 0.38, 0.48);
 uniform vec3 water_deep : source_color = vec3(0.035, 0.150, 0.300);
+uniform sampler2D depth_palette : source_color, repeat_disable, filter_linear;
+uniform float depth_palette_strength : hint_range(0.0, 1.0) = 0.0;
+uniform float depth_palette_range = 14.0;
 uniform vec3 foam_col : source_color = vec3(0.95, 0.92, 0.86);
 uniform vec3 sun_col : source_color = vec3(1.0, 0.80, 0.52);
 uniform vec3 sun_dir = vec3(0.10, 0.26, -0.96);
@@ -301,6 +304,13 @@ void fragment() {
 	// ---------- цвет воды ----------
 	vec3 base = mix(water_shallow, water_mid, smoothstep(0.0, 3.0, depth_m));
 	base = mix(base, water_deep, smoothstep(1.0, 12.0, depth_m));
+	// Optional top-down palette: stable bathymetry, not wave height or view depth.
+	if (depth_palette_strength > 0.0) {
+		float chart_depth = max(sea_level - ground, 0.0);
+		float palette_u = clamp(chart_depth / max(depth_palette_range, 0.1), 0.0, 1.0);
+		vec3 chart_color = texture(depth_palette, vec2(palette_u, 0.5)).rgb;
+		base = mix(base, chart_color, depth_palette_strength * 0.35);
+	}
 	base = mix(base, water_shallow * 1.22, near_shore * 0.45);
 	base = mix(base, water_shallow * 1.28, clamp(trail_aerated, 0.0, 0.55));
 

@@ -50,3 +50,15 @@ color = mix(original, rgba.rgb, alpha)
 ```
 
 This fixes the misleading amount control, but **does not fix** top-down geometry, water transparency or pass ordering. Those need a rendering design before enabling a shader. For this project prefer an optional experiment in the existing world-space fog or water material over a second blanket atmospheric pass.
+
+
+## Implemented trial after user approval
+
+Both optional interpretations now have independent session-only checkboxes in `SeaLookTrial`, initially on for comparison. Disabling returns the existing branches, not another redesigned look.
+
+- **Depth palette:** a four-stop GradientTexture1D over real static bathymetry 0–14 m, blended at 35% into base water color before shoreline/foam/light/glitter processing. Uses `sea_level - ground`, not animated surface Y or camera depth. No fullscreen pass or water geometry change.
+- **Mist pockets:** reuses existing broad/mid/height noise, removes the uniform low-profile fill in favor of a sparse smooth mask, and lowers the local ceiling from 1.2–2.6 m to 0.70–1.65 m. Same FogVolume, weather multiplier, lighting, color and emission; no new density texture reads, lights or raymarch loop. The legacy high profile is untouched by this trial.
+- Fog comparison is disabled when the volumetric material is unavailable. The trial does not enable volumetric fog or change weather by itself. Mist may therefore be absent in clear weather or when atmospheric fog is disabled elsewhere.
+- Controls are hidden during inspection/photo/map and raid modals. No new hotkeys or saved preferences. Resource zones, hull physics, wake and damage glitch are unchanged.
+
+52 Python checks and GDScript parse checks pass; new controller lint passes. Native smoke A/B parameter checks are prepared, not run. No Godot shader compile/render/FPS confirmation in this environment. Compare near a shallow bank and on deeper water, then low weather-driven mist in evening/night; toggle each option separately. Do not infer successful art direction from source/math checks.

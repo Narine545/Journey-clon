@@ -37,6 +37,7 @@ uniform float patch_threshold : hint_range(0.0, 1.0) = 0.42;
 // иначе между пятнами проваливается в ноль и читается как дырки.
 uniform float base_fill : hint_range(0.0, 1.0) = 0.34;
 // Скорость дрейфа слоя, условные м/с.
+uniform float mist_pockets : hint_range(0.0, 1.0) = 0.0;
 uniform float wind_speed : hint_range(0.0, 4.0) = 1.0;
 
 // Направление НА солнце. Нужно, чтобы красить воздух на низком солнце.
@@ -70,7 +71,12 @@ void fog() {
 	// Медленный мировой дрейф, без привязки к камере или лодке.
 	float height_noise = texture(density_noise,
 		vec3(wp.x * 0.024, 0.37, wp.z * 0.024) + wind * 0.45).r;
+	float pocket_mode = clamp(mist_pockets, 0.0, 1.0) * profile;
+	// Reuse existing world noise: sparse lower banks, never a camera-centered mask.
+	float pocket_mask = smoothstep(0.49, 0.73, broad * 0.70 + mid * 0.30);
+	body = mix(body, pocket_mask, pocket_mode);
 	float ceiling = 1.2 + height_noise * 1.4;
+	ceiling = mix(ceiling, 0.70 + height_noise * 0.95, pocket_mode);
 	float legacy_height = 1.0 - smoothstep(7.0, 15.0, wp.y);
 	// Верх корпуса входит в слой частично, рубка/мачта остаются выше.
 	float bank_height = smoothstep(-0.15, 0.25, wp.y)

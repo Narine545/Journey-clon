@@ -978,6 +978,7 @@ func _check_raid() -> void:
 	_check_raid_contacts_and_buoyancy()
 	_check_raid_motion()
 	_check_raid_damage_fx()
+	_check_sea_look_trial()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1768,3 +1769,31 @@ func _check_raid_damage_fx() -> void:
 	run.effects_enabled = saved_effects
 	fx.reset()
 	run.hud.refresh()
+
+
+func _check_sea_look_trial() -> void:
+	var trial := main.sea_look_trial
+	_check(trial != null, "эксперимент моря инициализирован")
+	if trial == null:
+		return
+	var water_material := main.water.material()
+	var saved_depth: float = water_material.get_shader_parameter("depth_palette_strength")
+	trial._set_depth(false)
+	_check(is_zero_approx(float(water_material.get_shader_parameter("depth_palette_strength"))),
+		"отключение палитры возвращает прежнюю ветку цвета воды")
+	trial._set_depth(true)
+	_check(is_equal_approx(float(water_material.get_shader_parameter("depth_palette_strength")), 1.0)
+		and water_material.get_shader_parameter("depth_palette") == trial._palette,
+		"палитра подключена к существующему материалу воды")
+	main.water.set_param("depth_palette_strength", saved_depth)
+	if main._rme4_material != null:
+		var saved_mist: float = main._rme4_material.get_shader_parameter("mist_pockets")
+		trial._set_mist(false)
+		_check(is_zero_approx(float(main._rme4_material.get_shader_parameter("mist_pockets"))),
+			"отключение клочьев возвращает прежний профиль тумана")
+		trial._set_mist(true)
+		_check(is_equal_approx(float(main._rme4_material.get_shader_parameter("mist_pockets")), 1.0),
+			"клочья включаются на существующем FogVolume")
+		main._rme4_material.set_shader_parameter("mist_pockets", saved_mist)
+	else:
+		_check(trial._mist_toggle.disabled, "недоступный объёмный туман не предлагается включать")
