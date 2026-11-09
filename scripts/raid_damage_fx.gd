@@ -1,12 +1,13 @@
 class_name RaidDamageFx
-extends CanvasLayer
-## Experimental reactive screen glitch below the raid HUD, never an always-on filter.
+extends Node
+## Reactive mesh overlay on the boat only. Original surface materials remain untouched.
 const LIFE := 0.40
 const PREVIEW_LIFE := 1.50
 var run: RaidRun
-var _copy: BackBufferCopy
-var _rect: ColorRect
 var _material: ShaderMaterial
+var _targets: Array[MeshInstance3D] = []
+var _saved: Array[Material] = []
+var _active := false
 var _duration := LIFE
 var _hold := 0.12
 var _age := LIFE
@@ -15,20 +16,8 @@ var _strength := 0.0
 
 func setup(raid: RaidRun) -> void:
 	run = raid
-	layer = 19
-	_copy = BackBufferCopy.new()
-	_copy.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
-	_copy.visible = false
-	add_child(_copy)
-	_rect = ColorRect.new()
-	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_material = ShaderMaterial.new()
 	_material.shader = preload("res://shaders/raid_damage.gdshader")
-	_rect.material = _material
-	_rect.visible = false
-	add_child(_rect)
-	_resize_rect()
-	get_viewport().size_changed.connect(_resize_rect)
 
 
 func reset() -> void:
@@ -36,8 +25,7 @@ func reset() -> void:
 	_hold = 0.12
 	_age = LIFE
 	_strength = 0.0
-	_rect.visible = false
-	_copy.visible = false
+	_restore()
 
 
 func hit(actual: float) -> void:
@@ -51,7 +39,6 @@ func hit(actual: float) -> void:
 
 
 func preview() -> void:
-	# Visual-only test: no hull damage, statistics, invulnerability or combat-clock changes.
 	if not _allowed():
 		return
 	hit(12.0)
@@ -79,19 +66,44 @@ func _process(delta: float) -> void:
 
 
 func _sync() -> void:
-	_rect.visible = _age < _duration
-	_copy.visible = _rect.visible
-	# Brief plateau, then fade; no random activation gate that can miss a short hit.
+	if _age >= _duration:
+		_restore()
+		return
+	var pose := run.main.boat._body.get_global_transform_interpolated()
+	_material.set_shader_parameter("boat_inverse", pose.affine_inverse())
 	var envelope := clampf((_duration - _age) / (_duration - _hold), 0.0, 1.0)
 	_material.set_shader_parameter("intensity", _strength * envelope)
 	_material.set_shader_parameter("effect_age", _age)
+	if not _active:
+		_collect(run.main.boat._body)
+		_active = not _targets.is_empty()
 
 
-func _resize_rect() -> void:
-	# A root Control under CanvasLayer has no Control parent: use explicit viewport bounds.
-	_rect.position = Vector2.ZERO
-	_rect.size = get_viewport().get_visible_rect().size
+func _collect(root: Node) -> void:
+	if root is MeshInstance3D:
+		var mesh := root as MeshInstance3D
+		_targets.append(mesh)
+		_saved.append(mesh.material_overlay)
+		mesh.material_overlay = _material
+	for child in root.get_children():
+		_collect(child)
+
+
+func _restore() -> void:
+	for index in range(_targets.size()):
+		if not is_instance_valid(_targets[index]):
+			continue
+		var mesh: MeshInstance3D = _targets[index]
+		if mesh.material_overlay == _material:
+			mesh.material_overlay = _saved[index]
+	_targets.clear()
+	_saved.clear()
+	_active = false
 
 
 func is_active() -> bool:
-	return _rect.visible and _copy.visible
+	return _active
+
+
+func _exit_tree() -> void:
+	_restore()

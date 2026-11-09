@@ -1739,24 +1739,31 @@ func _check_raid_damage_fx() -> void:
 	run.effects_enabled = true
 	fx.reset()
 	fx.hit(0.0)
-	_check(not fx._rect.visible, "нулевой урон не запускает глитч")
+	_check(not fx.is_active(), "нулевой урон не запускает глитч")
 	fx.preview()
-	_check(fx._rect.visible and fx._copy.visible and fx.layer < 20
-		and fx._rect.mouse_filter == Control.MOUSE_FILTER_IGNORE
-		and fx._rect.size.is_equal_approx(get_viewport().get_visible_rect().size),
-		"тестовый глитч покрывает окно под HUD и не перехватывает мышь")
+	var meshes: Array[MeshInstance3D] = fx._targets.duplicate()
+	var saved_overlays: Array[Material] = fx._saved.duplicate()
+	var only_boat := not meshes.is_empty()
+	for mesh in meshes:
+		if not main.boat._body.is_ancestor_of(mesh) or mesh.material_overlay != fx._material:
+			only_boat = false
+	_check(fx.is_active() and only_boat, "глитч назначен только мешам корпуса и надстройки")
 	_check(is_equal_approx(main.boat.hull_hp, saved_hp) and run.xp == saved_xp
-		and is_equal_approx(run.stats.received, saved_received), "демонстрация не наносит урон и не меняет статистику")
+		and is_equal_approx(run.stats.received, saved_received), "демонстрация не меняет HP и статистику")
 	fx._process(RaidDamageFx.PREVIEW_LIFE + 0.01)
-	_check(not fx._rect.visible and not fx._copy.visible, "глитч и копирование экрана выключаются по окончании")
+	var restored := not fx.is_active()
+	for index in range(meshes.size()):
+		if meshes[index].material_overlay != saved_overlays[index]:
+			restored = false
+	_check(restored, "по окончании восстановлены исходные оверлеи всех мешей")
 	run.effects_enabled = false
 	fx.hit(12.0)
-	_check(not fx._rect.visible, "переключатель эффектов блокирует глитч")
+	_check(not fx.is_active(), "переключатель эффектов блокирует глитч")
 	run.effects_enabled = true
 	fx.preview()
 	run.toggle_pause()
 	fx._process(0.01)
-	_check(not fx._rect.visible, "пауза убирает глитч вместо замораживания поверх меню")
+	_check(not fx.is_active(), "пауза убирает глитч с лодки")
 	run.toggle_pause()
 	run.effects_enabled = saved_effects
 	fx.reset()
