@@ -751,6 +751,8 @@ func choose(index: int) -> void:
 				return
 			chain_mines = true
 		14:
+			if sphere_rank == 0:
+				stats.sphere_unlocked_at = elapsed
 			sphere_rank = mini(3, sphere_rank + 1)
 	if choices[index] >= 10 and choices[index] <= 13:
 		stats.record_evolution(choices[index], elapsed)

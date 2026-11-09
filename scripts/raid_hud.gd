@@ -359,6 +359,12 @@ func _build_summary() -> String:
 		report += ("\nСферические мины %d/3: %.2f м / %.1f с · без урона"
 			% [run.sphere_rank, SphereMines.radius(run.sphere_rank),
 			SphereMines.interval(run.sphere_rank)])
+	if run.stats.sphere_dropped > 0 or run.sphere_rank > 0:
+		report += ("\nСфера открыта в %s · выпущено %d · раскрылось %d"
+			% [_report_time(run.stats.sphere_unlocked_at), run.stats.sphere_dropped,
+			run.stats.sphere_opened])
+		report += ("\nПолей с толчком: %d · контактов поле–цель: %d"
+			% [run.stats.sphere_effective, run.stats.sphere_contacts])
 	if run.stern_rank > 0:
 		report += (
 			"\nКорма %d/3: %.0f урона / %.0f м / %.1f с"

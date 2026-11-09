@@ -16,6 +16,11 @@ var repaired := 0.0
 var stern_unlocked_at := -1.0
 var charges_dropped := 0
 var charges_exploded := 0
+var sphere_dropped := 0
+var sphere_opened := 0
+var sphere_effective := 0
+var sphere_contacts := 0
+var sphere_unlocked_at := -1.0
 var pulses := 0
 
 
@@ -33,6 +38,11 @@ func reset() -> void:
 	stern_unlocked_at = -1.0
 	charges_dropped = 0
 	charges_exploded = 0
+	sphere_dropped = 0
+	sphere_opened = 0
+	sphere_effective = 0
+	sphere_contacts = 0
+	sphere_unlocked_at = -1.0
 	pulses = 0
 
 

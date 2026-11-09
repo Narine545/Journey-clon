@@ -52,6 +52,7 @@ func step(delta: float) -> void:
 		_expansion_contacts(mine, previous_age, age)
 		if age >= FUSE and not bool(mine["opened"]):
 			mine["opened"] = true
+			run.stats.sphere_opened += 1
 			run.main.water.field.splash(at, 2.0)
 		if age >= FUSE + FIELD_TIME:
 			# Exactly one second impulse, also when visual effects are disabled.
@@ -103,9 +104,11 @@ func _drop() -> void:
 			"age": 0.0,
 			"opened": false,
 			"node": node,
-			"radius": radius(maxi(1, run.sphere_rank))
+			"radius": radius(maxi(1, run.sphere_rank)),
+			"measured": {}
 		}
 	)
+	run.stats.sphere_dropped += 1
 
 
 func _expansion_contacts(mine: Dictionary, before: float, after: float) -> void:
@@ -135,4 +138,15 @@ func _expansion_contacts(mine: Dictionary, before: float, after: float) -> void:
 			if offset.length_squared() > 0.000001
 			else Vector2.from_angle(float(enemy["combat_id"]) * 2.399963)
 		)
+		var before_push: Vector2 = enemy.get("sphere_velocity", Vector2.ZERO)
 		RaidMotion.sphere_contact(enemy, normal, surface_speed, penetration, contact_delta)
+		var after_push: Vector2 = enemy.get("sphere_velocity", Vector2.ZERO)
+		# Count actual control, not geometric overlap or every pressure tick.
+		if (after_push - before_push).dot(normal) >= 0.05:
+			var measured: Dictionary = mine["measured"]
+			var identity := int(enemy["combat_id"])
+			if not measured.has(identity):
+				if measured.is_empty():
+					run.stats.sphere_effective += 1
+				measured[identity] = true
+				run.stats.sphere_contacts += 1
