@@ -223,6 +223,10 @@ void fragment() {
 	float rk = PI_2 / ring_len;
 	vec2 rgrad = vec2(0.0);
 	float event_foam = 0.0;
+	// World-anchored froth patches shared by all events; no angular seam or per-ring noise reads.
+	float froth_large = vnoise(wp * 1.15 + wdir * u_time * 0.12);
+	float froth_small = vnoise(wp * 3.7 - wdir * u_time * 0.18);
+	float froth_patch = smoothstep(0.30, 0.70, froth_large * 0.65 + froth_small * 0.35);
 	for (int i = 0; i < 24; i++) {
 		vec4 rg = u_rings[i];
 		if (rg.w < 0.0005) {
@@ -249,6 +253,7 @@ void fragment() {
 		float crest_line = exp(-x * x * 2.0) * smoothstep(0.15, 0.85, cos(ph));
 		float ring_contrast = clamp(rg.w * 0.55, 0.0, 0.85)
 			* exp(-age * 0.24) * life;
+		ring_contrast *= mix(0.12, 1.0, froth_patch);
 		event_foam = max(event_foam, crest_line * ring_contrast);
 
 	}

@@ -32,7 +32,7 @@ for forbidden in ('SCREEN_UV', 'SCREEN_TEXTURE', 'hint_screen_texture', 'hint_de
     assert forbidden not in shader
 for forbidden in ('BackBufferCopy', 'ColorRect', 'CanvasLayer', 'material_override =', '_trailer', 'SubViewport'):
     assert forbidden not in fx
-assert 'ГЛИТЧ АКТИВЕН' in hud and 'run.damage_fx.preview' in hud
+assert '_damage_preview' not in hud and 'run.damage_fx.preview' not in hud
 assert '_check_raid_damage_fx()' in smoke and 'material_overlay != saved_overlays[index]' in smoke
 for duration, hold in ((.4, .12), (1.5, .9)):
     for age in (0, hold, duration * .9, duration):
