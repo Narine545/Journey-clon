@@ -101,7 +101,13 @@ static func move_enemies(run: RaidRun, delta: float) -> void:
 			enemy["timer"] = float(enemy["timer"]) - delta
 		enemy["flash"] = maxf(0.0, float(enemy["flash"]) - delta)
 		var speed := 2.8 + run.elapsed / 180.0
-		if kind == 1:
+		var recovering := float(enemy.get("sphere_recovery", 0.0)) > 0.0
+		enemy["sphere_recovery"] = maxf(0.0, float(enemy.get("sphere_recovery", 0.0)) - delta)
+		if recovering:
+			# No active pursuit/attacks; existing velocity and external impulse still integrate.
+			direction = Vector2.ZERO
+			speed = 0.0
+		elif kind == 1:
 			if float(enemy["charge"]) > 0.0:
 				enemy["charge"] = maxf(0.0, float(enemy["charge"]) - delta)
 				direction = enemy["aim"]
@@ -168,3 +174,9 @@ static func sphere_contact(
 		return
 	var response := 1.0 - exp(-30.0 * inverse_mass(enemy) * delta)
 	enemy["sphere_velocity"] = external + normal * deficit * response
+	if deficit * response >= 0.05:
+		enemy["sphere_recovery"] = 1.0
+		if int(enemy.get("kind", 0)) == 1:
+			# Cancel the current dash; resume from a fresh warning, never a silent dash.
+			enemy["charge"] = 0.0
+			enemy["timer"] = maxf(1.6, float(enemy.get("timer", 0.0)))
