@@ -1,3 +1,6 @@
+// Palette concept credit: Koaleszenz, Distance Gradient Fog 4.3+ (MIT).
+// https://godotshaders.com/shader/distance-gradient-fog-4-3/
+// Independent bathymetry adaptation; no fullscreen source code imported.
 shader_type spatial;
 // МОРЕ С ИСТОРИЧЕСКОЙ ТРАЕКТОРИЕЙ КИЛЬВАТЕРНОГО СЛЕДА В МИРОВЫХ КООРДИНАТАХ:
 // - Кильватерная струя и волны Кельвина строятся вдоль кривой u_wake_trail[20],

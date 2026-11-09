@@ -62,3 +62,16 @@ Both optional interpretations now have independent session-only checkboxes in `S
 - Controls are hidden during inspection/photo/map and raid modals. No new hotkeys or saved preferences. Resource zones, hull physics, wake and damage glitch are unchanged.
 
 52 Python checks and GDScript parse checks pass; new controller lint passes. Native smoke A/B parameter checks are prepared, not run. No Godot shader compile/render/FPS confirmation in this environment. Compare near a shallow bank and on deeper water, then low weather-driven mist in evening/night; toggle each option separately. Do not infer successful art direction from source/math checks.
+
+
+## User feedback and coverage correction
+
+The user accepted bathymetric color but found sparse pockets unhelpful. Palette stays initially enabled; pocket mode is now **initially off**, with its independent comparison checkbox retained.
+
+The reported half-screen disappearance on zoom-out is consistent with the existing boat Environment's fixed **80 m volumetric length**, combined with `BoatCameraFraming` moving the orthographic eye farther back. Analytic reconstruction of the ordinary 72 m view puts the far visible water beyond that limit. A FogVolume can cover a point in world space and still not be integrated beyond the camera's volumetric range.
+
+`BoatFogCoverage` now measures actual ordinary-camera corner rays against sea level **after camera update**, derives view-axis depth with 16 m padding, and raises the volumetric integration range as needed (80–640 m bound, 8 m quantization, slow shrink/hysteresis). It also expands only horizontal FogVolume bounds if necessary so its existing 18 m edge fade is outside the visible water, with 32 m margin. Same density, noise, height, lighting and vertical bounds. No camera/terrain/water-spectrum changes.
+
+Scope: ordinary orthographic play view. Inspection/photo views are intentionally not retuned here. At extreme views beyond the safety bound no unlimited-coverage claim is made. Greater integration length reduces distance resolution for a fixed froxel grid; do not blindly increase fog quality settings. Real engine clipping/temporal behavior and GPU cost remain user verification.
+
+53 Python checks, all GDScript parsing and lint of the two changed/new controller scripts pass. Native zoom/corner regression is prepared, not run. Credits are in `SHADER-CREDITS.md`; source gradient author is Koaleszenz, verified via the source site's oEmbed metadata. Sphere reference/design is in `sphere-mine-proposal.md` and is not an enabled effect.

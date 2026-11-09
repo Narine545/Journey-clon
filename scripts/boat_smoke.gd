@@ -979,6 +979,7 @@ func _check_raid() -> void:
 	_check_raid_motion()
 	_check_raid_damage_fx()
 	_check_sea_look_trial()
+	_check_boat_fog_coverage()
 	# Real manager grid and projectile path, not a Python port of the hit algorithm.
 	var target := run.boat_at() + run.forward() * 10.0
 	run.enemies.append({"at": target, "previous": target, "hp": 10.0,
@@ -1797,3 +1798,37 @@ func _check_sea_look_trial() -> void:
 		main._rme4_material.set_shader_parameter("mist_pockets", saved_mist)
 	else:
 		_check(trial._mist_toggle.disabled, "недоступный объёмный туман не предлагается включать")
+
+
+func _check_boat_fog_coverage() -> void:
+	if main._rme4_volume == null:
+		return
+	var camera := main.camera
+	var saved_pose := camera.global_transform
+	var saved_size := camera.size
+	var saved_length := main.world._env.volumetric_fog_length
+	var saved_box := main._rme4_volume.size
+	camera.size = 72.0
+	var focus := main.boat.global_position + Vector3.UP * 0.8
+	var viewport := get_viewport().get_visible_rect().size
+	camera.global_position = focus + main.camera_framing.fit_offset(
+		focus, Vector3(21, main.camera_height, 30), camera, viewport
+	)
+	camera.look_at(focus, Vector3.UP)
+	BoatFogCoverage.update(main, 0.01)
+	var covered := true
+	var samples := PackedVector2Array([Vector2.ZERO, Vector2(viewport.x, 0), viewport, Vector2(0, viewport.y)])
+	for pixel in samples:
+		var ray_start := camera.project_ray_origin(pixel)
+		var ray := camera.project_ray_normal(pixel)
+		var travel := (Coast.SEA_LEVEL - ray_start.y) / ray.y
+		var point := ray_start + ray * travel
+		var required_depth := -camera.to_local(point).z + BoatFogCoverage.DEPTH_MARGIN
+		if required_depth > main.world._env.volumetric_fog_length + 0.01:
+			covered = false
+	_check(covered and main.world._env.volumetric_fog_length > 80.0,
+		"дальний край воды при отдалении помещается в длину объёмного тумана")
+	camera.size = saved_size
+	camera.global_transform = saved_pose
+	main.world._env.volumetric_fog_length = saved_length
+	main._rme4_volume.size = saved_box

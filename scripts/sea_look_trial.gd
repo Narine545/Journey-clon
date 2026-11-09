@@ -1,5 +1,6 @@
 class_name SeaLookTrial
 extends CanvasLayer
+## Gradient palette inspiration: Koaleszenz (MIT), see SHADER-CREDITS.md.
 ## Two independent, session-only A/B controls. No new fog volume or screen pass.
 var main: BoatMain
 var _panel: PanelContainer
@@ -56,10 +57,10 @@ func setup(scene: BoatMain) -> void:
 	_set_depth(true)
 	var supported := main._rme4_material != null
 	_mist_toggle.disabled = not supported
-	_mist_toggle.set_pressed_no_signal(supported)
+	_mist_toggle.set_pressed_no_signal(false)
 	if not supported:
 		_mist_toggle.tooltip_text = "Объёмный туман недоступен в текущем рендерере."
-	_set_mist(supported)
+	_set_mist(false)
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 

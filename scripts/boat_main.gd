@@ -1166,6 +1166,7 @@ func _process(delta: float) -> void:
 		# при разгоне и поворотах, хотя ракурс должен оставаться изометрическим.
 		camera.global_position = desired
 		camera.look_at(_camera_focus, Vector3.UP)
+	BoatFogCoverage.update(self, delta)
 	notice_time = maxf(0.0, notice_time - delta)
 	if not inspection_active() and not gameplay_paused():
 		resource_zones.update(delta)
