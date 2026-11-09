@@ -49,7 +49,7 @@ func setup() -> void:
 	add_child(_fx_toggle)
 	_sphere_toggle = CheckButton.new()
 	_sphere_toggle.text = "ТЕСТ: СФЕРИЧЕСКИЕ МИНЫ"
-	_sphere_toggle.tooltip_text = "Автовыпуск за кормой. Толчок при раскрытии, волны при схлопывании. Без урона/щита."
+	_sphere_toggle.tooltip_text = "Отладочный ускоренный выпуск. Выкл. возвращает режим карточки. Без урона/щита."
 	_sphere_toggle.toggled.connect(run.sphere_mines.set_enabled)
 	add_child(_sphere_toggle)
 	_god_toggle = CheckButton.new()
@@ -355,6 +355,10 @@ func _build_summary() -> String:
 		"\nQ: %.0f урона / %.0f м · применений %d"
 		% [run.pulse_damage, run.pulse_radius, run.stats.pulses]
 	)
+	if run.sphere_rank > 0:
+		report += ("\nСферические мины %d/3: %.2f м / %.1f с · без урона"
+			% [run.sphere_rank, SphereMines.radius(run.sphere_rank),
+			SphereMines.interval(run.sphere_rank)])
 	if run.stern_rank > 0:
 		report += (
 			"\nКорма %d/3: %.0f урона / %.0f м / %.1f с"
@@ -562,7 +566,11 @@ func _draw() -> void:
 		15
 	)
 	_text(
-		panel.position + Vector2(15, 72), "WASD — курс · M/F/F2 — осмотр с паузой · Esc — пауза", 15
+		panel.position + Vector2(15, 72),
+		("СФЕРА %d/3 · %.2f м · сброс через %.1f с · без урона"
+			% [run.sphere_rank, SphereMines.radius(run.sphere_rank),
+			maxf(0.0, run.sphere_mines.cooldown)] if run.sphere_rank > 0
+			else "WASD — курс · M/F/F2 — осмотр с паузой · Esc — пауза"), 15
 	)
 	if main.shoals != null and main.shoals.warning:
 		_text(

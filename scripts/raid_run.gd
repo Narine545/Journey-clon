@@ -27,6 +27,7 @@ const UPGRADES := [
 	["Резонансный импульс", "ЭВОЛЮЦИЯ: Q уничтожает вражеские снаряды"],
 	["Штормовая картечь", "ЭВОЛЮЦИЯ: широкий бортовой веер, пробитие 2 целей"],
 	["Цепной подрыв", "ЭВОЛЮЦИЯ: мины запускают соседние взведённые заряды"],
+	["Сферические мины", "Открыть / усилить поле вытеснения. Без урона и щита"],
 ]
 var stats := RaidStats.new()
 var effects_enabled := true
@@ -56,6 +57,7 @@ var reload_scale := 1.0
 var pellets := 1
 var speed_rank := 0
 var turn_rank := 0
+var sphere_rank := 0
 var stern_rank := 0
 var pulse_radius := 13.0
 var pulse_damage := 35.0
@@ -159,6 +161,7 @@ func start() -> void:
 	pellets = 1
 	speed_rank = 0
 	turn_rank = 0
+	sphere_rank = 0
 	stern_rank = 0
 	pulse_radius = 13.0
 	pulse_damage = 35.0
@@ -208,6 +211,7 @@ func leave() -> void:
 	_xp_quarters = 0
 	speed_rank = 0
 	turn_rank = 0
+	sphere_rank = 0
 	stern_rank = 0
 	main.boat.hull_hp = _saved_hp
 	main.boat.speed = 0.0
@@ -634,6 +638,8 @@ func pulse() -> void:
 
 func _upgrade_pool() -> Array[int]:
 	var available: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+	if sphere_rank < 3:
+		available.append(14)
 	if can_evolve_harpoon():
 		available.append(10)
 	if can_evolve_pulse():
@@ -744,7 +750,9 @@ func choose(index: int) -> void:
 			if not _can_evolve_chain():
 				return
 			chain_mines = true
-	if choices[index] >= 10:
+		14:
+			sphere_rank = mini(3, sphere_rank + 1)
+	if choices[index] >= 10 and choices[index] <= 13:
 		stats.record_evolution(choices[index], elapsed)
 	xp -= xp_needed
 	level += 1
@@ -826,6 +834,11 @@ func upgrade_preview(kind: int) -> String:
 			preview = "Веер бортов: ×2 шире\nЦелей снарядом: 1 → 2\nУрон и темп прежние"
 		13:
 			preview = "Новые мины: цепной подрыв\nПередача: до 8 м, 0.20 с\nТолько взведённые, без преград"
+		14:
+			var next_sphere := mini(3, sphere_rank + 1)
+			preview = ("Ранг: %d → %d / 3\nРадиус: %.2f м · сброс: %.1f с\nОдно поле · без урона"
+				% [sphere_rank, next_sphere, SphereMines.radius(next_sphere),
+				SphereMines.interval(next_sphere)])
 	return preview
 
 

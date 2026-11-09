@@ -1,6 +1,6 @@
 class_name SphereMines
 extends Node3D
-## Debug-only contact ordnance. No damage, shielding, RNG or progression changes.
+## Independent control weapon. Debug override shares this emitter, never doubles it.
 const CAPACITY := 4
 const INTERVAL := 3.5
 const FUSE := 0.85
@@ -9,6 +9,14 @@ var run: RaidRun
 var enabled := false
 var cooldown := 0.0
 var mines: Array[Dictionary] = []
+
+
+static func radius(rank: int) -> float:
+	return 0.0 if rank <= 0 else 4.5 + 0.75 * float(mini(3, rank) - 1)
+
+
+static func interval(rank: int) -> float:
+	return 8.0 - float(clampi(rank, 1, 3) - 1)
 
 
 func setup(raid: RaidRun) -> void:
@@ -32,8 +40,8 @@ func set_enabled(value: bool) -> void:
 
 func step(delta: float) -> void:
 	cooldown -= delta
-	if enabled and cooldown <= 0.0:
-		cooldown = INTERVAL
+	if (enabled or run.sphere_rank > 0) and cooldown <= 0.0:
+		cooldown = INTERVAL if enabled else interval(run.sphere_rank)
 		_drop()
 	for index in range(mines.size() - 1, -1, -1):
 		var mine := mines[index]
@@ -52,21 +60,21 @@ func step(delta: float) -> void:
 			mines.remove_at(index)
 			continue
 		var node: MeshInstance3D = mine["node"]
-		var radius := 0.35
+		var visual_radius := 0.35
 		if age >= FUSE:
 			var phase := age - FUSE
-			radius = (
-				4.5
+			visual_radius = (
+				float(mine["radius"])
 				* minf(clampf(phase / 0.3, 0.0, 1.0), clampf((FIELD_TIME - phase) / 0.4, 0.0, 1.0))
 			)
-			radius = maxf(0.01, radius)
-		node.scale = Vector3.ONE * radius
+			visual_radius = maxf(0.01, visual_radius)
+		node.scale = Vector3.ONE * visual_radius
 		# Stationary world anchor: sphere intersects the sea, not attached to boat.
 		node.position = Vector3(at.x, Coast.SEA_LEVEL + 0.2, at.y)
 
 
 func _drop() -> void:
-	if mines.size() >= CAPACITY:
+	if mines.size() >= (CAPACITY if enabled else 1):
 		return
 	var at := run.stern_charges.drop_point()
 	if not run.navigable(at, 1.0) or run._hull_distance(at) < 0.8:
@@ -89,7 +97,15 @@ func _drop() -> void:
 	node.scale = Vector3.ONE * 0.35
 	node.position = Vector3(at.x, Coast.SEA_LEVEL + 0.2, at.y)
 	add_child(node)
-	mines.append({"at": at, "age": 0.0, "opened": false, "node": node})
+	mines.append(
+		{
+			"at": at,
+			"age": 0.0,
+			"opened": false,
+			"node": node,
+			"radius": radius(maxi(1, run.sphere_rank))
+		}
+	)
 
 
 func _expansion_contacts(mine: Dictionary, before: float, after: float) -> void:
@@ -99,8 +115,8 @@ func _expansion_contacts(mine: Dictionary, before: float, after: float) -> void:
 	var contact_delta := active_end - active_start
 	if contact_delta <= 0.0:
 		return
-	var radius_before := 4.5 * clampf((active_start - FUSE) / 0.3, 0.0, 1.0)
-	var radius_after := 4.5 * clampf((active_end - FUSE) / 0.3, 0.0, 1.0)
+	var radius_before := float(mine["radius"]) * clampf((active_start - FUSE) / 0.3, 0.0, 1.0)
+	var radius_after := float(mine["radius"]) * clampf((active_end - FUSE) / 0.3, 0.0, 1.0)
 	var surface_speed := (radius_after - radius_before) / contact_delta
 	var center: Vector2 = mine["at"]
 	for enemy in run.enemies:
