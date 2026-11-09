@@ -145,6 +145,24 @@ float hull_sdf(vec2 lp) {
 	return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
 }
 
+// Same analytic ring height as WaterField.height_at: buoyancy and mesh agree.
+float event_ring_height(vec2 point) {
+	float height = 0.0;
+	for (int i = 0; i < 24; i++) {
+		vec4 rg = u_rings[i];
+		float age = u_time - rg.z;
+		if (rg.w < 0.0005 || age < 0.0 || age > 5.0) { continue; }
+		float dd = length(point - rg.xy);
+		float rf = ring_speed * age;
+		float bw = ring_w0 + ring_wg * age;
+		float x = (dd - rf) / bw;
+		float envelope = exp(-x * x);
+		float decay = exp(-age * ring_tau) / sqrt(max(rf, 0.6));
+		height += ring_amp * rg.w * envelope * cos(PI_2 / ring_len * (dd - rf)) * decay;
+	}
+	return height;
+}
+
 void vertex() {
 	w_pos = (MODEL_MATRIX * vec4(VERTEX.x, VERTEX.y, VERTEX.z, 1.0)).xyz;
 	float ground = ground_at(w_pos.xz);
@@ -162,7 +180,7 @@ void vertex() {
 	float d_hull = hull_sdf(ship_lp);
 	float hull_cut = -(1.0 - smoothstep(-0.35, 0.20, d_hull)) * 0.30;
 
-	float y = hrip + bow_crest + hull_cut;
+	float y = hrip + bow_crest + hull_cut + event_ring_height(w_pos.xz) * shore_wave_fade;
 	VERTEX.y += y;
 	w_pos.y += y;
 }

@@ -20,6 +20,7 @@ var _retry: Button
 var _bars: Array[ColorRect] = []
 var _bar_index := 0
 var _title_material: ShaderMaterial
+var _sphere_toggle: CheckButton
 var _god_toggle: CheckButton
 var _clear_toggle: CheckButton
 var _damage_preview: Button
@@ -47,6 +48,11 @@ func setup() -> void:
 	_fx_toggle.button_pressed = run.effects_enabled
 	_fx_toggle.toggled.connect(_set_effects)
 	add_child(_fx_toggle)
+	_sphere_toggle = CheckButton.new()
+	_sphere_toggle.text = "ТЕСТ: СФЕРИЧЕСКИЕ МИНЫ"
+	_sphere_toggle.tooltip_text = "Автовыпуск за кормой. Волны при раскрытии и схлопывании. Без урона/щита."
+	_sphere_toggle.toggled.connect(run.sphere_mines.set_enabled)
+	add_child(_sphere_toggle)
 	_god_toggle = CheckButton.new()
 	_god_toggle.text = "БЕССМЕРТИЕ"
 	_god_toggle.tooltip_text = "Отладка: блокирует урон корпусу, но не останавливает таймер рейда."
@@ -171,6 +177,8 @@ func _layout() -> void:
 	_pause.size = Vector2(146, 32)
 	_fx_toggle.position = Vector2(size.x - 190, 254)
 	_fx_toggle.size = Vector2(166, 28)
+	_sphere_toggle.position = Vector2(size.x - 310, 496)
+	_sphere_toggle.size = Vector2(300, 30)
 	_god_toggle.position = Vector2(size.x - 248, 420)
 	_god_toggle.size = Vector2(224, 30)
 	_clear_toggle.position = Vector2(size.x - 248, 458)
@@ -205,6 +213,9 @@ func refresh() -> void:
 	_damage_preview.disabled = run.state != RaidRun.State.RUNNING or not run.effects_enabled
 	if run.modal():
 		run.damage_fx.reset()
+	_sphere_toggle.visible = run.engaged()
+	_sphere_toggle.disabled = run.state in [RaidRun.State.WON, RaidRun.State.LOST]
+	_sphere_toggle.set_pressed_no_signal(run.sphere_mines.enabled)
 	_god_toggle.visible = run.engaged()
 	_clear_toggle.visible = run.engaged()
 	_god_toggle.disabled = run.state in [RaidRun.State.WON, RaidRun.State.LOST]

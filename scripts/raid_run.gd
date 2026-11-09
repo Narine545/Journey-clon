@@ -34,6 +34,7 @@ var debug_invulnerable := false
 var debug_clear_screen := false
 var damage_fx: RaidDamageFx
 var weapon_fx: RaidWeaponFx
+var sphere_mines: SphereMines
 var stern_charges: RaidSternCharges
 var salvage: RaidSalvage
 var hud: RaidHud
@@ -95,6 +96,9 @@ func setup(scene: BoatMain) -> void:
 	stern_charges = RaidSternCharges.new()
 	add_child(stern_charges)
 	stern_charges.setup(self)
+	sphere_mines = SphereMines.new()
+	add_child(sphere_mines)
+	sphere_mines.setup(self)
 	damage_fx = RaidDamageFx.new()
 	add_child(damage_fx)
 	damage_fx.setup(self)
@@ -171,6 +175,7 @@ func start() -> void:
 	weapon_fx.reset()
 	damage_fx.reset()
 	stern_charges.reset()
+	sphere_mines.reset()
 	hud.refresh()
 
 
@@ -213,6 +218,7 @@ func leave() -> void:
 	weapon_fx.reset()
 	damage_fx.reset()
 	stern_charges.reset()
+	sphere_mines.reset()
 	hud.refresh()
 
 
@@ -365,6 +371,7 @@ func _physics_process(delta: float) -> void:
 	RaidBuoyancy.step_enemies(enemies, delta, main.water)
 	_rebuild_grid()
 	stern_charges.step(delta)
+	sphere_mines.step(delta)
 	_fire_weapons(delta)
 	_move_shots(delta)
 	for index in range(enemies.size() - 1, -1, -1):
