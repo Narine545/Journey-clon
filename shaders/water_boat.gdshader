@@ -219,16 +219,17 @@ void fragment() {
 	micro_grad *= ripple_strength * wind_power * (1.0 - 0.88 * near_shore);
 	N = normalize(N - vec3(micro_grad.x, 0.0, micro_grad.y) * 0.44);
 
-	// ---------- точечные кольца событий (только от сбора пятен) ----------
+	// ---------- кольца событий: высота/нормаль + читаемый пенный гребень ----------
 	float rk = PI_2 / ring_len;
 	vec2 rgrad = vec2(0.0);
+	float event_foam = 0.0;
 	for (int i = 0; i < 24; i++) {
 		vec4 rg = u_rings[i];
 		if (rg.w < 0.0005) {
 			continue;
 		}
 		float age = u_time - rg.z;
-		if (age < 0.0) {
+		if (age < 0.0 || age > 5.0) {
 			continue;
 		}
 		vec2 d = wp - rg.xy;
@@ -242,6 +243,14 @@ void fragment() {
 		float a = ring_amp * rg.w * dec;
 		float dhdd = a * (env * (-2.0 * x / bw) * cos(ph) - env * sin(ph) * rk);
 		rgrad += (d / dd) * dhdd;
+		// Color contrast follows the same expanding packet, not the sun's specular lobe.
+		// Select the central positive crest; avoid a solid disc at birth and hard expiry.
+		float life = smoothstep(0.08, 0.35, age) * (1.0 - smoothstep(3.5, 5.0, age));
+		float crest_line = exp(-x * x * 2.0) * smoothstep(0.15, 0.85, cos(ph));
+		float ring_contrast = clamp(rg.w * 0.55, 0.0, 0.85)
+			* exp(-age * 0.24) * life;
+		event_foam = max(event_foam, crest_line * ring_contrast);
+
 	}
 	N = normalize(N - vec3(rgrad.x * ring_boost, 0.0, rgrad.y * ring_boost));
 
@@ -395,7 +404,8 @@ void fragment() {
 	float edge2 = exp(-pow((depth_m - 0.17 - 0.03 * sin(wp.y * 0.21 + u_time * 1.15)) / 0.08, 2.0));
 	float foam = edge * smoothstep(0.02, 0.40, fn) * (0.72 + 0.28 * fn2);
 	foam += edge2 * smoothstep(0.45, 0.85, fn2) * 0.55;
-	foam = clamp(max(foam, ship_wake_foam), 0.0, 1.0);
+	event_foam *= (1.0 - near_shore);
+	foam = clamp(max(max(foam, ship_wake_foam), event_foam), 0.0, 1.0);
 	// Те же выбранные мировые ячейки, что у исходного глиттера.
 	// Включённость ячейки не зависит от движущейся волны или луча.
 	// Для наклона берём независимые hash-компоненты, иначе выбор cellid
