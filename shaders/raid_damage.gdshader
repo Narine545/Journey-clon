@@ -18,11 +18,11 @@ void fragment() {
 	float slice = floor(uv.y * 28.0);
 	float seed = hash_value(vec2(slice, frame));
 	float active_slice = step(0.82, seed);
-	// At the strongest configured hit: <= 3.6 horizontal pixels, no vertical jump.
-	uv.x += (seed - 0.5) * 12.0 * pixel.x * intensity * active_slice;
+	// Bounded pixel displacement; deliberately visible test, no vertical jump.
+	uv.x += (seed - 0.5) * 20.0 * pixel.x * intensity * active_slice;
 	uv.x += sin(uv.y * 100.0 + frame) * pixel.x * intensity;
 	uv = clamp(uv, pixel, vec2(1.0) - pixel);
-	float shift = 5.0 * pixel.x * intensity;
+	float shift = 10.0 * pixel.x * intensity;
 	vec3 base = textureLod(screen_texture, uv, 0.0).rgb;
 	float red = textureLod(screen_texture, clamp(uv + vec2(shift, 0.0), pixel, vec2(1.0) - pixel), 0.0).r;
 	float blue = textureLod(screen_texture, clamp(uv - vec2(shift, 0.0), pixel, vec2(1.0) - pixel), 0.0).b;

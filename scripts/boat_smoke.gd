@@ -1747,7 +1747,7 @@ func _check_raid_damage_fx() -> void:
 		"тестовый глитч покрывает окно под HUD и не перехватывает мышь")
 	_check(is_equal_approx(main.boat.hull_hp, saved_hp) and run.xp == saved_xp
 		and is_equal_approx(run.stats.received, saved_received), "демонстрация не наносит урон и не меняет статистику")
-	fx._process(RaidDamageFx.LIFE + 0.01)
+	fx._process(RaidDamageFx.PREVIEW_LIFE + 0.01)
 	_check(not fx._rect.visible and not fx._copy.visible, "глитч и копирование экрана выключаются по окончании")
 	run.effects_enabled = false
 	fx.hit(12.0)

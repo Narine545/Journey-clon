@@ -7,7 +7,7 @@ run = (root / 'scripts/raid_run.gd').read_text()
 boat = (root / 'scripts/boat_vessel.gd').read_text()
 hud = (root / 'scripts/raid_hud.gd').read_text()
 smoke = (root / 'scripts/boat_smoke.gd').read_text()
-assert 'const LIFE := 0.20' in fx and 'layer = 19' in fx
+assert 'const LIFE := 0.40' in fx and 'layer = 19' in fx
 assert 'layer.layer = 20' in run
 assert run.count('damage_fx.reset()') == 2
 assert 'main.raid.damage_fx.hit(maxf(0.0, hp_before - hull_hp))' in boat
@@ -23,7 +23,7 @@ assert '_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE' in fx
 assert '_rect.size = get_viewport().get_visible_rect().size' in fx
 assert 'get_viewport().size_changed.connect(_resize_rect)' in fx
 assert 'if run.modal():\n\t\trun.damage_fx.reset()' in hud
-assert 'ТЕСТ ГЛИТЧА УРОНА' in hud and 'run.damage_fx.preview' in hud
+assert 'ГЛИТЧ АКТИВЕН' in hud and 'run.damage_fx.preview' in hud
 assert 'if run._hurt_timer > 0.45:' not in hud
 assert '_check_raid_damage_fx()' in smoke
 assert 'hint_screen_texture, repeat_disable, filter_linear' in shader
@@ -35,12 +35,16 @@ preview = fx.split('func preview()', 1)[1].split('func _allowed()', 1)[0]
 assert 'hit(12.0)' in preview
 for bad in ('hull_hp =', 'apply_hull_damage', 'stats.', 'xp +='):
     assert bad not in preview
+assert 'const PREVIEW_LIFE := 1.50' in fx
+assert '_hold = 0.90' in fx
+assert 'run.damage_fx.is_active()' in hud
+for duration, hold in ((.4, .12), (1.5, .9)):
+    for age in (0, hold, duration * .9, duration):
+        envelope = min(1, max(0, (duration - age) / (duration - hold)))
+        assert 0 <= envelope <= 1
+    assert max(0, (duration - duration) / (duration - hold)) == 0
 for actual in (1, 9, 12, 24, 100, 1000):
-    peak = min(.60, max(.30, .30 + actual / 100))
-    assert .30 <= peak <= .60
-    assert 5 * peak <= 3.0  # per-channel pixel shift independent of resolution
-    for age in (0, .02, .04, .1, .19, .20):
-        envelope = min(1, max(0, (.20 - age) / (.20 - .04)))
-        assert 0 <= peak * envelope <= .60
-assert max(0, (.20 - .20) / .16) == 0
-print('PASS: actual-damage trigger, screen copy/layer/bounds, short envelope, FX/state reset and no-damage preview (not render)')
+    peak = min(.80, max(.55, .55 + actual / 100))
+    assert .55 <= peak <= .80
+    assert 10 * peak <= 8.0
+print('PASS: actual damage, 0.4s hit/1.5s visible preview, state/layer guards and CPU activation indicator (not render)')

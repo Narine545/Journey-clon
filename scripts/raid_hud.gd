@@ -61,7 +61,7 @@ func setup() -> void:
 	add_child(_clear_toggle)
 	_damage_preview = Button.new()
 	_damage_preview.text = "ТЕСТ ГЛИТЧА УРОНА"
-	_damage_preview.tooltip_text = "Короткий тест изображения без потери HP. Нужны включённые ЭФФЕКТЫ."
+	_damage_preview.tooltip_text = "Тест 1.5 с без потери HP. Нужны включённые ЭФФЕКТЫ."
 	_damage_preview.pressed.connect(run.damage_fx.preview)
 	add_child(_damage_preview)
 	_launch = Button.new()
@@ -441,6 +441,7 @@ func _wrap(text: String) -> String:
 func _draw() -> void:
 	if run == null or not run.engaged():
 		return
+	_damage_preview.text = ("ГЛИТЧ АКТИВЕН" if run.damage_fx.is_active() else "ТЕСТ ГЛИТЧА · 1.5 С")
 	_bar_index = 0
 	for bar in _bars:
 		bar.visible = false
