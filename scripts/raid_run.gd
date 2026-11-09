@@ -73,6 +73,8 @@ var _water_cells: Dictionary = {}
 var _enemy_batch: MultiMesh
 var _shot_batch: MultiMesh
 var _elites := RaidElites.new()
+var _approaches := RaidApproaches.new()
+var _boss_retry := 0.0
 var _spawn_timer := 0.0
 var _bow_timer := 0.0
 var _side_timer := 0.0
@@ -145,6 +147,7 @@ func start() -> void:
 	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
+	_approaches.reset()
 	stats.reset()
 	debug_invulnerable = false
 	debug_clear_screen = false
@@ -162,6 +165,7 @@ func start() -> void:
 	pulse_cooldown = 0.0
 	boss_spawned = false
 	_spawn_timer = 0.0
+	_boss_retry = 0.0
 	_bow_timer = 0.0
 	_side_timer = 0.0
 	_hurt_timer = 0.0
@@ -195,6 +199,7 @@ func leave() -> void:
 	chain_mines = false
 	_next_enemy_id = 0
 	_elites.reset()
+	_approaches.reset()
 	stats.reset()
 	debug_invulnerable = false
 	debug_clear_screen = false
@@ -289,16 +294,27 @@ func navigable(at: Vector2, radius: float = 1.0) -> bool:
 
 
 func _spawn(kind: int, elite: bool = false) -> bool:
+	var replacement := -1
 	if enemies.size() >= ENEMY_CAP:
-		return false
+		if kind == 3:
+			for index in range(enemies.size()):
+				var enemy := enemies[index]
+				if not RaidApproaches.on_screen(self, enemy["at"], float(enemy["radius"])):
+					replacement = index
+					break
+		if replacement < 0:
+			return false
 	var promoted := elite and kind == 1
 	var radius := 3.4 if kind == 3 else (1.7 if kind == 2 else 1.1)
 	if promoted:
 		radius *= RaidElites.RADIUS_SCALE
-	for _attempt in range(24):
-		var at := (
-			boat_at() + Vector2.from_angle(rng.randf_range(-PI, PI)) * rng.randf_range(36.0, 48.0)
-		)
+	for _attempt in range(1):
+		var slot := _approaches.next_slot(self)
+		if slot.is_empty():
+			return false
+		var at: Vector2 = slot["at"]
+		if elapsed > float(slot["expires"]) or RaidApproaches.on_screen(self, at, radius):
+			return false
 		if not navigable(at, radius):
 			continue
 		var crowded := false
@@ -314,6 +330,8 @@ func _spawn(kind: int, elite: bool = false) -> bool:
 		var hp := (650.0 if kind == 3 else 25.0 + kind * 14.0) * (1.0 + elapsed / 400.0)
 		if promoted:
 			hp *= RaidElites.HP_SCALE
+		if replacement >= 0:
+			enemies.remove_at(replacement)
 		enemies.append(
 			{
 				"at": at,
@@ -327,7 +345,9 @@ func _spawn(kind: int, elite: bool = false) -> bool:
 				"charge": 0.0,
 				"aim": Vector2.ZERO,
 				"flash": 0.0,
-				"born": 0.6
+				"born": 0.6,
+				"approach_route": slot["route"] if kind == 0 else Vector2.ZERO,
+				"approach_until": elapsed + 45.0
 			}
 		)
 		return true
@@ -347,9 +367,6 @@ func _physics_process(delta: float) -> void:
 	pulse_cooldown = maxf(0.0, pulse_cooldown - delta)
 	_pulse_flash = maxf(0.0, _pulse_flash - delta)
 	# Recycle only combat enemies, never fixed pigment resources. No XP for leaving.
-	for index in range(enemies.size() - 1, -1, -1):
-		if int(enemies[index]["kind"]) != 3 and boat_at().distance_to(enemies[index]["at"]) > 100.0:
-			enemies.remove_at(index)
 	_spawn_timer -= delta
 	_step_elites()
 	if _spawn_timer <= 0.0 and not RaidWaves.respite(elapsed):
@@ -360,9 +377,9 @@ func _physics_process(delta: float) -> void:
 				ranged_count += 1
 		_spawn(RaidWaves.choose_kind(elapsed, ranged_count, rng.randf()))
 	# Warning begins at 225s. Reserve room for boss even at the population cap.
-	if elapsed >= 240.0 and not boss_spawned:
-		if enemies.size() >= ENEMY_CAP:
-			enemies.remove_at(0)
+	_boss_retry = maxf(0.0, _boss_retry - delta)
+	if elapsed >= 240.0 and not boss_spawned and _boss_retry <= 0.0:
+		_boss_retry = 1.0
 		boss_spawned = _spawn(3)
 	_debug_clear_visible()
 	_rebuild_grid()

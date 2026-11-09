@@ -36,9 +36,10 @@ assert "xp -= xp_needed" in run and "if xp >= xp_needed:" in run
 assert "_saved_hp = main.boat.hull_hp" in run
 assert "main.boat.hull_hp = _saved_hp" in run
 assert "main.debug_panel_visible = _saved_debug" in run
-assert "boss_spawned = _spawn(3)" in run and "enemies.remove_at(0)" in run
+assert "boss_spawned = _spawn(3)" in run and "enemies.remove_at(replacement)" in run
 assert "elapsed >= 240.0" in run and "elapsed >= 225.0" in hud
-assert "distance_to(enemies[index]" in run and "> 100.0" in run
+assert "boat_at().distance_to(enemies[index]" not in run
+assert "RaidApproaches.on_screen" in run
 assert "1.0 if modal() or main.inspection_active()" in " ".join(run.split())
 assert "_physics_process" in run and "state != State.RUNNING or main.inspection_active()" in run
 assert "raid.setup(self)" in main and "func gameplay_paused()" in main

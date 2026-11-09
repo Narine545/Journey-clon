@@ -133,6 +133,10 @@ static func move_enemies(run: RaidRun, delta: float) -> void:
 			elif float(enemy["timer"]) <= 0.0:
 				run._add_shot(at, to_boat.normalized() * 12.0, 12.0, true)
 				enemy["timer"] = 3.8
+		if not recovering and kind == 0 and run.elapsed < float(enemy.get("approach_until", 0.0)):
+			var route: Vector2 = enemy.get("approach_route", Vector2.ZERO)
+			if route.length_squared() > 0.0:
+				direction = route
 		var requested := step(enemy, direction * speed, delta)
 		var displacement := RaidContacts.slide_motion(run, enemy, requested)
 		var clear := Callable(run, "navigable")
