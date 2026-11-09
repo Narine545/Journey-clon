@@ -133,10 +133,16 @@ static func move_enemies(run: RaidRun, delta: float) -> void:
 			elif float(enemy["timer"]) <= 0.0:
 				run._add_shot(at, to_boat.normalized() * 12.0, 12.0, true)
 				enemy["timer"] = 3.8
+		var following_route := false
 		if not recovering and kind == 0 and run.elapsed < float(enemy.get("approach_until", 0.0)):
 			var route: Vector2 = enemy.get("approach_route", Vector2.ZERO)
+			var exit_at: Vector2 = enemy.get("approach_exit", at)
 			if route.length_squared() > 0.0:
-				direction = route
+				if (at - exit_at).dot(route) >= 0.0:
+					enemy["approach_route"] = Vector2.ZERO
+				else:
+					direction = route
+					following_route = true
 		var requested := step(enemy, direction * speed, delta)
 		var displacement := RaidContacts.slide_motion(run, enemy, requested)
 		var clear := Callable(run, "navigable")
@@ -155,6 +161,14 @@ static func move_enemies(run: RaidRun, delta: float) -> void:
 					moved = candidate
 					break
 		enemy["at"] = moved
+		if following_route:
+			var progress := (moved - at).dot(direction)
+			var blocked := float(enemy.get("approach_blocked", 0.0))
+			blocked = blocked + delta if progress < speed * delta * 0.15 else 0.0
+			enemy["approach_blocked"] = blocked
+			if blocked >= 2.0:
+				# Route is obstructed: release to ordinary AI, never project through terrain.
+				enemy["approach_route"] = Vector2.ZERO
 
 		feedback(enemy, requested - (Vector2(enemy["at"]) - at))
 

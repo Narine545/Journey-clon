@@ -347,7 +347,9 @@ func _spawn(kind: int, elite: bool = false) -> bool:
 				"flash": 0.0,
 				"born": 0.6,
 				"approach_route": slot["route"] if kind == 0 else Vector2.ZERO,
-				"approach_until": elapsed + 45.0
+				"approach_exit": slot["exit"],
+				"approach_blocked": 0.0,
+				"approach_until": elapsed + minf(100.0, at.distance_to(slot["exit"]) / 2.8 + 12.0)
 			}
 		)
 		return true

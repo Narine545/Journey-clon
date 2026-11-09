@@ -65,6 +65,7 @@ func _plan(run: RaidRun) -> void:
 			{
 				"at": at,
 				"route": -axis if mode == 1 else Vector2.ZERO,
+				"exit": at - axis * (2.0 * (extent + 22.0)),
 				"expires": run.elapsed + 15.0,
 				"mode": mode
 			}
