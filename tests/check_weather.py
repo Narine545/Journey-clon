@@ -115,8 +115,8 @@ for line in ('[0.45, 0.30, 0.20, 0.05]', '[0.08, 0.12, 0.30, 0.50]',
 assert '_rng' not in source.split('func advance',1)[1]  # randomness only at front creation
 assert 'weather.advance(delta, night01)' in main
 assert '\tif OS.get_environment("JOURNEY_BOAT_SMOKE") != "1":\n\t\tweather.advance' in main
-assert 'weather.fog_amount, weather.cloud_amount)' in main
-assert 'set_shader_parameter("weather_fog", weather.fog_amount)' in main
+assert 'effective_fog, weather.cloud_amount)' in main
+assert 'set_shader_parameter("weather_fog", effective_fog)' in main
 assert 'coast.set_sand("fog_distance", haze_distance)' in main
 assert 'water.set_param("fog_distance", haze_distance)' in main
 assert 'weather_fog: float = 1.0' in world  # Other callers keep accepted baseline.

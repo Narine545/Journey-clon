@@ -44,6 +44,7 @@ var notice_time := 0.0
 # Состояние игрового цикла (Маяки, Сумерки, Рифы, Сонар)
 var night01 := 0.0
 var weather := SeaWeather.new()
+var debug_instant_fog := false
 var sonar_timer := 12.0 # со старта даём краткий пеленг, чтобы игрок сразу увидел цель
 var overdrive_timer := 0.0
 var beacons: Array[Dictionary] = []
@@ -173,6 +174,7 @@ func _ready() -> void:
 
 
 func _apply_atmosphere(n01: float) -> void:
+	var effective_fog := 1.0 if debug_instant_fog else weather.fog_amount
 	night01 = clampf(n01, 0.0, 0.88)
 	coast.set_night01(night01)
 	water.apply_night01(night01)
@@ -185,12 +187,12 @@ func _apply_atmosphere(n01: float) -> void:
 	# и те же свойства окружения — побеждал последний, а первые два были
 	# мёртвыми записями.
 	world.apply_boat_atmosphere(night01, sun, debug_night_fill, debug_rme4_enabled,
-		weather.fog_amount, weather.cloud_amount)
+		effective_fog, weather.cloud_amount)
 	if debug_fog_diagnostic != 0:
 		_apply_fog_diagnostic()
 	if _rme4_material != null:
 		_rme4_material.set_shader_parameter("night_factor", night01)
-		_rme4_material.set_shader_parameter("weather_fog", weather.fog_amount)
+		_rme4_material.set_shader_parameter("weather_fog", effective_fog)
 		_rme4_material.set_shader_parameter("sun_direction", sun)
 	coast.apply_sun(sun)
 	water.apply_sun(sun)
@@ -204,7 +206,7 @@ func _apply_atmosphere(n01: float) -> void:
 	water.set_param("sun_col", Color("ffcc85").lerp(Color("a8c9e3"), night01)
 		* lerpf(1.0, 0.72, weather.cloud_amount))
 	# Одна дальняя дымка у моря и берега: ясность не создаёт нового стыка.
-	var haze_distance := lerpf(340.0, 130.0, night01) * lerpf(1.4, 1.0, weather.fog_amount)
+	var haze_distance := lerpf(340.0, 130.0, night01) * lerpf(1.4, 1.0, effective_fog)
 	water.set_param("fog_distance", haze_distance)
 	coast.set_sand("fog_distance", haze_distance)
 	water.set_param("mega_amp", lerpf(0.25, 0.31, night01))

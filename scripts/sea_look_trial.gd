@@ -1,7 +1,7 @@
 class_name SeaLookTrial
 extends CanvasLayer
 ## Gradient palette inspiration: Koaleszenz (MIT), see SHADER-CREDITS.md.
-## Two independent, session-only A/B controls. No new fog volume or screen pass.
+## Session-only sea comparisons and instant fog preview. No new volume or screen pass.
 var main: BoatMain
 var _panel: PanelContainer
 var _depth_toggle: CheckButton
@@ -53,6 +53,12 @@ func setup(scene: BoatMain) -> void:
 	_mist_toggle.tooltip_text = "Более редкие низкие банки. Выкл. — прежний туман. Зависит от погоды."
 	_mist_toggle.toggled.connect(_set_mist)
 	box.add_child(_mist_toggle)
+	var fog_toggle := CheckButton.new()
+	fog_toggle.text = "Туман сразу"
+	fog_toggle.add_theme_font_size_override("font_size", 18)
+	fog_toggle.tooltip_text = "Туман без ожидания погоды, днём и ночью. Выкл. — текущая погода."
+	fog_toggle.toggled.connect(_set_instant_fog)
+	box.add_child(fog_toggle)
 	_depth_toggle.set_pressed_no_signal(true)
 	_set_depth(true)
 	var supported := main._rme4_material != null
@@ -72,6 +78,11 @@ func _set_depth(enabled: bool) -> void:
 func _set_mist(enabled: bool) -> void:
 	if main._rme4_material != null:
 		main._rme4_material.set_shader_parameter("mist_pockets", 1.0 if enabled else 0.0)
+
+
+func _set_instant_fog(enabled: bool) -> void:
+	main.debug_instant_fog = enabled
+	main._apply_atmosphere(main.night01)
 
 
 func _layout() -> void:
