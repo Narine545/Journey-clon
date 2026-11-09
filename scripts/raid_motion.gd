@@ -149,9 +149,11 @@ static func move_enemies(run: RaidRun, delta: float) -> void:
 		feedback(enemy, requested - (Vector2(enemy["at"]) - at))
 
 
-static func sphere_contact(enemy: Dictionary, normal: Vector2, surface_speed: float) -> void:
-	# Frictionless finite-mass impact: only the normal component changes.
-	# Kept separate from authored dash/push, so dash recovery cannot erase the impulse.
+static func sphere_contact(
+	enemy: Dictionary, normal: Vector2, surface_speed: float, penetration: float, delta: float
+) -> void:
+	# Active compliant boundary: resolve inward relative speed + overlap through velocity.
+	# No position projection. Tangential momentum is untouched; heavy bodies respond slower.
 	if float(enemy["hp"]) <= 0.0 or float(enemy.get("born", 0.0)) > 0.0:
 		return
 	var external: Vector2 = enemy.get("sphere_velocity", Vector2.ZERO)
@@ -160,10 +162,9 @@ static func sphere_contact(enemy: Dictionary, normal: Vector2, surface_speed: fl
 		+ Vector2(enemy.get("push_velocity", Vector2.ZERO))
 		+ external
 	)
-	var closing := surface_speed - velocity.dot(normal)
-	if closing <= 0.0:
+	var desired_normal := minf(24.0, maxf(0.0, surface_speed) + maxf(0.0, penetration) * 10.0)
+	var deficit := desired_normal - velocity.dot(normal)
+	if deficit <= 0.0 or delta <= 0.0:
 		return
-	var inv_mass := inverse_mass(enemy)
-	# Field's effective mass is four light enemies. No per-frame pressure stacking.
-	var impulse := minf(24.0, 1.1 * closing / (inv_mass + 0.25))
-	enemy["sphere_velocity"] = external + normal * impulse * inv_mass
+	var response := 1.0 - exp(-30.0 * inverse_mass(enemy) * delta)
+	enemy["sphere_velocity"] = external + normal * deficit * response

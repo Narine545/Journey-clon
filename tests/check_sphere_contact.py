@@ -1,44 +1,41 @@
-"""Analytic contact regression, not engine execution or render verification."""
+"""Compliant boundary arithmetic + integration guards; not engine proof."""
 from pathlib import Path
 import math
 s = Path('scripts/sphere_mines.gd').read_text()
 m = Path('scripts/raid_motion.gd').read_text()
-assert 'before >= FUSE + 0.3' in s
-assert 'touched.has(identity)' in s and 'touched[identity] = true' in s
-assert '_line_clear(center, contact)' in s
-assert 'RaidMotion.sphere_contact(enemy, normal, 6.0)' in s
+assert 'FUSE + FIELD_TIME - 0.4' in s
+assert 'touched' not in s and 'old_gap' not in s
+assert 'var position:' not in s
+assert '_line_clear(center, enemy_at)' in s
+assert 'surface_speed, penetration, contact_delta' in s
 assert 'sphere_velocity' in m.split('static func feedback')[1].split('static func move_enemies')[0]
 assert 'field_push * ((1.0 - field_decay) / 2.2)' in m
-assert 'Vector2(enemy.get("sphere_velocity", Vector2.ZERO)).length_squared() < 0.01' in m
 contact = m.split('static func sphere_contact')[1]
 assert 'enemy["at"] =' not in contact and 'mobility' not in contact
-assert 'enemy["sphere_velocity"] = external + normal * impulse * inv_mass' in contact
+assert 'enemy["sphere_velocity"] = external + normal * deficit * response' in contact
+assert 'exp(-30.0 * inverse_mass(enemy) * delta)' in contact
 
-def hit(vn, tangent, radius):
-    inv = 1 / max(1, radius / 1.1)**2
-    closing = max(0, 6 - vn)
-    impulse = min(24, 1.1 * closing / (inv + .25))
-    return vn + impulse * inv, tangent
-# Normal impact reverses ordinary approaching enemy, tangent exactly preserved.
+def hit(vn, tangent, radius, growth=15, depth=1, dt=1/60):
+    inv = 1 / max(1, radius/1.1)**2
+    target = min(24, max(0, growth) + max(0, depth)*10)
+    return vn + max(0, target-vn)*(1-math.exp(-30*inv*dt)), tangent
 assert hit(-3, 2, 1.1)[0] > 0
 assert hit(-3, 2, 1.1)[1] == 2
-assert hit(8, 2, 1.1) == (8, 2)  # outrunning front: no attraction/braking
-assert hit(-3, 0, 3.4)[0] - (-3) < hit(-3, 0, 1.1)[0] - (-3)
-assert hit(-14, 0, 1.1)[0] > -14  # dash responds instead of deleting impulse
-# Free decay has timestep-independent displacement, finite travel, no target rail.
-for fps in (20, 30, 60, 120):
-    v, x = 6., 0.
-    for _ in range(fps * 2):
-        decay = math.exp(-2.2/fps)
-        x += v*(1-decay)/2.2
-        v *= decay
-    assert math.isclose(x, 6*(1-math.exp(-4.4))/2.2, abs_tol=1e-9)
-# Swept contact fraction is in interval; no contact during hold/collapse.
-old_gap, new_gap = 0.4, -0.3
-fraction = old_gap/(old_gap-new_gap)
-assert 0 < fraction < 1
-# Dissipative wall feedback removes only blocked component (normal +x).
-velocity = (4., 3.)
-blocked = (velocity[0]-max(0, velocity[0]), velocity[1])
-assert blocked == (0, 3)
-print('PASS sphere mass/relative velocity/tangent/dash/decay and integration guards')
+assert hit(30, 2, 1.1) == (30, 2)
+assert hit(-3, 0, 3.4)[0] < hit(-3, 0, 1.1)[0]
+assert hit(-14, 0, 1.1)[0] > -14
+# Repeated interior contact moves even the heavy body, no one-hit latch.
+for fps in (30, 60, 120):
+    for radius in (1.1, 3.4):
+        v = -3.
+        for _ in range(fps):
+            v, _ = hit(v, 0, radius, growth=0, depth=1, dt=1/fps)
+        assert v > 9
+# Closed-form relaxation for a constant contact target is independent of subdivision.
+for fps in (30, 60, 120):
+    v = -3.
+    for _ in range(fps):
+        v, _ = hit(v, 0, 3.4, growth=0, depth=1, dt=1/fps)
+    expected = 10 + (-3-10)*math.exp(-30*(1.1/3.4)**2)
+    assert math.isclose(v, expected, abs_tol=1e-9)
+print('PASS sustained sphere boundary: interior, mass, tangential velocity, dash and timing')

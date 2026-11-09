@@ -89,40 +89,34 @@ func _drop() -> void:
 	node.scale = Vector3.ONE * 0.35
 	node.position = Vector3(at.x, Coast.SEA_LEVEL + 0.2, at.y)
 	add_child(node)
-	mines.append({"at": at, "age": 0.0, "opened": false, "node": node, "touched": {}})
+	mines.append({"at": at, "age": 0.0, "opened": false, "node": node})
 
 
 func _expansion_contacts(mine: Dictionary, before: float, after: float) -> void:
-	if after <= FUSE or before >= FUSE + 0.3:
+	# Compliant contact throughout growth + hold, not a one-shot hit list.
+	var active_start := maxf(before, FUSE)
+	var active_end := minf(after, FUSE + FIELD_TIME - 0.4)
+	var contact_delta := active_end - active_start
+	if contact_delta <= 0.0:
 		return
-	var radius_before := 4.5 * clampf((before - FUSE) / 0.3, 0.0, 1.0)
-	var radius_after := 4.5 * clampf((after - FUSE) / 0.3, 0.0, 1.0)
+	var radius_before := 4.5 * clampf((active_start - FUSE) / 0.3, 0.0, 1.0)
+	var radius_after := 4.5 * clampf((active_end - FUSE) / 0.3, 0.0, 1.0)
+	var surface_speed := (radius_after - radius_before) / contact_delta
 	var center: Vector2 = mine["at"]
-	var touched: Dictionary = mine["touched"]
 	for enemy in run.enemies:
-		var identity := int(enemy["combat_id"])
-		if touched.has(identity) or float(enemy["hp"]) <= 0.0:
+		if float(enemy["hp"]) <= 0.0 or float(enemy.get("born", 0.0)) > 0.0:
 			continue
-		if float(enemy.get("born", 0.0)) > 0.0:
-			continue
-		var position: Vector2 = enemy["at"]
-		var previous: Vector2 = enemy.get("previous", position)
+		var enemy_at: Vector2 = enemy["at"]
 		var body_radius := float(enemy["radius"])
-		var old_gap := previous.distance_to(center) - body_radius - radius_before
-		var new_gap := position.distance_to(center) - body_radius - radius_after
-		# Linear swept gap catches a fast crossing between fixed steps.
-		if new_gap > 0.0 or (old_gap < 0.0 and before > FUSE):
+		var offset := enemy_at - center
+		var penetration := radius_after + body_radius - offset.length()
+		if penetration <= 0.0:
 			continue
-		var fraction := clampf(old_gap / maxf(old_gap - new_gap, 0.0001), 0.0, 1.0)
-		var contact := previous.lerp(position, fraction)
-		if not run.stern_charges._line_clear(center, contact):
+		if not run.stern_charges._line_clear(center, enemy_at):
 			continue
-		var offset := contact - center
 		var normal := (
 			offset.normalized()
 			if offset.length_squared() > 0.000001
-			else Vector2.from_angle(float(identity) * 2.399963)
+			else Vector2.from_angle(float(enemy["combat_id"]) * 2.399963)
 		)
-		touched[identity] = true
-		# Visual growth is 15 m/s; limit coupled water/body impulse to 6 m/s.
-		RaidMotion.sphere_contact(enemy, normal, 6.0)
+		RaidMotion.sphere_contact(enemy, normal, surface_speed, penetration, contact_delta)
