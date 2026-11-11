@@ -108,6 +108,11 @@ func _drop() -> void:
 	if not run.navigable(at, 1.0) or run._hull_distance(at) < 0.8:
 		cooldown = 0.5
 		return
+	# Reserve full future radius even during fuse/growth, not just current visual size.
+	var planned_radius := radius(maxi(1, weapon_rank()))
+	if conflicts_with_other_field(at, planned_radius):
+		cooldown = 0.5
+		return
 	for mine in mines:
 		if at.distance_squared_to(mine["at"]) < 16.0:
 			return
@@ -178,3 +183,14 @@ func _expansion_contacts(mine: Dictionary, before: float, after: float) -> void:
 					run.stats.sphere_effective += 1
 				measured[identity] = true
 				run.stats.sphere_contacts += 1
+
+
+func conflicts_with_other_field(at: Vector2, planned_radius: float) -> bool:
+	var other: SphereMines = run.gravity_mines if self == run.sphere_mines else run.sphere_mines
+	if other == null:
+		return false
+	for mine in other.mines:
+		var clearance := planned_radius + float(mine["radius"]) + 3.0
+		if at.distance_squared_to(mine["at"]) < clearance * clearance:
+			return true
+	return false
