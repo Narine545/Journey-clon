@@ -31,7 +31,7 @@ func _drop() -> void:
 	var previous_count := mines.size()
 	super._drop()
 	if mines.size() > previous_count:
-		var mine := mines.back()
+		var mine: Dictionary = mines.back()
 		mine["dps"] = 8.0 + 4.0 * float(run.gravity_damage_rank)
 		mine["released"] = false
 		var node: MeshInstance3D = mine["node"]

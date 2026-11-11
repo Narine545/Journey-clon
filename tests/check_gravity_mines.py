@@ -35,3 +35,7 @@ assert 5+.85 < 6 and 5+.85 < 8
 # Opposing accelerations add vectorially rather than teleporting to either field.
 assert 9 + (-6) == (-6) + 9
 print('PASS dual fields: progression, snapshots, color/debug, additive force, release and continuous damage')
+
+# Array.back() returns Variant even for a typed array in Godot.
+assert "var mine: Dictionary = mines.back()" in g
+assert "var mine := mines.back()" not in g
