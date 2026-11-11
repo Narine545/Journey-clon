@@ -7,10 +7,10 @@ w = Path('shaders/water_boat.gdshader').read_text()
 shader = Path('shaders/sphere_mine.gdshader').read_text()
 assert 'const CAPACITY := 4' in s
 assert 'var enabled := false' in s
-assert 'if (enabled or run.sphere_rank > 0) and cooldown <= 0.0:' in s
+assert 'if (enabled or weapon_rank() > 0) and cooldown <= 0.0:' in s
 assert s.count('water.field.splash(at, 2.0)') == 2
 assert 'age >= FUSE and not bool(mine["opened"])' in s
-assert 'age >= FUSE + FIELD_TIME' in s
+assert 'age >= FUSE + float(mine["duration"])' in s
 assert 'run.navigable(at, 1.0)' in s and 'run._hull_distance(at)' in s
 assert 'run.stats.debug_used = true' in s
 assert 'enemy["hp"] =' not in s and 'record_damage' not in s

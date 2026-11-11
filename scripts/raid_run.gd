@@ -28,6 +28,10 @@ const UPGRADES := [
 	["Штормовая картечь", "ЭВОЛЮЦИЯ: широкий бортовой веер, пробитие 2 целей"],
 	["Цепной подрыв", "ЭВОЛЮЦИЯ: мины запускают соседние взведённые заряды"],
 	["Сферические мины", "Открыть / усилить поле вытеснения. Без урона и щита"],
+	["Стабилизация сферы", "+1 с существования вытесняющей сферы"],
+	["Стягивающие мины", "Отдельная сфера: притяжение, урон внутри, выброс"],
+	["Стабилизация стягивания", "+1 с существования стягивающей сферы"],
+	["Сжатие поля", "+4 урона в секунду внутри стягивающей сферы"],
 ]
 var stats := RaidStats.new()
 var effects_enabled := true
@@ -35,6 +39,7 @@ var debug_invulnerable := false
 var debug_clear_screen := false
 var damage_fx: RaidDamageFx
 var weapon_fx: RaidWeaponFx
+var gravity_mines: GravityMines
 var sphere_mines: SphereMines
 var stern_charges: RaidSternCharges
 var salvage: RaidSalvage
@@ -57,6 +62,10 @@ var reload_scale := 1.0
 var pellets := 1
 var speed_rank := 0
 var turn_rank := 0
+var gravity_rank := 0
+var gravity_stability := 0
+var gravity_damage_rank := 0
+var sphere_stability := 0
 var sphere_rank := 0
 var stern_rank := 0
 var pulse_radius := 13.0
@@ -103,6 +112,9 @@ func setup(scene: BoatMain) -> void:
 	sphere_mines = SphereMines.new()
 	add_child(sphere_mines)
 	sphere_mines.setup(self)
+	gravity_mines = GravityMines.new()
+	add_child(gravity_mines)
+	gravity_mines.setup(self)
 	damage_fx = RaidDamageFx.new()
 	add_child(damage_fx)
 	damage_fx.setup(self)
@@ -161,6 +173,10 @@ func start() -> void:
 	pellets = 1
 	speed_rank = 0
 	turn_rank = 0
+	gravity_rank = 0
+	gravity_stability = 0
+	gravity_damage_rank = 0
+	sphere_stability = 0
 	sphere_rank = 0
 	stern_rank = 0
 	pulse_radius = 13.0
@@ -183,6 +199,7 @@ func start() -> void:
 	damage_fx.reset()
 	stern_charges.reset()
 	sphere_mines.reset()
+	gravity_mines.reset()
 	hud.refresh()
 
 
@@ -211,6 +228,10 @@ func leave() -> void:
 	_xp_quarters = 0
 	speed_rank = 0
 	turn_rank = 0
+	gravity_rank = 0
+	gravity_stability = 0
+	gravity_damage_rank = 0
+	sphere_stability = 0
 	sphere_rank = 0
 	stern_rank = 0
 	main.boat.hull_hp = _saved_hp
@@ -228,6 +249,7 @@ func leave() -> void:
 	damage_fx.reset()
 	stern_charges.reset()
 	sphere_mines.reset()
+	gravity_mines.reset()
 	hud.refresh()
 
 
@@ -336,21 +358,24 @@ func _spawn(kind: int, elite: bool = false) -> bool:
 			hp *= RaidElites.HP_SCALE
 		if replacement >= 0:
 			enemies.remove_at(replacement)
-		enemies.append(
-			{
-				"at": at,
-				"previous": at,
-				"hp": hp,
-				"max_hp": hp,
-				"kind": kind,
-				"elite": promoted,
-				"radius": radius,
-				"timer": rng.randf_range(1.3, 2.5),
-				"charge": 0.0,
-				"aim": Vector2.ZERO,
-				"flash": 0.0,
-				"born": 0.6,
-			}
+		(
+			enemies
+			. append(
+				{
+					"at": at,
+					"previous": at,
+					"hp": hp,
+					"max_hp": hp,
+					"kind": kind,
+					"elite": promoted,
+					"radius": radius,
+					"timer": rng.randf_range(1.3, 2.5),
+					"charge": 0.0,
+					"aim": Vector2.ZERO,
+					"flash": 0.0,
+					"born": 0.6,
+				}
+			)
 		)
 		return true
 	return false
@@ -391,6 +416,11 @@ func _physics_process(delta: float) -> void:
 	_rebuild_grid()
 	stern_charges.step(delta)
 	sphere_mines.step(delta)
+	gravity_mines.step(delta)
+	for enemy in enemies:
+		enemy["sphere_velocity"] = Vector2(enemy.get("sphere_velocity", Vector2.ZERO)).limit_length(
+			24.0
+		)
 	_fire_weapons(delta)
 	_move_shots(delta)
 	for index in range(enemies.size() - 1, -1, -1):
@@ -640,6 +670,14 @@ func _upgrade_pool() -> Array[int]:
 	var available: Array[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 	if sphere_rank < 3:
 		available.append(14)
+	if sphere_rank > 0 and sphere_stability < 2:
+		available.append(15)
+	if gravity_rank < 3:
+		available.append(16)
+	if gravity_rank > 0 and gravity_stability < 2:
+		available.append(17)
+	if gravity_rank > 0 and gravity_damage_rank < 3:
+		available.append(18)
 	if can_evolve_harpoon():
 		available.append(10)
 	if can_evolve_pulse():
@@ -754,6 +792,14 @@ func choose(index: int) -> void:
 			if sphere_rank == 0:
 				stats.sphere_unlocked_at = elapsed
 			sphere_rank = mini(3, sphere_rank + 1)
+		15:
+			sphere_stability = mini(2, sphere_stability + 1)
+		16:
+			gravity_rank = mini(3, gravity_rank + 1)
+		17:
+			gravity_stability = mini(2, gravity_stability + 1)
+		18:
+			gravity_damage_rank = mini(3, gravity_damage_rank + 1)
 	if choices[index] >= 10 and choices[index] <= 13:
 		stats.record_evolution(choices[index], elapsed)
 	xp -= xp_needed
@@ -838,9 +884,36 @@ func upgrade_preview(kind: int) -> String:
 			preview = "Новые мины: цепной подрыв\nПередача: до 8 м, 0.20 с\nТолько взведённые, без преград"
 		14:
 			var next_sphere := mini(3, sphere_rank + 1)
-			preview = ("Ранг: %d → %d / 3\nРадиус: %.2f м · сброс: %.1f с\nОдно поле · без урона"
-				% [sphere_rank, next_sphere, SphereMines.radius(next_sphere),
-				SphereMines.interval(next_sphere)])
+			preview = (
+				"Ранг: %d → %d / 3\nРадиус: %.2f м · сброс: %.1f с\nОдно поле · без урона"
+				% [
+					sphere_rank,
+					next_sphere,
+					SphereMines.radius(next_sphere),
+					SphereMines.interval(next_sphere)
+				]
+			)
+		15:
+			preview = "Длительность: %d → %d с" % [3 + sphere_stability, 4 + sphere_stability]
+		16:
+			preview = (
+				"Ранг %d → %d · радиус %.2f м\nСброс %.1f с · поле %d с\nУрон внутри: %d/с"
+				% [
+					gravity_rank,
+					mini(3, gravity_rank + 1),
+					SphereMines.radius(mini(3, gravity_rank + 1)),
+					10.0 - float(mini(3, gravity_rank + 1) - 1),
+					3 + gravity_stability,
+					8 + 4 * gravity_damage_rank
+				]
+			)
+		17:
+			preview = "Длительность: %d → %d с" % [3 + gravity_stability, 4 + gravity_stability]
+		18:
+			preview = (
+				"Урон внутри: %d → %d/с"
+				% [8 + 4 * gravity_damage_rank, 12 + 4 * gravity_damage_rank]
+			)
 	return preview
 
 

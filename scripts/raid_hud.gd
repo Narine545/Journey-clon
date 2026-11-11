@@ -20,6 +20,7 @@ var _retry: Button
 var _bars: Array[ColorRect] = []
 var _bar_index := 0
 var _title_material: ShaderMaterial
+var _gravity_toggle: CheckButton
 var _sphere_toggle: CheckButton
 var _god_toggle: CheckButton
 var _clear_toggle: CheckButton
@@ -47,6 +48,10 @@ func setup() -> void:
 	_fx_toggle.button_pressed = run.effects_enabled
 	_fx_toggle.toggled.connect(_set_effects)
 	add_child(_fx_toggle)
+	_gravity_toggle = CheckButton.new()
+	_gravity_toggle.text = "ТЕСТ: СТЯГИВАЮЩИЕ МИНЫ"
+	_gravity_toggle.toggled.connect(run.gravity_mines.set_enabled)
+	add_child(_gravity_toggle)
 	_sphere_toggle = CheckButton.new()
 	_sphere_toggle.text = "ТЕСТ: СФЕРИЧЕСКИЕ МИНЫ"
 	_sphere_toggle.tooltip_text = "Отладочный ускоренный выпуск. Выкл. возвращает режим карточки. Без урона/щита."
@@ -171,6 +176,8 @@ func _layout() -> void:
 	_pause.size = Vector2(146, 32)
 	_fx_toggle.position = Vector2(size.x - 190, 254)
 	_fx_toggle.size = Vector2(166, 28)
+	_gravity_toggle.position = Vector2(size.x - 330, 534)
+	_gravity_toggle.size = Vector2(320, 30)
 	_sphere_toggle.position = Vector2(size.x - 310, 496)
 	_sphere_toggle.size = Vector2(300, 30)
 	_god_toggle.position = Vector2(size.x - 248, 420)
@@ -203,6 +210,9 @@ func refresh() -> void:
 	_fx_toggle.visible = run.engaged()
 	if run.modal():
 		run.damage_fx.reset()
+	_gravity_toggle.visible = run.engaged()
+	_gravity_toggle.disabled = run.state in [RaidRun.State.WON, RaidRun.State.LOST]
+	_gravity_toggle.set_pressed_no_signal(run.gravity_mines.enabled)
 	_sphere_toggle.visible = run.engaged()
 	_sphere_toggle.disabled = run.state in [RaidRun.State.WON, RaidRun.State.LOST]
 	_sphere_toggle.set_pressed_no_signal(run.sphere_mines.enabled)
@@ -288,7 +298,7 @@ func _summary() -> String:
 
 func _combat_summary() -> String:
 	var report := "\n\nФАКТИЧЕСКИЙ УРОН ПО ЦЕЛЯМ"
-	var labels := ["Нос", "Борта", "Импульс Q", "Кормовые заряды"]
+	var labels := ["Нос", "Борта", "Импульс Q", "Кормовые заряды", "Стягивающие сферы"]
 	var total: float = run.stats.total_damage()
 	for index in range(labels.size()):
 		var amount: float = run.stats.dealt[index]
@@ -356,15 +366,43 @@ func _build_summary() -> String:
 		% [run.pulse_damage, run.pulse_radius, run.stats.pulses]
 	)
 	if run.sphere_rank > 0:
-		report += ("\nСферические мины %d/3: %.2f м / %.1f с · без урона"
-			% [run.sphere_rank, SphereMines.radius(run.sphere_rank),
-			SphereMines.interval(run.sphere_rank)])
+		report += (
+			"\nСферические мины %d/3: %.2f м / %.1f с · без урона"
+			% [
+				run.sphere_rank,
+				SphereMines.radius(run.sphere_rank),
+				SphereMines.interval(run.sphere_rank)
+			]
+		)
 	if run.stats.sphere_dropped > 0 or run.sphere_rank > 0:
-		report += ("\nСфера открыта в %s · выпущено %d · раскрылось %d"
-			% [_report_time(run.stats.sphere_unlocked_at), run.stats.sphere_dropped,
-			run.stats.sphere_opened])
-		report += ("\nПолей с толчком: %d · контактов поле–цель: %d"
-			% [run.stats.sphere_effective, run.stats.sphere_contacts])
+		report += (
+			"\nСфера открыта в %s · выпущено %d · раскрылось %d"
+			% [
+				_report_time(run.stats.sphere_unlocked_at),
+				run.stats.sphere_dropped,
+				run.stats.sphere_opened
+			]
+		)
+		report += (
+			"\nПолей с толчком: %d · контактов поле–цель: %d"
+			% [run.stats.sphere_effective, run.stats.sphere_contacts]
+		)
+	if run.gravity_rank > 0 or run.stats.gravity_dropped > 0:
+		report += (
+			"\nСтягивание %d/3 · поле %d с · урон %d/с\nВыпущено %d · раскрылось %d"
+			% [
+				run.gravity_rank,
+				3 + run.gravity_stability,
+				8 + 4 * run.gravity_damage_rank,
+				run.stats.gravity_dropped,
+				run.stats.gravity_opened
+			]
+		)
+	if run.sphere_rank > 0:
+		report += (
+			"\nСтабилизация вытеснения %d/2 · поле %d с"
+			% [run.sphere_stability, 3 + run.sphere_stability]
+		)
 	if run.stern_rank > 0:
 		report += (
 			"\nКорма %d/3: %.0f урона / %.0f м / %.1f с"
@@ -446,6 +484,23 @@ func _wrap(text: String) -> String:
 			line = ""
 		line += (" " if not line.is_empty() else "") + word
 	return result + line
+
+
+func _field_status() -> String:
+	var parts := PackedStringArray()
+	if run.sphere_rank > 0:
+		parts.append(
+			"СФЕРА %d/3 · %.1f с" % [run.sphere_rank, maxf(0.0, run.sphere_mines.cooldown)]
+		)
+	if run.gravity_rank > 0:
+		parts.append(
+			"СТЯГИВАНИЕ %d/3 · %.1f с" % [run.gravity_rank, maxf(0.0, run.gravity_mines.cooldown)]
+		)
+	return (
+		"  |  ".join(parts)
+		if not parts.is_empty()
+		else "WASD — курс · M/F/F2 — осмотр · Esc — пауза"
+	)
 
 
 func _draw() -> void:
@@ -571,13 +626,7 @@ func _draw() -> void:
 		),
 		15
 	)
-	_text(
-		panel.position + Vector2(15, 72),
-		("СФЕРА %d/3 · %.2f м · сброс через %.1f с · без урона"
-			% [run.sphere_rank, SphereMines.radius(run.sphere_rank),
-			maxf(0.0, run.sphere_mines.cooldown)] if run.sphere_rank > 0
-			else "WASD — курс · M/F/F2 — осмотр с паузой · Esc — пауза"), 15
-	)
+	_text(panel.position + Vector2(15, 72), _field_status(), 15)
 	if main.shoals != null and main.shoals.warning:
 		_text(
 			Vector2(size.x * 0.5 - 190, 134), "ОТМЕЛЬ ПО КУРСУ — СНИЗЬТЕ ХОД", 18, Color("ffb37e")

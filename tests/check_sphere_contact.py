@@ -3,7 +3,7 @@ from pathlib import Path
 import math
 s = Path('scripts/sphere_mines.gd').read_text()
 m = Path('scripts/raid_motion.gd').read_text()
-assert 'FUSE + FIELD_TIME - 0.4' in s
+assert 'FUSE + float(mine["duration"]) - 0.4' in s
 assert 'touched' not in s and 'old_gap' not in s
 assert 'var position:' not in s
 assert '_line_clear(center, enemy_at)' in s

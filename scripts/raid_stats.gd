@@ -1,9 +1,9 @@
 class_name RaidStats
 extends RefCounted
 ## Bounded, in-memory raid measurements. No per-hit history, nodes, timers or saves.
-enum Channel { NOSE, SIDES, PULSE, MINES }
+enum Channel { NOSE, SIDES, PULSE, MINES, GRAVITY }
 enum Cause { CONTACT, SHELL, REEF, SHOAL, OTHER }
-var dealt := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
+var dealt := PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0])
 var evolution_times := PackedFloat64Array([-1.0, -1.0, -1.0, -1.0])
 var received := 0.0
 var debug_used := false
@@ -21,6 +21,8 @@ var sphere_opened := 0
 var sphere_effective := 0
 var sphere_contacts := 0
 var sphere_unlocked_at := -1.0
+var gravity_dropped := 0
+var gravity_opened := 0
 var pulses := 0
 
 
@@ -43,6 +45,8 @@ func reset() -> void:
 	sphere_effective = 0
 	sphere_contacts = 0
 	sphere_unlocked_at = -1.0
+	gravity_dropped = 0
+	gravity_opened = 0
 	pulses = 0
 
 

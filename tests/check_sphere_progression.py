@@ -8,10 +8,10 @@ assert 'if sphere_rank < 3:' in r and 'available.append(14)' in r
 assert 'sphere_rank = mini(3, sphere_rank + 1)' in r
 assert r.count('sphere_rank = 0') == 2
 assert 'if choices[index] >= 10 and choices[index] <= 13:' in r
-assert '(enabled or run.sphere_rank > 0)' in s
+assert '(enabled or weapon_rank() > 0)' in s
 assert '(CAPACITY if enabled else 1)' in s
-assert 'INTERVAL if enabled else interval(run.sphere_rank)' in s
-assert '"radius": radius(maxi(1, run.sphere_rank))' in s
+assert 'INTERVAL if enabled else release_interval()' in s
+assert '"radius": radius(maxi(1, weapon_rank()))' in s
 assert 'float(mine["radius"])' in s  # laid mine keeps the radius it was created with
 assert 'run.stern_rank' not in s and 'record_damage' not in s
 assert s.count('stats.debug_used = true') == 1
@@ -21,5 +21,5 @@ for rank in (1, 2, 3):
     interval = 8-(rank-1)
     assert radius in (4.5, 5.25, 6)
     assert interval in (8, 7, 6)
-    assert interval > .85+1.6  # no continuous field even at highest rank
+    assert interval > .85+5.0  # no continuous field even at highest rank
 print('PASS sphere card: ranks/reset, radius snapshot, one emitter and no evolution/debug leakage')

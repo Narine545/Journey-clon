@@ -4,7 +4,7 @@ extends Node3D
 const CAPACITY := 4
 const INTERVAL := 3.5
 const FUSE := 0.85
-const FIELD_TIME := 1.6
+const FIELD_TIME := 3.0
 var run: RaidRun
 var enabled := false
 var cooldown := 0.0
@@ -17,6 +17,30 @@ static func radius(rank: int) -> float:
 
 static func interval(rank: int) -> float:
 	return 8.0 - float(clampi(rank, 1, 3) - 1)
+
+
+func weapon_rank() -> int:
+	return run.sphere_rank
+
+
+func field_duration() -> float:
+	return FIELD_TIME + float(run.sphere_stability)
+
+
+func release_interval() -> float:
+	return interval(weapon_rank())
+
+
+func drop_offset() -> Vector2:
+	return Vector2.ZERO
+
+
+func record_drop() -> void:
+	run.stats.sphere_dropped += 1
+
+
+func record_open() -> void:
+	run.stats.sphere_opened += 1
 
 
 func setup(raid: RaidRun) -> void:
@@ -40,8 +64,8 @@ func set_enabled(value: bool) -> void:
 
 func step(delta: float) -> void:
 	cooldown -= delta
-	if (enabled or run.sphere_rank > 0) and cooldown <= 0.0:
-		cooldown = INTERVAL if enabled else interval(run.sphere_rank)
+	if (enabled or weapon_rank() > 0) and cooldown <= 0.0:
+		cooldown = INTERVAL if enabled else release_interval()
 		_drop()
 	for index in range(mines.size() - 1, -1, -1):
 		var mine := mines[index]
@@ -52,9 +76,9 @@ func step(delta: float) -> void:
 		_expansion_contacts(mine, previous_age, age)
 		if age >= FUSE and not bool(mine["opened"]):
 			mine["opened"] = true
-			run.stats.sphere_opened += 1
+			record_open()
 			run.main.water.field.splash(at, 2.0)
-		if age >= FUSE + FIELD_TIME:
+		if age >= FUSE + float(mine["duration"]):
 			# Exactly one second impulse, also when visual effects are disabled.
 			run.main.water.field.splash(at, 2.0)
 			mine["node"].queue_free()
@@ -66,7 +90,10 @@ func step(delta: float) -> void:
 			var phase := age - FUSE
 			visual_radius = (
 				float(mine["radius"])
-				* minf(clampf(phase / 0.3, 0.0, 1.0), clampf((FIELD_TIME - phase) / 0.4, 0.0, 1.0))
+				* minf(
+					clampf(phase / 0.3, 0.0, 1.0),
+					clampf((float(mine["duration"]) - phase) / 0.4, 0.0, 1.0)
+				)
 			)
 			visual_radius = maxf(0.01, visual_radius)
 		node.scale = Vector3.ONE * visual_radius
@@ -77,7 +104,7 @@ func step(delta: float) -> void:
 func _drop() -> void:
 	if mines.size() >= (CAPACITY if enabled else 1):
 		return
-	var at := run.stern_charges.drop_point()
+	var at := run.stern_charges.drop_point() + drop_offset()
 	if not run.navigable(at, 1.0) or run._hull_distance(at) < 0.8:
 		cooldown = 0.5
 		return
@@ -104,17 +131,18 @@ func _drop() -> void:
 			"age": 0.0,
 			"opened": false,
 			"node": node,
-			"radius": radius(maxi(1, run.sphere_rank)),
+			"radius": radius(maxi(1, weapon_rank())),
+			"duration": field_duration(),
 			"measured": {}
 		}
 	)
-	run.stats.sphere_dropped += 1
+	record_drop()
 
 
 func _expansion_contacts(mine: Dictionary, before: float, after: float) -> void:
 	# Compliant contact throughout growth + hold, not a one-shot hit list.
 	var active_start := maxf(before, FUSE)
-	var active_end := minf(after, FUSE + FIELD_TIME - 0.4)
+	var active_end := minf(after, FUSE + float(mine["duration"]) - 0.4)
 	var contact_delta := active_end - active_start
 	if contact_delta <= 0.0:
 		return
