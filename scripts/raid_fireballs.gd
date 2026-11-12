@@ -11,7 +11,7 @@ func setup(raid: RaidRun) -> void:
 	material = ShaderMaterial.new()
 	material.shader = preload("res://shaders/raid_fireball.gdshader")
 	var quad := QuadMesh.new()
-	quad.size = Vector2(2.2, 0.9)
+	quad.size = Vector2(2.75, 1.125)
 	quad.material = material
 	batch = MultiMesh.new()
 	batch.transform_format = MultiMesh.TRANSFORM_3D
@@ -53,7 +53,7 @@ func render(blend: float) -> void:
 		var up := camera_normal.cross(screen_axis).normalized()
 		var at: Vector2 = Vector2(shot["previous"]).lerp(shot["at"], blend)
 		# Bright head is at UV.x=.75; shift quad so that head stays at the collision point.
-		var anchor := Vector3(at.x, Coast.SEA_LEVEL + 1.1, at.y) - screen_axis * 0.55
+		var anchor := Vector3(at.x, Coast.SEA_LEVEL + 1.1, at.y) - screen_axis * 0.6875
 		batch.set_instance_transform(
 			count, Transform3D(Basis(screen_axis, up, camera_normal), anchor)
 		)

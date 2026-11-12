@@ -37,6 +37,7 @@ var stats := RaidStats.new()
 var effects_enabled := true
 var fireball_enabled := true
 var fireballs: RaidFireballs
+var field_particles: RaidFieldParticles
 var debug_invulnerable := false
 var debug_clear_screen := false
 var damage_fx: RaidDamageFx
@@ -120,6 +121,9 @@ func setup(scene: BoatMain) -> void:
 	gravity_mines = GravityMines.new()
 	add_child(gravity_mines)
 	gravity_mines.setup(self)
+	field_particles = RaidFieldParticles.new()
+	add_child(field_particles)
+	field_particles.setup(self)
 	damage_fx = RaidDamageFx.new()
 	add_child(damage_fx)
 	damage_fx.setup(self)
@@ -204,6 +208,7 @@ func start() -> void:
 	damage_fx.reset()
 	stern_charges.reset()
 	fireballs.reset()
+	field_particles.reset()
 	sphere_mines.reset()
 	gravity_mines.reset()
 	hud.refresh()
@@ -255,6 +260,7 @@ func leave() -> void:
 	damage_fx.reset()
 	stern_charges.reset()
 	fireballs.reset()
+	field_particles.reset()
 	sphere_mines.reset()
 	gravity_mines.reset()
 	hud.refresh()
@@ -1069,4 +1075,5 @@ func _process(_delta: float) -> void:
 			)
 		_shot_batch.visible_instance_count = shots.size()
 		fireballs.render(blend)
+		field_particles.render()
 	hud.queue_redraw()
