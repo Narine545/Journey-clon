@@ -74,6 +74,7 @@ var stern_rank := 0
 var pulse_radius := 13.0
 var pulse_damage := 35.0
 var pulse_cooldown := 0.0
+var boss_arrived_at := -1.0
 var boss_spawned := false
 var rerolls_left := REROLLS
 var choices: Array[int] = []
@@ -191,6 +192,7 @@ func start() -> void:
 	pulse_radius = 13.0
 	pulse_damage = 35.0
 	pulse_cooldown = 0.0
+	boss_arrived_at = -1.0
 	boss_spawned = false
 	_spawn_timer = 0.0
 	_boss_retry = 0.0
@@ -390,6 +392,8 @@ func _spawn(kind: int, elite: bool = false) -> bool:
 				}
 			)
 		)
+		if kind == 3:
+			boss_arrived_at = elapsed
 		return true
 	return false
 

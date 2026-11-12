@@ -565,6 +565,7 @@ func _draw() -> void:
 		_text(Vector2(size.x * 0.5 - 150, 104), RaidWaves.label(run.elapsed), 18, accent)
 	for enemy in run.enemies:
 		if int(enemy["kind"]) == 3:
+			_draw_boss_objective(enemy)
 			_bar(
 				Rect2(size.x * 0.3, 65, size.x * 0.4, 12),
 				float(enemy["hp"]) / float(enemy["max_hp"]),
@@ -656,6 +657,56 @@ func _draw() -> void:
 	_draw_telegraphs()
 	if run.modal():
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.005, 0.015, 0.025, 0.65))
+
+
+func _draw_boss_objective(enemy: Dictionary) -> void:
+	if run.modal() or float(enemy["hp"]) <= 0.0:
+		return
+	var ink := Color("ffbb8c")
+	var remaining := maxi(0, ceili(RaidRun.DURATION - run.elapsed))
+	_text(
+		Vector2(size.x * 0.5 - 205, 154),
+		"ЦЕЛЬ: УНИЧТОЖИТЬ БОССА · ОСТАЛОСЬ %d С" % remaining,
+		16,
+		ink
+	)
+	if run.boss_arrived_at >= 0.0 and run.elapsed - run.boss_arrived_at < 5.0:
+		var banner := Rect2(Vector2(size.x * 0.5 - 225, 169), Vector2(450, 42))
+		draw_rect(banner, Color(0.12, 0.045, 0.06, 0.95))
+		_text(banner.position + Vector2(18, 28), "БОСС ВСТУПИЛ В БОЙ — НАЙДИТЕ ЦЕЛЬ", 20, ink)
+	var camera := run.main.camera
+	var at: Vector2 = enemy["at"]
+	var world_at := Vector3(at.x, Coast.SEA_LEVEL + 1.0, at.y)
+	var screen := camera.unproject_position(world_at)
+	var viewport := Rect2(Vector2.ZERO, size)
+	var behind := camera.is_position_behind(world_at)
+	if not behind and viewport.grow(-30.0).has_point(screen):
+		return
+	# Ray from viewport center meets an inset rectangle, never an arbitrary map bearing.
+	var center := size * 0.5
+	var direction := screen - center
+	if behind:
+		direction = -direction
+	if direction.length_squared() < 0.0001:
+		direction = Vector2.UP
+	direction = direction.normalized()
+	var half := Vector2(maxf(30.0, size.x * 0.5 - 100.0), maxf(30.0, size.y * 0.5 - 195.0))
+	var travel := minf(
+		half.x / maxf(absf(direction.x), 0.0001), half.y / maxf(absf(direction.y), 0.0001)
+	)
+	var anchor := center + direction * travel
+	var side := direction.orthogonal()
+	draw_colored_polygon(
+		PackedVector2Array(
+			[
+				anchor + direction * 16.0,
+				anchor - direction * 10.0 + side * 9.0,
+				anchor - direction * 10.0 - side * 9.0
+			]
+		),
+		ink
+	)
+	_text(anchor + Vector2(-65, 36), "БОСС · %.0f м" % at.distance_to(run.boat_at()), 17, ink)
 
 
 func _draw_telegraphs() -> void:
