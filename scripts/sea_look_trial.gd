@@ -91,4 +91,8 @@ func _layout() -> void:
 
 
 func _process(_delta: float) -> void:
-	visible = not main.inspection_active() and (main.raid == null or not main.raid.modal())
+	visible = (
+		not main.inspection_active()
+		and (main.raid == null or not main.raid.modal())
+		and (main.raid == null or not main.raid.engaged() or main.raid.hud.debug_tools_open())
+	)

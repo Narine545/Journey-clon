@@ -5,7 +5,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 source = (root / 'scripts/raid_stern_charges.gd').read_text()
 run = (root / 'scripts/raid_run.gd').read_text()
-hud = (root / 'scripts/raid_hud.gd').read_text()
+hud = (root / 'scripts/raid_hud.gd').read_text() + (root / 'scripts/raid_combat_ui.gd').read_text()
 smoke = (root / 'scripts/boat_smoke.gd').read_text()
 assert 'const CAPACITY := 12' in source
 assert 'const ARM_TIME := 0.65' in source and 'const LIFETIME := 9.0' in source

@@ -15,7 +15,8 @@ assert '"radius": radius(maxi(1, weapon_rank()))' in s
 assert 'float(mine["radius"])' in s  # laid mine keeps the radius it was created with
 assert 'run.stern_rank' not in s and 'record_damage' not in s
 assert s.count('stats.debug_used = true') == 1
-assert 'СФЕРА %d/3' in h and 'Сферические мины %d/3' in h
+assert 'Сферические мины %d/3' in h
+assert 'run.sphere_mines.cooldown' in Path('scripts/raid_combat_ui.gd').read_text()
 for rank in (1, 2, 3):
     radius = 4.5+.75*(rank-1)
     interval = 8-(rank-1)

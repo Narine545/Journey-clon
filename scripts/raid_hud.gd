@@ -1,6 +1,9 @@
 class_name RaidHud
 extends Control
 ## Small native HUD. No second viewport, imported assets, or font dependency.
+var _combat_ui: RaidCombatUi
+var _tools_panel: PanelContainer
+var _tools_button: Button
 var run: RaidRun
 var _launch: Button
 var _pause: Button
@@ -34,6 +37,15 @@ func setup() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ui_theme := Theme.new()
 	ui_theme.default_font_size = 18
+	ui_theme.set_color("font_color", "Button", Color("e0eeed"))
+	ui_theme.set_color("font_hover_color", "Button", Color("a1f1dc"))
+	ui_theme.set_stylebox("normal", "Button", RaidCombatUi.surface())
+	var hover := RaidCombatUi.surface()
+	hover.border_color = Color("76d8c0")
+	ui_theme.set_stylebox("hover", "Button", hover)
+	var pressed := RaidCombatUi.surface()
+	pressed.bg_color = Color("24434c")
+	ui_theme.set_stylebox("pressed", "Button", pressed)
 	theme = ui_theme
 	for _index in range(3):
 		var bar := ColorRect.new()
@@ -76,6 +88,7 @@ func setup() -> void:
 	)
 	_clear_toggle.toggled.connect(_set_clear_screen)
 	add_child(_clear_toggle)
+	_build_combat_ui()
 	_launch = Button.new()
 	_launch.text = "НАЧАТЬ РЕЙД · ПРОТОТИП"
 	_launch.pressed.connect(run.start)
@@ -174,6 +187,44 @@ func setup() -> void:
 	refresh()
 
 
+func _build_combat_ui() -> void:
+	_combat_ui = RaidCombatUi.new()
+	add_child(_combat_ui)
+	_combat_ui.setup(run)
+	_tools_button = Button.new()
+	_tools_button.text = "НАСТРОЙКИ"
+	_tools_button.toggle_mode = true
+	_tools_button.toggled.connect(func(open: bool): _tools_panel.visible = open)
+	add_child(_tools_button)
+	_tools_panel = PanelContainer.new()
+	_tools_panel.add_theme_stylebox_override("panel", RaidCombatUi.surface())
+	_tools_panel.hide()
+	add_child(_tools_panel)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_tools_panel.add_child(scroll)
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 8)
+	scroll.add_child(column)
+	var heading := Label.new()
+	heading.text = "ВИД И ЭФФЕКТЫ"
+	heading.add_theme_font_size_override("font_size", 14)
+	column.add_child(heading)
+	for control in [_fx_toggle, _fireball_toggle]:
+		control.reparent(column)
+	var debug_heading := Label.new()
+	debug_heading.text = "ОТЛАДКА · ПОМЕЧАЕТ РЕЙД"
+	debug_heading.add_theme_font_size_override("font_size", 14)
+	column.add_child(debug_heading)
+	for control in [_god_toggle, _clear_toggle, _sphere_toggle, _gravity_toggle]:
+		control.reparent(column)
+
+
+func debug_tools_open() -> bool:
+	return _tools_panel != null and _tools_panel.visible
+
+
 func _layout() -> void:
 	if _launch == null:
 		return
@@ -181,18 +232,10 @@ func _layout() -> void:
 	_launch.size = Vector2(300, 42)
 	_pause.position = Vector2(size.x - 170, 28)
 	_pause.size = Vector2(146, 32)
-	_fireball_toggle.position = Vector2(size.x - 330, 292)
-	_fireball_toggle.size = Vector2(320, 30)
-	_fx_toggle.position = Vector2(size.x - 190, 254)
-	_fx_toggle.size = Vector2(166, 28)
-	_gravity_toggle.position = Vector2(size.x - 330, 534)
-	_gravity_toggle.size = Vector2(320, 30)
-	_sphere_toggle.position = Vector2(size.x - 310, 496)
-	_sphere_toggle.size = Vector2(300, 30)
-	_god_toggle.position = Vector2(size.x - 248, 420)
-	_god_toggle.size = Vector2(224, 30)
-	_clear_toggle.position = Vector2(size.x - 248, 458)
-	_clear_toggle.size = Vector2(224, 30)
+	_tools_button.position = Vector2(size.x - 350, 28)
+	_tools_button.size = Vector2(170, 32)
+	_tools_panel.position = Vector2(maxf(16, size.x - 386), 78)
+	_tools_panel.size = Vector2(minf(370, size.x - 32), minf(370, size.y - 270))
 	var is_result := run.state in [RaidRun.State.WON, RaidRun.State.LOST]
 	var width := minf(1280.0 if is_result else 1120.0, size.x - 32.0)
 	_results.columns = 2 if width >= 1000.0 else 1
@@ -216,6 +259,10 @@ func refresh() -> void:
 	if _launch == null:
 		return
 	_launch.visible = not run.engaged()
+	_tools_button.visible = run.engaged() and not run.modal()
+	if run.modal() or not run.engaged():
+		_tools_panel.hide()
+		_tools_button.set_pressed_no_signal(false)
 	_fireball_toggle.visible = run.engaged()
 	_fireball_toggle.set_pressed_no_signal(run.fireball_enabled)
 	_fx_toggle.visible = run.engaged()
@@ -497,23 +544,6 @@ func _wrap(text: String) -> String:
 	return result + line
 
 
-func _field_status() -> String:
-	var parts := PackedStringArray()
-	if run.sphere_rank > 0:
-		parts.append(
-			"СФЕРА %d/3 · %.1f с" % [run.sphere_rank, maxf(0.0, run.sphere_mines.cooldown)]
-		)
-	if run.gravity_rank > 0:
-		parts.append(
-			"СТЯГИВАНИЕ %d/3 · %.1f с" % [run.gravity_rank, maxf(0.0, run.gravity_mines.cooldown)]
-		)
-	return (
-		"  |  ".join(parts)
-		if not parts.is_empty()
-		else "WASD — курс · M/F/F2 — осмотр · Esc — пауза"
-	)
-
-
 func _draw() -> void:
 	if run == null or not run.engaged():
 		return
@@ -521,39 +551,7 @@ func _draw() -> void:
 	for bar in _bars:
 		bar.visible = false
 	var main := run.main
-	var available_speed := (
-		BoatVessel.REVERSE_SPEED * main.boat.raid_speed_factor()
-		if main.boat.speed < -0.05
-		else main.boat.effective_max_speed()
-	)
 	var accent := Color("78dfcb")
-	_bar(Rect2(0, 0, size.x, 10), float(run.xp) / run.xp_needed, accent)
-	draw_rect(Rect2(20, 22, 310, 146), Color(0.025, 0.06, 0.08, 0.9))
-	_text(Vector2(34, 46), "КОРПУС %d%% · УР. %d" % [int(ceil(main.boat.hull_hp)), run.level])
-	_bar(Rect2(34, 58, 280, 9), main.boat.hull_hp / 100.0, Color("ed846d"))
-	_text(Vector2(34, 86), "ОПЫТ %d/%d · ×%.2f" % [run.xp, run.xp_needed, run.xp_multiplier()], 16)
-	_text(
-		Vector2(34, 111),
-		"ХОД %.1f/%.1f · РУЛЬ ×%.2f" % [main.boat.speed, available_speed, run.turn_multiplier()],
-		15
-	)
-	_text(
-		Vector2(34, 135),
-		(
-			"ДВИГ ×%.2f · КОРПУС −%d%% ХОДА"
-			% [run.speed_multiplier(), roundi((1.0 - main.boat.hull_speed_factor()) * 100.0)]
-		),
-		14
-	)
-	_text(
-		Vector2(34, 157),
-		(
-			"ФОРСАЖ: %.0f с (временный)" % main.overdrive_timer
-			if main.overdrive_timer > 0.0
-			else "БОНУСЫ — ДО КОНЦА РЕЙДА"
-		),
-		14
-	)
 	_text(
 		Vector2(size.x * 0.5 - 48, 45),
 		"%02d:%02d" % [floori(run.elapsed / 60.0), int(run.elapsed) % 60],
@@ -577,73 +575,37 @@ func _draw() -> void:
 				16,
 				Color("f5b4a4")
 			)
-	var center := Vector2(size.x - 104, 155)
-	draw_circle(center, 66, Color(0.025, 0.06, 0.08, 0.88))
-	draw_arc(center, 66, 0, TAU, 48, Color("497f7d"), 1.0, true)
-	for enemy in run.enemies:
-		var relative: Vector2 = (enemy["at"] - run.boat_at()) * (66.0 / 55.0)
-		if relative.length() < 64:
-			draw_circle(
-				center + relative,
-				3 if int(enemy["kind"]) < 3 else 5,
-				RaidRun.COLORS[int(enemy["kind"])]
-			)
-			if bool(enemy.get("elite", false)):
-				draw_arc(center + relative, 6, 0, TAU, 16, Color("ffe144"), 1.5, true)
-	for entry in run.salvage.drops:
-		var relative: Vector2 = (entry["at"] - run.boat_at()) * (66.0 / 55.0)
-		if relative.length() < 64:
-			draw_circle(center + relative, 1.5, accent)
-	draw_line(center, center + run.forward() * 12, accent, 2.0, true)
-	draw_circle(center, 3, accent)
-	_text(center + Vector2(-53, 86), "РАДАР · 55 М", 15)
-	var roles := ["Преследователь", "Рывок", "Стрелок", "Босс"]
-	for kind in range(4):
-		var key_at := Vector2(size.x - 190, 314 + kind * 24)
-		draw_circle(key_at, 4.0, RaidRun.COLORS[kind])
-		_text(key_at + Vector2(12, 5), roles[kind], 16, RaidRun.COLORS[kind])
-	var panel := Rect2(Vector2(size.x * 0.5 - 295, size.y - 108), Vector2(590, 88))
-	draw_rect(panel, Color(0.025, 0.06, 0.08, 0.9))
-	_text(
-		panel.position + Vector2(15, 24),
-		(
-			"НОС%s: %.0f | БОРТА%s ×%d | Q %s: %s"
-			% [
-				"[П]" if run.piercing_harpoon else "",
-				run.damage,
-				"[Ш]" if run.storm_broadside else "",
-				run.pellets,
-				"РЕЗОНАНС" if run.resonant_pulse else "ИМПУЛЬС",
-				"ГОТОВ" if run.pulse_cooldown <= 0 else "%.1f с" % run.pulse_cooldown
-			]
-		),
-		18,
-		accent
-	)
-	_text(
-		panel.position + Vector2(15, 48),
-		(
-			(
-				"КОРМА%s %d · заряд %.1f с · урон %.0f · радиус %.0f м"
-				% [
-					"[Ц]" if run.chain_mines else "",
-					run.stern_rank,
-					run.stern_charges.cooldown,
-					RaidSternCharges.power(run.stern_rank),
-					RaidSternCharges.radius(run.stern_rank)
-				]
-			)
-			if run.stern_rank > 0
-			else "Зелёные трофеи — опыт · подойдите корпусом или плашкоутом"
-		),
-		15
-	)
-	_text(panel.position + Vector2(15, 72), _field_status(), 15)
+	if not _tools_panel.visible:
+		var center := Vector2(size.x - 104, 155)
+		draw_circle(center, 66, Color(0.025, 0.06, 0.08, 0.88))
+		draw_arc(center, 66, 0, TAU, 48, Color("497f7d"), 1.0, true)
+		for enemy in run.enemies:
+			var relative: Vector2 = (enemy["at"] - run.boat_at()) * (66.0 / 55.0)
+			if relative.length() < 64:
+				draw_circle(
+					center + relative,
+					3 if int(enemy["kind"]) < 3 else 5,
+					RaidRun.COLORS[int(enemy["kind"])]
+				)
+				if bool(enemy.get("elite", false)):
+					draw_arc(center + relative, 6, 0, TAU, 16, Color("ffe144"), 1.5, true)
+		for entry in run.salvage.drops:
+			var relative: Vector2 = (entry["at"] - run.boat_at()) * (66.0 / 55.0)
+			if relative.length() < 64:
+				draw_circle(center + relative, 1.5, accent)
+		draw_line(center, center + run.forward() * 12, accent, 2.0, true)
+		draw_circle(center, 3, accent)
+		_text(center + Vector2(-53, 86), "РАДАР · 55 М", 15)
+		var roles := ["Преследователь", "Рывок", "Стрелок", "Босс"]
+		for kind in range(4):
+			var key_at := Vector2(size.x - 190, 314 + kind * 24)
+			draw_circle(key_at, 4.0, RaidRun.COLORS[kind])
+			_text(key_at + Vector2(12, 5), roles[kind], 16, RaidRun.COLORS[kind])
 	if main.shoals != null and main.shoals.warning:
 		_text(
 			Vector2(size.x * 0.5 - 190, 134), "ОТМЕЛЬ ПО КУРСУ — СНИЗЬТЕ ХОД", 18, Color("ffb37e")
 		)
-	if main.debug_panel_visible:
+	if main.debug_panel_visible and _tools_panel.visible:
 		var debug_at := Vector2(22, size.y - 250)
 		draw_rect(Rect2(debug_at, Vector2(310, 115)), Color(0.025, 0.06, 0.08, 0.9))
 		_text(

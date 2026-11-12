@@ -5,7 +5,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 run = (root / 'scripts/raid_run.gd').read_text()
 boat = (root / 'scripts/boat_vessel.gd').read_text()
-hud = (root / 'scripts/raid_hud.gd').read_text()
+hud = (root / 'scripts/raid_hud.gd').read_text() + (root / 'scripts/raid_combat_ui.gd').read_text()
 smoke = (root / 'scripts/boat_smoke.gd').read_text()
 assert 'const XP_MAX_RANK := 4' in run
 assert 'available.erase(9)' in run
@@ -21,7 +21,7 @@ assert '_check_raid_xp_bonus()' in smoke
 assert 'var hp_factor := hull_speed_factor()' in boat
 assert 'lerpf(0.60, 1.0, clampf(hull_hp / 100.0, 0.0, 1.0))' in boat
 assert 'main.overdrive_timer > 0.0' in boat  # temporary boost is separate from permanent rank
-assert 'main.boat.speed, available_speed, run.turn_multiplier()' in hud
+assert all(token in hud for token in ('main.boat.speed', 'available_speed', 'run.turn_multiplier()'))
 assert 'main.boat.hull_speed_factor()' in hud
 assert 'main.overdrive_timer' in hud and 'БОНУСЫ — ДО КОНЦА РЕЙДА' in hud
 assert 'run.xp_multiplier()' in hud and 'run.xp_awarded' in hud

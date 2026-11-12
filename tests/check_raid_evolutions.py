@@ -3,7 +3,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 run = (root / 'scripts/raid_run.gd').read_text()
-hud = (root / 'scripts/raid_hud.gd').read_text()
+hud = (root / 'scripts/raid_hud.gd').read_text() + (root / 'scripts/raid_combat_ui.gd').read_text()
 smoke = (root / 'scripts/boat_smoke.gd').read_text()
 assert 'damage >= 46.0 and reload_scale <= 0.78' in run
 assert 'pulse_radius >= 23.0 and salvage.magnet_range >= 16.0' in run
@@ -19,7 +19,7 @@ assert 'not shot["hit_ids"].has(enemy["combat_id"])' in run
 assert 'shot["hit_ids"].append(enemies[victim]["combat_id"])' in run
 assert 'shot["hits_left"] = int(shot["hits_left"]) - 1' in run
 assert 'if int(shot["hits_left"]) <= 0:' in run
-assert '"НОС%s:' in hud and 'run.resonant_pulse' in hud
+assert '01  НОС · ГАРПУН' in hud and 'run.resonant_pulse' in hud
 assert '_check_raid_evolutions()' in smoke
 pulse = run.split('func pulse()', 1)[1].split('func _offer_upgrade()', 1)[0]
 assert 'if resonant_pulse:' in pulse

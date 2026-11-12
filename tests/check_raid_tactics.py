@@ -6,7 +6,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 run = (root / 'scripts/raid_run.gd').read_text()
 mines = (root / 'scripts/raid_stern_charges.gd').read_text()
-hud = (root / 'scripts/raid_hud.gd').read_text()
+hud = (root / 'scripts/raid_hud.gd').read_text() + (root / 'scripts/raid_combat_ui.gd').read_text()
 smoke = (root / 'scripts/boat_smoke.gd').read_text()
 for flag, card in [('storm_broadside', 12), ('chain_mines', 13)]:
     assert run.count(f'{flag} = false') == 2  # start/leave
