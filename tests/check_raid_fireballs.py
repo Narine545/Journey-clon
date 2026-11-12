@@ -7,14 +7,14 @@ h = Path('scripts/raid_hud.gd').read_text()
 shader = Path('shaders/raid_fireball.gdshader').read_text()
 assert 'batch.instance_count = RaidRun.SHOT_CAP' in s
 assert 'not bool(shot["hostile"])' in s
-assert '== RaidStats.Channel.NOSE' in s
+assert '[RaidStats.Channel.NOSE, RaidStats.Channel.SIDES]' in s
 assert 'run.fireball_enabled' in s and 'and run.effects_enabled' in s
 assert '"effect_time", run.elapsed' in s
 assert 'batch.visible_instance_count = count' in s
 assert r.count('fireballs.reset()') == 2
 assert '0.001 if fireballs.applies(shot) else 1.0' in r
 assert 'fireballs.render(blend)' in r
-assert 'ОГНЕННЫЙ НОС · СРАВНЕНИЕ' in h
+assert 'ОГНЕННЫЕ СНАРЯДЫ · ТЕСТ' in h
 assert 'shader_type spatial' in shader and 'blend_mix' in shader
 assert 'Muhammad Mujtaba' in shader and 'Permission is hereby granted' in shader
 assert 'TIME' not in shader and 'hint_screen_texture' not in shader

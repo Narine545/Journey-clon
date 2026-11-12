@@ -54,8 +54,8 @@ func _fields(fields: Array[Dictionary], inward: bool, count: int) -> int:
 		for index in range(PER_FIELD):
 			if count >= CAPACITY:
 				return count
-			var seed := fposmod(float(index) * 0.6180339 + center.x * 0.017, 1.0)
-			var cycle := fposmod(phase * 0.8 + seed, 1.0)
+			var particle_variation := fposmod(float(index) * 0.6180339 + center.x * 0.017, 1.0)
+			var cycle := fposmod(phase * 0.8 + particle_variation, 1.0)
 			var radial := 1.0 - cycle if inward else cycle
 			var alpha := sin(cycle * PI) * growth * (1.0 - collapse)
 			if inward and collapse > 0.0:
@@ -65,9 +65,9 @@ func _fields(fields: Array[Dictionary], inward: bool, count: int) -> int:
 			var angle := float(index) * 2.399963 + phase * (0.4 if inward else -0.15)
 			var distance := radius * growth * radial
 			var offset := Vector2.from_angle(angle) * distance
-			var height := Coast.SEA_LEVEL + 0.65 + 0.65 * sin(seed * PI)
+			var height := Coast.SEA_LEVEL + 0.65 + 0.65 * sin(particle_variation * PI)
 			var point := Vector3(center.x + offset.x, height, center.y + offset.y)
-			var scale_factor := 0.7 + 0.6 * seed
+			var scale_factor := 0.7 + 0.6 * particle_variation
 			batch.set_instance_transform(
 				count, Transform3D(facing.scaled(Vector3.ONE * scale_factor), point)
 			)

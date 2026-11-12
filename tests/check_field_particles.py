@@ -28,3 +28,6 @@ for phase in (.1, .3, .6, .9):
 assert abs(math.sin(math.pi)) < 1e-9
 assert 2*4*20 == 160
 print('PASS field particles: bounded pool, phase directions, FX/pause scope and fireball head anchoring')
+
+assert "var seed " not in s and "var seed :=" not in s
+assert "particle_variation" in s

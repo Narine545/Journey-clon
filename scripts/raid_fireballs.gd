@@ -29,7 +29,10 @@ func applies(shot: Dictionary) -> bool:
 		run.fireball_enabled
 		and run.effects_enabled
 		and not bool(shot["hostile"])
-		and int(shot.get("channel", RaidStats.Channel.NOSE)) == RaidStats.Channel.NOSE
+		and (
+			int(shot.get("channel", RaidStats.Channel.NOSE))
+			in [RaidStats.Channel.NOSE, RaidStats.Channel.SIDES]
+		)
 	)
 
 

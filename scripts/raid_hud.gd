@@ -45,8 +45,8 @@ func setup() -> void:
 		add_child(bar)
 		_bars.append(bar)
 	_fireball_toggle = CheckButton.new()
-	_fireball_toggle.text = "ОГНЕННЫЙ НОС · СРАВНЕНИЕ"
-	_fireball_toggle.tooltip_text = "Только вид носовых снарядов. Выкл. — прежний вид. Урон и попадания прежние."
+	_fireball_toggle.text = "ОГНЕННЫЕ СНАРЯДЫ · ТЕСТ"
+	_fireball_toggle.tooltip_text = "Вид носовых и бортовых снарядов. Выкл. — прежний вид. Урон и попадания прежние."
 	_fireball_toggle.button_pressed = run.fireball_enabled
 	_fireball_toggle.toggled.connect(func(value: bool): run.fireball_enabled = value)
 	add_child(_fireball_toggle)
