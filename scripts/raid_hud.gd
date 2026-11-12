@@ -24,6 +24,7 @@ var _gravity_toggle: CheckButton
 var _sphere_toggle: CheckButton
 var _god_toggle: CheckButton
 var _clear_toggle: CheckButton
+var _fireball_toggle: CheckButton
 var _fx_toggle: CheckButton
 var _leave: Button
 
@@ -43,6 +44,12 @@ func setup() -> void:
 		bar.material = bar_material
 		add_child(bar)
 		_bars.append(bar)
+	_fireball_toggle = CheckButton.new()
+	_fireball_toggle.text = "ОГНЕННЫЙ НОС · СРАВНЕНИЕ"
+	_fireball_toggle.tooltip_text = "Только вид носовых снарядов. Выкл. — прежний вид. Урон и попадания прежние."
+	_fireball_toggle.button_pressed = run.fireball_enabled
+	_fireball_toggle.toggled.connect(func(value: bool): run.fireball_enabled = value)
+	add_child(_fireball_toggle)
 	_fx_toggle = CheckButton.new()
 	_fx_toggle.text = "ЭФФЕКТЫ"
 	_fx_toggle.button_pressed = run.effects_enabled
@@ -174,6 +181,8 @@ func _layout() -> void:
 	_launch.size = Vector2(300, 42)
 	_pause.position = Vector2(size.x - 170, 28)
 	_pause.size = Vector2(146, 32)
+	_fireball_toggle.position = Vector2(size.x - 330, 292)
+	_fireball_toggle.size = Vector2(320, 30)
 	_fx_toggle.position = Vector2(size.x - 190, 254)
 	_fx_toggle.size = Vector2(166, 28)
 	_gravity_toggle.position = Vector2(size.x - 330, 534)
@@ -207,6 +216,8 @@ func refresh() -> void:
 	if _launch == null:
 		return
 	_launch.visible = not run.engaged()
+	_fireball_toggle.visible = run.engaged()
+	_fireball_toggle.set_pressed_no_signal(run.fireball_enabled)
 	_fx_toggle.visible = run.engaged()
 	if run.modal():
 		run.damage_fx.reset()

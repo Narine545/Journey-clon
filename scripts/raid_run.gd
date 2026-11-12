@@ -35,6 +35,8 @@ const UPGRADES := [
 ]
 var stats := RaidStats.new()
 var effects_enabled := true
+var fireball_enabled := true
+var fireballs: RaidFireballs
 var debug_invulnerable := false
 var debug_clear_screen := false
 var damage_fx: RaidDamageFx
@@ -100,6 +102,9 @@ func setup(scene: BoatMain) -> void:
 	rng.randomize()
 	_enemy_batch = _batch(ENEMY_CAP, false)
 	_shot_batch = _batch(SHOT_CAP, true)
+	fireballs = RaidFireballs.new()
+	add_child(fireballs)
+	fireballs.setup(self)
 	salvage = RaidSalvage.new()
 	add_child(salvage)
 	salvage.setup(self)
@@ -198,6 +203,7 @@ func start() -> void:
 	weapon_fx.reset()
 	damage_fx.reset()
 	stern_charges.reset()
+	fireballs.reset()
 	sphere_mines.reset()
 	gravity_mines.reset()
 	hud.refresh()
@@ -248,6 +254,7 @@ func leave() -> void:
 	weapon_fx.reset()
 	damage_fx.reset()
 	stern_charges.reset()
+	fireballs.reset()
 	sphere_mines.reset()
 	gravity_mines.reset()
 	hud.refresh()
@@ -1042,11 +1049,12 @@ func _process(_delta: float) -> void:
 		for index in range(shots.size()):
 			var shot := shots[index]
 			var at: Vector2 = shot["previous"].lerp(shot["at"], blend)
+			var shot_scale := 0.001 if fireballs.applies(shot) else 1.0
 			_shot_batch.set_instance_transform(
 				index,
 				Transform3D(
 					Basis.IDENTITY.scaled(
-						Vector3(1.5, 1.5, 1.5) if bool(shot["hostile"]) else Vector3.ONE
+						Vector3(1.5, 1.5, 1.5) if bool(shot["hostile"]) else Vector3.ONE * shot_scale
 					),
 					Vector3(at.x, Coast.SEA_LEVEL + 1.1, at.y)
 				)
@@ -1060,4 +1068,5 @@ func _process(_delta: float) -> void:
 				)
 			)
 		_shot_batch.visible_instance_count = shots.size()
+		fireballs.render(blend)
 	hud.queue_redraw()
