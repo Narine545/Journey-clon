@@ -552,6 +552,18 @@ func _draw() -> void:
 		bar.visible = false
 	var main := run.main
 	var accent := Color("78dfcb")
+	var time_left := size.x * 0.5 - 65.0
+	draw_colored_polygon(
+		PackedVector2Array(
+			[
+				Vector2(time_left + 8, 14),
+				Vector2(time_left + 130, 17),
+				Vector2(time_left + 122, 50),
+				Vector2(time_left, 47)
+			]
+		),
+		Color("111619f5")
+	)
 	_text(
 		Vector2(size.x * 0.5 - 48, 45),
 		"%02d:%02d" % [floori(run.elapsed / 60.0), int(run.elapsed) % 60],
@@ -559,18 +571,18 @@ func _draw() -> void:
 	)
 	if run.elapsed >= 225.0 and not run.boss_spawned:
 		_text(Vector2(size.x * 0.5 - 180, 104), "КРУПНАЯ ЦЕЛЬ ПРИБЛИЖАЕТСЯ", 20, Color("ffb37e"))
-	else:
+	elif not run.boss_spawned:
 		_text(Vector2(size.x * 0.5 - 150, 104), RaidWaves.label(run.elapsed), 18, accent)
 	for enemy in run.enemies:
 		if int(enemy["kind"]) == 3:
 			_draw_boss_objective(enemy)
 			_bar(
-				Rect2(size.x * 0.3, 65, size.x * 0.4, 12),
+				Rect2(size.x * 0.3, 78, size.x * 0.4, 12),
 				float(enemy["hp"]) / float(enemy["max_hp"]),
 				Color("f05c75")
 			)
 			_text(
-				Vector2(size.x * 0.3, 61),
+				Vector2(size.x * 0.3, 71),
 				"КРУПНАЯ ЦЕЛЬ · ФАЗА %d" % RaidBoss.phase(enemy),
 				16,
 				Color("f5b4a4")
@@ -624,6 +636,16 @@ func _draw() -> void:
 func _draw_boss_objective(enemy: Dictionary) -> void:
 	if run.modal() or float(enemy["hp"]) <= 0.0:
 		return
+	# Slanted graphic backing, independent from the stable numerical HP/text.
+	var left := size.x * 0.3 - 12.0
+	var right := size.x * 0.7 + 12.0
+	draw_colored_polygon(
+		PackedVector2Array(
+			[Vector2(left + 10, 50), Vector2(right, 53), Vector2(right - 10, 98), Vector2(left, 94)]
+		),
+		Color("111619f5")
+	)
+	draw_line(Vector2(left + 10, 98), Vector2(right - 10, 102), Color("c83f30"), 4.0, true)
 	var ink := Color("ffbb8c")
 	var remaining := maxi(0, ceili(RaidRun.DURATION - run.elapsed))
 	_text(

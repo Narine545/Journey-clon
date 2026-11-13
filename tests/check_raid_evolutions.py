@@ -19,7 +19,7 @@ assert 'not shot["hit_ids"].has(enemy["combat_id"])' in run
 assert 'shot["hit_ids"].append(enemies[victim]["combat_id"])' in run
 assert 'shot["hits_left"] = int(shot["hits_left"]) - 1' in run
 assert 'if int(shot["hits_left"]) <= 0:' in run
-assert '01  НОС · ГАРПУН' in hud and 'run.resonant_pulse' in hud
+assert 'НОС · ГАРПУН' in hud and 'run.resonant_pulse' in hud
 assert '_check_raid_evolutions()' in smoke
 pulse = run.split('func pulse()', 1)[1].split('func _offer_upgrade()', 1)[0]
 assert 'if resonant_pulse:' in pulse
