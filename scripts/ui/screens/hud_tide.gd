@@ -245,10 +245,13 @@ func push(state: Dictionary) -> void:
 		"font_color", TideTokens.FLARE if hp01 < 0.25 else TideTokens.FOAM
 	)
 	_set_sos(hp01 < 0.25)
-	var queasy := 3 if hp01 < 0.25 else (2 if hp01 < 0.45 else (1 if hp01 < 0.65 else 0))
-	if queasy > _bark_stage:
-		show_bark(queasy)
-	_bark_stage = queasy
+	var stage := 0
+	for entry: Dictionary in TideStory.HULL_BARKS:
+		if hp01 < float(entry["below"]):
+			stage += 1
+	if stage > _bark_stage:
+		show_bark(stage)
+	_bark_stage = stage
 
 	var xp := float(state.get("xp", 0.0))
 	var needed := maxf(1.0, float(state.get("xp_needed", 1.0)))
@@ -393,14 +396,26 @@ func _build_bark() -> void:
 	_bark.hide()
 
 
-## Героиню укачивает: стадия 1–3, портрет и реплика на три секунды.
+## Реплика по состоянию корпуса: стадия 1…N из TideStory.HULL_BARKS.
 func show_bark(stage: int) -> void:
-	var step := clampi(stage, 1, 3)
-	var texture := TideStory.portrait("nausea_%d" % step)
+	var step := clampi(stage, 1, TideStory.HULL_BARKS.size())
+	var entry: Dictionary = TideStory.HULL_BARKS[step - 1]
+	say(String(entry["face"]), String(entry["line"]))
+
+
+## Портрет Мимо с репликой на три секунды над плашкой корпуса.
+func say(face: String, line: String) -> void:
+	var texture := TideStory.portrait(face)
 	if texture == null:
 		return
 	_bark_face.texture = texture
-	_bark_text.text = String(TideStory.NAUSEA[step - 1])
+	# Вырезки бывают разного размера: окно наводится на лицо по долям кадра.
+	var tex_size := Vector2(texture.get_size())
+	var region := TideStory.FACE_REGION
+	var zoom := 164.0 / (region.size.x * tex_size.x) * 0.97
+	_bark_face.size = tex_size * zoom
+	_bark_face.position = Vector2(82.0, 88.0) - region.get_center() * tex_size * zoom
+	_bark_text.text = line
 	if _bark_tween != null and _bark_tween.is_valid():
 		_bark_tween.kill()
 	TideKit.place(_bark, BARK_RECT, 2.4)
@@ -504,6 +519,7 @@ func toggle_debug_panel() -> void:
 
 func flash_boss() -> void:
 	_boss_stamp.hit(self)
+	say(String(TideStory.BOSS_BARK["face"]), String(TideStory.BOSS_BARK["line"]))
 	# Оттиск держится секунду и срывается — не висит над боем весь рейд.
 	var tween := _boss_stamp.create_tween()
 	tween.tween_interval(1.2)

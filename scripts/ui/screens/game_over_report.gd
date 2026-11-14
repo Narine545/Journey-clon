@@ -12,6 +12,7 @@ const SHEET_DEG := 1.6
 const MARGIN := 62.0
 
 var _page: Control
+var _face: TextureRect
 var _sheet: Control
 var _title: TideTitleLabel
 var _kicker: Label
@@ -47,6 +48,14 @@ func _build() -> void:
 	)
 	under.hatch_color = TideTokens.foam_alpha(0.08)
 	under.hatch_spacing = 8.0
+	# Промокшая Мимо выглядывает из-за правого края рапорта.
+	_face = TextureRect.new()
+	_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_face.material = TideStory.backing(12.0)
+	TideKit.place(_face, Rect2(1310, 170, 620, 1110), 3.0)
+	_page.add_child(_face)
 	_sheet = TideKit.group(_page, SHEET_RECT, SHEET_DEG)
 	var paper := TideKit.panel(
 		_sheet, Rect2(Vector2.ZERO, SHEET_RECT.size), TideTokens.FOAM, TideTokens.FLARE, true
@@ -127,6 +136,7 @@ func _build() -> void:
 
 ## report: {win, title, kicker, verdict, protocol, build, log}
 func open(report: Dictionary) -> void:
+	_face.texture = TideStory.portrait("soaked")
 	show()
 	var win: bool = report.get("win", false)
 	_title.paper_color = TideTokens.SONAR if win else TideTokens.FLARE

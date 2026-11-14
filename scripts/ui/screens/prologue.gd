@@ -1,8 +1,8 @@
 class_name TidePrologue
 extends Control
 ## Пролог перед выходом в рейс: героиня справа во весь рост, реплики — на
-## рваном листе слева. Мама остаётся за кадром: её слова приходят «со второго
-## этажа» на красной плашке, а на экране — реакция героини.
+## рваном листе слева. Тётя Форнэль говорит на красной плашке: сначала её только слышно
+## (в кадре реакция Мимо), потом она входит в кадр сама.
 ##
 ## Пробел / Enter / клик — дальше (или допечатать реплику), Esc — пропустить.
 
@@ -153,7 +153,7 @@ func _advance() -> void:
 		return
 	var entry: Dictionary = lines[_index]
 	var mother := int(entry.get("who", 0)) == 1
-	_set_speaker(TideStory.MOTHER if mother else TideStory.HEROINE, mother)
+	_set_speaker(TideStory.AUNT if mother else TideStory.HEROINE, mother)
 	_set_face(String(entry.get("face", "")))
 	_body.text = ("«%s»" % String(entry.get("line", "")))
 	_body.visible_ratio = 0.0

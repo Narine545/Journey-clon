@@ -40,6 +40,7 @@ var _action_age := 1.0
 var _notice_text := ""
 var _notice_age := 1.0
 var _state := {}
+var _shoal_face: Texture2D
 
 
 func _ready() -> void:
@@ -274,8 +275,35 @@ func _ticks(center: Vector2, inner: float, outer: float, count: int, spin: float
 		draw_line(center + dir * inner, center + dir * outer, color, width, true)
 
 
+## Лист с зубчатой нижней кромкой: зеркально симметричен, оба верхних угла
+## срезаны одинаково, боковины прямые.
+func _sheet(size: Vector2, cut: float) -> PackedVector2Array:
+	var w := size.x
+	var h := size.y
+	var points := PackedVector2Array([Vector2(0.0, cut), Vector2(cut, 0.0), Vector2(w - cut, 0.0), Vector2(w, cut)])
+	var teeth := maxi(2, roundi(w / 26.0))
+	var step := w / float(teeth)
+	points.append(Vector2(w, h))
+	for index in range(teeth - 1, -1, -1):
+		points.append(Vector2(step * (float(index) + 0.5), h - 9.0))
+		points.append(Vector2(step * float(index), h))
+	return points
+
+
+## Плашка-ярлык: одинаковые скосы слева и справа (углы сняты со всех четырёх
+## сторон), без наклона и без срезанного угла.
+func _slab(size: Vector2, bevel: float) -> PackedVector2Array:
+	var w := size.x
+	var h := size.y
+	var b := minf(bevel, h * 0.5)
+	return PackedVector2Array([
+		Vector2(b, 0.0), Vector2(w - b, 0.0), Vector2(w, b), Vector2(w, h - b),
+		Vector2(w - b, h), Vector2(b, h), Vector2(0.0, h - b), Vector2(0.0, b),
+	])
+
+
 func _plate(rect: Rect2, paper: Color, under: Color, hatch: bool = false) -> void:
-	var shape := TideShapes.offset(TideShapes.torn_rect(rect.size, 24.0), rect.position)
+	var shape := TideShapes.offset(_sheet(rect.size, 24.0), rect.position)
 	if under.a > 0.0:
 		TideShapes.fill(self, TideShapes.offset(shape, Vector2(9.0, 10.0)), under)
 	TideShapes.fill(self, shape, paper)
@@ -351,7 +379,7 @@ func _draw_hold() -> void:
 		)
 	# Ярлык плашкоута висит на нижней кромке трюма.
 	var trailer := bool(_state["trailer"])
-	var tag := TideShapes.offset(TideShapes.plate(Vector2(430, 40), 8.0), Vector2(-300, 146))
+	var tag := TideShapes.offset(_slab(Vector2(430, 40), 8.0), Vector2(-300, 146))
 	TideShapes.fill(self, tag, TideTokens.SONAR if trailer else TideTokens.INK)
 	if not trailer:
 		TideShapes.stroke(self, tag, TideTokens.foam_alpha(0.5), 2.0)
@@ -418,7 +446,7 @@ func _draw_compass() -> void:
 		TideTokens.FOAM
 	)
 	# Подпись под прибором: сколько зажжено.
-	var label := TideShapes.offset(TideShapes.plate(Vector2(250, 40), 8.0), Vector2(-125, radius + 34.0))
+	var label := TideShapes.offset(_slab(Vector2(250, 40), 8.0), Vector2(-125, radius + 34.0))
 	TideShapes.fill(self, label, TideTokens.SONAR if lit >= total else TideTokens.FOAM)
 	_write(
 		Vector2(-125, radius + 62.0), "МАЯКИ  %d / %d" % [lit, total], 1, 20, TideTokens.INK,
@@ -455,7 +483,7 @@ func _draw_target() -> void:
 		_write(Vector2(x + 28.0, 27), "%d/%d" % [mini(have, 99), cost[i]], 1, 18, TideTokens.INK if enough else TideTokens.FLARE)
 		x += 88.0
 	var enough_all := bool(target["can_fuel"])
-	var strip := TideShapes.offset(TideShapes.plate(Vector2(356, 34), 7.0), Vector2(-178, 42))
+	var strip := TideShapes.offset(_slab(Vector2(356, 34), 7.0), Vector2(-178, 42))
 	TideShapes.fill(self, strip, TideTokens.SONAR if enough_all else TideTokens.INK)
 	_write(
 		Vector2(-178, 66), "ХВАТАЕТ → К БУЮ, ЗАТЕМ E" if enough_all else "СОБЕРИТЕ РЕЦЕПТ", 1, 16,
@@ -557,7 +585,7 @@ func _draw_action() -> void:
 	var tone := int(_state["tone"])
 	var plate_size := Vector2(820, 66)
 	var origin := -plate_size * 0.5
-	var shape := TideShapes.offset(TideShapes.plate(plate_size, 14.0, 10.0), origin)
+	var shape := TideShapes.offset(_slab(plate_size, 14.0), origin)
 	TideShapes.fill(self, TideShapes.offset(shape, Vector2(8, 9)), TideTokens.FLARE if tone == 2 else TideTokens.INK)
 	var pump := clampf(float(_state["pump"]), 0.0, 1.0)
 	# Пока работает насос, плашка становится бумажной: сонарь заливает её
@@ -573,7 +601,7 @@ func _draw_action() -> void:
 	var text_x := origin.x + 34.0
 	if not key.is_empty():
 		var key_w := TideTokens.font_of(1).get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 28.0
-		var cap := TideShapes.offset(TideShapes.plate(Vector2(key_w, 42), 6.0), Vector2(origin.x + 24.0, -21.0))
+		var cap := TideShapes.offset(_slab(Vector2(key_w, 42), 6.0), Vector2(origin.x + 24.0, -21.0))
 		TideShapes.fill(self, cap, TideTokens.INK if pump > 0.0 else TideTokens.FOAM)
 		_write(
 			Vector2(origin.x + 24.0, 9.0), key, 1, 22, TideTokens.FOAM if pump > 0.0 else TideTokens.INK,
@@ -599,7 +627,7 @@ func _draw_notice() -> void:
 	var font := TideTokens.font_of(0)
 	var point := TideTokens.fit_point(font, _notice_text, 900.0, 26, 15)
 	var width := minf(940.0, font.get_string_size(_notice_text, HORIZONTAL_ALIGNMENT_LEFT, -1, point).x + 64.0)
-	var shape := TideShapes.offset(TideShapes.plate(Vector2(width, 50), 10.0), Vector2(-width * 0.5, -25))
+	var shape := TideShapes.offset(_slab(Vector2(width, 50), 10.0), Vector2(-width * 0.5, -25))
 	TideShapes.fill(self, TideShapes.offset(shape, Vector2(6, 7)), TideTokens.FLARE)
 	TideShapes.fill(self, shape, TideTokens.FOAM)
 	_write(Vector2(-width * 0.5, 10.0), _notice_text, 0, point, TideTokens.INK, HORIZONTAL_ALIGNMENT_CENTER, width)
@@ -607,15 +635,32 @@ func _draw_notice() -> void:
 
 func _draw_shoal() -> void:
 	if not bool(_state["shoal"]):
+		_shoal_face = null
 		return
 	var beat := 1.0 + 0.04 * sin(_time * 9.0)
 	if not _block(0, Vector2(_view.x * 0.5, 330.0), -2.0, beat):
 		return
-	var shape := TideShapes.offset(TideShapes.torn_rect(Vector2(640, 84), 18.0), Vector2(-320, -42))
+	var shape := TideShapes.offset(_sheet(Vector2(640, 84), 18.0), Vector2(-320, -42))
 	TideShapes.fill(self, TideShapes.offset(shape, Vector2(8, 9)), TideTokens.INK)
 	TideShapes.fill(self, shape, TideTokens.FLARE)
 	_write(Vector2(-320, -2), "ОТМЕЛЬ ПО КУРСУ — СНИЗЬТЕ ХОД", 2, 22, TideTokens.FOAM, HORIZONTAL_ALIGNMENT_CENTER, 640.0)
 	_write(Vector2(-320, 24), "МАЛАЯ ГЛУБИНА ПОД КОРПУСОМ ИЛИ ВПЕРЕДИ", 1, 15, TideTokens.FOAM, HORIZONTAL_ALIGNMENT_CENTER, 640.0)
+	# Мимо пугается отмели: круглое окошко с лицом слева от предупреждения.
+	if _shoal_face == null:
+		_shoal_face = TideStory.portrait("fear_shoal")
+	if _shoal_face != null:
+		var center := Vector2(-392, 0)
+		var tex_size := Vector2(_shoal_face.get_size())
+		var region := TideStory.FACE_REGION
+		var source := Rect2(region.position * tex_size, region.size * tex_size)
+		# Квадрат вокруг лица, вписанный в круглую рамку.
+		var side := source.size.x
+		source = Rect2(source.get_center() - Vector2(side, side) * 0.5, Vector2(side, side))
+		draw_circle(center + Vector2(5, 6), 64.0, TideTokens.INK)
+		draw_circle(center, 64.0, TideTokens.FOAM)
+		draw_circle(center, 58.0, TideTokens.DEEP)
+		draw_texture_rect_region(_shoal_face, Rect2(center - Vector2(41, 41), Vector2(82, 82)), source)
+		_ring(center, 61.0, 0.0, TAU, TideTokens.FLARE, 5.0)
 
 
 func _draw_footer() -> void:

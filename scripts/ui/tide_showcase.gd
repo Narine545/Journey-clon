@@ -148,7 +148,7 @@ func _sail_state() -> Dictionary:
 		"overdrive": 0.0,
 		"weather": "ПОГОДА: СВЕЖИЙ ВЕТЕР",
 		"camera": "ВЫСОТА 1.00× (27.0 м) · ОТДАЛЕНИЕ 1.00×",
-		"shoal": false,
+		"shoal": true,
 		"key": "ПРОБЕЛ",
 		"action": "ЗАБРАТЬ С ЛЕВОГО БОРТА: КОРАЛЛ",
 		"tone": 1,
@@ -264,7 +264,7 @@ func _run_sequence() -> void:
 	prologue.show_line(4)
 	await _wait(24)
 	await shot.capture("tide_08_prologue")
-	prologue.show_line(1)
+	prologue.show_line(2)
 	await _wait(24)
 	await shot.capture("tide_09_prologue_mother")
 	prologue.close()
