@@ -369,7 +369,7 @@ func _journal_payload() -> Dictionary:
 
 
 func _report_payload() -> Dictionary:
-	var win := run.state == RaidRun.State.WON
+	var win: bool = run.state == RaidRun.State.WON
 	var hull := 0.0
 	if run.main != null and run.main.boat != null:
 		hull = maxf(0.0, float(run.main.boat.hull_hp))
