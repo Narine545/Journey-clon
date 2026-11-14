@@ -1,6 +1,12 @@
 Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 
+[BOOT] старт · 51 МБ
 WORLD: Vulkan недоступен — Compatibility-фолбэк, волюметрический туман заменён плотной дымкой
+[BOOT] мир собран · 116 МБ
+[BOOT] HUD рейда · 118 МБ
+[BOOT] меню · 154 МБ
+[BOOT] постобработка · 154 МБ
+[BOOT] готово · 154 МБ
 [BOAT SMOKE] PASS волны CPU + шейдерное море
 [BOAT SMOKE] PASS лодка спущена на глубокую воду
 [BOAT SMOKE] PASS SDF-пятна распределены вокруг лодки
