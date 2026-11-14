@@ -191,12 +191,10 @@ static func bounds_of(points: PackedVector2Array) -> Rect2:
 	return rect
 
 
-## Полотно флага: сетка с подразбиением, чтобы вершинный шейдер давал волну.
-## shape: 0 — прямоугольный, 1 — треугольный, 2 — вымпел с вырезом.
 ## Точный контур сигнального флага: 0 — прямоугольный, 1 — треугольный
-## (остриё к свободной кромке), 2 — вымпел с вырезом «ласточкин хвост».
-## Кромки нарезаны шагом ~13 px, чтобы вершинный шейдер волны гнул полотно
-## плавно, а силуэт оставался ровным — без «лесенки» из ячеек сетки.
+## (остриё к свободной кромке), 2 — вымпел: сужающийся, с вырезом «ласточкин
+## хвост». Кромки нарезаны шагом ~13 px, чтобы вершинный шейдер волны гнул
+## полотно плавно, а силуэт оставался ровным.
 static func flag_outline(form: int, width: float, height: float) -> PackedVector2Array:
 	var w := maxf(48.0, width)
 	var h := maxf(48.0, height)
@@ -206,32 +204,66 @@ static func flag_outline(form: int, width: float, height: float) -> PackedVector
 			corners = PackedVector2Array([Vector2(0, 0), Vector2(w, h * 0.5), Vector2(0, h)])
 		2:
 			corners = PackedVector2Array([
-				Vector2(0, 0), Vector2(w, 0), Vector2(w * 0.64, h * 0.5), Vector2(w, h), Vector2(0, h)
+				Vector2(0, 0), Vector2(w, h * 0.15), Vector2(w * 0.78, h * 0.5),
+				Vector2(w, h * 0.85), Vector2(0, h)
 			])
 		_:
 			corners = PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h)])
+	return subdivide(corners, 13.0)
+
+
+## Нарезать замкнутый контур на короткие отрезки.
+static func subdivide(corners: PackedVector2Array, step: float = 13.0) -> PackedVector2Array:
 	var outline := PackedVector2Array()
 	for index in corners.size():
 		var a := corners[index]
 		var b := corners[(index + 1) % corners.size()]
-		var steps := maxi(2, int(ceil(a.distance_to(b) / 13.0)))
-		for step in steps:
-			outline.append(a.lerp(b, float(step) / float(steps)))
+		var steps := maxi(2, int(ceil(a.distance_to(b) / step)))
+		for part in steps:
+			outline.append(a.lerp(b, float(part) / float(steps)))
 	return outline
 
 
-## Безопасная зона текста внутри полотна: у треугольника и вымпела
-## остриё съедает правую часть, поэтому ширина урезана.
+## Безопасная зона текста внутри полотна. У треугольника и вымпела кромки
+## сходятся, поэтому зона — вписанный прямоугольник, а не «на глаз».
 static func flag_text_box(form: int, width: float, height: float) -> Rect2:
 	var w := maxf(48.0, width)
 	var h := maxf(48.0, height)
 	match form:
 		1:
-			return Rect2(w * 0.04, h * 0.10, w * 0.48, h * 0.66)
+			return Rect2(w * 0.05, h * 0.26, w * 0.45, h * 0.48)
 		2:
-			return Rect2(w * 0.04, h * 0.09, w * 0.50, h * 0.66)
+			return Rect2(w * 0.05, h * 0.15, w * 0.66, h * 0.70)
 		_:
-			return Rect2(w * 0.04, h * 0.08, w * 0.90, h * 0.66)
+			return Rect2(w * 0.06, h * 0.10, w * 0.72, h * 0.80)
+
+
+## Боковой силуэт лодки (нос вправо): рубка, труба, палуба, киль.
+static func hull_side(size: Vector2) -> PackedVector2Array:
+	var profile := [
+		Vector2(0.02, 0.44), Vector2(0.22, 0.44), Vector2(0.22, 0.17), Vector2(0.29, 0.17),
+		Vector2(0.29, 0.03), Vector2(0.37, 0.03), Vector2(0.37, 0.17), Vector2(0.50, 0.17),
+		Vector2(0.57, 0.44), Vector2(0.88, 0.44), Vector2(1.00, 0.34), Vector2(0.86, 0.97),
+		Vector2(0.11, 0.97), Vector2(0.05, 0.80),
+	]
+	var points := PackedVector2Array()
+	for point in profile:
+		points.append(Vector2(point.x * size.x, point.y * size.y))
+	return points
+
+
+## Звено цепи анфас: прямоугольник со срезанными углами (без скруглений).
+static func link(size: Vector2, chamfer: float) -> PackedVector2Array:
+	var w := maxf(6.0, size.x)
+	var h := maxf(6.0, size.y)
+	var c := clampf(chamfer, 1.0, minf(w, h) * 0.45)
+	return PackedVector2Array(
+		[
+			Vector2(c, 0.0), Vector2(w - c, 0.0), Vector2(w, c), Vector2(w, h - c),
+			Vector2(w - c, h), Vector2(c, h), Vector2(0.0, h - c), Vector2(0.0, c),
+		]
+	)
+
 
 static func contour(center: Vector2, radius: Vector2, wobble: float, seed_offset: float) -> PackedVector2Array:
 	var points := PackedVector2Array()

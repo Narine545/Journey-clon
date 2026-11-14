@@ -43,17 +43,12 @@ func _draw() -> void:
 		draw_rect(inner, tint, false, 1.5)
 		for corner in [inner.position, inner.position + Vector2(inner.size.x, 0.0)]:
 			draw_circle(corner, 2.0, tint)
+	# Оттиск всегда целиком внутри рамки: кегль ужимается под ширину штампа.
 	var font := TideTokens.title_font()
-	var baseline := size.y * 0.5 + float(point_size) * 0.34
-	draw_string(
-		font,
-		Vector2(0.0, baseline),
-		text,
-		HORIZONTAL_ALIGNMENT_CENTER,
-		size.x,
-		point_size,
-		tint
-	)
+	var point := TideTokens.fit_point(font, text, size.x - pad * 2.0 - 34.0, point_size, 12)
+	point = mini(point, int((size.y - pad * 2.0 - 22.0) / 0.74))
+	var baseline := size.y * 0.5 + float(point) * 0.36
+	draw_string(font, Vector2(0.0, baseline), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, point, tint)
 
 
 ## Удар штампа: scale 1.9 → 1.0 с overshoot, плюс брызги вокруг.

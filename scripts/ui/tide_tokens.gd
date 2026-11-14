@@ -43,6 +43,7 @@ const BODY_FONT_PATH := "res://assets/fonts/Oswald-Medium.ttf"
 static var _title_font: Font
 static var _mono_font: Font
 static var _body_font: Font
+static var _italic_fonts := {}
 
 
 static func title_font() -> Font:
@@ -61,6 +62,44 @@ static func body_font() -> Font:
 	if _body_font == null:
 		_body_font = load(BODY_FONT_PATH)
 	return _body_font
+
+
+## Наклонный заголовочный шрифт: глифы срезаны вбок (faux italic), а строка
+## остаётся горизонтальной — заголовок не «уезжает» из своей панели.
+## slant_deg: −8…−12 по брифу (отрицательный = наклон вправо-вверх).
+static func title_italic(slant_deg: float = -10.0) -> Font:
+	var key := int(round(slant_deg * 10.0))
+	if _italic_fonts.has(key):
+		return _italic_fonts[key]
+	var variation := FontVariation.new()
+	variation.base_font = title_font()
+	var shear := tan(deg_to_rad(-slant_deg))
+	variation.variation_transform = Transform2D(Vector2(1.0, shear), Vector2(0.0, 1.0), Vector2.ZERO)
+	_italic_fonts[key] = variation
+	return variation
+
+
+## Шрифт по виду: 0 — тело (Oswald), 1 — моно, 2 — заголовок, 3 — наклонный заголовок.
+static func font_of(kind: int) -> Font:
+	match kind:
+		1:
+			return mono_font()
+		2:
+			return title_font()
+		3:
+			return title_italic()
+		_:
+			return body_font()
+
+
+## Наибольший кегль, при котором строка помещается в ширину.
+static func fit_point(font: Font, text_value: String, max_width: float, max_point: int, min_point: int = 10) -> int:
+	var current := max_point
+	while current > min_point:
+		if font.get_string_size(text_value, HORIZONTAL_ALIGNMENT_LEFT, -1, current).x <= max_width:
+			break
+		current -= 1
+	return current
 
 
 # --- Приглушение делается прозрачностью foam, серого в палитре нет ---

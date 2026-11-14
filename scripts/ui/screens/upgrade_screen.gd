@@ -2,28 +2,33 @@ class_name TideUpgradeScreen
 extends Control
 ## Экран повышения уровня «ПОПУТНЫЙ ВЕТЕР» — витрина стиля TIDECUT.
 ##
-## Три апгрейда — три сигнальных флага разных форм. Наведение поднимает флаг
-## и пригибает остальные, выбор «взлетает» с брызгами и штампом.
+## Три апгрейда — три сигнальных флага разных форм на трёх мачтах. Наведение
+## поднимает флаг и пригибает остальные, выбор — флаг рывком поднимают,
+## остальные спускают, по экрану бьёт штамп «ПОВЫШЕНИЕ».
 ## Тексты приходят снаружи: экран ничего не знает про RaidRun.
 
 signal flag_chosen(index: int)
 signal reroll_requested
 
+## Три мачты разной высоты; наклон чередуется.
 const LAYOUT := [
-	{"rect": Rect2(92, 404, 456, 338), "deg": -3.2, "color": TideTokens.DEEP, "form": 0},
-	{"rect": Rect2(614, 346, 492, 402), "deg": 2.7, "color": TideTokens.FLARE, "form": 1},
-	{"rect": Rect2(1174, 412, 512, 346), "deg": -1.9, "color": TideTokens.SONAR, "form": 2},
+	{"rect": Rect2(118, 452, 478, 300), "deg": -2.2, "color": TideTokens.DEEP, "form": 0},
+	{"rect": Rect2(690, 356, 600, 400), "deg": 1.6, "color": TideTokens.FLARE, "form": 1},
+	{"rect": Rect2(1326, 436, 504, 310), "deg": -1.4, "color": TideTokens.SONAR, "form": 2},
 ]
+const HEAD_RECT := Rect2(-70, 64, 1330, 236)
+const HEAD_DEG := -4.0
+const LEVEL_RECT := Rect2(1420, 92, 400, 168)
+const LEVEL_DEG := 4.5
 
+var _head: Control
 var _title: TideTitleLabel
-var _title_strip: TidePanelTorn
-var _level_plate: TidePanelTorn
+var _level: Control
 var _level_text: Label
 var _flags: Array[TideFlag] = []
 var _stamp: TideStamp
 var _reroll: TideButton
 var _hint: Label
-var _kicker: Label
 var _busy := false
 
 
@@ -40,26 +45,31 @@ func _build() -> void:
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	TideKit.place(backdrop, Rect2(Vector2.ZERO, TideTokens.BASE))
 	add_child(backdrop)
-
 	TideKit.isobaths(self, Rect2(Vector2.ZERO, TideTokens.BASE), 0.085, 32.0)
 
-	# Обрывки карт по краям: коллаж, а не центрированная рамка.
-	TideKit.panel(self, Rect2(-52, 612, 322, 520), TideTokens.DEEP, TideTokens.FLARE, true, 4.4)
-	TideKit.panel(self, Rect2(1652, -46, 330, 402), TideTokens.DEEP, Color(0, 0, 0, 0), true, -6.2)
-
-	_title_strip = TideKit.panel(
-		self, Rect2(36, 92, 1264, 216), TideTokens.deep_alpha(0.94), TideTokens.FLARE, false, -7.0
+	# --- Шапка: рваная лента с заголовком, уходит за левый край ---
+	_head = TideKit.group(self, HEAD_RECT, HEAD_DEG)
+	var strip := TideKit.panel(
+		_head, Rect2(0, 34, HEAD_RECT.size.x, 190), TideTokens.DEEP, TideTokens.FLARE, true
 	)
-	_title = TideKit.title(self, "ПОПУТНЫЙ ВЕТЕР", Vector2(74, 116), 112, -8.0, TideTokens.FOAM, 10)
-	TideKit.fit_title(_title, 1180.0, 112, 62)
-
-	_kicker = TideKit.mono(self, "ВАХТА 03 · ШТОРМОВОЙ ЖУРНАЛ", Vector2(64, 38), 22, TideTokens.SONAR, -2.5)
-
-	_level_plate = TideKit.panel(
-		self, Rect2(1342, 148, 352, 142), TideTokens.FLARE, TideTokens.ink_alpha(0.85), false, 6.2
+	strip.hatch_color = TideTokens.foam_alpha(0.07)
+	strip.hatch_spacing = 8.0
+	strip.underprint_offset = Vector2(12.0, 14.0)
+	TideKit.text(_head, "СИГНАЛ С МОСТИКА · ВЫБЕРИ ФЛАГ", Vector2(132, 0), 1, 21, TideTokens.SONAR)
+	_title = TideKit.headline(
+		_head, "ПОПУТНЫЙ ВЕТЕР", Vector2(124, 52), 1120.0, 118, TideTokens.FOAM, 10, -11.0
 	)
-	TideKit.mono(_level_plate, "УРОВЕНЬ", Vector2(24, 12), 20, TideTokens.INK, -1.0)
-	_level_text = TideKit.mono(_level_plate, "05 → 06", Vector2(22, 46), 46, TideTokens.INK, -1.0)
+	_title.position.y = 34.0 + (182.0 - _title.size.y) * 0.5
+
+	# --- Плашка уровня: красный отрывной талон справа ---
+	_level = TideKit.group(self, LEVEL_RECT, LEVEL_DEG)
+	TideKit.panel(
+		_level, Rect2(Vector2.ZERO, LEVEL_RECT.size), TideTokens.FLARE, TideTokens.FOAM, false
+	).underprint_offset = Vector2(-10.0, 10.0)
+	TideKit.text(_level, "УРОВЕНЬ", Vector2(34, 18), 1, 22, TideTokens.INK)
+	_level_text = TideKit.text(
+		_level, "05 → 06", Vector2(30, 52), 1, 64, TideTokens.FOAM, LEVEL_RECT.size.x - 60.0
+	)
 
 	for index in range(LAYOUT.size()):
 		var entry: Dictionary = LAYOUT[index]
@@ -72,12 +82,13 @@ func _build() -> void:
 		flag.hide()
 		_flags.append(flag)
 
-	_stamp = TideKit.stamp(self, "ПОВЫШЕНИЕ", Rect2(658, 296, 604, 170), TideTokens.FLARE, 66, -13.0)
-
+	_hint = TideKit.text(
+		self, "1 · 2 · 3 — ПОДНЯТЬ ФЛАГ", Vector2(150, 1022), 1, 19, TideTokens.foam_alpha(0.45)
+	)
 	_reroll = TideKit.button(
 		self,
 		"ПЕРЕБРОСИТЬ · 2",
-		Rect2(1442, 938, 356, 68),
+		Rect2(1440, 968, 380, 70),
 		TideButton.Shape.OUTLINE,
 		TideTokens.SONAR,
 		1,
@@ -87,10 +98,11 @@ func _build() -> void:
 	)
 	_reroll.pressed.connect(_on_reroll_pressed)
 
-	_hint = TideKit.mono(
-		self, "1 · 2 · 3 — ПОДНЯТЬ ФЛАГ · ВЫБОР ОСТАНАВЛИВАЕТ ВАХТУ", Vector2(336, 1008), 19, TideTokens.foam_alpha(0.5), -1.2
-	)
-	TideKit.mono(self, "БОЙ НА ПАУЗЕ", Vector2(1370, 60), 20, TideTokens.foam_alpha(0.42), 2.2)
+	# Качка: шапка и талон плавают каждый в своей фазе (флаги качаются сами).
+	add_child(TideFx.bob(_head, HEAD_DEG, 0.6, 3.0, 0.4))
+	add_child(TideFx.bob(_level, LEVEL_DEG, 1.1, 2.5, 2.6))
+
+	_stamp = TideKit.stamp(self, "ПОВЫШЕНИЕ", Rect2(0, 0, 760, 190), TideTokens.FLARE, 84, -12.0)
 
 
 ## entries: [{title, desc, preview}] — три карточки из RaidRun.
@@ -100,13 +112,16 @@ func open(entries: Array, level_from: int, level_to: int, rerolls: int, can_rero
 	_level_text.text = "%02d → %02d" % [level_from, level_to]
 	_reroll.set_caption("ПЕРЕБРОСИТЬ · %d" % rerolls)
 	_reroll.disabled = not can_reroll
+	_reroll.queue_redraw()
 	_stamp.hide()
+	var common := TideFlag.TITLE_MAX
 	for index in range(_flags.size()):
 		var flag := _flags[index]
 		if index < entries.size():
 			var entry: Dictionary = entries[index]
 			var layout: Dictionary = LAYOUT[index]
 			flag.rest_deg = float(layout["deg"])
+			flag.restore()
 			flag.set_content(
 				index,
 				String(entry.get("title", "")),
@@ -116,46 +131,49 @@ func open(entries: Array, level_from: int, level_to: int, rerolls: int, can_rero
 				int(layout["form"])
 			)
 			flag.set_locked(false)
-			flag.modulate.a = 0.0
-			flag.scale = Vector2.ONE * 0.62
 			flag.show()
+			common = mini(common, flag.title_point)
 		else:
 			flag.hide()
+	# Один кегль названий на всех флагах: типографика ровная, а не «как влезло».
+	for flag in _flags:
+		if flag.visible:
+			flag.apply_title_point(maxi(common, 20))
 	_play_entrance()
-	_hint.modulate.a = 0.0
-	var hint_tween := create_tween()
-	hint_tween.tween_interval(0.26)
-	hint_tween.tween_property(_hint, "modulate:a", 1.0, 0.18)
 
 
 func _play_entrance() -> void:
-	_title.modulate.a = 1.0
-	_title.position = Vector2(74, 116)
-	TideFx.slide_in(_title, Vector2(0, -210), 0.26)
-	_stagger(_title_strip, 0.0, 0.9, -6.0)
-	_stagger(_kicker, 0.02, 0.9, -4.0)
-	_stagger(_level_plate, 0.06, 0.72, -12.0)
-	_stagger(_reroll, 0.10, 0.8, -8.0)
+	TideKit.place(_head, HEAD_RECT, HEAD_DEG)
+	_head.modulate.a = 1.0
+	# Шапка влетает сверху с overshoot.
+	TideFx.slide_in(_head, Vector2(-60, -330), 0.26)
+	TideFx.splash(self, Vector2(620, 300), 12)
+	_stagger(_level, 0.08, 0.5, -10.0)
+	_stagger(_reroll, 0.14, 0.7, -8.0)
+	_hint.modulate.a = 0.0
+	var hint_tween := create_tween()
+	hint_tween.tween_interval(0.3)
+	hint_tween.tween_property(_hint, "modulate:a", 1.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	for index in range(_flags.size()):
-		if not _flags[index].visible:
-			continue
 		var flag := _flags[index]
-		var delay := 0.04 + float(index) * 0.05
+		if not flag.visible:
+			continue
+		flag.modulate.a = 0.0
 		var tween := create_tween()
-		tween.tween_interval(delay)
+		tween.tween_interval(0.1 + float(index) * 0.06)
 		tween.tween_callback(_pop_flag.bind(flag))
 
 
+## Мачта «вырастает» от основания: масштаб 0.5 → 1 с overshoot.
 func _pop_flag(flag: TideFlag) -> void:
 	var rest := flag.rest_deg
-	flag.modulate.a = 0.0
-	flag.scale = Vector2.ONE * 0.62
+	flag.scale = Vector2.ONE * 0.5
 	flag.rest_deg = rest - 10.0
-	TideFx.splash(self, flag.position + flag.size * 0.5, 9)
+	TideFx.splash(self, flag.position + Vector2(flag.size.x * 0.4, flag.size.y), 10)
 	var tween := flag.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(flag, "modulate:a", 1.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(flag, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(flag, "modulate:a", 1.0, 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(flag, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(flag, "rest_deg", rest, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
@@ -165,11 +183,7 @@ func _stagger(node: Control, delay: float, from_scale: float, from_deg: float) -
 	node.modulate.a = 0.0
 	var tween := create_tween()
 	tween.tween_interval(delay)
-	tween.tween_callback(
-		func() -> void:
-			node.modulate.a = 1.0
-			TideFx.pop_in(node, from_scale, from_deg)
-	)
+	tween.tween_callback(func() -> void: TideFx.pop_in(node, from_scale, from_deg))
 
 
 func _on_flag_hovered(index: int) -> void:
@@ -193,7 +207,6 @@ func _on_flag_pressed(index: int) -> void:
 func _on_reroll_pressed() -> void:
 	if _busy or _reroll.disabled:
 		return
-	TideFx.press(_reroll)
 	reroll_requested.emit()
 
 
@@ -218,7 +231,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-## Выбор: hit-stop 0.08 с → взлёт флага → падение остальных → штамп.
+## Выбор: hit-stop 0.08 с → флаг поднят → остальные спущены → штамп.
 func _pick(index: int) -> void:
 	if _busy or index < 0 or index >= _flags.size() or not _flags[index].visible:
 		return
@@ -229,11 +242,18 @@ func _pick(index: int) -> void:
 	TideFx.freeze()
 	await get_tree().create_timer(TideTokens.HITSTOP, true, false, true).timeout
 	TideFx.unfreeze()
-	_flags[index].fly_up()
+	var chosen := _flags[index]
+	chosen.fly_up()
 	for other in _flags:
 		if other.index != index:
 			other.fall_down()
 	await get_tree().create_timer(0.1, true, false, true).timeout
+	# Штамп бьёт по свободной воде рядом с поднятым флагом, а не поверх него.
+	var stamp_size := _stamp.size
+	var at := Vector2(chosen.position.x + chosen.size.x + 10.0, 560.0)
+	if at.x + stamp_size.x > TideTokens.BASE.x - 30.0:
+		at.x = maxf(24.0, chosen.position.x - stamp_size.x - 10.0)
+	_stamp.position = at
 	_stamp.hit(self)
 	TideFx.shake(self, 4.0, 0.12)
 	await get_tree().create_timer(0.3, true, false, true).timeout

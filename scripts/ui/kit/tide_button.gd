@@ -3,7 +3,7 @@ extends Button
 ## Кнопка-плашка со срезанными углами. Hover: сдвиг 4 px и усиление skew,
 ## нажатие: scale 0.93 на 0.06 с и отскок TRANS_BACK.
 
-enum Shape { SOLID, OUTLINE, GHOST }
+enum Shape { SOLID, OUTLINE, GHOST, PENNANT }
 
 @export var variant := Shape.SOLID
 @export var tint := TideTokens.SONAR
@@ -44,6 +44,7 @@ func _ready() -> void:
 	button_down.connect(_on_down)
 	button_up.connect(queue_redraw)
 	resized.connect(queue_redraw)
+	resized.connect(_fit_caption)
 
 
 func set_caption(text: String, color: Color = Color(0, 0, 0, 0)) -> void:
@@ -52,6 +53,43 @@ func set_caption(text: String, color: Color = Color(0, 0, 0, 0)) -> void:
 	caption.text = text
 	if color.a > 0.001:
 		caption.add_theme_color_override("font_color", color)
+	_fit_caption()
+
+
+## Подпись ужимается под плашку: текст не выходит за скошенные края.
+func _fit_caption() -> void:
+	if caption == null or size.x < 8.0:
+		return
+	var font := TideTokens.title_font()
+	if font_kind == 1:
+		font = TideTokens.mono_font()
+	elif font_kind == 2:
+		font = TideTokens.body_font()
+	var room := size.x - (skew + cut) * 2.0 - 28.0 - _tail()
+	var point := TideTokens.fit_point(font, caption.text, room, point_size, 10)
+	point = mini(point, int(size.y * 0.62))
+	caption.add_theme_font_size_override("font_size", point)
+	caption.offset_right = -_tail()
+
+
+func _tail() -> float:
+	return size.y * 0.42 if variant == Shape.PENNANT else 0.0
+
+
+func _outline_points() -> PackedVector2Array:
+	var lean := skew * (1.0 + 0.35 * _hover)
+	if variant != Shape.PENNANT:
+		return TideShapes.plate(size, lean, cut)
+	# Вымпел: скошенная плашка с вырезом «ласточкин хвост» на свободном конце.
+	return PackedVector2Array(
+		[
+			Vector2(lean + cut, 0.0),
+			Vector2(size.x + lean, 0.0),
+			Vector2(size.x - _tail(), size.y * 0.5),
+			Vector2(size.x - lean, size.y),
+			Vector2(-lean - cut, size.y),
+		]
+	)
 
 
 func _set_hover(value: float) -> void:
@@ -64,7 +102,7 @@ func _set_hover(value: float) -> void:
 func _apply_hover(value: float) -> void:
 	_hover = value
 	if caption != null:
-		caption.position = Vector2(0.0, 4.0 * value)
+		caption.position = Vector2(4.0 * value, 0.0)
 	queue_redraw()
 
 
@@ -74,22 +112,22 @@ func _on_down() -> void:
 
 
 func _draw() -> void:
-	var shape := TideShapes.plate(size, skew * (1.0 + 0.35 * _hover), cut)
+	var shape := _outline_points()
 	var alpha := 0.45 if disabled else 1.0
 	match variant:
-		Shape.SOLID:
+		Shape.SOLID, Shape.PENNANT:
+			# Оттиск-подложка: плоский сдвинутый силуэт, сдвиг растёт на hover.
+			var lift := 6.0 + 4.0 * _hover
+			TideShapes.fill(self, TideShapes.offset(shape, Vector2(lift, lift)), TideTokens.ink_alpha(0.7 * alpha))
 			TideShapes.fill(self, shape, Color(tint, alpha))
 		Shape.OUTLINE:
+			TideShapes.fill(self, shape, TideTokens.ink_alpha(0.55 * alpha))
 			TideShapes.stroke(self, shape, Color(tint, alpha), 4.0)
 		_:
-			TideShapes.fill(self, shape, Color(TideTokens.DEEP, alpha))
-			TideShapes.stroke(self, shape, Color(TideTokens.foam_alpha(0.25), alpha), 2.0)
-	# Уголок-зацепка: подчёркивает направление движения плашки.
-	var edge := TideShapes.plate(size, skew * (1.0 + 0.35 * _hover), cut)
-	var accent := Color(tint, alpha) if variant != Shape.SOLID else Color(TideTokens.INK, 0.55)
-	draw_line(edge[3], edge[2], accent, 3.0, true)
+			TideShapes.fill(self, shape, TideTokens.ink_alpha(0.5 * alpha))
+			TideShapes.stroke(self, shape, Color(tint.r, tint.g, tint.b, tint.a * alpha), 2.5)
 	if has_focus():
 		var focus_shape := PackedVector2Array()
 		for point in shape:
-			focus_shape.append(point + (size * 0.5 - point).normalized() * 5.0)
-		draw_polyline(TideShapes.closed(focus_shape), TideTokens.foam_alpha(0.55), 1.5, true)
+			focus_shape.append(point + (point - size * 0.5).normalized() * 7.0)
+		draw_polyline(TideShapes.closed(focus_shape), TideTokens.foam_alpha(0.55), 2.0, true)

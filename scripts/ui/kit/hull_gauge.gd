@@ -40,61 +40,51 @@ func set_danger(active: bool) -> void:
 		_material.set_shader_parameter("danger", 1.0 if active else 0.0)
 
 
+## Правая полоса под мерную рейку осадки.
+const RULER_W := 70.0
+
+
+func hull_size() -> Vector2:
+	return Vector2(maxf(40.0, size.x - RULER_W), size.y)
+
+
 func _rebuild() -> void:
 	if _material == null or size.x < 8.0:
 		return
-	var points := TideShapes.hull(size)
+	var extent := hull_size()
+	var points := TideShapes.hull_side(extent)
 	_water.polygon = points
-	var normalized := PackedVector2Array()
-	for point in points:
-		normalized.append(Vector2(point.x / maxf(1.0, size.x), point.y / maxf(1.0, size.y)))
-	_water.uv = normalized
-	_material.set_shader_parameter("poly_size", size)
+	_material.set_shader_parameter("poly_size", extent)
 	_material.set_shader_parameter("fill", 1.0 - hp)
 	_material.set_shader_parameter("danger", 1.0 if hp < 0.25 else 0.0)
-	_material.set_shader_parameter("wave_amp", 3.0 + (1.0 - hp) * 3.6)
+	_material.set_shader_parameter("wave_amp", 2.5 + (1.0 - hp) * 3.0)
 	if _lines != null:
 		_lines.queue_redraw()
-	queue_redraw()
+
+
+## Уровень воды (y) для запаса корпуса value (0…1) — та же формула, что в шейдере.
+func _level_y(value: float) -> float:
+	return lerpf(size.y - 4.0, 4.0, 1.0 - value)
 
 
 func _draw_lines() -> void:
-	var points := TideShapes.hull(size)
-	_lines.draw_polyline(TideShapes.closed(points), TideTokens.INK, 4.0, true)
-	# Шпангоуты: поперечные рёбра корпуса, обрезанные силуэтом.
-	for index in range(1, 5):
-		var y := size.y * float(index) / 5.0
-		var segment := PackedVector2Array([Vector2(-4.0, y), Vector2(size.x + 4.0, y)])
-		for piece in Geometry2D.intersect_polyline_with_polygon(segment, points):
-			if piece.size() >= 2:
-				_lines.draw_line(piece[0], piece[piece.size() - 1], TideTokens.ink_alpha(0.28), 1.5, true)
-	# Носовой форштевень и заклёпки по борту.
-	_lines.draw_line(Vector2(size.x * 0.5, 8.0), Vector2(size.x * 0.5, size.y * 0.24), TideTokens.ink_alpha(0.35), 2.0, true)
-	for index in range(6):
-		var angle := PI * (0.12 + 0.76 * float(index) / 5.0)
-		var at := Vector2(size.x * 0.5 - cos(angle) * size.x * 0.36, size.y * 0.5 + sin(angle) * size.y * 0.3)
-		if Geometry2D.is_point_in_polygon(at, points):
-			_lines.draw_circle(at, 2.4, TideTokens.foam_alpha(0.45))
-	# Осадка размечена как на настоящем борту: риски и подписи в моно.
+	var extent := hull_size()
+	var points := TideShapes.hull_side(extent)
+	_lines.draw_polyline(TideShapes.closed(points), TideTokens.FOAM, 3.0, true)
+	# Иллюминаторы рубки и привальный брус.
+	for index in range(2):
+		var at := Vector2(extent.x * (0.30 + 0.12 * float(index)), extent.y * 0.31)
+		_lines.draw_rect(Rect2(at - Vector2(7.0, 7.0), Vector2(14.0, 14.0)), TideTokens.FOAM)
+	_lines.draw_line(
+		Vector2(extent.x * 0.05, extent.y * 0.56), Vector2(extent.x * 0.94, extent.y * 0.56),
+		TideTokens.foam_alpha(0.4), 2.0, true
+	)
+	# Мерная рейка осадки: 75 / 50 / 25, нижняя отметка — аварийная.
 	var font := TideTokens.mono_font()
-	for index in range(1, 4):
-		var y := size.y * float(index) / 4.0
-		var right := Vector2(size.x * 0.5, y)
-		var left := Vector2(size.x * 0.5, y)
-		for point in points:
-			if is_equal_approx(point.y, y):
-				continue
-			if absf(point.y - y) < 1.0:
-				right = point if point.x > right.x else right
-				left = point if point.x < left.x else left
-		_lines.draw_line(left, right, TideTokens.foam_alpha(0.16), 1.0, true)
-		# Цифра читается и на телe воды, и на штриховке: подложка из ink-тени.
-		var at := Vector2(size.x * 0.985 - 26.0, y + 5.0)
-		var caption := "%d" % (100 - index * 25)
-		_lines.draw_string(
-			font, at + Vector2(1.0, 1.0), caption, HORIZONTAL_ALIGNMENT_RIGHT, 26.0, 12,
-			TideTokens.ink_alpha(0.55)
-		)
-		_lines.draw_string(
-			font, at, caption, HORIZONTAL_ALIGNMENT_RIGHT, 26.0, 12, TideTokens.foam_alpha(0.66)
-		)
+	var x := extent.x + 16.0
+	_lines.draw_line(Vector2(x, _level_y(1.0)), Vector2(x, _level_y(0.0)), TideTokens.foam_alpha(0.45), 2.0)
+	for mark in [75, 50, 25]:
+		var y := _level_y(float(mark) / 100.0)
+		var tint: Color = TideTokens.FLARE if mark == 25 else TideTokens.foam_alpha(0.7)
+		_lines.draw_line(Vector2(x, y), Vector2(x + 12.0, y), tint, 3.0 if mark == 25 else 2.0)
+		_lines.draw_string(font, Vector2(x + 18.0, y + 5.0), str(mark), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, tint)

@@ -400,7 +400,7 @@ func _report_payload() -> Dictionary:
 	build += "Q            %.0f / %.0f М\n" % [run.pulse_damage, run.pulse_radius]
 	build += "КОРМА        %d/3\n" % run.stern_rank
 	build += "СФЕРЫ        %d/3\n" % run.sphere_rank
-	build += "СТЯГИВАНИЕ  %d/3\n" % run.gravity_rank
+	build += "СТЯГИВАНИЕ   %d/3" % run.gravity_rank
 	var log_lines := ""
 	var taken: Array = run.upgrade_log
 	for index in range(maxi(0, taken.size() - 5), taken.size()):

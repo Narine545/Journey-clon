@@ -17,6 +17,10 @@ extends Control
 @export var hatch_spacing := 7.0
 @export var border_color := Color(0.0, 0.0, 0.0, 0.0)
 @export var border_width := 0.0
+## Двойная телеграфная рамка внутри листа (рапорт, бланки).
+@export var double_frame := false
+@export var frame_color := TideTokens.INK
+@export var frame_inset := 18.0
 
 var _polygon := PackedVector2Array()
 
@@ -64,6 +68,14 @@ func _draw() -> void:
 		TideShapes.hatch(self, _polygon, hatch_spacing, hatch_color, 1.0, 58.0)
 	if border_width > 0.0 and border_color.a > 0.001:
 		TideShapes.stroke(self, _polygon, border_color, border_width)
+	if double_frame:
+		var bottom := tooth_h if teeth and not teeth_on_top else 0.0
+		var outer := Rect2(
+			Vector2(frame_inset, frame_inset),
+			Vector2(size.x - frame_inset * 2.0, size.y - frame_inset * 2.0 - bottom)
+		)
+		draw_rect(outer, frame_color, false, 4.0)
+		draw_rect(outer.grow(-9.0), frame_color, false, 1.5)
 
 
 ## Лёгкий вход панели: 0.22 с, overshoot, без LINEAR.

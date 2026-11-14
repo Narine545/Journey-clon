@@ -1677,8 +1677,8 @@ func _check_raid_result_layout() -> void:
 	_check(report._protocol.text == String(payload["protocol"])
 		and report._build_label.text == String(payload["build"]),
 		"протокол рапорта показывает ровно те данные, что отдаёт рейд")
-	_check(report._restart.get_parent() == report
-		and report._menu.get_parent() == report
+	_check(report._restart.get_parent() == report._protocol.get_parent()
+		and report._menu.get_parent() == report._protocol.get_parent()
 		and report._restart.position.y > report._protocol.position.y,
 		"кнопки «НОВАЯ ВАХТА» и «В МЕНЮ» стоят ниже протокола, вне прокрутки")
 	report.hide()

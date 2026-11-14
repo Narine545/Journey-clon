@@ -122,32 +122,6 @@ static func mono(
 	)
 
 
-static func title(
-	parent: Node,
-	text_value: String,
-	at: Vector2,
-	point: int,
-	slant: float = -9.0,
-	color: Color = TideTokens.FOAM,
-	outline: int = 8
-) -> TideTitleLabel:
-	var node: TideTitleLabel = TITLE.instantiate()
-	node.text = text_value.to_upper()
-	node.point_size = point
-	node.slant = slant
-	node.paper_color = color
-	node.outline = outline
-	node.position = at
-	var measured := TideTokens.title_font().get_string_size(
-		node.text, HORIZONTAL_ALIGNMENT_LEFT, -1, point
-	)
-	node.size = Vector2(measured.x + 12.0, float(point) * 1.5)
-	node.pivot_offset = node.size * 0.5
-	parent.add_child(node)
-	node.rotation = deg_to_rad(slant)
-	return node
-
-
 static func stamp(
 	parent: Node, text_value: String, rect: Rect2, tint: Color, point: int = 40, deg: float = -12.0
 ) -> TideStamp:
@@ -197,23 +171,105 @@ static func flag(
 	node.phase = float(order) * 1.9
 	node.period = TideTokens.BOB_PERIOD[order % TideTokens.BOB_PERIOD.size()]
 	node.amplitude = 0.8
+	# Мачта уходит за нижний край экрана.
+	node.mast = maxf(node.size.y + 120.0, TideTokens.BASE.y + 60.0 - rect.position.y)
 	parent.add_child(node)
 	return node
 
 
-## Подгонка заголовка под ширину: крупно, но без обрезки.
-static func fit_title(node: TideTitleLabel, max_width: float, point: int, min_point: int = 54) -> void:
-	var current := point
-	while current > min_point:
-		var measured := TideTokens.title_font().get_string_size(
-			node.text, HORIZONTAL_ALIGNMENT_LEFT, -1, current
-		)
-		if measured.x <= max_width:
-			break
-		current -= 4
-	node.point_size = current
-	var measured_final := TideTokens.title_font().get_string_size(
-		node.text, HORIZONTAL_ALIGNMENT_LEFT, -1, current
-	)
-	node.size = Vector2(measured_final.x + 12.0, float(current) * 1.5)
+## Группа-контейнер: всё содержимое блока живёт в её координатах и
+## поворачивается вместе с ней — подписи не разъезжаются с подложкой.
+static func group(parent: Node, rect: Rect2, deg: float = 0.0) -> Control:
+	var node := Control.new()
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	place(node, rect, deg)
+	parent.add_child(node)
+	return node
+
+
+static func fit_point(font: Font, text_value: String, max_width: float, max_point: int, min_point: int = 10) -> int:
+	return TideTokens.fit_point(font, text_value, max_width, max_point, min_point)
+
+
+## Однострочная надпись точного размера. box_width > 0 — фиксированная
+## колонка с выравниванием (для цифр, которые меняются на лету).
+static func text(
+	parent: Node,
+	text_value: String,
+	at: Vector2,
+	kind: int = 1,
+	point: int = 20,
+	color: Color = TideTokens.FOAM,
+	box_width: float = -1.0,
+	align: int = HORIZONTAL_ALIGNMENT_LEFT
+) -> Label:
+	var font := TideTokens.font_of(kind)
+	var node := Label.new()
+	node.text = text_value
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	node.autowrap_mode = TextServer.AUTOWRAP_OFF
+	node.add_theme_font_override("font", font)
+	node.add_theme_font_size_override("font_size", point)
+	node.add_theme_color_override("font_color", color)
+	node.add_theme_constant_override("outline_size", 0)
+	node.horizontal_alignment = align as HorizontalAlignment
+	node.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var measured := font.get_string_size(text_value, HORIZONTAL_ALIGNMENT_LEFT, -1, point)
+	node.position = at
+	node.size = Vector2(box_width if box_width > 0.0 else measured.x + 4.0, font.get_height(point))
 	node.pivot_offset = node.size * 0.5
+	parent.add_child(node)
+	return node
+
+
+## Многострочный блок (протокол, показания): моно, свой интерлиньяж.
+static func block(
+	parent: Node,
+	text_value: String,
+	rect: Rect2,
+	kind: int = 1,
+	point: int = 20,
+	color: Color = TideTokens.FOAM,
+	line_gap: int = 8
+) -> Label:
+	var node := Label.new()
+	node.text = text_value
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	node.autowrap_mode = TextServer.AUTOWRAP_OFF
+	node.add_theme_font_override("font", TideTokens.font_of(kind))
+	node.add_theme_font_size_override("font_size", point)
+	node.add_theme_color_override("font_color", color)
+	node.add_theme_constant_override("outline_size", 0)
+	node.add_theme_constant_override("line_spacing", line_gap)
+	node.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	node.position = rect.position
+	node.size = rect.size
+	parent.add_child(node)
+	return node
+
+
+## Наклонный заголовок, вписанный в ширину. Наклон — срез глифов, строка
+## горизонтальна в координатах родителя.
+static func headline(
+	parent: Node,
+	text_value: String,
+	at: Vector2,
+	max_width: float,
+	max_point: int,
+	color: Color = TideTokens.FOAM,
+	outline: int = 8,
+	slant: float = -10.0,
+	misprint: Color = Color(0.0, 0.0, 0.0, 0.0)
+) -> TideTitleLabel:
+	var node: TideTitleLabel = TITLE.instantiate()
+	node.text = text_value.to_upper()
+	node.slant = slant
+	node.outline = outline
+	node.paper_color = color
+	node.misprint = misprint
+	node.max_width = max_width
+	node.max_point = max_point
+	node.position = at
+	parent.add_child(node)
+	node.refit()
+	return node
