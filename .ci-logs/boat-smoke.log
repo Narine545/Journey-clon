@@ -408,9 +408,9 @@ ERROR: Error calling method from CallbackTweener: 'Control(pause_journal.gd)::_r
    at: step (scene/animation/tween.cpp:771)
 ERROR: Error calling method from CallbackTweener: 'Control(pause_journal.gd)::_row_slide': Cannot convert argument 1 from Object to Object.
    at: step (scene/animation/tween.cpp:771)
+[BOAT SMOKE] PASS старый участок кильватера остаётся в мировых координатах при повороте
 ERROR: Error calling method from CallbackTweener: 'Control(pause_journal.gd)::_row_slide': Cannot convert argument 1 from Object to Object.
    at: step (scene/animation/tween.cpp:771)
-[BOAT SMOKE] PASS старый участок кильватера остаётся в мировых координатах при повороте
 [BOAT SMOKE] PASS мотор двигает лодку
 ERROR: Error calling method from CallbackTweener: 'Control(pause_journal.gd)::_row_slide': Cannot convert argument 1 from Object to Object.
    at: step (scene/animation/tween.cpp:771)
