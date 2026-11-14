@@ -155,8 +155,6 @@ SCRIPT ERROR: Parse Error: Could not parse global class "TideGameOverReport" fro
           at: GDScript::reload (res://scripts/ui/tide_ui.gd:16)
 SCRIPT ERROR: Parse Error: Could not resolve class "TideGameOverReport", because of a parser error.
           at: GDScript::reload (res://scripts/ui/tide_ui.gd:48)
-SCRIPT ERROR: Parse Error: Cannot infer the type of "win" variable because the value doesn't have a set type.
-          at: GDScript::reload (res://scripts/ui/tide_ui.gd:372)
 SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
           at: GDScript::reload (res://scripts/raid_run.gd:0)
 SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
