@@ -52,18 +52,18 @@ func _build() -> void:
 	sheet.border_color = TideTokens.ink_alpha(0.5)
 	sheet.border_width = 3.0
 
-	_title = TideKit.title(_page, "ПРОПАЛ БЕЗ ВЕСТИ", Vector2(300, 84), 92, -11.0, TideTokens.FLARE, 10)
-	TideKit.fit_title(_title, 1010.0, 92, 56)
-	_kicker = TideKit.mono(_page, "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА", Vector2(306, 214), 20, TideTokens.SONAR, -2.0)
+	_title = TideKit.title(_page, "ПРОПАЛ БЕЗ ВЕСТИ", Vector2(300, 76), 86, -11.0, TideTokens.FLARE, 10)
+	TideKit.fit_title(_title, 1010.0, 86, 54)
+	_kicker = TideKit.mono(_page, "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА", Vector2(306, 228), 20, TideTokens.SONAR, -2.0)
 	_verdict = TideKit.label(
-		_page, "", Rect2(308, 248, 700, 62), 2, 32, TideTokens.INK, -1.0, false
+		_page, "", Rect2(308, 244, 700, 62), 2, 32, TideTokens.INK, -1.0, false
 	)
 	_protocol = TideKit.label(
-		_page, "", Rect2(306, 330, 600, 400), 1, 22, TideTokens.INK, 0.0, false
+		_page, "", Rect2(306, 326, 600, 400), 1, 22, TideTokens.INK, 0.0, false
 	)
 	_protocol.add_theme_constant_override("line_spacing", 12)
 	_build_label = TideKit.label(
-		_page, "", Rect2(936, 330, 404, 350), 1, 17, TideTokens.ink_alpha(0.72), 0.0, false
+		_page, "", Rect2(936, 326, 404, 350), 1, 17, TideTokens.ink_alpha(0.72), 0.0, false
 	)
 	_build_label.add_theme_constant_override("line_spacing", 6)
 	_log = TideKit.label(
@@ -107,7 +107,7 @@ func open(report: Dictionary) -> void:
 	_title.text = String(report.get("title", "ПРОПАЛ БЕЗ ВЕСТИ")).to_upper()
 	_title.paper_color = TideTokens.SONAR if win else TideTokens.FLARE
 	_title._apply()
-	TideKit.fit_title(_title, 1060.0, 100, 52)
+	TideKit.fit_title(_title, 1010.0, 86, 54)
 	_kicker.text = String(report.get("kicker", "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА"))
 	_verdict.text = String(report.get("verdict", "")).to_upper()
 	_protocol.text = String(report.get("protocol", ""))
