@@ -1,7 +1,14 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/boat_main.gd" id="1_boat"]
+[ext_resource type="Script" path="res://scripts/screenshot.gd" id="2_shot"]
 
 [node name="BoatWorld" type="Node3D"]
 physics_interpolation_mode = 2
 script = ExtResource("1_boat")
+
+[node name="BootShot" type="Node" parent="."]
+script = ExtResource("2_shot")
+screen_name = "tide_07_boot"
+wait_frames = 90
+quit_after = true

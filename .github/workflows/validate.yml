@@ -183,6 +183,27 @@ jobs:
             exit 1
           fi
 
+      # Живой запуск: та же сцена, что открывает игрок (menu поверх мира).
+      # Витрина проверяет экраны по отдельности, а этот шаг — реальную сборку:
+      # если игра падает на старте, здесь это видно по логу и по кадру.
+      - name: Boot the real game (меню поверх мира)
+        run: |
+          TIDE_SHOT=1 TIDE_SHOT_DIR="$PWD/shots" \
+            xvfb-run -a -s "-screen 0 1920x1080x24" \
+            godot_bin/godot --path . res://scenes/boat_main.tscn \
+            --rendering-method forward_plus --resolution 1920x1080 \
+            --quit-after 900 > boat-boot.log 2>&1 || true
+          tail -60 boat-boot.log
+          if grep -qiE "SCRIPT ERROR|SHADER ERROR|Parse Error|Segmentation fault|handle_crash|crash_handler|Cannot open file" boat-boot.log; then
+            grep -iE "SCRIPT ERROR|SHADER ERROR|Parse Error|Segmentation fault|handle_crash|crash_handler|Cannot open file" boat-boot.log | head -12 | while read -r line; do
+              echo "::error::$line"
+            done
+            echo "::error::Живой запуск игры падает — см. log"
+            exit 1
+          fi
+          grep -F "[TIDE SHOT]" boat-boot.log || echo "::error::кадр живого запуска не снят"
+          test -f shots/tide_07_boot.png || (echo "::error::нет shots/tide_07_boot.png" && exit 1)
+
       - name: Publish UI shots (всегда)
         if: always()
         run: |
@@ -190,7 +211,9 @@ jobs:
           git config user.email "ci-bot@users.noreply.github.com"
           mkdir -p .ci-logs
           cp -f tide-ui.log .ci-logs/ 2>/dev/null || echo "витрина: пропущена" > .ci-logs/tide-ui.log
+          cp -f boat-boot.log .ci-logs/ 2>/dev/null || true
           git add .ci-logs/tide-ui.log
+          git add .ci-logs/boat-boot.log 2>/dev/null || true
           if compgen -G "shots/*.png" > /dev/null; then
             git add shots
           fi
