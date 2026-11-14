@@ -11,7 +11,7 @@ var _page: Control
 var _title: TideTitleLabel
 var _kicker: Label
 var _protocol: Label
-var _build: Label
+var _build_label: Label
 var _log: Label
 var _stamp: TideStamp
 var _restart: TideButton
@@ -62,10 +62,10 @@ func _build() -> void:
 		_page, "", Rect2(312, 340, 630, 420), 1, 23, TideTokens.INK, 0.0, false
 	)
 	_protocol.add_theme_constant_override("line_spacing", 13)
-	_build = TideKit.label(
+	_build_label = TideKit.label(
 		_page, "", Rect2(960, 340, 400, 300), 1, 20, TideTokens.ink_alpha(0.72), 0.0, false
 	)
-	_build.add_theme_constant_override("line_spacing", 11)
+	_build_label.add_theme_constant_override("line_spacing", 11)
 	_log = TideKit.label(
 		_page, "", Rect2(960, 650, 400, 230), 1, 17, TideTokens.FLARE, -0.6, true
 	)
@@ -111,7 +111,7 @@ func open(report: Dictionary) -> void:
 	_kicker.text = String(report.get("kicker", "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА"))
 	_verdict.text = String(report.get("verdict", "")).to_upper()
 	_protocol.text = String(report.get("protocol", ""))
-	_build.text = String(report.get("build", ""))
+	_build_label.text = String(report.get("build", ""))
 	_log.text = String(report.get("log", ""))
 	_stamp.text = "ЗАЧТЕНО" if win else "SOS"
 	_stamp.tint = TideTokens.SONAR if win else TideTokens.FLARE
