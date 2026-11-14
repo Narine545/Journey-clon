@@ -385,7 +385,7 @@ func _build_bark() -> void:
 	_bark_face.position = Vector2(82.0 - 815.0 * zoom, 88.0 - 800.0 * zoom)
 	window.add_child(_bark_face)
 	_bark_text = TideKit.block(
-		_bark, "", Rect2(206, 52, BARK_RECT.size.x - 236.0, 100), 2, 30, TideTokens.INK, 2
+		_bark, "", Rect2(206, 52, BARK_RECT.size.x - 236.0, 100), 0, 34, TideTokens.INK, 0
 	)
 	_bark_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_bark_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

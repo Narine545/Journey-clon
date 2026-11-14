@@ -72,9 +72,9 @@ func _build() -> void:
 	)
 	sheet.hatch_color = TideTokens.ink_alpha(0.05)
 	_name_plate = TideKit.poly(_box, PackedVector2Array(), TideTokens.SONAR, Vector2(34, -30))
-	_name = TideKit.text(_box, "", Vector2(62, -24), 0, 28, TideTokens.INK)
+	_name = TideKit.text(_box, "", Vector2(62, -24), 2, 26, TideTokens.INK)
 	_body = TideKit.block(
-		_box, "", Rect2(60, 66, BOX_RECT.size.x - 120.0, 210), 2, 42, TideTokens.INK, 6
+		_box, "", Rect2(60, 66, BOX_RECT.size.x - 120.0, 210), 0, 46, TideTokens.INK, 4
 	)
 	_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_counter = TideKit.text(
@@ -82,12 +82,12 @@ func _build() -> void:
 		BOX_RECT.size.x - 120.0, HORIZONTAL_ALIGNMENT_RIGHT
 	)
 	_hint = TideKit.text(
-		self, "ПРОБЕЛ · КЛИК — ДАЛЬШЕ      ESC — ПРОПУСТИТЬ", Vector2(110, 980), 1, 20,
+		self, "ПРОБЕЛ · КЛИК — ДАЛЬШЕ", Vector2(110, 980), 1, 20,
 		TideTokens.foam_alpha(0.8)
 	)
 	_hint.rotation = deg_to_rad(BOX_DEG)
 	_skip = TideKit.button(
-		self, "ПРОПУСТИТЬ", Rect2(820, 968, 300, 60), TideButton.Shape.GHOST, TideTokens.SONAR,
+		self, "ESC · ПРОПУСТИТЬ", Rect2(560, 966, 330, 56), TideButton.Shape.GHOST, TideTokens.SONAR,
 		1, 20, TideTokens.SONAR, BOX_DEG
 	)
 	_skip.focus_mode = Control.FOCUS_NONE
@@ -126,6 +126,7 @@ func skip() -> void:
 
 ## Показать реплику по номеру сразу целиком (витрина и проверки).
 func show_line(number: int) -> void:
+	_finish_typing()
 	_index = clampi(number, 0, lines.size() - 1) - 1
 	_advance()
 	_finish_typing()
@@ -163,7 +164,7 @@ func _advance() -> void:
 
 func _set_speaker(value: String, mother: bool) -> void:
 	_name.text = value
-	var width := TideTokens.font_of(0).get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
+	var width := TideTokens.font_of(2).get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
 	_name.size.x = width + 8.0
 	_name.add_theme_color_override("font_color", TideTokens.FOAM if mother else TideTokens.INK)
 	_name_plate.color = TideTokens.FLARE if mother else TideTokens.SONAR
