@@ -119,7 +119,8 @@ func _build() -> void:
 	_preview = Label.new()
 	_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	TideTokens.style_mono(_preview, 19, TideTokens.INK)
+	TideTokens.style_mono(_preview, 17, TideTokens.INK)
+	_preview.autowrap_mode = TextServer.AUTOWRAP_OFF
 	_plate.add_child(_preview)
 
 
@@ -180,17 +181,17 @@ func _layout_text() -> void:
 	var box := TideShapes.flag_text_box(form, cloth.x, cloth.y)
 	var origin := Vector2(POLE_W + box.position.x, box.position.y)
 
-	var title_size := _fit_font(_title, title_text.to_upper(), box.size.x, 36, 19, true)
+	var title_size := _fit_font(_title, title_text.to_upper(), box.size.x, 34, 14, true)
 	_title.position = origin
 	_title.size = Vector2(box.size.x, minf(box.size.y * 0.58, float(title_size) * 2.6))
 	_title.pivot_offset = _title.size * 0.5
 	_title.rotation = deg_to_rad(-1.2)
 	_title.clip_text = true
 
-	var desc_width := box.size.x * (0.86 if form != 0 else 0.80)
-	var desc_size := _fit_font(_desc, description, desc_width, 23, 14, false)
-	_desc.position = origin + Vector2(0.0, _title.size.y + 4.0)
-	_desc.size = Vector2(desc_width, minf(box.size.y * 0.42, float(desc_size) * 3.4))
+	var desc_width := box.size.x * (1.06 if form != 0 else 0.86)
+	var desc_size := _fit_font(_desc, description, desc_width, 22, 13, false)
+	_desc.position = origin + Vector2(0.0, _title.size.y + 2.0)
+	_desc.size = Vector2(desc_width, minf(box.size.y * 0.50, float(desc_size) * 3.8))
 	_desc.rotation = deg_to_rad(0.6)
 	_desc.clip_text = true
 
@@ -205,9 +206,9 @@ func _layout_text() -> void:
 	_plate.rotation = deg_to_rad(-2.4)
 	_plate.queue_redraw()
 	_preview.position = Vector2(12.0, 8.0)
-	_preview.size = Vector2(plate_width - 24.0, 54.0)
+	_preview.size = Vector2(plate_width - 24.0, 56.0)
 	_preview.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_preview.clip_text = true
+	_preview.clip_text = false
 
 
 func _process(delta: float) -> void:

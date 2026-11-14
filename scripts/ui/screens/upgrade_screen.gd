@@ -88,7 +88,7 @@ func _build() -> void:
 	_reroll.pressed.connect(_on_reroll_pressed)
 
 	_hint = TideKit.mono(
-		self, "1 · 2 · 3 — ПОДНЯТЬ ФЛАГ · ВЫБОР ОСТАНАВЛИВАЕТ ВАХТУ", Vector2(86, 1006), 20, TideTokens.foam_alpha(0.5), -1.2
+		self, "1 · 2 · 3 — ПОДНЯТЬ ФЛАГ · ВЫБОР ОСТАНАВЛИВАЕТ ВАХТУ", Vector2(336, 1008), 19, TideTokens.foam_alpha(0.5), -1.2
 	)
 	TideKit.mono(self, "БОЙ НА ПАУЗЕ", Vector2(1370, 60), 20, TideTokens.foam_alpha(0.42), 2.2)
 
