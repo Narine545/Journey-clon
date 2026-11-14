@@ -93,7 +93,7 @@ func _build() -> void:
 
 	var title := TideKit.title(_page, "СУДОВОЙ ЖУРНАЛ", Vector2(198, 108), 92, -8.0, TideTokens.INK, 7)
 	TideKit.fit_title(title, 980.0, 92, 54)
-	TideKit.mono(_page, "ESC · ПРОДОЛЖИТЬ ВАХТУ", Vector2(1014, 104), 17, TideTokens.ink_alpha(0.55), -1.0)
+	TideKit.mono(_page, "ESC · ПРОДОЛЖИТЬ ВАХТУ", Vector2(1044, 296), 17, TideTokens.ink_alpha(0.55), -1.0)
 	var rule_shape := PackedVector2Array(
 		[Vector2(200, 268), Vector2(1284, 252), Vector2(1284, 264), Vector2(200, 280)]
 	)
@@ -180,9 +180,9 @@ func _write_entry(entry: Dictionary, index: int) -> void:
 	)
 	name_label.add_theme_constant_override("outline_size", 0)
 	if bool(entry.get("evolution", false)):
-		TideKit.mono(_list, "ЭВОЛЮЦИЯ", Vector2(766, y + 6), 15, TideTokens.FLARE, -1.4)
+		TideKit.mono(_list, "◆ ЭВОЛЮЦИЯ", Vector2(686, y + 6), 15, TideTokens.FLARE, -1.4)
 	if index > 0:
-		var fresh := TideShapes.plate(Vector2(664, 3), 3.0)
+		var fresh := TideShapes.plate(Vector2(540, 3), 3.0)
 		TideKit.poly(_list, fresh, TideTokens.ink_alpha(0.16), Vector2(112, y + 40))
 
 
