@@ -17,9 +17,8 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_01_upgrade.png 1920x1080
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_02_upgrade_stamp.png 1920x1080
-[TIDE SHOWCASE] экран=(1920.0, 1080.0) окно=(1920, 1080) холст=(1920.0, 1080.0) масштаб=(1.0, 1.0) плита_осадки=[P: (36.78139, 790.1255), S: (470.0, 258.0)] ярлык_осадки=[P: (55.58055, 1007.384), S: (400.0, 240.0)]
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_03_hud.png 1920x1080
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_04_journal.png 1920x1080
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_05_report.png 1920x1080
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_06_menu.png 1920x1080
-[TIDE SHOWCASE] кадры сняты
+SCRIPT ERROR: Invalid access to property or key '_hp_tag' on a base object of type 'Control (TideHud)'.
+          at: TideShowcase._run_sequence (res://scripts/ui/tide_showcase.gd:177)
+          GDScript backtrace (most recent call first):
+              [0] _run_sequence (res://scripts/ui/tide_showcase.gd:177)
+              [1] _wait (res://scripts/ui/tide_showcase.gd:208)
