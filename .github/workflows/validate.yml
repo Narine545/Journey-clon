@@ -1,8 +1,13 @@
 name: validate
 
-# Headless-проверка проекта: импорт + автотест геймплея (JOURNEY_SMOKE).
-# Раннер скачивает портативный Godot 4.7.2 stable (Linux) и прогоняет проект.
-# При падении полные логи коммитятся в .ci-logs/ — их можно забрать git-ом.
+# Проверки проекта Godot 4.7.2 (Linux): импорт, автотесты геймплея и рендер.
+# Работа разделена на три параллельные задачи, потому что программный рендер
+# (xvfb + Vulkan lavapipe) на общем раннере не успевает в один лимит времени:
+#   headless — импорт и оба headless-автотеста;
+#   ui       — витрина интерфейса TIDECUT (скриншоты всех экранов);
+#   render   — шейдеры под настоящим Forward+ и кадры игровых сцен.
+# Артефакты (логи и кадры) коммитятся в .ci-logs/ и shots/, у каждой задачи
+# свои файлы, поэтому коммиты не конфликтуют.
 
 on:
   push:
@@ -40,12 +45,6 @@ jobs:
           mv Godot_v4.7.2-stable_linux.x86_64 godot_bin/godot
           chmod +x godot_bin/godot
           godot_bin/godot --version
-
-      - name: Vulkan (lavapipe) для рендер-проверки
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq mesa-vulkan-drivers vulkan-tools > /dev/null
-          vulkaninfo --summary 2>/dev/null | grep -A2 "GPU0" || echo "lavapipe: инфо недоступна"
 
       - name: Import project
         run: |
@@ -100,6 +99,145 @@ jobs:
             exit 1
           fi
 
+      - name: Publish logs (всегда)
+        if: always()
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          mkdir -p .ci-logs
+          rm -f .ci-logs/import.log .ci-logs/smoke.log .ci-logs/boat-smoke.log
+          cp -f import.log .ci-logs/ 2>/dev/null || echo "import: пропущен" > .ci-logs/import.log
+          cp -f smoke.log .ci-logs/ 2>/dev/null || echo "smoke: пропущен" > .ci-logs/smoke.log
+          cp -f boat-smoke.log .ci-logs/ 2>/dev/null || echo "boat-smoke: пропущен" > .ci-logs/boat-smoke.log
+          git add .ci-logs
+          git commit -m "ci: логи headless-прогона ${GITHUB_SHA::7} [skip ci]" || true
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase --autostash -q origin "${GITHUB_REF#refs/heads/}" || true
+            if git push origin HEAD:"${GITHUB_REF#refs/heads/}"; then
+              break
+            fi
+            sleep 5
+          done
+
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot binary
+        id: godot_cache
+        uses: actions/cache@v4
+        with:
+          path: godot_bin
+          key: godot-4.7.2-stable-linux-x86_64
+
+      - name: Download Godot 4.7.2
+        if: steps.godot_cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sL -o godot.zip \
+            https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mkdir -p godot_bin
+          mv Godot_v4.7.2-stable_linux.x86_64 godot_bin/godot
+          chmod +x godot_bin/godot
+          godot_bin/godot --version
+
+      - name: Vulkan (lavapipe) для витрины
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mesa-vulkan-drivers vulkan-tools > /dev/null
+          vulkaninfo --summary 2>/dev/null | grep -A2 "GPU0" || echo "lavapipe: инфо недоступна"
+
+      - name: Import project
+        run: |
+          godot_bin/godot --headless --path . --import > import-ui.log 2>&1
+          tail -20 import-ui.log
+
+      # Витрина интерфейса TIDECUT: все экраны снимаются отдельным скриптом
+      # и кладутся в shots/ — по ним видно, как выглядит редизайн на самом деле.
+      - name: TIDECUT UI screenshots (витрина интерфейса)
+        run: |
+          mkdir -p shots
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            echo "::error::xvfb-run недоступен — витрину интерфейса не снять"
+            exit 1
+          fi
+          TIDE_SHOT_DIR="$PWD/shots" TIDE_SHOWCASE_QUIT=1 \
+            xvfb-run -a -s "-screen 0 1920x1080x24" \
+            godot_bin/godot --path . res://scenes/ui/showcase.tscn \
+            --rendering-method forward_plus --resolution 1920x1080 \
+            --fixed-fps 30 --quit-after 3000 > tide-ui.log 2>&1 || true
+          cat tide-ui.log
+          ls -la shots || true
+          if grep -qiE "SCRIPT ERROR|SHADER ERROR|failed to compile|error compiling|Parse Error" tide-ui.log; then
+            echo "::error::Ошибка в UI-витрине TIDECUT (см. tide-ui.log)"
+            grep -iE "SCRIPT ERROR|SHADER ERROR|failed to compile|error compiling|Parse Error" tide-ui.log | head -12 | while read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
+          test -f shots/tide_01_upgrade.png || (echo "::error::Скриншоты витрины не сохранились" && exit 1)
+          if [ "$(ls -1 shots/*.png | wc -l)" -lt 6 ]; then
+            echo "::error::Снято меньше шести экранов витрины"
+            exit 1
+          fi
+
+      - name: Publish UI shots (всегда)
+        if: always()
+        run: |
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          mkdir -p .ci-logs
+          cp -f tide-ui.log .ci-logs/ 2>/dev/null || echo "витрина: пропущена" > .ci-logs/tide-ui.log
+          git add .ci-logs/tide-ui.log
+          if compgen -G "shots/*.png" > /dev/null; then
+            git add shots
+          fi
+          git commit -m "ci: кадры витрины TIDECUT ${GITHUB_SHA::7} [skip ci]" || true
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase --autostash -q origin "${GITHUB_REF#refs/heads/}" || true
+            if git push origin HEAD:"${GITHUB_REF#refs/heads/}"; then
+              break
+            fi
+            sleep 5
+          done
+
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot binary
+        id: godot_cache
+        uses: actions/cache@v4
+        with:
+          path: godot_bin
+          key: godot-4.7.2-stable-linux-x86_64
+
+      - name: Download Godot 4.7.2
+        if: steps.godot_cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sL -o godot.zip \
+            https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mkdir -p godot_bin
+          mv Godot_v4.7.2-stable_linux.x86_64 godot_bin/godot
+          chmod +x godot_bin/godot
+          godot_bin/godot --version
+
+      - name: Vulkan (lavapipe) для рендер-проверки
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mesa-vulkan-drivers vulkan-tools > /dev/null
+          vulkaninfo --summary 2>/dev/null | grep -A2 "GPU0" || echo "lavapipe: инфо недоступна"
+
+      - name: Import project
+        run: |
+          godot_bin/godot --headless --path . --import > import-render.log 2>&1
+          tail -20 import-render.log
+
       # Headless (dummy-рендерер) НЕ компилирует шейдеры. Прогоняем несколько
       # кадров под xvfb + Vulkan lavapipe (софтверный) с настоящим Forward+ —
       # поймаем ошибки шейдеров и снимем кадры (проект на forward_plus).
@@ -146,53 +284,23 @@ jobs:
             exit 1
           fi
 
-      # Витрина интерфейса TIDECUT: все экраны снимаются отдельным скриптом
-      # и кладутся в shots/ — по ним видно, как выглядит редизайн на самом деле.
-      - name: TIDECUT UI screenshots (витрина интерфейса)
-        run: |
-          mkdir -p shots
-          TIDE_SHOT_DIR="$PWD/shots" TIDE_SHOWCASE_QUIT=1 \
-            xvfb-run -a -s "-screen 0 1920x1080x24" \
-            godot_bin/godot --path . res://scenes/ui/showcase.tscn \
-            --rendering-method forward_plus --resolution 1920x1080 \
-            --fixed-fps 30 --quit-after 3000 > tide-ui.log 2>&1 || true
-          cat tide-ui.log
-          cp -f tide-ui.log .ci-logs/ || true
-          ls -la shots || true
-          if grep -qiE "SCRIPT ERROR|SHADER ERROR|failed to compile|error compiling|Parse Error" tide-ui.log; then
-            echo "::error::Ошибка в UI-витрине TIDECUT (см. tide-ui.log)"
-            grep -iE "SCRIPT ERROR|SHADER ERROR|failed to compile|error compiling|Parse Error" tide-ui.log | head -12 | while read -r line; do
-              echo "::error::$line"
-            done
-            exit 1
-          fi
-          test -f shots/tide_01_upgrade.png || (echo "::error::Скриншоты витрины не сохранились" && exit 1)
-
-      - name: Publish artifacts (скриншоты всегда, логи при падении)
+      - name: Publish render artifacts (всегда)
         if: always()
         run: |
           git config user.name "ci-bot"
           git config user.email "ci-bot@users.noreply.github.com"
-          mkdir -p .ci-logs
-          # чистим логи из чекаута: шаг мог быть пропущен, и старый лог
-          # с прошлого прогона выглядел бы как свежий
-          rm -f .ci-logs/import.log .ci-logs/smoke.log .ci-logs/render.log
-          cp -f import.log .ci-logs/ 2>/dev/null || echo "import: пропущен" > .ci-logs/import.log
-          cp -f smoke.log .ci-logs/ 2>/dev/null || echo "smoke: пропущен" > .ci-logs/smoke.log
+          mkdir -p .ci-logs/shots
+          rm -f .ci-logs/render.log .ci-logs/boat-render.log
           cp -f render.log .ci-logs/ 2>/dev/null || echo "render: пропущен" > .ci-logs/render.log
-          cp -f boat-smoke.log .ci-logs/ 2>/dev/null || true
           cp -f boat-render.log .ci-logs/ 2>/dev/null || true
           if [ -s boat.png ]; then
             cp boat.png .ci-logs/shots/shot_boat.png
           fi
           git add .ci-logs
-          if compgen -G "shots/*.png" > /dev/null; then
-            git add shots
-          fi
-          git commit -m "ci: артефакты прогона ${GITHUB_SHA::7}" || true
-          # GitHub периодически отвечает HTTP 500 на первый push; не теряем кадр.
-          for attempt in 1 2 3; do
-            if git push origin HEAD:${GITHUB_REF#refs/heads/}; then
+          git commit -m "ci: рендер-артефакты прогона ${GITHUB_SHA::7} [skip ci]" || true
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase --autostash -q origin "${GITHUB_REF#refs/heads/}" || true
+            if git push origin HEAD:"${GITHUB_REF#refs/heads/}"; then
               break
             fi
             sleep 5
