@@ -121,43 +121,43 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [   2% ] [90m[1m_update_scan_actions[22m | Oswald-Medium.ttf[39m[0m
 [   4% ] [90m[1m_update_scan_actions[22m | Unbounded-Black.ttf[39m[0m
 [   6% ] [90m[1m_update_scan_actions[22m | AnimationLibrary_Godot_Standard.glb[39m[0m
-[   9% ] [90m[1m_update_scan_actions[22m | heroine_hears_1.webp[39m[0m
-[  11% ] [90m[1m_update_scan_actions[22m | heroine_hears_2.webp[39m[0m
-[  13% ] [90m[1m_update_scan_actions[22m | heroine_nausea_1.webp[39m[0m
-[  16% ] [90m[1m_update_scan_actions[22m | heroine_nausea_2.webp[39m[0m
-[  18% ] [90m[1m_update_scan_actions[22m | heroine_nausea_3.webp[39m[0m
-[  20% ] [90m[1m_update_scan_actions[22m | heroine_reply_annoyed.webp[39m[0m
-[  23% ] [90m[1m_update_scan_actions[22m | heroine_side_1.webp[39m[0m
-[  25% ] [90m[1m_update_scan_actions[22m | heroine_side_2.webp[39m[0m
-[  27% ] [90m[1m_update_scan_actions[22m | heroine_sly.webp[39m[0m
-[  30% ] [90m[1m_update_scan_actions[22m | heroine_thoughtful.webp[39m[0m
-[  32% ] [90m[1m_update_scan_actions[22m | heroine_yawn.webp[39m[0m
-[  34% ] [90m[1m_update_scan_actions[22m | tide_01_upgrade.png[39m[0m
-[  37% ] [90m[1m_update_scan_actions[22m | tide_02_upgrade_stamp.png[39m[0m
-[  39% ] [90m[1m_update_scan_actions[22m | tide_03_hud.png[39m[0m
-[  41% ] [90m[1m_update_scan_actions[22m | tide_04_journal.png[39m[0m
-[  44% ] [90m[1m_update_scan_actions[22m | tide_05_report.png[39m[0m
-[  46% ] [90m[1m_update_scan_actions[22m | tide_06_menu.png[39m[0m
-[  48% ] [90m[1m_update_scan_actions[22m | tide_07_boot.png[39m[0m
-[  51% ] [90m[1m_update_scan_actions[22m | tide_08_prologue.png[39m[0m
-[  53% ] [90m[1m_update_scan_actions[22m | tide_09_prologue_mother.png[39m[0m
-[  55% ] [90m[1m_update_scan_actions[22m | tide_10_sail.png[39m[0m
-[  58% ] [90m[1m_update_scan_actions[22m | Тётя говорит.webp[39m[0m
-[  60% ] [90m[1m_update_scan_actions[22m | Тётя обычный.webp[39m[0m
-[  62% ] [90m[1m_update_scan_actions[22m | Азарт.webp[39m[0m
-[  65% ] [90m[1m_update_scan_actions[22m | Говорит в рацию.webp[39m[0m
-[  67% ] [90m[1m_update_scan_actions[22m | Испуг корпус на иссходе 1 стадия.webp[39m[0m
-[  69% ] [90m[1m_update_scan_actions[22m | Испуг корпус на иссходе 2 стадия.webp[39m[0m
-[  72% ] [90m[1m_update_scan_actions[22m | Испуг отмель.webp[39m[0m
-[  74% ] [90m[1m_update_scan_actions[22m | Испуг появление крупной цели.webp[39m[0m
-[  76% ] [90m[1m_update_scan_actions[22m | Нейтральная.webp[39m[0m
-[  79% ] [90m[1m_update_scan_actions[22m | Промокшая.webp[39m[0m
-[  81% ] [90m[1m_update_scan_actions[22m | Радость верия 2.webp[39m[0m
-[  83% ] [90m[1m_update_scan_actions[22m | Радость версия 1.webp[39m[0m
-[  86% ] [90m[1m_update_scan_actions[22m | Сосредоточенность.webp[39m[0m
-[  88% ] [90m[1m_update_scan_actions[22m | Удивление.webp[39m[0m
-[  90% ] [90m[1m_update_scan_actions[22m | Усталость версия 1.webp[39m[0m
-[  93% ] [90m[1m_update_scan_actions[22m | Усталость версия 2.webp[39m[0m
+[   9% ] [90m[1m_update_scan_actions[22m | aunt_idle.webp[39m[0m
+[  11% ] [90m[1m_update_scan_actions[22m | aunt_talk.webp[39m[0m
+[  13% ] [90m[1m_update_scan_actions[22m | heroine_excited.webp[39m[0m
+[  16% ] [90m[1m_update_scan_actions[22m | heroine_fear_big.webp[39m[0m
+[  18% ] [90m[1m_update_scan_actions[22m | heroine_fear_hull_1.webp[39m[0m
+[  20% ] [90m[1m_update_scan_actions[22m | heroine_fear_hull_2.webp[39m[0m
+[  23% ] [90m[1m_update_scan_actions[22m | heroine_fear_shoal.webp[39m[0m
+[  25% ] [90m[1m_update_scan_actions[22m | heroine_focus.webp[39m[0m
+[  27% ] [90m[1m_update_scan_actions[22m | heroine_hears_1.webp[39m[0m
+[  30% ] [90m[1m_update_scan_actions[22m | heroine_hears_2.webp[39m[0m
+[  32% ] [90m[1m_update_scan_actions[22m | heroine_joy_1.webp[39m[0m
+[  34% ] [90m[1m_update_scan_actions[22m | heroine_joy_2.webp[39m[0m
+[  37% ] [90m[1m_update_scan_actions[22m | heroine_nausea_1.webp[39m[0m
+[  39% ] [90m[1m_update_scan_actions[22m | heroine_nausea_2.webp[39m[0m
+[  41% ] [90m[1m_update_scan_actions[22m | heroine_nausea_3.webp[39m[0m
+[  44% ] [90m[1m_update_scan_actions[22m | heroine_neutral.webp[39m[0m
+[  46% ] [90m[1m_update_scan_actions[22m | heroine_radio.webp[39m[0m
+[  48% ] [90m[1m_update_scan_actions[22m | heroine_reply_annoyed.webp[39m[0m
+[  51% ] [90m[1m_update_scan_actions[22m | heroine_side_1.webp[39m[0m
+[  53% ] [90m[1m_update_scan_actions[22m | heroine_side_2.webp[39m[0m
+[  55% ] [90m[1m_update_scan_actions[22m | heroine_sly.webp[39m[0m
+[  58% ] [90m[1m_update_scan_actions[22m | heroine_soaked.webp[39m[0m
+[  60% ] [90m[1m_update_scan_actions[22m | heroine_surprise.webp[39m[0m
+[  62% ] [90m[1m_update_scan_actions[22m | heroine_thoughtful.webp[39m[0m
+[  65% ] [90m[1m_update_scan_actions[22m | heroine_tired_1.webp[39m[0m
+[  67% ] [90m[1m_update_scan_actions[22m | heroine_tired_2.webp[39m[0m
+[  69% ] [90m[1m_update_scan_actions[22m | heroine_yawn.webp[39m[0m
+[  72% ] [90m[1m_update_scan_actions[22m | tide_01_upgrade.png[39m[0m
+[  74% ] [90m[1m_update_scan_actions[22m | tide_02_upgrade_stamp.png[39m[0m
+[  76% ] [90m[1m_update_scan_actions[22m | tide_03_hud.png[39m[0m
+[  79% ] [90m[1m_update_scan_actions[22m | tide_04_journal.png[39m[0m
+[  81% ] [90m[1m_update_scan_actions[22m | tide_05_report.png[39m[0m
+[  83% ] [90m[1m_update_scan_actions[22m | tide_06_menu.png[39m[0m
+[  86% ] [90m[1m_update_scan_actions[22m | tide_07_boot.png[39m[0m
+[  88% ] [90m[1m_update_scan_actions[22m | tide_08_prologue.png[39m[0m
+[  90% ] [90m[1m_update_scan_actions[22m | tide_09_prologue_mother.png[39m[0m
+[  93% ] [90m[1m_update_scan_actions[22m | tide_10_sail.png[39m[0m
 [  95% ] [90m[1m_update_scan_actions[22m | icon.svg[39m[0m
 [92m[ DONE ][39m [1m_update_scan_actions[22m
 [0m
@@ -209,45 +209,51 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [   2% ] [90m[1mreimport[22m | Oswald-Medium.ttf[39m[0m
 [   4% ] [90m[1mreimport[22m | Unbounded-Black.ttf[39m[0m
 [   6% ] [90m[1mreimport[22m | JetBrainsMono-ExtraBold.ttf[39m[0m
+[   6% ] [90m[1mreimport[22m | JetBrainsMono-ExtraBold.ttf[39m[0m
 [   9% ] [90m[1mreimport[22m | Oswald-Medium.ttf[39m[0m
 [  11% ] [90m[1mreimport[22m | Unbounded-Black.ttf[39m[0m
-[  13% ] [90m[1mreimport[22m | tide_09_prologue_mother.png[39m[0m
-[  16% ] [90m[1mreimport[22m | tide_10_sail.png[39m[0m
-[  18% ] [90m[1mreimport[22m | Тётя говорит.webp[39m[0m
-[  20% ] [90m[1mreimport[22m | Тётя обычный.webp[39m[0m
-[  23% ] [90m[1mreimport[22m | Азарт.webp[39m[0m
-[  25% ] [90m[1mreimport[22m | Говорит в рацию.webp[39m[0m
-[  27% ] [90m[1mreimport[22m | Испуг корпус на иссходе 1 стадия.webp[39m[0m
-[  30% ] [90m[1mreimport[22m | Испуг корпус на иссходе 2 стадия.webp[39m[0m
-[  32% ] [90m[1mreimport[22m | Испуг отмель.webp[39m[0m
-[  34% ] [90m[1mreimport[22m | Испуг появление крупной цели.webp[39m[0m
-[  37% ] [90m[1mreimport[22m | Нейтральная.webp[39m[0m
-[  39% ] [90m[1mreimport[22m | Промокшая.webp[39m[0m
-[  41% ] [90m[1mreimport[22m | Радость верия 2.webp[39m[0m
-[  44% ] [90m[1mreimport[22m | Радость версия 1.webp[39m[0m
-[  46% ] [90m[1mreimport[22m | Сосредоточенность.webp[39m[0m
-[  48% ] [90m[1mreimport[22m | Удивление.webp[39m[0m
-[  51% ] [90m[1mreimport[22m | Усталость версия 1.webp[39m[0m
-[  53% ] [90m[1mreimport[22m | Усталость версия 2.webp[39m[0m
+[  13% ] [90m[1mreimport[22m | heroine_side_2.webp[39m[0m
+[  13% ] [90m[1mreimport[22m | heroine_side_2.webp[39m[0m
+[  16% ] [90m[1mreimport[22m | heroine_sly.webp[39m[0m
+[  18% ] [90m[1mreimport[22m | heroine_soaked.webp[39m[0m
+[  20% ] [90m[1mreimport[22m | heroine_surprise.webp[39m[0m
+[  23% ] [90m[1mreimport[22m | heroine_thoughtful.webp[39m[0m
+[  25% ] [90m[1mreimport[22m | heroine_tired_1.webp[39m[0m
+[  27% ] [90m[1mreimport[22m | heroine_tired_2.webp[39m[0m
+[  30% ] [90m[1mreimport[22m | heroine_yawn.webp[39m[0m
+[  32% ] [90m[1mreimport[22m | tide_01_upgrade.png[39m[0m
+[  34% ] [90m[1mreimport[22m | tide_02_upgrade_stamp.png[39m[0m
+[  37% ] [90m[1mreimport[22m | tide_03_hud.png[39m[0m
+[  39% ] [90m[1mreimport[22m | tide_04_journal.png[39m[0m
+[  41% ] [90m[1mreimport[22m | tide_05_report.png[39m[0m
+[  44% ] [90m[1mreimport[22m | tide_06_menu.png[39m[0m
+[  46% ] [90m[1mreimport[22m | tide_07_boot.png[39m[0m
+[  48% ] [90m[1mreimport[22m | tide_08_prologue.png[39m[0m
+[  51% ] [90m[1mreimport[22m | tide_09_prologue_mother.png[39m[0m
+[  51% ] [90m[1mreimport[22m | tide_09_prologue_mother.png[39m[0m
+[  53% ] [90m[1mreimport[22m | tide_10_sail.png[39m[0m
 [  55% ] [90m[1mreimport[22m | icon.svg[39m[0m
-[  58% ] [90m[1mreimport[22m | heroine_hears_1.webp[39m[0m
-[  58% ] [90m[1mreimport[22m | heroine_hears_1.webp[39m[0m
-[  60% ] [90m[1mreimport[22m | heroine_hears_2.webp[39m[0m
-[  62% ] [90m[1mreimport[22m | heroine_nausea_1.webp[39m[0m
-[  65% ] [90m[1mreimport[22m | heroine_nausea_2.webp[39m[0m
-[  65% ] [90m[1mreimport[22m | heroine_nausea_2.webp[39m[0m
-[  67% ] [90m[1mreimport[22m | heroine_nausea_3.webp[39m[0m
-[  69% ] [90m[1mreimport[22m | heroine_reply_annoyed.webp[39m[0m
-[  72% ] [90m[1mreimport[22m | heroine_side_1.webp[39m[0m
-[  74% ] [90m[1mreimport[22m | heroine_side_2.webp[39m[0m
-[  76% ] [90m[1mreimport[22m | heroine_sly.webp[39m[0m
-[  79% ] [90m[1mreimport[22m | heroine_thoughtful.webp[39m[0m
-[  81% ] [90m[1mreimport[22m | heroine_yawn.webp[39m[0m
-[  83% ] [90m[1mreimport[22m | tide_01_upgrade.png[39m[0m
-[  86% ] [90m[1mreimport[22m | tide_02_upgrade_stamp.png[39m[0m
-[  88% ] [90m[1mreimport[22m | tide_03_hud.png[39m[0m
-[  90% ] [90m[1mreimport[22m | tide_04_journal.png[39m[0m
-[  93% ] [90m[1mreimport[22m | tide_05_report.png[39m[0m
+[  58% ] [90m[1mreimport[22m | aunt_idle.webp[39m[0m
+[  58% ] [90m[1mreimport[22m | aunt_idle.webp[39m[0m
+[  60% ] [90m[1mreimport[22m | aunt_talk.webp[39m[0m
+[  62% ] [90m[1mreimport[22m | heroine_excited.webp[39m[0m
+[  65% ] [90m[1mreimport[22m | heroine_fear_big.webp[39m[0m
+[  65% ] [90m[1mreimport[22m | heroine_fear_big.webp[39m[0m
+[  67% ] [90m[1mreimport[22m | heroine_fear_hull_1.webp[39m[0m
+[  69% ] [90m[1mreimport[22m | heroine_fear_hull_2.webp[39m[0m
+[  72% ] [90m[1mreimport[22m | heroine_fear_shoal.webp[39m[0m
+[  72% ] [90m[1mreimport[22m | heroine_fear_shoal.webp[39m[0m
+[  74% ] [90m[1mreimport[22m | heroine_focus.webp[39m[0m
+[  76% ] [90m[1mreimport[22m | heroine_hears_1.webp[39m[0m
+[  79% ] [90m[1mreimport[22m | heroine_hears_2.webp[39m[0m
+[  79% ] [90m[1mreimport[22m | heroine_hears_2.webp[39m[0m
+[  81% ] [90m[1mreimport[22m | heroine_joy_1.webp[39m[0m
+[  83% ] [90m[1mreimport[22m | heroine_joy_2.webp[39m[0m
+[  86% ] [90m[1mreimport[22m | heroine_nausea_1.webp[39m[0m
+[  86% ] [90m[1mreimport[22m | heroine_nausea_1.webp[39m[0m
+[  88% ] [90m[1mreimport[22m | heroine_nausea_2.webp[39m[0m
+[  90% ] [90m[1mreimport[22m | heroine_nausea_3.webp[39m[0m
+[  93% ] [90m[1mreimport[22m | heroine_neutral.webp[39m[0m
 [  95% ] [90m[1mreimport[22m | AnimationLibrary_Godot_Standard.glb[39m[0m
 [   0% ] [90m[1mimport[22m | Started Import Scene (104 steps)[39m[0m
 [   0% ] [90m[1mimport[22m | Importing Scene...[39m[0m
