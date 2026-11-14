@@ -114,57 +114,97 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  98% ] [90m[1mupdate_scripts_classes[22m | WorldInspector[39m[0m
 [92m[ DONE ][39m [1mupdate_scripts_classes[22m
 [0m
-[   0% ] [90m[1m_update_scan_actions[22m | Started Scanning actions... (12 steps)[39m[0m
+[   0% ] [90m[1m_update_scan_actions[22m | Started Scanning actions... (24 steps)[39m[0m
 [   0% ] [90m[1m_update_scan_actions[22m | JetBrainsMono-ExtraBold.ttf[39m[0m
-[   7% ] [90m[1m_update_scan_actions[22m | Oswald-Medium.ttf[39m[0m
-[  15% ] [90m[1m_update_scan_actions[22m | Unbounded-Black.ttf[39m[0m
-[  23% ] [90m[1m_update_scan_actions[22m | AnimationLibrary_Godot_Standard.glb[39m[0m
-[  30% ] [90m[1m_update_scan_actions[22m | tide_01_upgrade.png[39m[0m
-[  38% ] [90m[1m_update_scan_actions[22m | tide_02_upgrade_stamp.png[39m[0m
-[  46% ] [90m[1m_update_scan_actions[22m | tide_03_hud.png[39m[0m
-[  53% ] [90m[1m_update_scan_actions[22m | tide_04_journal.png[39m[0m
-[  61% ] [90m[1m_update_scan_actions[22m | tide_05_report.png[39m[0m
-[  69% ] [90m[1m_update_scan_actions[22m | tide_06_menu.png[39m[0m
-[  76% ] [90m[1m_update_scan_actions[22m | tide_07_boot.png[39m[0m
-[  84% ] [90m[1m_update_scan_actions[22m | icon.svg[39m[0m
+[   4% ] [90m[1m_update_scan_actions[22m | Oswald-Medium.ttf[39m[0m
+[   8% ] [90m[1m_update_scan_actions[22m | Unbounded-Black.ttf[39m[0m
+[  12% ] [90m[1m_update_scan_actions[22m | AnimationLibrary_Godot_Standard.glb[39m[0m
+[  16% ] [90m[1m_update_scan_actions[22m | tide_01_upgrade.png[39m[0m
+[  20% ] [90m[1m_update_scan_actions[22m | tide_02_upgrade_stamp.png[39m[0m
+[  24% ] [90m[1m_update_scan_actions[22m | tide_03_hud.png[39m[0m
+[  28% ] [90m[1m_update_scan_actions[22m | tide_04_journal.png[39m[0m
+[  32% ] [90m[1m_update_scan_actions[22m | tide_05_report.png[39m[0m
+[  36% ] [90m[1m_update_scan_actions[22m | tide_06_menu.png[39m[0m
+[  40% ] [90m[1m_update_scan_actions[22m | tide_07_boot.png[39m[0m
+[  44% ] [90m[1m_update_scan_actions[22m | задумчиво_new.webp[39m[0m
+[  48% ] [90m[1m_update_scan_actions[22m | зевает_new.webp[39m[0m
+[  52% ] [90m[1m_update_scan_actions[22m | недовольно отвечает маме_new.webp[39m[0m
+[  56% ] [90m[1m_update_scan_actions[22m | недовольно смотрит в ссторону 1_new.webp[39m[0m
+[  60% ] [90m[1m_update_scan_actions[22m | недовольно смотрит в ссторону 2.webp[39m[0m
+[  64% ] [90m[1m_update_scan_actions[22m | недовольно смотрит в ссторону 2_new.webp[39m[0m
+[  68% ] [90m[1m_update_scan_actions[22m | слышит мамин голос ссо второго этажа 1_new.webp[39m[0m
+[  72% ] [90m[1m_update_scan_actions[22m | слышит мамин голосс со второго этажа 2_new.webp[39m[0m
+[  76% ] [90m[1m_update_scan_actions[22m | хитрая улыбка_new.webp[39m[0m
+[  80% ] [90m[1m_update_scan_actions[22m | чувствует тошноту 1_new.webp[39m[0m
+[  84% ] [90m[1m_update_scan_actions[22m | чувствует тошноту 2_new.webp[39m[0m
+[  88% ] [90m[1m_update_scan_actions[22m | чувствует тошноту 3_new.webp[39m[0m
+[  92% ] [90m[1m_update_scan_actions[22m | icon.svg[39m[0m
 [92m[ DONE ][39m [1m_update_scan_actions[22m
 [0m
-[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (12 steps)[39m[0m
+[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (24 steps)[39m[0m
 [   0% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[   7% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  15% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  23% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  30% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  38% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  46% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  53% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  61% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
-[  69% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   4% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[   8% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  12% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  16% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  20% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  24% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  28% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  32% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  36% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  40% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  44% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  48% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  52% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  56% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  60% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  64% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  68% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  72% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
 [  76% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  80% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
 [  84% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  88% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
+[  92% ] [90m[1mreimport[22m | Preparing files to reimport...[39m[0m
 [   0% ] [90m[1mreimport[22m | Executing pre-reimport operations...[39m[0m
 [   0% ] [90m[1mreimport[22m | JetBrainsMono-ExtraBold.ttf[39m[0m
-[   7% ] [90m[1mreimport[22m | Oswald-Medium.ttf[39m[0m
-[  15% ] [90m[1mreimport[22m | Unbounded-Black.ttf[39m[0m
-[  23% ] [90m[1mreimport[22m | JetBrainsMono-ExtraBold.ttf[39m[0m
-[  30% ] [90m[1mreimport[22m | Oswald-Medium.ttf[39m[0m
-[  38% ] [90m[1mreimport[22m | Unbounded-Black.ttf[39m[0m
-[  46% ] [90m[1mreimport[22m | tide_01_upgrade.png[39m[0m
-[  53% ] [90m[1mreimport[22m | tide_02_upgrade_stamp.png[39m[0m
-[  61% ] [90m[1mreimport[22m | tide_03_hud.png[39m[0m
-[  69% ] [90m[1mreimport[22m | tide_04_journal.png[39m[0m
-[  76% ] [90m[1mreimport[22m | tide_05_report.png[39m[0m
-[  84% ] [90m[1mreimport[22m | AnimationLibrary_Godot_Standard.glb[39m[0m
+[   4% ] [90m[1mreimport[22m | Oswald-Medium.ttf[39m[0m
+[   8% ] [90m[1mreimport[22m | Unbounded-Black.ttf[39m[0m
+[  12% ] [90m[1mreimport[22m | JetBrainsMono-ExtraBold.ttf[39m[0m
+[  16% ] [90m[1mreimport[22m | Oswald-Medium.ttf[39m[0m
+[  16% ] [90m[1mreimport[22m | Oswald-Medium.ttf[39m[0m
+[  20% ] [90m[1mreimport[22m | Unbounded-Black.ttf[39m[0m
+[  24% ] [90m[1mreimport[22m | icon.svg[39m[0m
+[  28% ] [90m[1mreimport[22m | чувствует тошноту 3_new.webp[39m[0m
+[  28% ] [90m[1mreimport[22m | чувствует тошноту 3_new.webp[39m[0m
+[  32% ] [90m[1mreimport[22m | чувствует тошноту 2_new.webp[39m[0m
+[  36% ] [90m[1mreimport[22m | чувствует тошноту 1_new.webp[39m[0m
+[  40% ] [90m[1mreimport[22m | хитрая улыбка_new.webp[39m[0m
+[  40% ] [90m[1mreimport[22m | хитрая улыбка_new.webp[39m[0m
+[  44% ] [90m[1mreimport[22m | слышит мамин голосс со второго этажа 2_new.webp[39m[0m
+[  48% ] [90m[1mreimport[22m | слышит мамин голос ссо второго этажа 1_new.webp[39m[0m
+[  52% ] [90m[1mreimport[22m | недовольно смотрит в ссторону 2_new.webp[39m[0m
+[  52% ] [90m[1mreimport[22m | недовольно смотрит в ссторону 2_new.webp[39m[0m
+[  56% ] [90m[1mreimport[22m | недовольно смотрит в ссторону 2.webp[39m[0m
+[  60% ] [90m[1mreimport[22m | недовольно смотрит в ссторону 1_new.webp[39m[0m
+[  64% ] [90m[1mreimport[22m | недовольно отвечает маме_new.webp[39m[0m
+[  68% ] [90m[1mreimport[22m | зевает_new.webp[39m[0m
+[  72% ] [90m[1mreimport[22m | задумчиво_new.webp[39m[0m
+[  76% ] [90m[1mreimport[22m | tide_07_boot.png[39m[0m
+[  80% ] [90m[1mreimport[22m | tide_06_menu.png[39m[0m
+[  84% ] [90m[1mreimport[22m | tide_05_report.png[39m[0m
+[  88% ] [90m[1mreimport[22m | tide_04_journal.png[39m[0m
+[  92% ] [90m[1mreimport[22m | AnimationLibrary_Godot_Standard.glb[39m[0m
 [   0% ] [90m[1mimport[22m | Started Import Scene (104 steps)[39m[0m
 [   0% ] [90m[1mimport[22m | Importing Scene...[39m[0m
 [   1% ] [90m[1mimport[22m | Running Custom Script...[39m[0m
 [  99% ] [90m[1mimport[22m | Saving...[39m[0m
 [92m[ DONE ][39m [1mimport[22m
 [0m
-[  92% ] [90m[1mreimport[22m | Finalizing Asset Import...[39m[0m
+[  96% ] [90m[1mreimport[22m | Finalizing Asset Import...[39m[0m
 [92m[ DONE ][39m [1mreimport[22m
 [0m
-[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (12 steps)[39m[0m
+[   0% ] [90m[1mreimport[22m | Started (Re)Importing Assets (24 steps)[39m[0m
 [   0% ] [90m[1mreimport[22m | Executing post-reimport operations...[39m[0m
 [92m[ DONE ][39m [1mreimport[22m
 [0m
