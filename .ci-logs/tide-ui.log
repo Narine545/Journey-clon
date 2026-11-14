@@ -1,0 +1,104 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.335 - Forward+ - Using Device #0: Unknown - llvmpipe (LLVM 21.1.8, 256 bits)
+libpulse.so.0: cannot open shared object file: No such file or directory
+libpulse.so.0: cannot open shared object file: No such file or directory
+ALSA lib confmisc.c:855:(parse_card) [error.core] cannot find card '0'
+ALSA lib conf.c:5211:(_snd_config_evaluate) [error.core] function snd_func_card_inum returned error: No such file or directory
+ALSA lib confmisc.c:422:(snd_func_concat) [error.core] error evaluating strings
+ALSA lib conf.c:5211:(_snd_config_evaluate) [error.core] function snd_func_concat returned error: No such file or directory
+ALSA lib confmisc.c:1342:(snd_func_refer) [error.core] error evaluating name
+ALSA lib conf.c:5211:(_snd_config_evaluate) [error.core] function snd_func_refer returned error: No such file or directory
+ALSA lib conf.c:5734:(snd_config_expand) [error.core] Evaluate error: No such file or directory
+ALSA lib pcm.c:2722:(snd_pcm_open_noupdate) [error.pcm] Unknown PCM default
+ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
+   at: init_output_device (drivers/alsa/audio_driver_alsa.cpp:97)
+WARNING: All audio drivers failed, falling back to the dummy driver.
+     at: initialize (servers/audio/audio_server.cpp:258)
+
+[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_01_upgrade.png 1920x1080
+[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_02_upgrade_stamp.png 1920x1080
+[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_03_hud.png 1920x1080
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polygon (scene/main/canvas_item.cpp:1074)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:154)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polyline (scene/main/canvas_item.cpp:864)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:155)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polygon (scene/main/canvas_item.cpp:1074)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:154)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polyline (scene/main/canvas_item.cpp:864)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:155)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polygon (scene/main/canvas_item.cpp:1074)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:154)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polyline (scene/main/canvas_item.cpp:864)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:155)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polygon (scene/main/canvas_item.cpp:1074)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:154)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polyline (scene/main/canvas_item.cpp:864)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:155)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polygon (scene/main/canvas_item.cpp:1074)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:154)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
+   at: draw_polyline (scene/main/canvas_item.cpp:864)
+   GDScript backtrace (most recent call first):
+       [0] fill (res://scripts/ui/tide_shapes.gd:155)
+       [1] _write_entry (res://scripts/ui/screens/pause_journal.gd:185)
+       [2] open (res://scripts/ui/screens/pause_journal.gd:161)
+       [3] _run_sequence (res://scripts/ui/tide_showcase.gd:179)
+       [4] capture (res://scripts/screenshot.gd:40)
+[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_04_journal.png 1920x1080
+[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_05_report.png 1920x1080
+[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_06_menu.png 1920x1080
+[TIDE SHOWCASE] кадры сняты
