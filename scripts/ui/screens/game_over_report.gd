@@ -52,31 +52,31 @@ func _build() -> void:
 	sheet.border_color = TideTokens.ink_alpha(0.5)
 	sheet.border_width = 3.0
 
-	_title = TideKit.title(_page, "ПРОПАЛ БЕЗ ВЕСТИ", Vector2(300, 74), 100, -11.0, TideTokens.FLARE, 10)
-	TideKit.fit_title(_title, 1060.0, 100, 62)
-	_kicker = TideKit.mono(_page, "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА", Vector2(310, 226), 21, TideTokens.SONAR, -2.0)
+	_title = TideKit.title(_page, "ПРОПАЛ БЕЗ ВЕСТИ", Vector2(296, 42), 100, -11.0, TideTokens.FLARE, 10)
+	TideKit.fit_title(_title, 1050.0, 100, 62)
+	_kicker = TideKit.mono(_page, "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА", Vector2(306, 196), 20, TideTokens.SONAR, -2.0)
 	_verdict = TideKit.label(
-		_page, "", Rect2(312, 262, 1000, 66), 2, 32, TideTokens.INK, -1.0, false
+		_page, "", Rect2(308, 232, 700, 62), 2, 32, TideTokens.INK, -1.0, false
 	)
 	_protocol = TideKit.label(
-		_page, "", Rect2(312, 340, 630, 420), 1, 23, TideTokens.INK, 0.0, false
+		_page, "", Rect2(306, 318, 600, 400), 1, 22, TideTokens.INK, 0.0, false
 	)
-	_protocol.add_theme_constant_override("line_spacing", 13)
+	_protocol.add_theme_constant_override("line_spacing", 12)
 	_build_label = TideKit.label(
-		_page, "", Rect2(960, 340, 400, 300), 1, 20, TideTokens.ink_alpha(0.72), 0.0, false
+		_page, "", Rect2(936, 318, 404, 356), 1, 17, TideTokens.ink_alpha(0.72), 0.0, false
 	)
-	_build_label.add_theme_constant_override("line_spacing", 11)
+	_build_label.add_theme_constant_override("line_spacing", 6)
 	_log = TideKit.label(
-		_page, "", Rect2(960, 650, 400, 230), 1, 17, TideTokens.FLARE, -0.6, true
+		_page, "", Rect2(936, 700, 404, 168), 1, 16, TideTokens.FLARE, -0.6, true
 	)
-	_log.add_theme_constant_override("line_spacing", 8)
+	_log.add_theme_constant_override("line_spacing", 6)
 
-	_stamp = TideKit.stamp(self, "SOS", Rect2(1046, 214, 296, 104), TideTokens.FLARE, 44, -12.0)
+	_stamp = TideKit.stamp(self, "SOS", Rect2(1118, 214, 286, 96), TideTokens.FLARE, 42, -12.0)
 
 	_restart = TideKit.button(
 		self,
 		"НОВАЯ ВАХТА",
-		Rect2(322, 872, 540, 106),
+		Rect2(300, 848, 520, 100),
 		TideButton.Shape.SOLID,
 		TideTokens.SONAR,
 		0,
@@ -88,7 +88,7 @@ func _build() -> void:
 	_menu = TideKit.button(
 		self,
 		"В МЕНЮ",
-		Rect2(932, 892, 320, 84),
+		Rect2(856, 866, 300, 76),
 		TideButton.Shape.OUTLINE,
 		TideTokens.FLARE,
 		0,

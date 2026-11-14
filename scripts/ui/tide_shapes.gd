@@ -197,65 +197,46 @@ static func bounds_of(points: PackedVector2Array) -> Rect2:
 
 ## Полотно флага: сетка с подразбиением, чтобы вершинный шейдер давал волну.
 ## shape: 0 — прямоугольный, 1 — треугольный, 2 — вымпел с вырезом.
-static func cloth(
-	shape: int, width: float, height: float, columns: int = 14, rows: int = 9
-) -> Dictionary:
-	var w := maxf(32.0, width)
-	var h := maxf(32.0, height)
-	var cols := maxi(2, columns)
-	var rows_n := maxi(2, rows)
-	var cell := Vector2(w / float(cols), h / float(rows_n))
-	var points := PackedVector2Array()
-	var index_of := {}
-	for row in range(rows_n + 1):
-		for column in range(cols + 1):
-			var point := Vector2(float(column) * cell.x, float(row) * cell.y)
-			index_of[Vector2i(column, row)] = points.size()
-			points.append(point)
-	var inside := PackedByteArray()
-	inside.resize(points.size())
-	for index in points.size():
-		inside[index] = 1 if _cloth_inside(points[index], shape, w, h) else 0
-	var triangles: Array[PackedInt32Array] = []
-	for row in range(rows_n):
-		for column in range(cols):
-			var a: int = index_of[Vector2i(column, row)]
-			var b: int = index_of[Vector2i(column + 1, row)]
-			var c: int = index_of[Vector2i(column + 1, row + 1)]
-			var d: int = index_of[Vector2i(column, row + 1)]
-			# Включаем и «краевые» треугольники, чтобы срез гипотенузы
-			# и вырез вымпела читались диагональю, а не лесенкой.
-			if inside[a] == 1 and inside[b] == 1 and inside[c] == 1:
-				triangles.append(PackedInt32Array([a, b, c]))
-			if inside[a] == 1 and inside[c] == 1 and inside[d] == 1:
-				triangles.append(PackedInt32Array([a, c, d]))
-	return {
-		"polygon": points,
-		"triangles": triangles,
-		"uv": points.duplicate(),
-		"size": Vector2(w, h),
-		"cell": cell,
-	}
-
-
-static func _cloth_inside(point: Vector2, shape: int, width: float, height: float) -> bool:
-	match shape:
+## Точный контур сигнального флага: 0 — прямоугольный, 1 — треугольный
+## (остриё к свободной кромке), 2 — вымпел с вырезом «ласточкин хвост».
+## Кромки нарезаны шагом ~13 px, чтобы вершинный шейдер волны гнул полотно
+## плавно, а силуэт оставался ровным — без «лесенки» из ячеек сетки.
+static func flag_outline(form: int, width: float, height: float) -> PackedVector2Array:
+	var w := maxf(48.0, width)
+	var h := maxf(48.0, height)
+	var corners := PackedVector2Array()
+	match form:
 		1:
-			# Треугольный: гипотенуза от верхнего правого к нижнему правому углу.
-			var edge := width * (1.0 - absf(point.y / height * 2.0 - 1.0))
-			return point.x <= edge + 0.001
+			corners = PackedVector2Array([Vector2(0, 0), Vector2(w, h * 0.5), Vector2(0, h)])
 		2:
-			# Вымпел: клин, вырезанный в правой кромке.
-			var notch_start := width * 0.6
-			if point.x <= notch_start:
-				return true
-			var depth := (point.x - notch_start) / maxf(1.0, width - notch_start)
-			return absf(point.y - height * 0.5) > depth * height * 0.5
+			corners = PackedVector2Array([
+				Vector2(0, 0), Vector2(w, 0), Vector2(w * 0.64, h * 0.5), Vector2(w, h), Vector2(0, h)
+			])
 		_:
-			return true
+			corners = PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h)])
+	var outline := PackedVector2Array()
+	for index in corners.size():
+		var a := corners[index]
+		var b := corners[(index + 1) % corners.size()]
+		var steps := maxi(2, int(ceil(a.distance_to(b) / 13.0)))
+		for step in steps:
+			outline.append(a.lerp(b, float(step) / float(steps)))
+	return outline
 
 
-## Замкнутая изобата-«глубина» для декора: контур вокруг центра.
+## Безопасная зона текста внутри полотна: у треугольника и вымпела
+## остриё съедает правую часть, поэтому ширина урезана.
+static func flag_text_box(form: int, width: float, height: float) -> Rect2:
+	var w := maxf(48.0, width)
+	var h := maxf(48.0, height)
+	match form:
+		1:
+			return Rect2(w * 0.04, h * 0.10, w * 0.48, h * 0.66)
+		2:
+			return Rect2(w * 0.04, h * 0.09, w * 0.50, h * 0.66)
+		_:
+			return Rect2(w * 0.04, h * 0.08, w * 0.90, h * 0.66)
+
 static func contour(center: Vector2, radius: Vector2, wobble: float, seed_offset: float) -> PackedVector2Array:
 	var points := PackedVector2Array()
 	var count := 42

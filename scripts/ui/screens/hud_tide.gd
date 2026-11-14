@@ -48,31 +48,30 @@ func _ready() -> void:
 func _build() -> void:
 	# --- Осадка корпуса (HP), внизу слева ---
 	_hull_plate = TideKit.panel(
-		self, Rect2(44, 780, 470, 254), TideTokens.deep_alpha(0.55), TideTokens.INK, true, -2.8
+		self, Rect2(44, 776, 470, 258), TideTokens.DEEP, TideTokens.INK, true, -2.8
 	)
 	_hull = TideHullGauge.new()
-	_hull.position = Vector2(74, 800)
-	_hull.size = Vector2(400, 200)
+	_hull.position = Vector2(70, 792)
+	_hull.size = Vector2(330, 190)
 	_hull.rotation = deg_to_rad(-1.5)
 	add_child(_hull)
 	_hp_tag = TideKit.panel(
-		self, Rect2(360, 918, 196, 92), TideTokens.FOAM, TideTokens.INK, false, -4.6, false
+		self, Rect2(66, 988, 232, 40), TideTokens.FOAM, TideTokens.INK, false, -2.0, false
 	)
-	TideKit.mono(_hp_tag, "ОСАДКА", Vector2(16, 8), 16, TideTokens.INK, -0.6)
-	_hp_value = TideKit.mono(_hp_tag, "100%", Vector2(14, 30), 44, TideTokens.INK, -0.6)
-	_sos = TideKit.stamp(self, "SOS", Rect2(118, 700, 214, 86), TideTokens.FLARE, 38, -12.0)
+	_hp_value = TideKit.mono(_hp_tag, "ОСАДКА · 100%", Vector2(14, 9), 22, TideTokens.INK, -0.6)
+	_sos = TideKit.stamp(self, "SOS", Rect2(96, 648, 238, 94), TideTokens.FLARE, 40, -12.0)
 
 	# --- Якорная цепь (XP) во всю ширину сверху ---
 	_chain = TideKit.CHAIN.instantiate()
 	TideKit.place(_chain, Rect2(168, 12, 1560, 54), -1.2)
 	add_child(_chain)
-	_chain_note = TideKit.mono(self, "ОПЫТ 0 / 8", Vector2(302, 74), 19, TideTokens.foam_alpha(0.6), -1.2)
+	_chain_note = TideKit.mono(self, "ОПЫТ 0 / 8", Vector2(168, 72), 17, TideTokens.foam_alpha(0.55), -1.0)
 
 	_level_plate = TideKit.panel(
-		self, Rect2(30, 92, 250, 108), TideTokens.deep_alpha(0.92), TideTokens.FLARE, true, -3.4
+		self, Rect2(30, 100, 236, 104), TideTokens.DEEP, TideTokens.FLARE, true, -3.4
 	)
-	TideKit.mono(_level_plate, "УРОВЕНЬ", Vector2(22, 10), 18, TideTokens.foam_alpha(0.6), -0.8)
-	_level_value = TideKit.mono(_level_plate, "01", Vector2(20, 36), 52, TideTokens.FOAM, -0.8)
+	TideKit.mono(_level_plate, "УРОВЕНЬ", Vector2(20, 10), 17, TideTokens.foam_alpha(0.6), -0.8)
+	_level_value = TideKit.mono(_level_plate, "01", Vector2(18, 32), 54, TideTokens.FOAM, -0.8)
 
 	# --- Иллюминатор-таймер справа сверху ---
 	_porthole = TideKit.PORTHOLE.instantiate()
@@ -82,11 +81,11 @@ func _build() -> void:
 
 	# --- Крупная цель: лента прочности ---
 	_boss_plate = TideKit.panel(
-		self, Rect2(596, 104, 728, 96), TideTokens.deep_alpha(0.92), TideTokens.FLARE, false, 1.7
+		self, Rect2(596, 100, 728, 86), TideTokens.DEEP, TideTokens.FLARE, false, 1.7
 	)
-	_boss_label = TideKit.mono(_boss_plate, "КРУПНАЯ ЦЕЛЬ · ФАЗА 1", Vector2(22, 8), 20, TideTokens.FOAM, -0.8)
+	_boss_label = TideKit.mono(_boss_plate, "КРУПНАЯ ЦЕЛЬ · ФАЗА 1", Vector2(20, 6), 19, TideTokens.FOAM, -0.8)
 	_boss_bar = TideSegmentBar.new()
-	TideKit.place(_boss_bar, Rect2(22, 48, 684, 26), 0.0)
+	TideKit.place(_boss_bar, Rect2(20, 42, 688, 30), 0.0)
 	_boss_bar.tint = TideTokens.FLARE
 	_boss_bar.segments = 14
 	_boss_plate.add_child(_boss_bar)
@@ -95,24 +94,24 @@ func _build() -> void:
 
 	# --- Счёт добычи ---
 	_loot_plate = TideKit.panel(
-		self, Rect2(1508, 848, 366, 152), TideTokens.deep_alpha(0.92), TideTokens.FLARE, false, 3.6
+		self, Rect2(1518, 856, 344, 144), TideTokens.DEEP, Color(0, 0, 0, 0), false, 3.6
 	)
 	_loot_plate.border_color = TideTokens.flare_alpha(0.9)
 	_loot_plate.border_width = 3.0
 	TideKit.mono(_loot_plate, "ДОБЫЧА", Vector2(24, 12), 18, TideTokens.foam_alpha(0.62), -0.8)
-	_loot_value = TideKit.mono(_loot_plate, "000", Vector2(20, 40), 62, TideTokens.FOAM, -0.8)
+	_loot_value = TideKit.mono(_loot_plate, "000", Vector2(18, 36), 60, TideTokens.FOAM, -0.8)
 
 	# --- Такелаж: готовность орудий ---
 	_weapons_plate = TideKit.panel(
-		self, Rect2(676, 980, 580, 62), TideTokens.deep_alpha(0.8), Color(0, 0, 0, 0), false, -1.4, false
+		self, Rect2(660, 954, 620, 58), TideTokens.DEEP, Color(0, 0, 0, 0), false, -1.4, false
 	)
-	_weapons_label = TideKit.mono(_weapons_plate, "НОС · БОРТА · Q · КОРМА", Vector2(22, 14), 20, TideTokens.FOAM, -0.6)
+	_weapons_label = TideKit.mono(_weapons_plate, "НОС · БОРТА · Q · КОРМА", Vector2(20, 12), 19, TideTokens.FOAM, -0.6)
 
 	# --- Сонар ---
 	_radar = TideRadar.new()
-	TideKit.place(_radar, Rect2(1710, 320, 178, 178), -2.2)
+	TideKit.place(_radar, Rect2(1714, 316, 176, 176), -2.2)
 	add_child(_radar)
-	_radar_note = TideKit.mono(self, "СОНАР · 55 М", Vector2(1734, 502), 15, TideTokens.foam_alpha(0.45), -2.2)
+	_radar_note = TideKit.mono(self, "СОНАР · 55 М", Vector2(1730, 500), 16, TideTokens.foam_alpha(0.5), -2.2)
 
 	_shoal = TideKit.mono(self, "ОТМЕЛЬ ПО КУРСУ — СНИЗЬТЕ ХОД", Vector2(612, 216), 20, TideTokens.FLARE, -1.2)
 	_shoal.hide()
@@ -133,7 +132,7 @@ func _build() -> void:
 	_launch_hint = TideKit.mono(
 		self, "ВЫЙДИТЕ НА ГЛУБОКУЮ ВОДУ · ESC — ЖУРНАЛ", Vector2(1432, 890), 17, TideTokens.foam_alpha(0.55), -2.4
 	)
-	TideKit.mono(self, "ESC · ЖУРНАЛ     Q · ИМПУЛЬС", Vector2(58, 1034), 18, TideTokens.foam_alpha(0.4), -1.0)
+	TideKit.mono(self, "ESC · ЖУРНАЛ     Q · ИМПУЛЬС", Vector2(56, 1044), 17, TideTokens.foam_alpha(0.42), -1.0)
 
 	# --- Качка: у каждого блока своя фаза ---
 	_add_bob(_hull_plate, 0, -2.8)
@@ -168,7 +167,7 @@ func push(state: Dictionary) -> void:
 	var hp01 := clampf(float(state.get("hp01", 1.0)), 0.0, 1.0)
 	_hull.set_hp(hp01)
 	_hull.set_danger(hp01 < 0.25)
-	_hp_value.text = "%d%%" % roundi(hp01 * 100.0)
+	_hp_value.text = "ОСАДКА · %d%%" % roundi(hp01 * 100.0)
 	_set_sos(hp01 < 0.25)
 
 	var xp := float(state.get("xp", 0.0))

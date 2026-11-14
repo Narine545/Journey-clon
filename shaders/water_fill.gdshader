@@ -5,11 +5,11 @@ render_mode blend_mix;
 // Вода поднимается по силуэту лодки снизу вверх, поверхность живая (синус),
 // при опасности вода пульсирует flare. Всё плоско: три цвета и одна линия.
 
-uniform vec4 hull_color : source_color = vec4(0.937, 0.918, 0.847, 1.0);
-uniform vec4 water_color : source_color = vec4(0.106, 0.227, 0.361, 1.0);
-uniform vec4 crest_color : source_color = vec4(0.208, 0.816, 0.729, 1.0);
+uniform vec4 hull_color : source_color = vec4(0.051, 0.082, 0.125, 1.0);
+uniform vec4 water_color : source_color = vec4(0.208, 0.816, 0.729, 1.0);
+uniform vec4 crest_color : source_color = vec4(0.937, 0.918, 0.847, 1.0);
 uniform vec4 danger_color : source_color = vec4(0.890, 0.129, 0.180, 1.0);
-uniform vec4 hatch_color : source_color = vec4(0.106, 0.227, 0.361, 0.32);
+uniform vec4 hatch_color : source_color = vec4(0.937, 0.918, 0.847, 1.0);
 uniform vec2 poly_size = vec2(420.0, 210.0);
 uniform float fill : hint_range(0.0, 1.0) = 0.3;
 uniform float danger : hint_range(0.0, 1.0) = 0.0;
@@ -29,7 +29,7 @@ void fragment() {
 
 	// Гравюрная штриховка на сухой части корпуса.
 	float hatch = step(0.5, fract((uv.x + uv.y) / max(2.0, hatch_step)));
-	color = mix(color, hatch_color.rgb, hatch * (1.0 - in_water) * hatch_color.a);
+	color = mix(color, hatch_color.rgb, hatch * (1.0 - in_water) * 0.22);
 
 	// Пенная кромка ватерлинии.
 	float crest = 1.0 - smoothstep(0.0, 2.4, abs(uv.y - surface));

@@ -44,12 +44,8 @@ func _build() -> void:
 	TideKit.isobaths(self, Rect2(Vector2.ZERO, TideTokens.BASE), 0.085, 32.0)
 
 	# Обрывки карт по краям: коллаж, а не центрированная рамка.
-	TideKit.panel(
-		self, Rect2(-52, 612, 322, 520), TideTokens.deep_alpha(0.55), TideTokens.flare_alpha(0.9), true, 4.4
-	)
-	TideKit.panel(
-		self, Rect2(1652, -46, 330, 402), TideTokens.deep_alpha(0.5), Color(0, 0, 0, 0), true, -6.2
-	)
+	TideKit.panel(self, Rect2(-52, 612, 322, 520), TideTokens.DEEP, TideTokens.FLARE, true, 4.4)
+	TideKit.panel(self, Rect2(1652, -46, 330, 402), TideTokens.DEEP, Color(0, 0, 0, 0), true, -6.2)
 
 	_title_strip = TideKit.panel(
 		self, Rect2(36, 92, 1264, 216), TideTokens.deep_alpha(0.94), TideTokens.FLARE, false, -7.0

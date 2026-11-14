@@ -93,7 +93,7 @@ func _build() -> void:
 
 	var title := TideKit.title(_page, "СУДОВОЙ ЖУРНАЛ", Vector2(198, 108), 92, -8.0, TideTokens.INK, 7)
 	TideKit.fit_title(title, 980.0, 92, 54)
-	TideKit.mono(_page, "ESC · ПРОДОЛЖИТЬ ВАХТУ", Vector2(1010, 96), 18, TideTokens.ink_alpha(0.55), -1.0)
+	TideKit.mono(_page, "ESC · ПРОДОЛЖИТЬ ВАХТУ", Vector2(1010, 236), 17, TideTokens.ink_alpha(0.55), -1.0)
 	var rule_shape := PackedVector2Array(
 		[Vector2(200, 268), Vector2(1284, 252), Vector2(1284, 264), Vector2(200, 280)]
 	)
@@ -136,6 +136,7 @@ func _build() -> void:
 ## data: {entries: [{clock, title, evolution}], stats: String, debug: Dictionary, clock: String}
 func open(data: Dictionary) -> void:
 	show()
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	_header.text = "ВАХТА · %s" % String(data.get("clock", "00:00"))
 	_stats_label.text = String(data.get("stats", ""))
 	var debug: Dictionary = data.get("debug", {})
@@ -182,7 +183,7 @@ func _write_entry(entry: Dictionary, index: int) -> void:
 		TideKit.mono(_list, "ЭВОЛЮЦИЯ", Vector2(766, y + 6), 15, TideTokens.FLARE, -1.4)
 	if index > 0:
 		var fresh := TideShapes.plate(Vector2(664, 3), 3.0)
-		TideShapes.fill(_list, TideShapes.offset(fresh, Vector2(112, y + 40)), TideTokens.ink_alpha(0.16))
+		TideKit.poly(_list, fresh, TideTokens.ink_alpha(0.16), Vector2(112, y + 40))
 
 
 func _paint_debug(button: TideButton, state: bool) -> void:
@@ -218,8 +219,6 @@ func _play_entrance() -> void:
 	var stamp_tween := create_tween()
 	stamp_tween.tween_interval(0.28)
 	stamp_tween.tween_callback(func() -> void: _stamp.hit(self))
-	stamp_tween.tween_interval(0.5)
-	stamp_tween.tween_callback(func() -> void: _stamp.hide())
 
 
 func _row_slide(node: Control) -> void:

@@ -71,4 +71,26 @@ func _draw_lines() -> void:
 		var angle := PI * (0.12 + 0.76 * float(index) / 5.0)
 		var at := Vector2(size.x * 0.5 - cos(angle) * size.x * 0.36, size.y * 0.5 + sin(angle) * size.y * 0.3)
 		if Geometry2D.is_point_in_polygon(at, points):
-			_lines.draw_circle(at, 2.4, TideTokens.ink_alpha(0.4))
+			_lines.draw_circle(at, 2.4, TideTokens.foam_alpha(0.45))
+	# Осадка размечена как на настоящем борту: риски и подписи в моно.
+	var font := TideTokens.mono_font()
+	for index in range(1, 4):
+		var y := size.y * float(index) / 4.0
+		var right := Vector2(size.x * 0.5, y)
+		var left := Vector2(size.x * 0.5, y)
+		for point in points:
+			if is_equal_approx(point.y, y):
+				continue
+			if absf(point.y - y) < 1.0:
+				right = point if point.x > right.x else right
+				left = point if point.x < left.x else left
+		_lines.draw_line(left, right, TideTokens.foam_alpha(0.16), 1.0, true)
+		_lines.draw_string(
+			font,
+			Vector2(size.x * 0.985 - 26.0, y + 5.0),
+			"%d" % (100 - index * 25),
+			HORIZONTAL_ALIGNMENT_RIGHT,
+			26.0,
+			12,
+			TideTokens.foam_alpha(0.4)
+		)

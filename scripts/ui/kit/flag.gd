@@ -23,6 +23,8 @@ var phase := 0.0
 var amplitude := 0.75
 
 var _cloth: Polygon2D
+var _shadow: Polygon2D
+var _outline: PackedVector2Array
 var _material: ShaderMaterial
 var _title: Label
 var _desc: Label
@@ -72,6 +74,14 @@ func set_content(
 
 
 func _build() -> void:
+	# Подложка-оттиск: тёмный сдвинутый силуэт, как второй прогон печати.
+	# Волнуется тем же материалом, поэтому всегда идёт за полотном.
+	_shadow = Polygon2D.new()
+	_shadow.name = "Shadow"
+	_shadow.color = TideTokens.ink_alpha(0.55)
+	_shadow.z_index = -1
+	add_child(_shadow)
+
 	_cloth = Polygon2D.new()
 	_cloth.name = "Cloth"
 	_material = ShaderMaterial.new()
@@ -83,6 +93,7 @@ func _build() -> void:
 	_material.set_shader_parameter("time_offset", float(index) * 1.7)
 	_cloth.material = _material
 	_cloth.color = tint
+	_shadow.material = _material
 	add_child(_cloth)
 
 	_title = Label.new()
@@ -118,23 +129,25 @@ func _apply_text_colors() -> void:
 	TideTokens.style_body(_desc, 23, Color(ink, 0.92))
 
 
+func _cloth_size() -> Vector2:
+	return Vector2(maxf(60.0, size.x - POLE_W - 10.0), maxf(96.0, size.y - 14.0))
+
+
 func _rebuild_cloth() -> void:
 	if _cloth == null:
 		return
-	var cloth_width := maxf(60.0, size.x - POLE_W - 8.0)
-	var cloth_height := maxf(80.0, size.y - 8.0)
-	var data := TideShapes.cloth(form, cloth_width, cloth_height, 16, 10)
-	var polygon: PackedVector2Array = data["polygon"]
-	var shifted := PackedVector2Array()
-	for point in polygon:
-		shifted.append(point + Vector2(POLE_W, 4.0))
+	var cloth := _cloth_size()
+	var outline := TideShapes.flag_outline(form, cloth.x, cloth.y)
+	var shifted := TideShapes.offset(outline, Vector2(POLE_W + 2.0, 7.0))
+	_outline = shifted
 	_cloth.polygon = shifted
-	_cloth.uv = shifted
-	var triangles: Array[PackedInt32Array] = []
-	triangles.assign(data["triangles"])
-	_cloth.polygons = triangles
+	var no_uv := PackedVector2Array()
+	_cloth.uv = no_uv
+	var no_triangles: Array[PackedInt32Array] = []
+	_cloth.polygons = no_triangles
 	_cloth.color = tint
-	_material.set_shader_parameter("cloth_size", Vector2(cloth_width, cloth_height))
+	_shadow.polygon = TideShapes.offset(shifted, Vector2(8.0, 9.0))
+	_material.set_shader_parameter("cloth_size", cloth)
 
 
 func _on_resized() -> void:
@@ -143,29 +156,58 @@ func _on_resized() -> void:
 	_layout_text()
 
 
+## Кегль подбирается по самому длинному слову: заголовок не вылезает за
+## полотно и не обрезается ни на треугольнике, ни на вымпеле.
+func _fit_font(label: Label, text: String, width: float, max_size: int, min_size: int, title: bool) -> int:
+	var font: Font = TideTokens.title_font() if title else TideTokens.body_font()
+	var words := text.split(" ", false)
+	var size_px := max_size
+	while size_px > min_size:
+		var widest := 0.0
+		for word in words:
+			widest = maxf(widest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x)
+		if widest <= width:
+			break
+		size_px -= 2
+	label.add_theme_font_size_override("font_size", size_px)
+	return size_px
+
+
 func _layout_text() -> void:
 	if _title == null:
 		return
-	var pad := 34.0
-	var width := maxf(120.0, size.x - POLE_W - pad * 2.0)
-	if form == 1:
-		width = maxf(120.0, width * 0.62)
-	_title.position = Vector2(POLE_W + pad, 30.0)
-	_title.size = Vector2(width, 92.0)
+	var cloth := _cloth_size()
+	var box := TideShapes.flag_text_box(form, cloth.x, cloth.y)
+	var origin := Vector2(POLE_W + box.position.x, box.position.y)
+
+	var title_size := _fit_font(_title, title_text.to_upper(), box.size.x, 36, 19, true)
+	_title.position = origin
+	_title.size = Vector2(box.size.x, minf(box.size.y * 0.58, float(title_size) * 2.6))
 	_title.pivot_offset = _title.size * 0.5
 	_title.rotation = deg_to_rad(-1.2)
-	_desc.position = Vector2(POLE_W + pad, 118.0)
-	_desc.size = Vector2(width, 96.0)
+	_title.clip_text = true
+
+	var desc_width := box.size.x * (0.86 if form != 0 else 0.80)
+	var desc_size := _fit_font(_desc, description, desc_width, 23, 14, false)
+	_desc.position = origin + Vector2(0.0, _title.size.y + 4.0)
+	_desc.size = Vector2(desc_width, minf(box.size.y * 0.42, float(desc_size) * 3.4))
 	_desc.rotation = deg_to_rad(0.6)
-	var plate_width := minf(320.0, maxf(150.0, size.x * 0.56))
-	_plate.position = Vector2(POLE_W + pad * 0.55, size.y - 92.0)
-	_plate.size = Vector2(plate_width, 66.0)
+	_desc.clip_text = true
+
+	var plate_width := minf(cloth.x * 0.62, 316.0)
+	if form == 1:
+		plate_width = minf(cloth.x * 0.46, 250.0)
+	elif form == 2:
+		plate_width = minf(cloth.x * 0.50, 276.0)
+	_plate.position = Vector2(POLE_W + box.position.x * 0.5, size.y - 96.0)
+	_plate.size = Vector2(plate_width, 70.0)
 	_plate.pivot_offset = _plate.size * 0.5
 	_plate.rotation = deg_to_rad(-2.4)
 	_plate.queue_redraw()
 	_preview.position = Vector2(12.0, 8.0)
-	_preview.size = Vector2(plate_width - 24.0, 50.0)
+	_preview.size = Vector2(plate_width - 24.0, 54.0)
 	_preview.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_preview.clip_text = true
 
 
 func _process(delta: float) -> void:
@@ -279,11 +321,5 @@ func _draw() -> void:
 	)
 	draw_circle(Vector2(POLE_W * 0.5, 6.0), 9.0, TideTokens.FOAM)
 	draw_circle(Vector2(POLE_W * 0.5, 6.0), 4.0, TideTokens.INK)
-	if _hover > 0.05:
-		var halo := PackedVector2Array()
-		var inset := 6.0
-		halo.append(Vector2(POLE_W + inset, inset))
-		halo.append(Vector2(size.x - inset, inset))
-		halo.append(Vector2(size.x - inset, size.y - inset - 10.0))
-		halo.append(Vector2(POLE_W + inset, size.y - inset))
-		draw_polyline(TideShapes.closed(halo), TideTokens.foam_alpha(0.5 * _hover), 2.0, true)
+	if _hover > 0.05 and _outline.size() > 2:
+		draw_polyline(TideShapes.closed(_outline), TideTokens.foam_alpha(0.55 * _hover), 2.0, true)

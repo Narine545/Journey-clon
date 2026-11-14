@@ -176,6 +176,7 @@ func _run_sequence() -> void:
 	await _wait(40)
 	await shot.capture("tide_03_hud")
 
+	hud.hide()
 	journal.open(_journal_data())
 	await _wait(44)
 	await shot.capture("tide_04_journal")
