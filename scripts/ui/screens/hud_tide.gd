@@ -8,7 +8,6 @@ signal start_pressed
 
 var _hull: TideHullGauge
 var _hull_plate: TidePanelTorn
-var _hp_tag: TidePanelTorn
 var _hp_value: Label
 var _chain: TideChainBar
 var _chain_note: Label
@@ -51,37 +50,35 @@ func _build() -> void:
 		self, Rect2(44, 776, 470, 258), TideTokens.DEEP, TideTokens.INK, true, -2.8
 	)
 	_hull = TideHullGauge.new()
-	_hull.position = Vector2(70, 792)
+	_hull.position = Vector2(88, 806)
 	_hull.size = Vector2(330, 190)
 	_hull.rotation = deg_to_rad(-1.5)
 	add_child(_hull)
-	_hp_tag = TideKit.panel(
-		self, Rect2(66, 988, 232, 40), TideTokens.FOAM, TideTokens.INK, false, -2.0, false
-	)
-	_hp_value = TideKit.mono(_hp_tag, "ОСАДКА · 100%", Vector2(14, 9), 22, TideTokens.INK, -0.6)
+	# Процент осадки живёт прямо в плите: без второй белой плашки поверх.
+	_hp_value = TideKit.mono(_hull_plate, "ОСАДКА · 100%", Vector2(20, 10), 21, TideTokens.FOAM, -0.8)
 	_sos = TideKit.stamp(self, "SOS", Rect2(96, 648, 238, 94), TideTokens.FLARE, 40, -12.0)
 
 	# --- Якорная цепь (XP) во всю ширину сверху ---
 	_chain = TideKit.CHAIN.instantiate()
-	TideKit.place(_chain, Rect2(168, 12, 1560, 54), -1.2)
+	TideKit.place(_chain, Rect2(168, 20, 1560, 48), -1.2)
 	add_child(_chain)
-	_chain_note = TideKit.mono(self, "ОПЫТ 0 / 8", Vector2(168, 72), 17, TideTokens.foam_alpha(0.55), -1.0)
+	_chain_note = TideKit.mono(self, "ОПЫТ 0 / 8", Vector2(168, 84), 16, TideTokens.foam_alpha(0.55), -1.0)
 
 	_level_plate = TideKit.panel(
-		self, Rect2(30, 100, 236, 104), TideTokens.DEEP, TideTokens.FLARE, true, -3.4
+		self, Rect2(30, 112, 236, 100), TideTokens.DEEP, TideTokens.FLARE, true, -3.4
 	)
 	TideKit.mono(_level_plate, "УРОВЕНЬ", Vector2(20, 10), 17, TideTokens.foam_alpha(0.6), -0.8)
 	_level_value = TideKit.mono(_level_plate, "01", Vector2(18, 32), 54, TideTokens.FOAM, -0.8)
 
 	# --- Иллюминатор-таймер справа сверху ---
 	_porthole = TideKit.PORTHOLE.instantiate()
-	TideKit.place(_porthole, Rect2(1702, 66, 194, 194), 3.0)
+	TideKit.place(_porthole, Rect2(1702, 78, 194, 194), 3.0)
 	add_child(_porthole)
-	_wave_label = TideKit.mono(self, "ФАЗА 1 · ЗЫБЬ", Vector2(1670, 268), 18, TideTokens.foam_alpha(0.55), 2.0)
+	_wave_label = TideKit.mono(self, "ФАЗА 1 · ЗЫБЬ", Vector2(1668, 280), 17, TideTokens.foam_alpha(0.55), 2.0)
 
 	# --- Крупная цель: лента прочности ---
 	_boss_plate = TideKit.panel(
-		self, Rect2(596, 100, 728, 86), TideTokens.DEEP, TideTokens.FLARE, false, 1.7
+		self, Rect2(596, 112, 728, 84), TideTokens.DEEP, TideTokens.FLARE, false, 1.7
 	)
 	_boss_label = TideKit.mono(_boss_plate, "КРУПНАЯ ЦЕЛЬ · ФАЗА 1", Vector2(20, 6), 19, TideTokens.FOAM, -0.8)
 	_boss_bar = TideSegmentBar.new()
@@ -109,9 +106,9 @@ func _build() -> void:
 
 	# --- Сонар ---
 	_radar = TideRadar.new()
-	TideKit.place(_radar, Rect2(1714, 316, 176, 176), -2.2)
+	TideKit.place(_radar, Rect2(1714, 330, 176, 176), -2.2)
 	add_child(_radar)
-	_radar_note = TideKit.mono(self, "СОНАР · 55 М", Vector2(1730, 500), 16, TideTokens.foam_alpha(0.5), -2.2)
+	_radar_note = TideKit.mono(self, "СОНАР · 55 М", Vector2(1730, 514), 16, TideTokens.foam_alpha(0.5), -2.2)
 
 	_shoal = TideKit.mono(self, "ОТМЕЛЬ ПО КУРСУ — СНИЗЬТЕ ХОД", Vector2(612, 216), 20, TideTokens.FLARE, -1.2)
 	_shoal.hide()
@@ -136,8 +133,7 @@ func _build() -> void:
 
 	# --- Качка: у каждого блока своя фаза ---
 	_add_bob(_hull_plate, 0, -2.8)
-	_add_bob(_hp_tag, 1, -4.6)
-	_add_bob(_chain, 2, -1.2)
+	_add_bob(_chain, 2, -1.2, 0.3)
 	_add_bob(_level_plate, 3, -3.4)
 	_add_bob(_porthole, 4, 3.0)
 	_add_bob(_loot_plate, 5, 3.6)
@@ -145,11 +141,11 @@ func _build() -> void:
 	_set_engaged(false)
 
 
-func _add_bob(target: Control, slot: int, base_deg: float) -> void:
+func _add_bob(target: Control, slot: int, base_deg: float, amplitude_scale: float = 0.8) -> void:
 	var bob := TideFx.bob(
 		target,
 		base_deg,
-		TideTokens.BOB_AMP[slot % TideTokens.BOB_AMP.size()] * 0.8,
+		TideTokens.BOB_AMP[slot % TideTokens.BOB_AMP.size()] * amplitude_scale,
 		TideTokens.BOB_PERIOD[slot % TideTokens.BOB_PERIOD.size()],
 		TideTokens.BOB_PHASE[slot % TideTokens.BOB_PHASE.size()]
 	)
@@ -214,7 +210,6 @@ func _set_engaged(value: bool) -> void:
 	_wave_label.visible = value
 	_hull_plate.visible = value
 	_hull.visible = value
-	_hp_tag.visible = value
 	_loot_plate.visible = value
 	_weapons_plate.visible = value
 	_radar.visible = value
