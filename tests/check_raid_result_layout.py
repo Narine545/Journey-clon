@@ -10,7 +10,7 @@ assert '_result_columns[0].text = _combat_summary().strip_edges()' in hud
 assert '_build_summary() + "\n" + _evolution_summary()' in hud.replace('\\n', '\n')
 assert '_results.visible = run.state in [RaidRun.State.WON, RaidRun.State.LOST]' in hud
 assert 'column.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART' in hud
-assert 'column.add_theme_font_size_override("font_size", 20)' in hud
+assert 'column.add_theme_font_size_override("font_size", 18)' in hud
 assert 'column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN' in hud
 assert '_modal_scroll.set_deferred("scroll_vertical", 0)' in hud
 assert 'shell.add_child(scroll)' in hud and 'shell.add_child(_modal_footer)' in hud

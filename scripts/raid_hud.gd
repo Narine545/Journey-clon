@@ -22,7 +22,6 @@ var _resume: Button
 var _retry: Button
 var _bars: Array[ColorRect] = []
 var _bar_index := 0
-var _title_material: ShaderMaterial
 var _gravity_toggle: CheckButton
 var _sphere_toggle: CheckButton
 var _god_toggle: CheckButton
@@ -39,12 +38,18 @@ func setup() -> void:
 	ui_theme.default_font_size = 18
 	ui_theme.set_color("font_color", "Button", Color("e0eeed"))
 	ui_theme.set_color("font_hover_color", "Button", Color("a1f1dc"))
-	ui_theme.set_stylebox("normal", "Button", RaidCombatUi.surface())
+	var button_skin := RaidCombatUi.surface()
+	button_skin.set_corner_radius_all(0)
+	button_skin.border_width_left = 3
+	button_skin.border_color = Color("c83f30")
+	ui_theme.set_stylebox("normal", "Button", button_skin)
 	var hover := RaidCombatUi.surface()
-	hover.border_color = Color("76d8c0")
+	hover.border_color = Color("efe8dc")
+	hover.set_corner_radius_all(0)
 	ui_theme.set_stylebox("hover", "Button", hover)
 	var pressed := RaidCombatUi.surface()
-	pressed.bg_color = Color("24434c")
+	pressed.bg_color = Color("632920")
+	pressed.set_corner_radius_all(0)
 	ui_theme.set_stylebox("pressed", "Button", pressed)
 	theme = ui_theme
 	for _index in range(3):
@@ -97,17 +102,13 @@ func setup() -> void:
 	_pause.text = "ПАУЗА · Esc"
 	_pause.pressed.connect(run.toggle_pause)
 	add_child(_pause)
-	_modal = PanelContainer.new()
-	var skin := StyleBoxFlat.new()
-	skin.bg_color = Color("101f28")
-	skin.border_color = Color("69b8ad")
-	skin.set_border_width_all(2)
-	skin.set_corner_radius_all(12)
-	skin.content_margin_left = 24
-	skin.content_margin_right = 24
-	skin.content_margin_top = 24
-	skin.content_margin_bottom = 24
-	_modal.add_theme_stylebox_override("panel", skin)
+	_modal = RaidCutPanel.new()
+	var modal_paper := _modal as RaidCutPanel
+	modal_paper.paper = Color("111619fc")
+	modal_paper.underprint = Color("c83f30")
+	modal_paper.cut = 20.0
+	# Modal blocks gameplay clicks; its scroll/button descendants retain native input.
+	_modal.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_modal)
 	var scroll := ScrollContainer.new()
 	_modal_scroll = scroll
@@ -129,13 +130,11 @@ func setup() -> void:
 	scroll.add_child(box)
 	_title = Label.new()
 	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_title.add_theme_font_size_override("font_size", 36)
+	_title.add_theme_font_size_override("font_size", 34)
+	_title.add_theme_color_override("font_color", Color("efe8dc"))
 	_title.add_theme_constant_override("outline_size", 2)
 	_title.add_theme_color_override("font_outline_color", Color("08141d"))
-	_title_material = ShaderMaterial.new()
-	_title_material.shader = preload("res://shaders/raid_title.gdshader")
-	_title.material = _title_material if run.effects_enabled else null
-	_title.resized.connect(_sync_title)
+	_title.material = null
 	box.add_child(_title)
 	_detail = Label.new()
 	_detail.add_theme_font_size_override("font_size", 20)
@@ -151,8 +150,13 @@ func setup() -> void:
 		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		column.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		column.add_theme_font_size_override("font_size", 20)
-		_results.add_child(column)
+		column.add_theme_font_size_override("font_size", 18)
+		var report_panel := RaidCutPanel.new()
+		report_panel.paper = Color("1b2023")
+		report_panel.underprint = Color("464b4d")
+		report_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		report_panel.add_child(column)
+		_results.add_child(report_panel)
 		_result_columns.append(column)
 	_cards = GridContainer.new()
 	_cards.columns = 3
@@ -160,9 +164,9 @@ func setup() -> void:
 	_cards.add_theme_constant_override("v_separation", 16)
 	box.add_child(_cards)
 	for index in range(3):
-		var card := Button.new()
+		var card := RaidUpgradeCard.new()
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.custom_minimum_size = Vector2(0, 240)
+		card.custom_minimum_size = Vector2(0, 280)
 		card.add_theme_font_size_override("font_size", 20)
 		card.pressed.connect(run.choose.bind(index))
 		_cards.add_child(card)
@@ -299,19 +303,25 @@ func refresh() -> void:
 	_leave.visible = run.state != RaidRun.State.CHOOSING
 	match run.state:
 		RaidRun.State.CHOOSING:
-			_title.text = "НОВЫЙ МОДУЛЬ · УРОВЕНЬ %d" % (run.level + 1)
-			_detail.text = "Бой и судно остановлены. Выберите улучшение сборки."
+			_title.text = "СОБЕРИ ПРЕИМУЩЕСТВО / УР.%d" % (run.level + 1)
+			_detail.text = "ВЫБЕРИТЕ МОДУЛЬ · Бой на паузе. Параметры ниже — результат выбора."
 			for index in range(run.choices.size()):
 				var data: Array = RaidRun.UPGRADES[run.choices[index]]
-				_card_buttons[index].text = (
-					"%s\n\n%s\n\n%s"
-					% [data[0], _wrap(String(data[1])), run.upgrade_preview(run.choices[index])]
+				var card := _card_buttons[index] as RaidUpgradeCard
+				card.set_content(
+					index,
+					String(data[0]),
+					String(data[1]),
+					run.upgrade_preview(run.choices[index]),
+					run.choices[index] >= 10 and run.choices[index] <= 13
 				)
+			if not run.choices.is_empty():
+				_card_buttons[0].grab_focus.call_deferred()
 		RaidRun.State.PAUSED:
-			_title.text = "РЕЙД ПРИОСТАНОВЛЕН"
+			_title.text = "ПЕРЕДЫШКА / ПАУЗА"
 			_detail.text = "Курс и перезарядки сохранены. При выходе вернётся дорейдовая прочность."
 		RaidRun.State.WON:
-			_title.text = "РЕЙД ЗАВЕРШЁН · ЦЕЛЬ УНИЧТОЖЕНА"
+			_title.text = "ЦЕЛЬ УНИЧТОЖЕНА / РЕЙД ЗАВЕРШЁН"
 			_detail.text = _summary()
 		RaidRun.State.LOST:
 			_title.text = (
@@ -319,11 +329,8 @@ func refresh() -> void:
 				+ ("КОРПУС ПОТЕРЯН" if run.main.boat.hull_hp <= 0.0 else "ВРЕМЯ ВЫШЛО")
 			)
 			_detail.text = _summary()
-	_title_material.set_shader_parameter(
-		"fluid_top", Color("ffca91") if run.state == RaidRun.State.LOST else Color("a6ffe0")
-	)
-	_title_material.set_shader_parameter(
-		"fluid_bottom", Color("e66e67") if run.state == RaidRun.State.LOST else Color("379dc7")
+	_title.add_theme_color_override(
+		"font_color", Color("ef967c") if run.state == RaidRun.State.LOST else Color("efe8dc")
 	)
 	_modal.reset_size()
 	_layout()
@@ -525,23 +532,8 @@ func _set_effects(enabled: bool) -> void:
 		run.damage_fx.reset()
 	if enabled:
 		run.weapon_fx.preview()
-	_title.material = _title_material if enabled else null
+	_title.material = null
 	queue_redraw()
-
-
-func _sync_title() -> void:
-	_title_material.set_shader_parameter("label_size", _title.size)
-
-
-func _wrap(text: String) -> String:
-	var result := ""
-	var line := ""
-	for word in text.split(" "):
-		if line.length() + word.length() > 25:
-			result += line + "\n"
-			line = ""
-		line += (" " if not line.is_empty() else "") + word
-	return result + line
 
 
 func _draw() -> void:

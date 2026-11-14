@@ -30,8 +30,8 @@ assert 'clampf(amount, 0.0, 1.0)' in hud
 assert 'bar.visible = not run.modal()' in hud
 assert '"effect_time", run.elapsed' in hud  # pause-safe UI fill animation
 assert '_fx_toggle.toggled.connect(_set_effects)' in hud
-assert '_title.material = _title_material if enabled else null' in hud
-assert 'label_size' in title and '_title.resized.connect(_sync_title)' in hud
+assert '_title.material = null' in hud  # stable print-style heading, no old fluid fill
+assert 'label_size' in title and '_title.resized.connect(_sync_title)' not in hud  # legacy shader is no longer bound
 assert 'COLOR.rgb *=' in title and 'texture(' not in title
 assert 'UV =' not in title and 'COLOR.a =' not in title  # don't corrupt font glyph masks
 assert 'value <= 0.0' in bar and 'value >= 1.0' in bar

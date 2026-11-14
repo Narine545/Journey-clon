@@ -21,7 +21,7 @@ assert 'ranged_count < ranged_cap(seconds)' in waves
 assert 'seconds >= 35.0' in waves and 'seconds < 15.0' in waves
 assert 'RaidWaves.label(run.elapsed)' in hud
 assert '_check_raid_waves()' in smoke
-assert '"font_size", 36' in hud and '"font_size", 20' in hud
+assert '"font_size", 34' in hud and '"font_size", 20' in hud
 assert 'ui_theme.default_font_size = 18' in hud
 assert 'GridContainer.new()' in hud and 'ScrollContainer.new()' in hud
 assert '_cards.columns = 3 if width >= 1000.0 else 1' in hud
