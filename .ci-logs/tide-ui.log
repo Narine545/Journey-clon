@@ -15,13 +15,15 @@ ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
 WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_01_upgrade.png 1920x1080
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_02_upgrade_stamp.png 1920x1080
-[TIDE SHOWCASE] экран=(1920.0, 1080.0) окно=(1920, 1080) холст=(1920.0, 1080.0) масштаб=(1.0, 1.0) плита_осадки=[P: (26.66187, 807.9033), S: (500.0, 250.0)] плита_уровня=[P: (26.07108, 27.68871), S: (150.0, 112.0)] плита_цели=[P: (560.8929, 111.0682), S: (799.9999, 95.99999)] плита_добычи=[P: (1547.57, 858.2677), S: (330.0, 164.0)]
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_03_hud.png 1920x1080
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_04_journal.png 1920x1080
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_05_report.png 1920x1080
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_06_menu.png 1920x1080
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_08_prologue.png 1920x1080
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_09_prologue_mother.png 1920x1080
-[TIDE SHOWCASE] кадры сняты
+SCRIPT ERROR: Parse Error: Cannot infer the type of "pop" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/boat_hud.gd:325)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "radius" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/boat_hud.gd:326)
+SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
+          at: GDScript::reload (res://scripts/ui/tide_showcase.gd:0)
+ERROR: Failed to load script "res://scripts/ui/tide_showcase.gd" with error "Compilation failed".
+   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
+SCRIPT ERROR: Invalid call. Nonexistent function 'new' in base 'GDScript'.
+          at: TideShowcase._ready (res://scripts/ui/tide_showcase.gd:53)
+          GDScript backtrace (most recent call first):
+              [0] _ready (res://scripts/ui/tide_showcase.gd:53)
