@@ -13,6 +13,7 @@ var journal: TidePauseJournal
 var report: TideGameOverReport
 var menu: TideMainMenu
 var prologue: TidePrologue
+var sail: BoatHud
 var _clock := 0.0
 var _sea: Control
 
@@ -49,6 +50,10 @@ func _ready() -> void:
 	menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prologue = TidePrologue.new()
 	canvas.add_child(prologue)
+	sail = BoatHud.new()
+	sail.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sail.visible = false
+	add_child(sail)
 	set_process(true)
 	if OS.has_environment("TIDE_SHOWCASE_QUIT"):
 		_run_sequence.call_deferred()
@@ -103,6 +108,55 @@ func _hud_state() -> Dictionary:
 			"phase": 2,
 			"remaining": 48,
 		},
+	}
+
+
+func _sail_state() -> Dictionary:
+	return {
+		"speed": 7.0,
+		"max_speed": 11.0,
+		"hull": 38.0,
+		"night": 0.35,
+		"raw": [1.4, 3.0, 0.5, 2.0],
+		"raw_text": ["1.40", "3", "0.50", "2"],
+		"refined": [4, 1, 0, 2],
+		"required": 3,
+		"trailer": false,
+		"lit": 2,
+		"total": 5,
+		"target": {
+			"name": "КОСА ЧАЕК",
+			"dist": 340,
+			"cost": PackedInt32Array([2, 1, 0, 3]),
+			"can_fuel": false,
+			"dir": Vector2(0.6, -0.8),
+		},
+		"beacons": [
+			{"dir": Vector2(0.6, -0.8), "lit": false},
+			{"dir": Vector2(-0.9, -0.44).normalized(), "lit": true},
+			{"dir": Vector2(-0.3, 0.95).normalized(), "lit": true},
+			{"dir": Vector2(0.98, 0.2).normalized(), "lit": false},
+			{"dir": Vector2(0.2, 0.98).normalized(), "lit": false},
+		],
+		"slicks": [
+			{"at": Vector2(0.3, 0.2), "kind": 0},
+			{"at": Vector2(-0.5, -0.3), "kind": 1},
+			{"at": Vector2(0.1, -0.6), "kind": 3},
+		],
+		"heading": Vector2(0.5, -0.86).normalized(),
+		"sonar": 13.0,
+		"overdrive": 0.0,
+		"weather": "ПОГОДА: СВЕЖИЙ ВЕТЕР",
+		"camera": "ВЫСОТА 1.00× (27.0 м) · ОТДАЛЕНИЕ 1.00×",
+		"shoal": false,
+		"key": "ПРОБЕЛ",
+		"action": "ЗАБРАТЬ С ЛЕВОГО БОРТА: КОРАЛЛ",
+		"tone": 1,
+		"pump": 0.55,
+		"pump_kind": 1,
+		"notice": "ШВАРТОВЫ ОТДАНЫ. МОЖНО ВЫХОДИТЬ ИЗ БУХТЫ.",
+		"debug": false,
+		"headlight": true,
 	}
 
 
@@ -214,6 +268,13 @@ func _run_sequence() -> void:
 	await _wait(24)
 	await shot.capture("tide_09_prologue_mother")
 	prologue.close()
+
+	# Интерфейс плавания на синтетическом состоянии: сонар включён, насос работает.
+	sail.demo_state = _sail_state()
+	sail.show()
+	await _wait(40)
+	await shot.capture("tide_10_sail")
+	sail.hide()
 
 	print("[TIDE SHOWCASE] кадры сняты")
 	await _wait(6)

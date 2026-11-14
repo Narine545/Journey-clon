@@ -379,6 +379,7 @@ func _build_bark() -> void:
 	_bark_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bark_face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_bark_face.stretch_mode = TextureRect.STRETCH_SCALE
+	_bark_face.material = TideStory.backing(10.0)
 	# Спрайт 1536×2752: лицо занимает примерно x 400–1250, y 480–1150.
 	var zoom := 0.2
 	_bark_face.size = Vector2(1536.0, 2752.0) * zoom

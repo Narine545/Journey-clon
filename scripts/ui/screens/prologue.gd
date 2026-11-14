@@ -58,6 +58,7 @@ func _build() -> void:
 	_face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	TideKit.place(_face, FACE_RECT)
 	_face.pivot_offset = Vector2(FACE_RECT.size.x * 0.5, FACE_RECT.size.y * 0.72)
+	_face.material = TideStory.backing(14.0)
 	add_child(_face)
 
 	# Шапка сцены.

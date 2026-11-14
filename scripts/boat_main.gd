@@ -58,7 +58,7 @@ var reefs: Array[Dictionary] = []
 var all_beacons_lit := false
 
 # Быстрый тест встроен в лодочную сцену, не требует внешних консольных команд.
-var debug_panel_visible := true
+var debug_panel_visible := false
 var debug_night_paused := false
 var debug_night_fill := 0.18
 var debug_lighting_profile := true

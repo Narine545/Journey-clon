@@ -31,6 +31,15 @@ const NAUSEA := [
 ]
 
 
+## Материал белой подложки-силуэта: прячет недовырезанные белые точки в
+## волосах. spread — ширина каймы в пикселях исходного спрайта.
+static func backing(spread: float = 14.0) -> ShaderMaterial:
+	var material := ShaderMaterial.new()
+	material.shader = load("res://shaders/sprite_backing.gdshader")
+	material.set_shader_parameter("spread", spread)
+	return material
+
+
 static func portrait(face: String) -> Texture2D:
 	var path := "%sheroine_%s.webp" % [DIR, face]
 	if ResourceLoader.exists(path):
