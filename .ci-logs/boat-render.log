@@ -18,8 +18,8 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 [BOOT] старт · 69 МБ
 [BOOT] мир собран · 89 МБ
 [BOOT] HUD рейда · 92 МБ
-[BOOT] меню · 257 МБ
-[BOOT] постобработка · 257 МБ
+[BOOT] меню · 255 МБ
+[BOOT] постобработка · 255 МБ
 RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
 [BOOT] готово · 255 МБ
 [BOAT] screenshot /home/runner/work/Journey-clon/Journey-clon/boat.png (0)
