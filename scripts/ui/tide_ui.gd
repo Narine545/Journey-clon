@@ -33,6 +33,7 @@ func setup() -> void:
 	hud = TideHud.new()
 	canvas.add_child(hud)
 	hud.start_pressed.connect(_on_start)
+	hud.debug_toggled.connect(_on_debug_toggled)
 
 	upgrade = TideUpgradeScreen.new()
 	canvas.add_child(upgrade)
@@ -235,18 +236,32 @@ func _on_debug_toggled(key: String, value: bool) -> void:
 				run.damage_fx.reset()
 		"fireballs":
 			run.fireball_enabled = value
+	debug_hint()
 
 
-## Строка подсказок HUD показывает, какие отладочные режимы включены.
+## Панель отладки HUD повторяет фактические флаги рейда (после F5–F7 и журнала).
 func debug_hint() -> void:
 	if run == null or hud == null:
 		return
-	var marks := "F5 · БЕССМЕРТИЕ %s     F6 · ОЧИСТКА %s     F7 · ЭФФЕКТЫ %s" % [
-		"ВКЛ" if run.debug_invulnerable else "ВЫКЛ",
-		"ВКЛ" if run.debug_clear_screen else "ВЫКЛ",
-		"ВКЛ" if run.effects_enabled else "ВЫКЛ",
-	]
-	hud.set_keys_hint(marks, run.debug_invulnerable or run.debug_clear_screen)
+	hud.set_debug(_debug_flags())
+
+
+func _debug_flags() -> Dictionary:
+	return {
+		"god": run.debug_invulnerable,
+		"clear": run.debug_clear_screen,
+		"spheres": run.sphere_mines.enabled,
+		"gravity": run.gravity_mines.enabled,
+		"effects": run.effects_enabled,
+		"fireballs": run.fireball_enabled,
+	}
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F1:
+		if hud != null and hud.visible:
+			hud.toggle_debug_panel()
+			get_viewport().set_input_as_handled()
 
 
 # --- Сборка данных для экранов ---

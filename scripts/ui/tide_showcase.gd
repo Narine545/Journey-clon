@@ -173,6 +173,7 @@ func _run_sequence() -> void:
 	upgrade.hide()
 
 	hud.show()
+	hud.set_debug({"god": true, "fireballs": true})
 	await _wait(40)
 	print(
 		"[TIDE SHOWCASE] экран=", get_viewport_rect().size,

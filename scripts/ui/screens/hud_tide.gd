@@ -6,6 +6,18 @@ extends Control
 ## качаются в своей фазе, поэтому текст никогда не съезжает с плашки.
 
 signal start_pressed
+signal debug_toggled(key: String, value: bool)
+
+## Отладочная панель справа: проверка оружия и режимы теста. F1 — свернуть.
+const DEBUG_RECT := Rect2(1578, 492, 316, 338)
+const DEBUG_KEYS := [
+	["god", "БЕССМЕРТИЕ"],
+	["clear", "ЗАЧИСТКА ЭКРАНА"],
+	["fireballs", "ОГНЕННЫЕ СНАРЯДЫ"],
+	["spheres", "СФЕРИЧЕСКИЕ МИНЫ"],
+	["gravity", "СТЯГИВАЮЩИЕ МИНЫ"],
+	["effects", "ЭФФЕКТЫ"],
+]
 
 const HULL_RECT := Rect2(34, 792, 500, 250)
 const LEVEL_RECT := Rect2(30, 22, 150, 112)
@@ -39,6 +51,10 @@ var _sos: TideStamp
 var _launch: TideButton
 var _launch_hint: Label
 var _keys_hint: Label
+var _debug_panel: Control
+var _debug_tab: TideButton
+var _debug_buttons := {}
+var _debug_open := true
 var _shoal: Label
 var _bobs: Array[TideBob] = []
 var _prev_filled := 0
@@ -152,7 +168,7 @@ func _build() -> void:
 	)
 	_weapons_label.size.y = WEAPON_RECT.size.y
 	_keys_hint = TideKit.text(
-		self, "ESC · ЖУРНАЛ И ОТЛАДКА     Q · ИМПУЛЬС     F5–F7 · ТЕСТ", Vector2(480, 1028), 1, 19,
+		self, "ESC · ЖУРНАЛ     Q · ИМПУЛЬС     F1 · ОТЛАДКА", Vector2(480, 1028), 1, 19,
 		TideTokens.foam_alpha(0.8), 960.0, HORIZONTAL_ALIGNMENT_CENTER
 	)
 
@@ -161,6 +177,8 @@ func _build() -> void:
 		HORIZONTAL_ALIGNMENT_CENTER
 	)
 	_shoal.hide()
+
+	_build_debug()
 
 	# --- Старт рейда ---
 	_launch = TideKit.button(
@@ -328,11 +346,84 @@ func bump_loot() -> void:
 
 
 ## Момент выхода босса: штамп бьёт по кадру.
-func set_keys_hint(value: String, alert: bool = false) -> void:
-	_keys_hint.text = value
-	_keys_hint.add_theme_color_override(
-		"font_color", TideTokens.FLARE if alert else TideTokens.foam_alpha(0.8)
+func _build_debug() -> void:
+	_debug_panel = TideKit.group(self, DEBUG_RECT, 1.6)
+	var back := TideKit.panel(
+		_debug_panel, Rect2(Vector2.ZERO, DEBUG_RECT.size), TideTokens.DEEP, Color(0, 0, 0, 0), true
 	)
+	back.cut = 22.0
+	TideKit.text(_debug_panel, "ОТЛАДКА", Vector2(22, 12), 1, 22, TideTokens.FOAM)
+	TideKit.text(
+		_debug_panel, "F1", Vector2(22, 14), 1, 18, TideTokens.SONAR,
+		DEBUG_RECT.size.x - 44.0, HORIZONTAL_ALIGNMENT_RIGHT
+	)
+	var index := 0
+	for entry in DEBUG_KEYS:
+		var key := String(entry[0])
+		var button := TideKit.button(
+			_debug_panel,
+			String(entry[1]),
+			Rect2(20.0, 52.0 + float(index) * 44.0, DEBUG_RECT.size.x - 40.0, 38.0),
+			TideButton.Shape.GHOST,
+			TideTokens.SONAR,
+			1,
+			17,
+			TideTokens.FOAM
+		)
+		button.skew = 7.0
+		button.cut = 0.0
+		button.toggle_mode = true
+		button.focus_mode = Control.FOCUS_NONE
+		button.toggled.connect(_on_debug_button.bind(key))
+		_debug_buttons[key] = button
+		_paint_debug(button, false)
+		index += 1
+	# Свёрнутое состояние: маленький ярлык на том же месте.
+	_debug_tab = TideKit.button(
+		self,
+		"F1 · ОТЛАДКА",
+		Rect2(DEBUG_RECT.end.x - 220.0, DEBUG_RECT.position.y, 220.0, 44.0),
+		TideButton.Shape.GHOST,
+		TideTokens.SONAR,
+		1,
+		17,
+		TideTokens.FOAM,
+		1.6
+	)
+	_debug_tab.skew = 7.0
+	_debug_tab.cut = 0.0
+	_debug_tab.focus_mode = Control.FOCUS_NONE
+	_debug_tab.pressed.connect(toggle_debug_panel)
+	_debug_tab.hide()
+
+
+func _paint_debug(button: TideButton, state: bool) -> void:
+	var tone := TideTokens.SONAR if state else TideTokens.foam_alpha(0.7)
+	button.tint = tone
+	button.set_caption(button.caption.text, tone)
+	button.queue_redraw()
+
+
+func _on_debug_button(state: bool, key: String) -> void:
+	_paint_debug(_debug_buttons[key], state)
+	debug_toggled.emit(key, state)
+
+
+## Привести кнопки панели к фактическому состоянию рейда.
+func set_debug(flags: Dictionary) -> void:
+	for key in _debug_buttons.keys():
+		var button: TideButton = _debug_buttons[key]
+		var state := bool(flags.get(key, false))
+		button.set_pressed_no_signal(state)
+		_paint_debug(button, state)
+
+
+func toggle_debug_panel() -> void:
+	_debug_open = not _debug_open
+	_debug_panel.visible = _debug_open
+	_debug_tab.visible = not _debug_open
+	if _debug_open:
+		TideFx.pop_in(_debug_panel, 0.72, -6.0)
 
 
 func flash_boss() -> void:
