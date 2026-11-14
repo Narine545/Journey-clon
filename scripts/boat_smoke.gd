@@ -1117,7 +1117,7 @@ func _check_raid_fx() -> void:
 			"[BOAT SMOKE] отладка вспышки: яркость=", fx._batch.get_instance_custom_data(0).r,
 			" приоритет=", fx._material.render_priority,
 			" факт=", fx._batch.get_instance_transform(0).origin,
-			" ожидание=", (body_pose * RaidWeaponFx.MOUNTS[0]).origin,
+			" ожидание=", body_pose * RaidWeaponFx.MOUNTS[0],
 			" кадр=", Engine.get_physics_interpolation_fraction()
 		)
 	_check(fx_ok, "вспышка сохраняет яркую фазу, следует за корпусом и рисуется после прозрачного моря")

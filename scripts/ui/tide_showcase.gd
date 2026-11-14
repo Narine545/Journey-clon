@@ -37,7 +37,6 @@ func _ready() -> void:
 
 	hud = TideHud.new()
 	canvas.add_child(hud)
-	hud.show()
 	upgrade = TideUpgradeScreen.new()
 	canvas.add_child(upgrade)
 	journal = TidePauseJournal.new()
@@ -46,7 +45,6 @@ func _ready() -> void:
 	canvas.add_child(report)
 	menu = TideMainMenu.new()
 	canvas.add_child(menu)
-	menu.show()
 	menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_process(true)
 	if OS.has_environment("TIDE_SHOWCASE_QUIT"):
