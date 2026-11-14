@@ -7,7 +7,7 @@ extends Control
 signal restart_requested
 signal menu_requested
 
-const SHEET_RECT := Rect2(250, 150, 1200, 840)
+const SHEET_RECT := Rect2(330, 150, 1060, 840)
 const SHEET_DEG := 1.6
 const MARGIN := 62.0
 
@@ -60,14 +60,14 @@ func _build() -> void:
 	var inner := SHEET_RECT.size.x - MARGIN * 2.0
 	# Заголовок наполовину свисает с верхней кромки листа — коллаж.
 	_title = TideKit.headline(
-		_sheet, "ПРОПАЛ БЕЗ ВЕСТИ", Vector2(MARGIN - 20.0, -62.0), inner - 60.0, 92,
+		_sheet, "ПРОПАЛ БЕЗ ВЕСТИ", Vector2(MARGIN - 24.0, -46.0), inner - 40.0, 92,
 		TideTokens.FLARE, 10, -12.0
 	)
 	_kicker = TideKit.text(
-		_sheet, "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА", Vector2(MARGIN, 74), 1, 18,
+		_sheet, "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА", Vector2(MARGIN, 82), 1, 18,
 		TideTokens.ink_alpha(0.6), inner
 	)
-	_verdict = TideKit.text(_sheet, "КОРПУС ПОТЕРЯН", Vector2(MARGIN, 100), 2, 34, TideTokens.INK, inner)
+	_verdict = TideKit.text(_sheet, "КОРПУС ПОТЕРЯН", Vector2(MARGIN, 106), 2, 34, TideTokens.INK, inner)
 	TideKit.poly(
 		_sheet,
 		PackedVector2Array([
@@ -77,19 +77,19 @@ func _build() -> void:
 		TideTokens.INK
 	)
 	_protocol = TideKit.block(
-		_sheet, "", Rect2(MARGIN, 186, 560, 420), 1, 22, TideTokens.INK, 13
+		_sheet, "", Rect2(MARGIN, 186, 560, 420), 1, 24, TideTokens.INK, 13
 	)
 	# Вертикальная линейка между протоколом и сборкой.
 	TideKit.poly(
 		_sheet,
-		PackedVector2Array([Vector2(646, 186), Vector2(649, 186), Vector2(649, 604), Vector2(646, 604)]),
+		PackedVector2Array([Vector2(618, 186), Vector2(621, 186), Vector2(621, 630), Vector2(618, 630)]),
 		TideTokens.ink_alpha(0.3)
 	)
 	_build_label = TideKit.block(
-		_sheet, "", Rect2(680, 186, inner - 618.0, 290), 1, 17, TideTokens.ink_alpha(0.78), 3
+		_sheet, "", Rect2(650, 186, inner - 588.0, 310), 1, 19, TideTokens.ink_alpha(0.78), 3
 	)
 	_log = TideKit.block(
-		_sheet, "", Rect2(680, 488, inner - 618.0, 130), 1, 16, TideTokens.FLARE, 2
+		_sheet, "", Rect2(650, 508, inner - 588.0, 130), 1, 17, TideTokens.FLARE, 2
 	)
 
 	_restart = TideKit.button(
@@ -107,7 +107,7 @@ func _build() -> void:
 	_menu = TideKit.button(
 		_sheet,
 		"В МЕНЮ",
-		Rect2(MARGIN + 650.0, 680, 300, 80),
+		Rect2(MARGIN + 640.0, 680, 280, 80),
 		TideButton.Shape.SOLID,
 		TideTokens.FLARE,
 		0,
@@ -136,7 +136,7 @@ func open(report: Dictionary) -> void:
 	_verdict.text = verdict
 	_verdict.add_theme_font_size_override(
 		"font_size",
-		TideTokens.fit_point(TideTokens.title_font(), verdict, SHEET_RECT.size.x - MARGIN * 2.0 - 380.0, 34, 18)
+		TideTokens.fit_point(TideTokens.title_font(), verdict, SHEET_RECT.size.x - MARGIN * 2.0 - 360.0, 34, 18)
 	)
 	_protocol.text = String(report.get("protocol", ""))
 	_build_label.text = String(report.get("build", ""))

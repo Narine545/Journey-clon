@@ -11,10 +11,10 @@ signal flag_pressed(index: int)
 
 const SHADER := preload("res://shaders/flag_wave.gdshader")
 const POLE_W := 18.0
-const TITLE_MAX := 32
+const TITLE_MAX := 34
 const TITLE_MIN := 16
-const DESC_MAX := 23
-const DESC_MIN := 15
+const DESC_MAX := 25
+const DESC_MIN := 17
 
 var index := 0
 var title_text := ""
@@ -244,9 +244,8 @@ func _layout_text(title_cap: int) -> void:
 	var title_h := _wrapped_height(title_font, title_text, box.size.x, t_point)
 	var desc_h := _wrapped_height(body_font, description, box.size.x, d_point)
 	var top := box.position.y
-	if form != 0:
-		# На сходящихся полотнах колонка центрируется по высоте.
-		top += maxf(0.0, (box.size.y - title_h - gap - desc_h) * 0.5)
+	# Колонка центрируется по высоте полотна.
+	top += maxf(0.0, (box.size.y - title_h - gap - desc_h) * 0.5)
 	_title.position = Vector2(box.position.x, top)
 	_title.size = Vector2(box.size.x, title_h + 4.0)
 	_desc.position = Vector2(box.position.x, top + title_h + gap)
@@ -348,7 +347,7 @@ func set_locked(value: bool) -> void:
 
 
 ## Выбранный флаг резко поднимают: рывок вверх, полотно натянуто, брызги.
-func fly_up(rise: float = 70.0) -> void:
+func fly_up(rise: float = 30.0) -> void:
 	_locked = true
 	_lean = 0.0
 	if _tween != null and _tween.is_valid():
@@ -360,7 +359,7 @@ func fly_up(rise: float = 70.0) -> void:
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "position:y", position.y - rise, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(self, "scale", Vector2.ONE * 1.06, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "scale", Vector2.ONE * 1.04, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "rotation", 0.0, 0.2).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 

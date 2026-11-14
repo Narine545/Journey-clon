@@ -12,9 +12,9 @@ signal reroll_requested
 
 ## Три мачты разной высоты; наклон чередуется.
 const LAYOUT := [
-	{"rect": Rect2(118, 452, 478, 300), "deg": -2.2, "color": TideTokens.DEEP, "form": 0},
-	{"rect": Rect2(690, 356, 600, 400), "deg": 1.6, "color": TideTokens.FLARE, "form": 1},
-	{"rect": Rect2(1326, 436, 504, 310), "deg": -1.4, "color": TideTokens.SONAR, "form": 2},
+	{"rect": Rect2(118, 486, 478, 300), "deg": -2.2, "color": TideTokens.DEEP, "form": 0},
+	{"rect": Rect2(690, 384, 600, 400), "deg": 1.6, "color": TideTokens.FLARE, "form": 1},
+	{"rect": Rect2(1326, 468, 504, 310), "deg": -1.4, "color": TideTokens.SONAR, "form": 2},
 ]
 const HEAD_RECT := Rect2(-70, 64, 1330, 236)
 const HEAD_DEG := -4.0
@@ -83,7 +83,7 @@ func _build() -> void:
 		_flags.append(flag)
 
 	_hint = TideKit.text(
-		self, "1 · 2 · 3 — ПОДНЯТЬ ФЛАГ", Vector2(150, 1022), 1, 19, TideTokens.foam_alpha(0.45)
+		self, "1 · 2 · 3 — ПОДНЯТЬ ФЛАГ", Vector2(150, 1030), 1, 19, TideTokens.foam_alpha(0.45)
 	)
 	_reroll = TideKit.button(
 		self,
@@ -102,7 +102,7 @@ func _build() -> void:
 	add_child(TideFx.bob(_head, HEAD_DEG, 0.6, 3.0, 0.4))
 	add_child(TideFx.bob(_level, LEVEL_DEG, 1.1, 2.5, 2.6))
 
-	_stamp = TideKit.stamp(self, "ПОВЫШЕНИЕ", Rect2(0, 0, 760, 190), TideTokens.FLARE, 84, -12.0)
+	_stamp = TideKit.stamp(self, "ПОВЫШЕНИЕ", Rect2(580, 742, 760, 190), TideTokens.FLARE, 84, -12.0)
 
 
 ## entries: [{title, desc, preview}] — три карточки из RaidRun.
@@ -138,7 +138,7 @@ func open(entries: Array, level_from: int, level_to: int, rerolls: int, can_rero
 	# Один кегль названий на всех флагах: типографика ровная, а не «как влезло».
 	for flag in _flags:
 		if flag.visible:
-			flag.apply_title_point(maxi(common, 20))
+			flag.apply_title_point(maxi(common, 20) + 4)
 	_play_entrance()
 
 
@@ -248,12 +248,7 @@ func _pick(index: int) -> void:
 		if other.index != index:
 			other.fall_down()
 	await get_tree().create_timer(0.1, true, false, true).timeout
-	# Штамп бьёт по свободной воде рядом с поднятым флагом, а не поверх него.
-	var stamp_size := _stamp.size
-	var at := Vector2(chosen.position.x + chosen.size.x + 10.0, 560.0)
-	if at.x + stamp_size.x > TideTokens.BASE.x - 30.0:
-		at.x = maxf(24.0, chosen.position.x - stamp_size.x - 10.0)
-	_stamp.position = at
+	# Штамп бьёт по центру, по воде под поднятым флагом (спущенные уже ушли).
 	_stamp.hit(self)
 	TideFx.shake(self, 4.0, 0.12)
 	await get_tree().create_timer(0.3, true, false, true).timeout

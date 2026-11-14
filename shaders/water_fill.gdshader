@@ -43,9 +43,12 @@ void fragment() {
 	float crest = 1.0 - smoothstep(0.0, 2.4, abs(uv.y - surface));
 	color = mix(color, mix(crest_color.rgb, danger_color.rgb, danger), crest);
 
-	// Опасная осадка: вода краснеет и пульсирует.
-	float pulse = 0.5 + 0.5 * sin(TIME * 6.2);
-	color = mix(color, danger_color.rgb, in_water * danger * (0.3 + 0.45 * pulse));
+	// Опасная осадка: вода — чистый flare, пульс — плоские пенные штрихи,
+	// которые вспыхивают и гаснут. Никаких промежуточных оттенков.
+	float beat = step(0.5, fract(TIME * 1.7));
+	float streak = step(0.72, fract((uv.x - uv.y) / 18.0));
+	vec3 alarm = mix(danger_color.rgb, crest_color.rgb, streak * beat);
+	color = mix(color, alarm, in_water * step(0.5, danger) * (1.0 - crest));
 
 	COLOR = vec4(color, 1.0);
 }

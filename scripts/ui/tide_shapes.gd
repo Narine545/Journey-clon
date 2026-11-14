@@ -231,7 +231,7 @@ static func flag_text_box(form: int, width: float, height: float) -> Rect2:
 	var h := maxf(48.0, height)
 	match form:
 		1:
-			return Rect2(w * 0.05, h * 0.26, w * 0.45, h * 0.48)
+			return Rect2(w * 0.05, h * 0.29, w * 0.51, h * 0.42)
 		2:
 			return Rect2(w * 0.05, h * 0.15, w * 0.66, h * 0.70)
 		_:
