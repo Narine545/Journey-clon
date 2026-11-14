@@ -1040,7 +1040,9 @@ func _enemy_visual_basis(enemy: Dictionary, radius: float) -> Basis:
 func _process(_delta: float) -> void:
 	if main == null:
 		return
-	hud.visible = not main.inspection_active()
+	# HUD рейда принадлежит бою: в главном меню и вне рейда его не видно,
+	# иначе полосы осадки и подсказки проступают сквозь афишу.
+	hud.visible = engaged() and not main.menu_open and not main.inspection_active()
 	if engaged():
 		var blend := (
 			1.0
