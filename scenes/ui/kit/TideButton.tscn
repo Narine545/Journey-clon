@@ -3,7 +3,6 @@
 [ext_resource type="Script" path="res://scripts/ui/kit/tide_button.gd" id="1_script"]
 
 [node name="TideButton" type="Button"]
-custom_minimum_size = Vector2(300, 70)
 offset_right = 300.0
 offset_bottom = 70.0
 text = ""

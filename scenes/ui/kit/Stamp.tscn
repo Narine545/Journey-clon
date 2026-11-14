@@ -3,7 +3,6 @@
 [ext_resource type="Script" path="res://scripts/ui/kit/stamp.gd" id="1_script"]
 
 [node name="Stamp" type="Control"]
-custom_minimum_size = Vector2(320, 110)
 offset_right = 320.0
 offset_bottom = 110.0
 script = ExtResource("1_script")
