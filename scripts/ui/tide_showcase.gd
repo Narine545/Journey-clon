@@ -178,8 +178,7 @@ func _run_sequence() -> void:
 		"[TIDE SHOWCASE] экран=", get_viewport_rect().size,
 		" окно=", DisplayServer.window_get_size(),
 		" холст=", stage.size, " масштаб=", stage.canvas.scale,
-		" плита_осадки=", hud._hull_plate.get_global_rect(),
-		" ярлык_осадки=", hud._hp_tag.get_global_rect()
+		" плита_осадки=", hud._hull_plate.get_global_rect()
 	)
 	await shot.capture("tide_03_hud")
 
