@@ -77,7 +77,7 @@ func _build() -> void:
 		self,
 		"НОВАЯ ВАХТА",
 		Rect2(322, 872, 540, 106),
-		TideButton.Variant.SOLID,
+		TideButton.Shape.SOLID,
 		TideTokens.SONAR,
 		0,
 		46,
@@ -89,7 +89,7 @@ func _build() -> void:
 		self,
 		"В МЕНЮ",
 		Rect2(932, 892, 320, 84),
-		TideButton.Variant.OUTLINE,
+		TideButton.Shape.OUTLINE,
 		TideTokens.FLARE,
 		0,
 		28,
@@ -103,7 +103,7 @@ func _build() -> void:
 ##          protocol_lines, build_lines, log_lines}
 func open(report: Dictionary) -> void:
 	show()
-	var win := bool(report.get("win", false))
+	var win: bool = report.get("win", false)
 	_title.text = String(report.get("title", "ПРОПАЛ БЕЗ ВЕСТИ")).to_upper()
 	_title.paper_color = TideTokens.SONAR if win else TideTokens.FLARE
 	_title._apply()

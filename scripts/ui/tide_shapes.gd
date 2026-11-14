@@ -223,10 +223,12 @@ static func cloth(
 			var b: int = index_of[Vector2i(column + 1, row)]
 			var c: int = index_of[Vector2i(column + 1, row + 1)]
 			var d: int = index_of[Vector2i(column, row + 1)]
-			if inside[a] + inside[b] + inside[c] + inside[d] < 4:
-				continue
-			triangles.append(PackedInt32Array([a, b, c]))
-			triangles.append(PackedInt32Array([a, c, d]))
+			# Включаем и «краевые» треугольники, чтобы срез гипотенузы
+			# и вырез вымпела читались диагональю, а не лесенкой.
+			if inside[a] == 1 and inside[b] == 1 and inside[c] == 1:
+				triangles.append(PackedInt32Array([a, b, c]))
+			if inside[a] == 1 and inside[c] == 1 and inside[d] == 1:
+				triangles.append(PackedInt32Array([a, c, d]))
 	return {
 		"polygon": points,
 		"triangles": triangles,

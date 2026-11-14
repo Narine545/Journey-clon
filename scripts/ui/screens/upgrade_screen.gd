@@ -82,7 +82,7 @@ func _build() -> void:
 		self,
 		"ПЕРЕБРОСИТЬ · 2",
 		Rect2(1442, 938, 356, 68),
-		TideButton.Variant.OUTLINE,
+		TideButton.Shape.OUTLINE,
 		TideTokens.SONAR,
 		1,
 		24,

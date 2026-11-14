@@ -3,9 +3,9 @@ extends Button
 ## Кнопка-плашка со срезанными углами. Hover: сдвиг 4 px и усиление skew,
 ## нажатие: scale 0.93 на 0.06 с и отскок TRANS_BACK.
 
-enum Variant { SOLID, OUTLINE, GHOST }
+enum Shape { SOLID, OUTLINE, GHOST }
 
-@export var variant := Variant.SOLID
+@export var variant := Shape.SOLID
 @export var tint := TideTokens.SONAR
 @export var label_color := TideTokens.INK
 @export var font_kind := 0 # 0 — Unbounded Black, 1 — JetBrains Mono, 2 — Oswald
@@ -77,16 +77,16 @@ func _draw() -> void:
 	var shape := TideShapes.plate(size, skew * (1.0 + 0.35 * _hover), cut)
 	var alpha := 0.45 if disabled else 1.0
 	match variant:
-		Variant.SOLID:
+		Shape.SOLID:
 			TideShapes.fill(self, shape, Color(tint, alpha))
-		Variant.OUTLINE:
+		Shape.OUTLINE:
 			TideShapes.stroke(self, shape, Color(tint, alpha), 4.0)
 		_:
 			TideShapes.fill(self, shape, Color(TideTokens.DEEP, alpha))
 			TideShapes.stroke(self, shape, Color(TideTokens.foam_alpha(0.25), alpha), 2.0)
 	# Уголок-зацепка: подчёркивает направление движения плашки.
 	var edge := TideShapes.plate(size, skew * (1.0 + 0.35 * _hover), cut)
-	var accent := Color(tint, alpha) if variant != Variant.SOLID else Color(TideTokens.INK, 0.55)
+	var accent := Color(tint, alpha) if variant != Shape.SOLID else Color(TideTokens.INK, 0.55)
 	draw_line(edge[3], edge[2], accent, 3.0, true)
 	if has_focus():
 		var focus_shape := PackedVector2Array()

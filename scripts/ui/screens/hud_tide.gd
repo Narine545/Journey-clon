@@ -66,7 +66,7 @@ func _build() -> void:
 	_chain = TideKit.CHAIN.instantiate()
 	TideKit.place(_chain, Rect2(168, 12, 1560, 54), -1.2)
 	add_child(_chain)
-	_chain_note = TideKit.mono(self, "ОПЫТ 0 / 8", Vector2(172, 70), 20, TideTokens.foam_alpha(0.6), -1.2)
+	_chain_note = TideKit.mono(self, "ОПЫТ 0 / 8", Vector2(302, 74), 19, TideTokens.foam_alpha(0.6), -1.2)
 
 	_level_plate = TideKit.panel(
 		self, Rect2(30, 92, 250, 108), TideTokens.deep_alpha(0.92), TideTokens.FLARE, true, -3.4
@@ -122,7 +122,7 @@ func _build() -> void:
 		self,
 		"НАЧАТЬ РЕЙД",
 		Rect2(1466, 780, 400, 96),
-		TideButton.Variant.SOLID,
+		TideButton.Shape.SOLID,
 		TideTokens.SONAR,
 		0,
 		38,

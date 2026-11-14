@@ -147,12 +147,13 @@ func _with_wipe(action: Callable) -> void:
 		action.call()
 		return
 	_wipe_busy = true
-	wipe.cover_then(
-		func() -> void:
-			action.call()
-			wipe.reveal()
-			_wipe_busy = false
-	)
+	wipe.cover_then(_wipe_middle.bind(action))
+
+
+func _wipe_middle(action: Callable) -> void:
+	action.call()
+	wipe.reveal()
+	_wipe_busy = false
 
 
 func _open_upgrade() -> void:

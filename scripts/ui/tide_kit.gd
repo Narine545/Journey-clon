@@ -148,7 +148,7 @@ static func button(
 	parent: Node,
 	text_value: String,
 	rect: Rect2,
-	variant: int = TideButton.Variant.SOLID,
+	variant: int = TideButton.Shape.SOLID,
 	tint: Color = TideTokens.SONAR,
 	font_kind: int = 0,
 	point: int = 30,
