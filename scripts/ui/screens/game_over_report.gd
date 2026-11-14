@@ -52,18 +52,18 @@ func _build() -> void:
 	sheet.border_color = TideTokens.ink_alpha(0.5)
 	sheet.border_width = 3.0
 
-	_title = TideKit.title(_page, "ПРОПАЛ БЕЗ ВЕСТИ", Vector2(296, 42), 100, -11.0, TideTokens.FLARE, 10)
-	TideKit.fit_title(_title, 1050.0, 100, 62)
-	_kicker = TideKit.mono(_page, "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА", Vector2(306, 196), 20, TideTokens.SONAR, -2.0)
+	_title = TideKit.title(_page, "ПРОПАЛ БЕЗ ВЕСТИ", Vector2(300, 84), 92, -11.0, TideTokens.FLARE, 10)
+	TideKit.fit_title(_title, 1010.0, 92, 56)
+	_kicker = TideKit.mono(_page, "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА", Vector2(306, 214), 20, TideTokens.SONAR, -2.0)
 	_verdict = TideKit.label(
-		_page, "", Rect2(308, 232, 700, 62), 2, 32, TideTokens.INK, -1.0, false
+		_page, "", Rect2(308, 248, 700, 62), 2, 32, TideTokens.INK, -1.0, false
 	)
 	_protocol = TideKit.label(
-		_page, "", Rect2(306, 318, 600, 400), 1, 22, TideTokens.INK, 0.0, false
+		_page, "", Rect2(306, 330, 600, 400), 1, 22, TideTokens.INK, 0.0, false
 	)
 	_protocol.add_theme_constant_override("line_spacing", 12)
 	_build_label = TideKit.label(
-		_page, "", Rect2(936, 318, 404, 356), 1, 17, TideTokens.ink_alpha(0.72), 0.0, false
+		_page, "", Rect2(936, 330, 404, 350), 1, 17, TideTokens.ink_alpha(0.72), 0.0, false
 	)
 	_build_label.add_theme_constant_override("line_spacing", 6)
 	_log = TideKit.label(
@@ -71,12 +71,12 @@ func _build() -> void:
 	)
 	_log.add_theme_constant_override("line_spacing", 6)
 
-	_stamp = TideKit.stamp(self, "SOS", Rect2(1118, 214, 286, 96), TideTokens.FLARE, 42, -12.0)
+	_stamp = TideKit.stamp(self, "SOS", Rect2(1122, 226, 284, 94), TideTokens.FLARE, 42, -12.0)
 
 	_restart = TideKit.button(
 		self,
 		"НОВАЯ ВАХТА",
-		Rect2(300, 848, 520, 100),
+		Rect2(300, 838, 520, 96),
 		TideButton.Shape.SOLID,
 		TideTokens.SONAR,
 		0,
@@ -88,7 +88,7 @@ func _build() -> void:
 	_menu = TideKit.button(
 		self,
 		"В МЕНЮ",
-		Rect2(856, 866, 300, 76),
+		Rect2(856, 840, 300, 74),
 		TideButton.Shape.OUTLINE,
 		TideTokens.FLARE,
 		0,

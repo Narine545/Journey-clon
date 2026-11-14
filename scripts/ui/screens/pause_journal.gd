@@ -93,7 +93,7 @@ func _build() -> void:
 
 	var title := TideKit.title(_page, "СУДОВОЙ ЖУРНАЛ", Vector2(198, 108), 92, -8.0, TideTokens.INK, 7)
 	TideKit.fit_title(title, 980.0, 92, 54)
-	TideKit.mono(_page, "ESC · ПРОДОЛЖИТЬ ВАХТУ", Vector2(1010, 236), 17, TideTokens.ink_alpha(0.55), -1.0)
+	TideKit.mono(_page, "ESC · ПРОДОЛЖИТЬ ВАХТУ", Vector2(1014, 104), 17, TideTokens.ink_alpha(0.55), -1.0)
 	var rule_shape := PackedVector2Array(
 		[Vector2(200, 268), Vector2(1284, 252), Vector2(1284, 264), Vector2(200, 280)]
 	)
@@ -105,7 +105,7 @@ func _build() -> void:
 	_list.position = Vector2(206, 348)
 	add_child(_list)
 
-	_stamp = TideKit.stamp(self, "ЗАЧТЕНО", Rect2(946, 330, 300, 96), TideTokens.FLARE, 40, -12.0)
+	_stamp = TideKit.stamp(self, "ЗАЧТЕНО", Rect2(766, 336, 300, 92), TideTokens.FLARE, 40, -12.0)
 
 	_resume = TideKit.button(
 		self,

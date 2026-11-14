@@ -31,13 +31,13 @@ func _build() -> void:
 	TideKit.isobaths(self, Rect2(Vector2.ZERO, TideTokens.BASE), 0.045, 40.0)
 
 	_left_panel = TideKit.panel(
-		self, Rect2(-72, -40, 452, 1200), TideTokens.deep_alpha(0.88), TideTokens.FLARE, true, -2.5
+		self, Rect2(-72, -40, 452, 1200), TideTokens.DEEP, TideTokens.FLARE, true, -2.5
 	)
 	_right_panel = TideKit.panel(
-		self, Rect2(1520, -40, 500, 1200), TideTokens.deep_alpha(0.88), TideTokens.SONAR, true, 2.2
+		self, Rect2(1520, -40, 500, 1200), TideTokens.DEEP, TideTokens.SONAR, true, 2.2
 	)
 	_bottom_panel = TideKit.panel(
-		self, Rect2(300, 986, 1120, 150), TideTokens.deep_alpha(0.9), Color(0, 0, 0, 0), false, -1.2, true
+		self, Rect2(300, 986, 1120, 150), TideTokens.DEEP, Color(0, 0, 0, 0), false, -1.2, true
 	)
 
 	_kicker = TideKit.mono(
@@ -53,7 +53,7 @@ func _build() -> void:
 	_voyage = TideKit.button(
 		self,
 		"НОВАЯ ВАХТА",
-		Rect2(1152, 470, 500, 108),
+		Rect2(1176, 508, 500, 104),
 		TideButton.Shape.SOLID,
 		TideTokens.SONAR,
 		0,
@@ -65,7 +65,7 @@ func _build() -> void:
 	_continue = TideKit.button(
 		self,
 		"ПРОДОЛЖИТЬ",
-		Rect2(1204, 600, 430, 84),
+		Rect2(1226, 636, 430, 82),
 		TideButton.Shape.OUTLINE,
 		TideTokens.FOAM,
 		0,
@@ -77,7 +77,7 @@ func _build() -> void:
 	_quit = TideKit.button(
 		self,
 		"ВЫХОД",
-		Rect2(1268, 706, 330, 74),
+		Rect2(1290, 742, 330, 72),
 		TideButton.Shape.OUTLINE,
 		TideTokens.FLARE,
 		0,
@@ -91,10 +91,24 @@ func _build() -> void:
 	_footer = TideKit.mono(
 		self,
 		"РЕЙС №041 · ВЕРСИЯ 0.9.4 · TIDECUT UI KIT",
-		Vector2(330, 1042),
+		Vector2(330, 1012),
 		19,
-		TideTokens.foam_alpha(0.5),
+		TideTokens.foam_alpha(0.55),
 		-1.0
+	)
+	TideKit.mono(
+		self,
+		"1920×1080 · UNBOUNDED / OSWALD / JETBRAINS MONO · ПЯТЬ ЦВЕТОВ",
+		Vector2(330, 1052),
+		15,
+		TideTokens.foam_alpha(0.38),
+		-1.0
+	)
+	TideKit.mono(
+		self, "ПОРТ ПРИПИСКИ · БУХТА", Vector2(1560, 250), 18, TideTokens.foam_alpha(0.5), 2.2
+	)
+	TideKit.mono(
+		self, "ОСТАНОВЛЕННЫЙ РЕЙС", Vector2(44, 300), 18, TideTokens.foam_alpha(0.42), -2.5
 	)
 	for button in [_voyage, _continue, _quit]:
 		button.mouse_entered.connect(_splash_at.bind(button))
