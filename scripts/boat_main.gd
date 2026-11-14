@@ -82,7 +82,14 @@ var _beacon_anim_time := 0.0
 var _atmosphere_timer := 0.0
 
 
+## Тихая смерть процесса (драйвер, OOM, kill) не оставляет стека —
+## поэтому загрузка оставляет хлебные крошки в godot.log.
+func _boot_mark(step: String) -> void:
+	print("[BOOT] %s · %d МБ" % [step, int(OS.get_static_memory_usage() / 1048576.0)])
+
+
 func _ready() -> void:
+	_boot_mark("старт")
 	game = get_node("/root/Game") as GameState
 	world = GameWorld.new()
 	add_child(world)
@@ -137,6 +144,7 @@ func _ready() -> void:
 	_camera_focus = boat.global_position + Vector3.UP * 0.8
 	camera.position = boat.global_position + Vector3(21.0, 27.0, 30.0)
 	camera.look_at(_camera_focus, Vector3.UP)
+	_boot_mark("мир собран")
 	hud = BoatHud.new()
 	var layer := CanvasLayer.new()
 	layer.layer = 12
@@ -157,10 +165,13 @@ func _ready() -> void:
 	add_child(photo_layer)
 	photo_layer.add_child(photo_mode)
 	photo_mode.setup(self)
+	_boot_mark("HUD рейда")
 	raid = RaidRun.new()
 	add_child(raid)
 	raid.setup(self)
+	_boot_mark("меню")
 	_build_tide_menu()
+	_boot_mark("постобработка")
 	_setup_retro_debug()
 	_setup_rme4_atmosphere()
 	sea_look_trial = SeaLookTrial.new()
@@ -168,6 +179,7 @@ func _ready() -> void:
 	sea_look_trial.setup(self)
 	weather.setup()
 	_ensure_boat_input()
+	_boot_mark("готово")
 	if OS.get_environment("JOURNEY_BOAT_SHOT_DRIVE") == "1":
 		Input.action_press("boat_forward")
 	_apply_atmosphere(0.0)
@@ -782,6 +794,7 @@ func _build_tide_menu() -> void:
 	menu.continue_requested.connect(_close_menu)
 	menu.quit_requested.connect(_on_menu_quit)
 	_open_menu()
+	_boot_mark("афиша открыта")
 
 
 func _open_menu() -> void:
