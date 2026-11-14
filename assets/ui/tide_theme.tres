@@ -1,0 +1,23 @@
+[gd_resource type="Theme" load_steps=4 format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/Oswald-Medium.ttf" id="1_body"]
+[ext_resource type="FontFile" path="res://assets/fonts/Unbounded-Black.ttf" id="2_title"]
+[ext_resource type="FontFile" path="res://assets/fonts/JetBrainsMono-ExtraBold.ttf" id="3_mono"]
+
+[resource]
+default_font = ExtResource("1_body")
+default_font_size = 22
+Button/colors/font_color = Color(0.937, 0.918, 0.847, 1)
+Button/colors/font_hover_color = Color(0.208, 0.816, 0.729, 1)
+Button/colors/font_pressed_color = Color(0.051, 0.082, 0.125, 1)
+Button/fonts/font = ExtResource("2_title")
+Button/font_sizes/font_size = 26
+CheckButton/colors/font_color = Color(0.937, 0.918, 0.847, 0.62)
+CheckButton/colors/font_hover_color = Color(0.208, 0.816, 0.729, 1)
+CheckButton/colors/font_pressed_color = Color(0.208, 0.816, 0.729, 1)
+CheckButton/fonts/font = ExtResource("3_mono")
+CheckButton/font_sizes/font_size = 17
+Label/colors/font_color = Color(0.937, 0.918, 0.847, 1)
+Label/colors/font_outline_color = Color(0.051, 0.082, 0.125, 1)
+Label/fonts/font = ExtResource("1_body")
+Label/font_sizes/font_size = 22

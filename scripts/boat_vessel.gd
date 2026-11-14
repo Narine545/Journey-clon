@@ -222,6 +222,10 @@ func _physics_process(delta: float) -> void:
 	if main != null and main.inspection_active():
 		throttle = 0.0
 		steer = 0.0
+	if main != null and main.menu_open:
+		# На афише лодка живёт, но руль и ход у игрока забирает меню.
+		throttle = 0.0
+		steer = 0.0
 	if main != null and main.harbor != null and main.harbor.moored:
 		throttle = 0.0
 		steer = 0.0

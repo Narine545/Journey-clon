@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/kit/chain_bar.gd" id="1_script"]
+
+[node name="ChainBar" type="Control"]
+custom_minimum_size = Vector2(600, 48)
+offset_right = 600.0
+offset_bottom = 48.0
+script = ExtResource("1_script")

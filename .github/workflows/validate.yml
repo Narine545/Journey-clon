@@ -146,6 +146,28 @@ jobs:
             exit 1
           fi
 
+      # Витрина интерфейса TIDECUT: все экраны снимаются отдельным скриптом
+      # и кладутся в shots/ — по ним видно, как выглядит редизайн на самом деле.
+      - name: TIDECUT UI screenshots (витрина интерфейса)
+        run: |
+          mkdir -p shots
+          TIDE_SHOT_DIR="$PWD/shots" TIDE_SHOWCASE_QUIT=1 \
+            xvfb-run -a -s "-screen 0 1920x1080x24" \
+            godot_bin/godot --path . res://scenes/ui/showcase.tscn \
+            --rendering-method forward_plus --resolution 1920x1080 \
+            --fixed-fps 30 --quit-after 3000 > tide-ui.log 2>&1 || true
+          cat tide-ui.log
+          cp -f tide-ui.log .ci-logs/ || true
+          ls -la shots || true
+          if grep -qiE "SCRIPT ERROR|SHADER ERROR|failed to compile|error compiling|Parse Error" tide-ui.log; then
+            echo "::error::Ошибка в UI-витрине TIDECUT (см. tide-ui.log)"
+            grep -iE "SCRIPT ERROR|SHADER ERROR|failed to compile|error compiling|Parse Error" tide-ui.log | head -12 | while read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
+          test -f shots/tide_01_upgrade.png || (echo "::error::Скриншоты витрины не сохранились" && exit 1)
+
       - name: Publish artifacts (скриншоты всегда, логи при падении)
         if: always()
         run: |
@@ -164,6 +186,9 @@ jobs:
             cp boat.png .ci-logs/shots/shot_boat.png
           fi
           git add .ci-logs
+          if compgen -G "shots/*.png" > /dev/null; then
+            git add shots
+          fi
           git commit -m "ci: артефакты прогона ${GITHUB_SHA::7}" || true
           # GitHub периодически отвечает HTTP 500 на первый push; не теряем кадр.
           for attempt in 1 2 3; do

@@ -1115,15 +1115,26 @@ func _check_raid_fx() -> void:
 	fx.render()
 	_check(fx._batch.visible_instance_count == 0 and is_zero_approx(fx._remaining[1]),
 		"отключение эффектов выключает дульные вспышки")
-	run.hud._bar_index = 0
-	run.hud._bar(Rect2(0, 0, 100, 8), -2.0, Color.WHITE)
-	run.hud._bar(Rect2(0, 10, 100, 8), 2.0, Color.WHITE)
-	var empty_material := run.hud._bars[0].material as ShaderMaterial
-	var full_material := run.hud._bars[1].material as ShaderMaterial
-	_check(run.hud._bars.size() == 3
-		and is_zero_approx(float(empty_material.get_shader_parameter("progress")))
-		and is_equal_approx(float(full_material.get_shader_parameter("progress")), 1.0),
-		"полосы ограничивают прогресс нулём и единицей")
+	# TIDECUT: цепь опыта и вода в корпусе живут в тех же границах 0…1.
+	var tide = run.hud
+	var chain = tide.hud._chain
+	chain.set_values(-5.0, 10.0)
+	var chain_low: float = chain.progress
+	chain.set_values(50.0, 10.0)
+	var chain_high: float = chain.progress
+	var hull = tide.hud._hull
+	hull.set_hp(1.5)
+	var hull_dry := float(hull._material.get_shader_parameter("fill"))
+	hull.set_hp(-1.0)
+	var hull_full := float(hull._material.get_shader_parameter("fill"))
+	_check(
+		tide is TideUi
+		and is_zero_approx(chain_low)
+		and is_equal_approx(chain_high, 1.0)
+		and is_zero_approx(hull_dry)
+		and is_equal_approx(hull_full, 1.0),
+		"цепь опыта и вода в корпусе ограничены нулём и единицей"
+	)
 	run.effects_enabled = previous_setting
 	fx.reset()
 	run.hud.refresh()
@@ -1644,22 +1655,25 @@ func _check_raid_stats() -> void:
 
 func _check_raid_result_layout() -> void:
 	var run := main.raid
-	var saved_state := run.state
-	run.state = RaidRun.State.LOST
-	run.hud.refresh()
-	var hud := run.hud
-	_check(hud._results.visible and hud._result_columns.size() == 2
-		and hud._result_columns[0].text.contains("ПОЛУЧЕНО КОРПУСОМ")
-		and hud._result_columns[1].text.contains("ИТОГОВАЯ СБОРКА")
-		and hud._result_columns[1].text.contains("ЭВОЛЮЦИИ"),
-		"итоги разделены на боевые результаты и сборку без потери статистики")
-	_check(hud._retry.get_parent() == hud._modal_footer
-		and hud._leave.get_parent() == hud._modal_footer
-		and not hud._modal_scroll.is_ancestor_of(hud._modal_footer),
-		"кнопки результатов находятся вне прокрутки")
-	run.state = saved_state
-	hud.refresh()
-	_check(not hud._results.visible, "сетка результатов скрыта во время боя")
+	var hud = run.hud
+	var payload: Dictionary = hud._report_payload()
+	var report = hud.report
+	report.open(payload)
+	_check(report.visible
+		and String(payload["protocol"]).contains("ПОЛУЧЕНО КОРПУСОМ")
+		and String(payload["protocol"]).contains("ВЗЯТО МОДУЛЕЙ")
+		and String(payload["build"]).contains("СБОРКА")
+		and String(payload["build"]).contains("Q"),
+		"рапорт сохраняет статистику корпуса, сборки и последних записей")
+	_check(report._protocol.text == String(payload["protocol"])
+		and report._build.text == String(payload["build"]),
+		"протокол рапорта показывает ровно те данные, что отдаёт рейд")
+	_check(report._restart.get_parent() == report
+		and report._menu.get_parent() == report
+		and report._restart.position.y > report._protocol.position.y,
+		"кнопки «НОВАЯ ВАХТА» и «В МЕНЮ» стоят ниже протокола, вне прокрутки")
+	report.hide()
+	_check(not report.visible, "рапорт скрыт, пока бой продолжается")
 
 
 func _check_raid_contacts_and_buoyancy() -> void:

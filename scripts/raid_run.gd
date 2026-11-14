@@ -46,7 +46,9 @@ var gravity_mines: GravityMines
 var sphere_mines: SphereMines
 var stern_charges: RaidSternCharges
 var salvage: RaidSalvage
-var hud: RaidHud
+## Видимый интерфейс рейда — TIDECUT (TideUi). Старый RaidHud больше не создаётся:
+## вся его логика (пауза, итоги, отладка) перенесена в новые экраны.
+var hud
 var main: BoatMain
 var state := State.IDLE
 var elapsed := 0.0
@@ -78,6 +80,8 @@ var boss_arrived_at := -1.0
 var boss_spawned := false
 var rerolls_left := REROLLS
 var choices: Array[int] = []
+## Журнал взятых модулей: время вахты + индекс апгрейда. Читают пауза и рапорт.
+var upgrade_log: Array[Dictionary] = []
 var enemies: Array[Dictionary] = []
 var shots: Array[Dictionary] = []
 var grid: Dictionary = {}
@@ -131,7 +135,7 @@ func setup(scene: BoatMain) -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	add_child(layer)
-	hud = RaidHud.new()
+	hud = TideUi.new()
 	hud.run = self
 	layer.add_child(hud)
 	hud.setup()
@@ -205,6 +209,7 @@ func start() -> void:
 	grid.clear()
 	_water_cells.clear()
 	choices.clear()
+	upgrade_log.clear()
 	salvage.reset()
 	weapon_fx.reset()
 	damage_fx.reset()
@@ -255,6 +260,7 @@ func leave() -> void:
 	grid.clear()
 	_water_cells.clear()
 	choices.clear()
+	upgrade_log.clear()
 	_enemy_batch.visible_instance_count = 0
 	_shot_batch.visible_instance_count = 0
 	salvage.reset()
@@ -819,6 +825,7 @@ func choose(index: int) -> void:
 			gravity_damage_rank = mini(3, gravity_damage_rank + 1)
 	if choices[index] >= 10 and choices[index] <= 13:
 		stats.record_evolution(choices[index], elapsed)
+	upgrade_log.append({"at": elapsed, "kind": choices[index]})
 	xp -= xp_needed
 	level += 1
 	xp_needed = 8 + (level - 1) * 5

@@ -27,6 +27,10 @@ var water: WaterSurface
 var boat: BoatVessel
 var camera: Camera3D
 var hud: BoatHud
+## Главное меню — афиша пароходства в стиле TIDECUT (только для человека).
+var menu: TideMainMenu
+var menu_layer: CanvasLayer
+var menu_open := false
 var inspector: WorldInspector
 var photo_mode: BoatPhotoMode
 var raid: RaidRun
@@ -156,6 +160,7 @@ func _ready() -> void:
 	raid = RaidRun.new()
 	add_child(raid)
 	raid.setup(self)
+	_build_tide_menu()
 	_setup_retro_debug()
 	_setup_rme4_atmosphere()
 	sea_look_trial = SeaLookTrial.new()
@@ -754,6 +759,55 @@ func interact_with_beacon() -> void:
 		announce("ЗАЖЖЁН МАЯК «%s»! (%d / %d)" % [b["name"].to_upper(), lit_beacon_count(), beacons.size()])
 
 
+func _build_tide_menu() -> void:
+	# Витрина нужна живому игроку; автотесты и рендер-проверки идут без меню.
+	for variable in [
+		"JOURNEY_BOAT_SMOKE", "JOURNEY_BOAT_SHOT", "JOURNEY_BOAT_SHOT_DRIVE", "JOURNEY_SHOT"
+	]:
+		if OS.has_environment(variable):
+			return
+	menu_layer = CanvasLayer.new()
+	menu_layer.layer = 50
+	add_child(menu_layer)
+	var host := Control.new()
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.theme = load("res://assets/ui/tide_theme.tres")
+	menu_layer.add_child(host)
+	host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var stage := TideStage.new()
+	host.add_child(stage)
+	menu = TideMainMenu.new()
+	stage.canvas.add_child(menu)
+	menu.voyage_requested.connect(_on_menu_voyage)
+	menu.continue_requested.connect(_close_menu)
+	menu.quit_requested.connect(_on_menu_quit)
+	_open_menu()
+
+
+func _open_menu() -> void:
+	if menu == null:
+		return
+	menu_open = true
+	menu.open()
+
+
+func _close_menu() -> void:
+	menu_open = false
+	if menu != null:
+		menu.close()
+
+
+func _on_menu_voyage() -> void:
+	_close_menu()
+	if raid != null and not raid.engaged():
+		# start() сам скажет, если под килем ещё мелко.
+		raid.start()
+
+
+func _on_menu_quit() -> void:
+	get_tree().quit(0)
+
+
 func announce(text: String) -> void:
 	notice = text
 	notice_time = 6.0
@@ -1023,6 +1077,17 @@ func gameplay_paused() -> bool:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if menu_open:
+		if event is InputEventKey and event.pressed and not event.echo:
+			if event.physical_keycode == KEY_ESCAPE:
+				_close_menu()
+				get_viewport().set_input_as_handled()
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.physical_keycode == KEY_ESCAPE and (raid == null or not raid.engaged()):
+			_open_menu()
+			get_viewport().set_input_as_handled()
+			return
 	if inspection_active() or gameplay_paused():
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -1172,7 +1237,9 @@ func _process(delta: float) -> void:
 	notice_time = maxf(0.0, notice_time - delta)
 	if not inspection_active() and not gameplay_paused():
 		resource_zones.update(delta)
-	hud.visible = not inspection_active() and not (raid != null and raid.engaged())
+	hud.visible = (
+		not menu_open and not inspection_active() and not (raid != null and raid.engaged())
+	)
 	hud.queue_redraw()
 	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":
 		_capture_frames += 1

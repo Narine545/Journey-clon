@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/kit/title_label.gd" id="1_script"]
+
+[node name="TitleLabel" type="Label"]
+text = "ЗАГОЛОВОК"
+offset_right = 900.0
+offset_bottom = 150.0
+script = ExtResource("1_script")
