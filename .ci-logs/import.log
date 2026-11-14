@@ -151,19 +151,3 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  16% ] [90m[1mloading_editor_layout[22m | Loading docks...[39m[0m
 [92m[ DONE ][39m [1mloading_editor_layout[22m
 [0m
-SCRIPT ERROR: Parse Error: Could not parse global class "TideGameOverReport" from "res://scripts/ui/screens/game_over_report.gd".
-          at: GDScript::reload (res://scripts/ui/tide_ui.gd:16)
-SCRIPT ERROR: Parse Error: Could not resolve class "TideGameOverReport", because of a parser error.
-          at: GDScript::reload (res://scripts/ui/tide_ui.gd:48)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/raid_run.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/boat_vessel.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/buoy_dynamics.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/shoal_markers.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/boat_main.gd:0)
-ERROR: Failed to load script "res://scripts/boat_main.gd" with error "Parse error".
-   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
