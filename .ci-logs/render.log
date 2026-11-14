@@ -17,3 +17,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 
 [NPC] CC0 animation playing: Idle_Talking; root=..
 [SHOT] кадры в /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots
+[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_a_coast.png -> 0
+[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_j_proxima.png -> 0
+[SHOT] night sand camera=(165.4911, 4.294431, -16.2) target=(160.4911, 0.755178, -19.2) forward=(-0.733028, -0.518874, -0.439817)
+[SHOT] /home/runner/work/Journey-clon/Journey-clon/.ci-logs/shots/shot_k_night_stars.png -> 0
