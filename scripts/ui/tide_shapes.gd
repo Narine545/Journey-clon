@@ -23,7 +23,9 @@ static func torn_rect(
 	# верхняя кромка: срез левого верхнего угла 45°
 	points.append(Vector2(0.0, c))
 	points.append(Vector2(c, 0.0))
-	points.append(Vector2(w, 0.0))
+	# малая фаска правого верхнего угла — силуэт не читается «коробкой»
+	points.append(Vector2(w - c * 0.5, 0.0))
+	points.append(Vector2(w, c * 0.5))
 	# правый нижний срез
 	points.append(Vector2(w, h - c))
 	# нижняя кромка: регулярные треугольные зубцы справа налево
@@ -34,7 +36,6 @@ static func torn_rect(
 		x -= step
 	points.append(Vector2(c, h))
 	points.append(Vector2(0.0, h * 0.55))
-	points.append(Vector2(0.0, h - c * 0.0))
 	if not is_zero_approx(skew):
 		for index in points.size():
 			var t := points[index].y / h
@@ -128,6 +129,19 @@ static func stadium(size: Vector2, segments: int = 12) -> PackedVector2Array:
 	return points
 
 
+## Часть полигона левее вертикали x (для плавного заполнения цепи).
+static func clip_left(points: PackedVector2Array, x: float) -> Array[PackedVector2Array]:
+	var box := bounds_of(points).grow(4.0)
+	if x <= box.position.x:
+		return []
+	if x >= box.end.x:
+		return [points]
+	var mask := PackedVector2Array([
+		box.position, Vector2(x, box.position.y), Vector2(x, box.end.y), Vector2(box.position.x, box.end.y),
+	])
+	return Geometry2D.intersect_polygons(points, mask)
+
+
 ## Закрытая копия полигона (для draw_polyline нужен замкнутый контур).
 static func closed(points: PackedVector2Array) -> PackedVector2Array:
 	var result := points.duplicate()
@@ -148,7 +162,10 @@ static func fill(canvas: CanvasItem, points: PackedVector2Array, color: Color) -
 	if points.size() < 3:
 		return
 	canvas.draw_colored_polygon(points, color)
-	canvas.draw_polyline(closed(points), color, 1.0, true)
+	# Сглаживающая кромка только у непрозрачных заливок: у полупрозрачных она
+	# ложится поверх заливки и даёт видимый тёмный кант по стыку.
+	if color.a >= 0.999:
+		canvas.draw_polyline(closed(points), color, 1.0, true)
 
 
 static func stroke(canvas: CanvasItem, points: PackedVector2Array, color: Color, width: float = 2.0) -> void:

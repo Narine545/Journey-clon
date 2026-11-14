@@ -97,7 +97,7 @@ func _build() -> void:
 
 	_stamp = TideKit.stamp(self, "ОТХОД 06:00", Rect2(560, 842, 460, 136), TideTokens.FLARE, 46, -12.0)
 	_footer = TideKit.text(
-		self, "РЕЙС №041 · ВЕРСИЯ 0.9.4", Vector2(96, 1014), 1, 18, TideTokens.foam_alpha(0.55)
+		self, "РЕЙС №041 · ВЕРСИЯ 0.9.4", Vector2(96, 1014), 1, 20, TideTokens.foam_alpha(0.8)
 	)
 	_footer.rotation = deg_to_rad(-1.0)
 

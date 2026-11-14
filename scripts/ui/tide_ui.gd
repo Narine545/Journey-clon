@@ -237,6 +237,18 @@ func _on_debug_toggled(key: String, value: bool) -> void:
 			run.fireball_enabled = value
 
 
+## Строка подсказок HUD показывает, какие отладочные режимы включены.
+func debug_hint() -> void:
+	if run == null or hud == null:
+		return
+	var marks := "F5 · БЕССМЕРТИЕ %s     F6 · ОЧИСТКА %s     F7 · ЭФФЕКТЫ %s" % [
+		"ВКЛ" if run.debug_invulnerable else "ВЫКЛ",
+		"ВКЛ" if run.debug_clear_screen else "ВЫКЛ",
+		"ВКЛ" if run.effects_enabled else "ВЫКЛ",
+	]
+	hud.set_keys_hint(marks, run.debug_invulnerable or run.debug_clear_screen)
+
+
 # --- Сборка данных для экранов ---
 
 
@@ -328,8 +340,8 @@ func _cooldown_text(seconds: float) -> String:
 
 func _journal_payload() -> Dictionary:
 	var entries := []
-	var log: Array = run.upgrade_log
-	for entry in log:
+	var taken: Array = run.upgrade_log
+	for entry in taken:
 		var kind := int(entry["kind"])
 		entries.append(
 			{
@@ -351,7 +363,7 @@ func _journal_payload() -> Dictionary:
 	stats += _leader("КОРПУС", "%d%%" % roundi(hull)) + "\n"
 	stats += _leader("ФАЗА", RaidWaves.label(run.elapsed).split("·")[0].strip_edges()) + "\n"
 	stats += _leader("ПЕРЕБРОСЫ", "%d" % run.rerolls_left) + "\n"
-	stats += "\nЗАПИСЕЙ В ЖУРНАЛЕ: %d" % log.size()
+	stats += "\nЗАПИСЕЙ В ЖУРНАЛЕ: %d" % taken.size()
 	return {
 		"entries": entries,
 		"stats": stats,
@@ -423,6 +435,6 @@ func _report_payload() -> Dictionary:
 
 
 ## Дополнить строку точками до ровной колонки — как в судовом протоколе.
-func _leader(name: String, value: String, width: int = 34) -> String:
-	var dots := maxi(2, width - name.length() - value.length())
-	return "%s %s %s" % [name, ".".repeat(dots), value]
+func _leader(caption: String, value: String, width: int = 34) -> String:
+	var dots := maxi(2, width - caption.length() - value.length())
+	return "%s %s %s" % [caption, ".".repeat(dots), value]

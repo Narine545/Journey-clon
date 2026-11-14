@@ -1010,6 +1010,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.physical_keycode == KEY_Q:
 			pulse()
 			get_viewport().set_input_as_handled()
+		elif event.physical_keycode in [KEY_F5, KEY_F6, KEY_F7]:
+			# Быстрая отладка без захода в журнал; полный набор — ESC → «ОТЛАДКА · ТЕСТ».
+			match event.physical_keycode:
+				KEY_F5:
+					debug_invulnerable = not debug_invulnerable
+					stats.debug_used = stats.debug_used or debug_invulnerable
+					main.announce("ОТЛАДКА: БЕССМЕРТИЕ %s" % ("ВКЛ" if debug_invulnerable else "ВЫКЛ"))
+				KEY_F6:
+					debug_clear_screen = not debug_clear_screen
+					stats.debug_used = stats.debug_used or debug_clear_screen
+					main.announce("ОТЛАДКА: ОЧИСТКА ЭКРАНА %s" % ("ВКЛ" if debug_clear_screen else "ВЫКЛ"))
+				KEY_F7:
+					hud._on_debug_toggled("effects", not effects_enabled)
+					main.announce("ОТЛАДКА: ЭФФЕКТЫ %s" % ("ВКЛ" if effects_enabled else "ВЫКЛ"))
+			hud.debug_hint()
+			get_viewport().set_input_as_handled()
 
 
 func _enemy_visual_color(enemy: Dictionary) -> Color:

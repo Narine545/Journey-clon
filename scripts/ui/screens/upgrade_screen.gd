@@ -83,7 +83,7 @@ func _build() -> void:
 		_flags.append(flag)
 
 	_hint = TideKit.text(
-		self, "1 · 2 · 3 — ПОДНЯТЬ ФЛАГ", Vector2(150, 1030), 1, 19, TideTokens.foam_alpha(0.45)
+		self, "1 · 2 · 3 — ПОДНЯТЬ ФЛАГ", Vector2(150, 1030), 1, 22, TideTokens.foam_alpha(0.8)
 	)
 	_reroll = TideKit.button(
 		self,

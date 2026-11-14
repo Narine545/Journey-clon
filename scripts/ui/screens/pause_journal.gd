@@ -69,7 +69,7 @@ func _build() -> void:
 	TideKit.panel(
 		_debug_panel, Rect2(Vector2.ZERO, DEBUG_RECT.size), TideTokens.DEEP, Color(0, 0, 0, 0), false
 	)
-	TideKit.text(_debug_panel, "ОТЛАДКА · ТЕСТ", Vector2(56, 22), 1, 18, TideTokens.foam_alpha(0.55))
+	TideKit.text(_debug_panel, "ОТЛАДКА · ТЕСТ", Vector2(56, 22), 1, 20, TideTokens.foam_alpha(0.85))
 	var index := 0
 	for entry in DEBUG_KEYS:
 		var key := String(entry[0])
@@ -235,7 +235,7 @@ func _write_entry(entry: Dictionary, index: int) -> void:
 
 
 func _paint_debug(button: TideButton, state: bool) -> void:
-	button.tint = TideTokens.SONAR if state else TideTokens.foam_alpha(0.3)
+	button.tint = TideTokens.SONAR if state else TideTokens.foam_alpha(0.6)
 	button.set_caption(button.caption.text, TideTokens.SONAR if state else TideTokens.foam_alpha(0.6))
 	button.queue_redraw()
 

@@ -47,10 +47,10 @@ func _ready() -> void:
 	resized.connect(_fit_caption)
 
 
-func set_caption(text: String, color: Color = Color(0, 0, 0, 0)) -> void:
+func set_caption(value: String, color: Color = Color(0, 0, 0, 0)) -> void:
 	if caption == null:
 		return
-	caption.text = text
+	caption.text = value
 	if color.a > 0.001:
 		caption.add_theme_color_override("font_color", color)
 	_fit_caption()

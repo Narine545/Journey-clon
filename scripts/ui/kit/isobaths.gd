@@ -14,14 +14,14 @@ const SHADER := preload("res://shaders/isobaths.gdshader")
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	color = Color(1.0, 1.0, 1.0, 1.0)
-	var material := ShaderMaterial.new()
-	material.shader = SHADER
-	material.set_shader_parameter("line_color", Color(line_color, line_alpha))
-	material.set_shader_parameter("step_px", step_px)
-	material.set_shader_parameter("drift", drift)
-	material.set_shader_parameter("field_size", size)
+	var lines := ShaderMaterial.new()
+	lines.shader = SHADER
+	lines.set_shader_parameter("line_color", Color(line_color, line_alpha))
+	lines.set_shader_parameter("step_px", step_px)
+	lines.set_shader_parameter("drift", drift)
+	lines.set_shader_parameter("field_size", size)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	self.material = material
+	material = lines
 	resized.connect(_sync)
 	_sync()
 

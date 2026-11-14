@@ -73,55 +73,6 @@ static func isobaths(
 	return node
 
 
-static func label(
-	parent: Node,
-	text_value: String,
-	rect: Rect2,
-	kind: int = 0,
-	point: int = 22,
-	color: Color = TideTokens.FOAM,
-	deg: float = 0.0,
-	wrap: bool = true
-) -> Label:
-	var node := Label.new()
-	node.text = text_value
-	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
-	match kind:
-		1:
-			TideTokens.style_mono(node, point, color)
-		2:
-			TideTokens.style_title(node, point, color, 0)
-		_:
-			TideTokens.style_body(node, point, color)
-	place(node, rect, deg)
-	parent.add_child(node)
-	return node
-
-
-static func mono(
-	parent: Node,
-	text_value: String,
-	at: Vector2,
-	point: int = 20,
-	color: Color = TideTokens.FOAM,
-	deg: float = 0.0
-) -> Label:
-	var measured := TideTokens.mono_font().get_string_size(
-		text_value, HORIZONTAL_ALIGNMENT_LEFT, -1, point
-	)
-	return label(
-		parent,
-		text_value,
-		Rect2(at, Vector2(measured.x + 10.0, float(point) * 1.6)),
-		1,
-		point,
-		color,
-		deg,
-		false
-	)
-
-
 static func stamp(
 	parent: Node, text_value: String, rect: Rect2, tint: Color, point: int = 40, deg: float = -12.0
 ) -> TideStamp:
@@ -149,7 +100,7 @@ static func button(
 ) -> TideButton:
 	var node: TideButton = BUTTON.instantiate()
 	place(node, rect, deg)
-	node.variant = variant
+	node.variant = variant as TideButton.Shape
 	node.tint = tint
 	node.font_kind = font_kind
 	node.point_size = point

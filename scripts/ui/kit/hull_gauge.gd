@@ -77,7 +77,7 @@ func _draw_lines() -> void:
 		_lines.draw_rect(Rect2(at - Vector2(7.0, 7.0), Vector2(14.0, 14.0)), TideTokens.FOAM)
 	_lines.draw_line(
 		Vector2(extent.x * 0.05, extent.y * 0.56), Vector2(extent.x * 0.94, extent.y * 0.56),
-		TideTokens.foam_alpha(0.4), 2.0, true
+		TideTokens.foam_alpha(0.8), 2.0, true
 	)
 	# Мерная рейка осадки: 75 / 50 / 25, нижняя отметка — аварийная.
 	var font := TideTokens.mono_font()

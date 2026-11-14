@@ -88,7 +88,7 @@ func _build() -> void:
 	TideKit.place(_chain, CHAIN_RECT, -0.8)
 	add_child(_chain)
 	_chain_note = TideKit.text(
-		self, "ОПЫТ 00 / 08", Vector2(214, 84), 1, 16, TideTokens.foam_alpha(0.55), 420.0
+		self, "ОПЫТ 00 / 08", Vector2(214, 82), 1, 20, TideTokens.foam_alpha(0.85), 420.0
 	)
 
 	# --- Иллюминатор-таймер справа сверху, под ним фаза и сонар ---
@@ -103,7 +103,7 @@ func _build() -> void:
 	TideKit.place(_radar, RADAR_RECT, -2.2)
 	add_child(_radar)
 	_radar_note = TideKit.text(
-		self, "СОНАР · 55 М", Vector2(1640, 452), 1, 15, TideTokens.foam_alpha(0.5), 246.0,
+		self, "СОНАР · 55 М", Vector2(1640, 452), 1, 18, TideTokens.foam_alpha(0.85), 246.0,
 		HORIZONTAL_ALIGNMENT_RIGHT
 	)
 	_radar_note.rotation = deg_to_rad(-2.2)
@@ -152,8 +152,8 @@ func _build() -> void:
 	)
 	_weapons_label.size.y = WEAPON_RECT.size.y
 	_keys_hint = TideKit.text(
-		self, "ESC · ЖУРНАЛ      Q · ИМПУЛЬС", Vector2(600, 1034), 1, 15, TideTokens.foam_alpha(0.42),
-		720.0, HORIZONTAL_ALIGNMENT_CENTER
+		self, "ESC · ЖУРНАЛ И ОТЛАДКА     Q · ИМПУЛЬС     F5–F7 · ТЕСТ", Vector2(480, 1028), 1, 19,
+		TideTokens.foam_alpha(0.8), 960.0, HORIZONTAL_ALIGNMENT_CENTER
 	)
 
 	_shoal = TideKit.text(
@@ -177,7 +177,7 @@ func _build() -> void:
 	_launch.pressed.connect(func() -> void: start_pressed.emit())
 	_launch_hint = TideKit.text(
 		self, "ВЫЙДИТЕ НА ГЛУБОКУЮ ВОДУ · ESC — МЕНЮ", Vector2(1250, 966), 1, 17,
-		TideTokens.foam_alpha(0.55), 600.0, HORIZONTAL_ALIGNMENT_RIGHT
+		TideTokens.foam_alpha(0.85), 600.0, HORIZONTAL_ALIGNMENT_RIGHT
 	)
 	_launch_hint.rotation = deg_to_rad(-2.4)
 
@@ -328,6 +328,13 @@ func bump_loot() -> void:
 
 
 ## Момент выхода босса: штамп бьёт по кадру.
+func set_keys_hint(value: String, alert: bool = false) -> void:
+	_keys_hint.text = value
+	_keys_hint.add_theme_color_override(
+		"font_color", TideTokens.FLARE if alert else TideTokens.foam_alpha(0.8)
+	)
+
+
 func flash_boss() -> void:
 	_boss_stamp.hit(self)
 	# Оттиск держится секунду и срывается — не висит над боем весь рейд.

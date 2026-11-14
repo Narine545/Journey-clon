@@ -23,11 +23,11 @@ func wait_frames_count(count: int) -> void:
 
 ## Сохранить текущий кадр. Имя файла — без .png.
 func capture(file_name: String = "") -> String:
-	var name := file_name if not file_name.is_empty() else screen_name
+	var shot_name := file_name if not file_name.is_empty() else screen_name
 	await RenderingServer.frame_post_draw
 	var directory := shots_dir()
 	DirAccess.make_dir_recursive_absolute(directory)
-	var path := directory.path_join("%s.png" % name)
+	var path := directory.path_join("%s.png" % shot_name)
 	var image := get_viewport().get_texture().get_image()
 	if image == null or image.is_empty():
 		push_warning("[TIDE SHOT] пустой кадр: похоже, рендер headless")
