@@ -1,24 +1,6 @@
 Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 
 WORLD: Vulkan недоступен — Compatibility-фолбэк, волюметрический туман заменён плотной дымкой
-ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
-   at: draw_polygon (scene/main/canvas_item.cpp:1074)
-   GDScript backtrace (most recent call first):
-       [0] fill (res://scripts/ui/tide_shapes.gd:154)
-       [1] _build (res://scripts/ui/screens/pause_journal.gd:100)
-       [2] _ready (res://scripts/ui/screens/pause_journal.gd:34)
-       [3] setup (res://scripts/ui/tide_ui.gd:43)
-       [4] setup (res://scripts/raid_run.gd:141)
-       [5] _ready (res://scripts/boat_main.gd:162)
-ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
-   at: draw_polyline (scene/main/canvas_item.cpp:864)
-   GDScript backtrace (most recent call first):
-       [0] fill (res://scripts/ui/tide_shapes.gd:155)
-       [1] _build (res://scripts/ui/screens/pause_journal.gd:100)
-       [2] _ready (res://scripts/ui/screens/pause_journal.gd:34)
-       [3] setup (res://scripts/ui/tide_ui.gd:43)
-       [4] setup (res://scripts/raid_run.gd:141)
-       [5] _ready (res://scripts/boat_main.gd:162)
 [BOAT SMOKE] PASS волны CPU + шейдерное море
 [BOAT SMOKE] PASS лодка спущена на глубокую воду
 [BOAT SMOKE] PASS SDF-пятна распределены вокруг лодки
@@ -90,11 +72,12 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
 [BOAT SMOKE] PASS стартовое пятно вне бухты
 [BOAT SMOKE] PASS прогноз глубины предупреждает до касания отмели
 [BOAT SMOKE] PASS на глубокой воде предупреждение гаснет
+[BOAT SMOKE] отладка отмели: прицеп=true глубина=3.21777689386516 лодка=(-160.0, 0.199003, -30.0) прицеп_поз=(-25.87837, 0.0, -149.1837) буй=(-37.65022, 0.0, -151.5125) у_причала=false
 ERROR: [BOAT SMOKE] FAIL отмель под прицепом также вызывает предупреждение
    at: push_error (core/variant/variant_utility.cpp:1023)
    GDScript backtrace (most recent call first):
        [0] _check (res://scripts/boat_smoke.gd:442)
-       [1] _check_shoal_navigation (res://scripts/boat_smoke.gd:704)
+       [1] _check_shoal_navigation (res://scripts/boat_smoke.gd:713)
        [2] _physics_process (res://scripts/boat_smoke.gd:52)
 [BOAT SMOKE] PASS рыбацкая станция в кадре обычной камеры у стоянки
 [BOAT SMOKE] PASS четыре мировые зоны и фиксированный пул 12 пятен
@@ -168,12 +151,13 @@ ERROR: [BOAT SMOKE] FAIL отмель под прицепом также выз�
 [BOAT SMOKE] PASS карточка руля ускоряет поворот, сохраняя нулевой ход и инверсию заднего хода
 [BOAT SMOKE] PASS максимальные двигатель и руль исключены из предложений
 [BOAT SMOKE] PASS дульная вспышка использует фиксированные шесть side/face-квадов
+[BOAT SMOKE] отладка вспышки: яркость=0.0 приоритет=10 факт=(0.0, 0.0, 0.0) ожидание=(-160.0002, 2.199533, -36.39983) кадр=0.23575999999997
 ERROR: [BOAT SMOKE] FAIL вспышка сохраняет яркую фазу, следует за корпусом и рисуется после прозрачного моря
    at: push_error (core/variant/variant_utility.cpp:1023)
    GDScript backtrace (most recent call first):
        [0] _check (res://scripts/boat_smoke.gd:442)
-       [1] _check_raid_fx (res://scripts/boat_smoke.gd:1101)
-       [2] _check_raid (res://scripts/boat_smoke.gd:965)
+       [1] _check_raid_fx (res://scripts/boat_smoke.gd:1123)
+       [2] _check_raid (res://scripts/boat_smoke.gd:974)
        [3] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -188,8 +172,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_fx (res://scripts/boat_smoke.gd:1106)
-       [11] _check_raid (res://scripts/boat_smoke.gd:965)
+       [10] _check_raid_fx (res://scripts/boat_smoke.gd:1125)
+       [11] _check_raid (res://scripts/boat_smoke.gd:974)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -204,8 +188,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_fx (res://scripts/boat_smoke.gd:1106)
-       [11] _check_raid (res://scripts/boat_smoke.gd:965)
+       [10] _check_raid_fx (res://scripts/boat_smoke.gd:1125)
+       [11] _check_raid (res://scripts/boat_smoke.gd:974)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -220,8 +204,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_fx (res://scripts/boat_smoke.gd:1106)
-       [11] _check_raid (res://scripts/boat_smoke.gd:965)
+       [10] _check_raid_fx (res://scripts/boat_smoke.gd:1125)
+       [11] _check_raid (res://scripts/boat_smoke.gd:974)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -236,8 +220,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_fx (res://scripts/boat_smoke.gd:1106)
-       [11] _check_raid (res://scripts/boat_smoke.gd:965)
+       [10] _check_raid_fx (res://scripts/boat_smoke.gd:1125)
+       [11] _check_raid (res://scripts/boat_smoke.gd:974)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 [BOAT SMOKE] PASS дульная вспышка заморожена с боевым временем
 [BOAT SMOKE] PASS истёкшая вспышка не рисуется
@@ -271,8 +255,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -287,8 +271,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -303,8 +287,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -319,8 +303,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -335,8 +319,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -351,8 +335,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -367,8 +351,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -383,8 +367,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -399,8 +383,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -415,8 +399,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -431,8 +415,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -447,8 +431,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -463,8 +447,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -479,8 +463,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1183)
-       [11] _check_raid (res://scripts/boat_smoke.gd:968)
+       [10] _check_raid_stern (res://scripts/boat_smoke.gd:1202)
+       [11] _check_raid (res://scripts/boat_smoke.gd:977)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 [BOAT SMOKE] PASS пауза замораживает кормовые заряды
 [BOAT SMOKE] PASS взорванный заряд освобождает ограниченный пул
@@ -513,8 +497,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -529,8 +513,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -545,8 +529,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -561,8 +545,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -577,8 +561,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -593,8 +577,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -609,8 +593,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -625,8 +609,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -641,8 +625,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -657,8 +641,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -673,8 +657,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -689,8 +673,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -705,8 +689,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -721,8 +705,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1363)
-       [11] _check_raid (res://scripts/boat_smoke.gd:970)
+       [10] _check_raid_boss (res://scripts/boat_smoke.gd:1382)
+       [11] _check_raid (res://scripts/boat_smoke.gd:979)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 [BOAT SMOKE] PASS пауза замораживает подготовку атаки босса
 [BOAT SMOKE] PASS реальный менеджер создаёт только показанные снаряды босса
@@ -763,8 +747,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -779,8 +763,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -795,8 +779,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -811,8 +795,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -827,8 +811,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -843,8 +827,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -859,8 +843,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -875,8 +859,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -891,8 +875,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -907,8 +891,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -923,8 +907,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -939,8 +923,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -955,8 +939,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -971,8 +955,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1586)
-       [11] _check_raid (res://scripts/boat_smoke.gd:975)
+       [10] _check_raid_debug (res://scripts/boat_smoke.gd:1605)
+       [11] _check_raid (res://scripts/boat_smoke.gd:984)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 [BOAT SMOKE] PASS зачистка не работает в паузе
 [BOAT SMOKE] PASS зачистка убивает цель в кадре и оставляет цель вне кадра
@@ -985,12 +969,9 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
 [BOAT SMOKE] PASS мина считает только снятый HP
 [BOAT SMOKE] PASS полученный урон ограничен оставшимся корпусом и записан как контакт
 [BOAT SMOKE] PASS рапорт сохраняет статистику корпуса, сборки и последних записей
-SCRIPT ERROR: Invalid access to property or key 'text' on a base object of type 'Callable'.
-          at: BoatSmoke._check_raid_result_layout (res://scripts/boat_smoke.gd:1668)
-          GDScript backtrace (most recent call first):
-              [0] _check_raid_result_layout (res://scripts/boat_smoke.gd:1668)
-              [1] _check_raid (res://scripts/boat_smoke.gd:977)
-              [2] _physics_process (res://scripts/boat_smoke.gd:58)
+[BOAT SMOKE] PASS протокол рапорта показывает ровно те данные, что отдаёт рейд
+[BOAT SMOKE] PASS кнопки «НОВАЯ ВАХТА» и «В МЕНЮ» стоят ниже протокола, вне прокрутки
+[BOAT SMOKE] PASS рапорт скрыт, пока бой продолжается
 [BOAT SMOKE] PASS совпадающие враги плавно расходятся без смещения центра пары
 [BOAT SMOKE] PASS контакт в центре капсулы получает устойчивое направление наружу
 [BOAT SMOKE] PASS коррекция контакта не проходит сквозь препятствие
@@ -1022,8 +1003,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1038,8 +1019,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1054,8 +1035,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1070,8 +1051,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1086,8 +1067,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1102,8 +1083,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1118,8 +1099,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1134,8 +1115,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1150,8 +1131,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1166,8 +1147,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1182,8 +1163,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1198,8 +1179,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1214,8 +1195,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1230,8 +1211,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1780)
-       [11] _check_raid (res://scripts/boat_smoke.gd:980)
+       [10] _check_raid_damage_fx (res://scripts/boat_smoke.gd:1799)
+       [11] _check_raid (res://scripts/boat_smoke.gd:989)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 [BOAT SMOKE] PASS пауза убирает глитч с лодки
 [BOAT SMOKE] PASS эксперимент моря инициализирован
@@ -1254,8 +1235,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1270,8 +1251,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1286,8 +1267,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1302,8 +1283,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1318,8 +1299,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1334,8 +1315,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1350,8 +1331,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1366,8 +1347,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1382,8 +1363,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1398,8 +1379,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1414,8 +1395,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1430,8 +1411,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polygon (scene/main/canvas_item.cpp:1074)
@@ -1446,8 +1427,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected to its `draw` signal, or when it receives NOTIFICATION_DRAW.
    at: draw_polyline (scene/main/canvas_item.cpp:864)
@@ -1462,8 +1443,8 @@ ERROR: Drawing is only allowed inside this node's `_draw()`, functions connected
        [7] _refresh_now (res://scripts/ui/tide_ui.gd:75)
        [8] refresh (res://scripts/ui/tide_ui.gd:65)
        [9] toggle_pause (res://scripts/raid_run.gd:994)
-       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1024)
-       [11] _check_raid (res://scripts/boat_smoke.gd:998)
+       [10] _check_raid_salvage (res://scripts/boat_smoke.gd:1033)
+       [11] _check_raid (res://scripts/boat_smoke.gd:1007)
        [12] _physics_process (res://scripts/boat_smoke.gd:58)
 [BOAT SMOKE] PASS боевой опыт не двигается и не собирается на паузе
 [BOAT SMOKE] PASS корпус собирает только ближайший опыт через боевой тик
