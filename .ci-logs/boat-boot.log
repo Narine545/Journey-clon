@@ -16,9 +16,9 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
 [BOOT] старт · 69 МБ
-[BOOT] мир собран · 90 МБ
+[BOOT] мир собран · 89 МБ
 [BOOT] HUD рейда · 92 МБ
-[BOOT] меню · 255 МБ
+[BOOT] меню · 254 МБ
 [BOOT] афиша открыта · 330 МБ
 [BOOT] постобработка · 330 МБ
 RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
