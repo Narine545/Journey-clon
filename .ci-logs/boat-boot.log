@@ -16,11 +16,11 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
 [BOOT] старт · 69 МБ
-[BOOT] мир собран · 89 МБ
+[BOOT] мир собран · 90 МБ
 [BOOT] HUD рейда · 92 МБ
-[BOOT] меню · 257 МБ
+[BOOT] меню · 255 МБ
 [BOOT] афиша открыта · 330 МБ
 [BOOT] постобработка · 330 МБ
 RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
-[BOOT] готово · 330 МБ
+[BOOT] готово · 331 МБ
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_07_boot.png 1920x1080
