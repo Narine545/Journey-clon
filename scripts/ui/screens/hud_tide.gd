@@ -55,6 +55,13 @@ var _debug_panel: Control
 var _debug_tab: TideButton
 var _debug_buttons := {}
 var _debug_open := true
+## Реплика героини над плитой осадки: её укачивает всё сильнее.
+const BARK_RECT := Rect2(40, 470, 560, 196)
+var _bark: Control
+var _bark_face: TextureRect
+var _bark_text: Label
+var _bark_stage := 0
+var _bark_tween: Tween
 var _shoal: Label
 var _bobs: Array[TideBob] = []
 var _prev_filled := 0
@@ -179,6 +186,7 @@ func _build() -> void:
 	_shoal.hide()
 
 	_build_debug()
+	_build_bark()
 
 	# --- Старт рейда ---
 	_launch = TideKit.button(
@@ -237,6 +245,10 @@ func push(state: Dictionary) -> void:
 		"font_color", TideTokens.FLARE if hp01 < 0.25 else TideTokens.FOAM
 	)
 	_set_sos(hp01 < 0.25)
+	var queasy := 3 if hp01 < 0.25 else (2 if hp01 < 0.45 else (1 if hp01 < 0.65 else 0))
+	if queasy > _bark_stage:
+		show_bark(queasy)
+	_bark_stage = queasy
 
 	var xp := float(state.get("xp", 0.0))
 	var needed := maxf(1.0, float(state.get("xp_needed", 1.0)))
@@ -297,6 +309,8 @@ func _set_engaged(value: bool) -> void:
 	_radar.visible = value
 	_radar_note.visible = value
 	_shoal.visible = false
+	_bark.visible = false
+	_bark_stage = 0
 	_boss_plate.visible = false
 	_sos.visible = false
 	_sos_active = false
@@ -346,6 +360,65 @@ func bump_loot() -> void:
 
 
 ## Момент выхода босса: штамп бьёт по кадру.
+func _build_bark() -> void:
+	_bark = TideKit.group(self, BARK_RECT, 2.4)
+	TideKit.panel(
+		_bark, Rect2(150, 34, BARK_RECT.size.x - 150.0, 128), TideTokens.FOAM, TideTokens.FLARE, false
+	)
+	# Окно портрета: вырезка лица, обрезается рамкой.
+	var frame := TideKit.panel(
+		_bark, Rect2(0, 0, 184, 196), TideTokens.DEEP, TideTokens.INK, false, 0.0, false
+	)
+	frame.cut = 18.0
+	var window := Control.new()
+	window.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	window.clip_contents = true
+	TideKit.place(window, Rect2(10, 10, 164, 176))
+	_bark.add_child(window)
+	_bark_face = TextureRect.new()
+	_bark_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bark_face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_bark_face.stretch_mode = TextureRect.STRETCH_SCALE
+	# Спрайт 1536×2752: лицо занимает примерно x 400–1250, y 480–1150.
+	var zoom := 0.2
+	_bark_face.size = Vector2(1536.0, 2752.0) * zoom
+	_bark_face.position = Vector2(82.0 - 815.0 * zoom, 88.0 - 800.0 * zoom)
+	window.add_child(_bark_face)
+	_bark_text = TideKit.block(
+		_bark, "", Rect2(206, 52, BARK_RECT.size.x - 236.0, 100), 2, 30, TideTokens.INK, 2
+	)
+	_bark_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_bark_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_bark.hide()
+
+
+## Героиню укачивает: стадия 1–3, портрет и реплика на три секунды.
+func show_bark(stage: int) -> void:
+	var step := clampi(stage, 1, 3)
+	var texture := TideStory.portrait("nausea_%d" % step)
+	if texture == null:
+		return
+	_bark_face.texture = texture
+	_bark_text.text = String(TideStory.NAUSEA[step - 1])
+	if _bark_tween != null and _bark_tween.is_valid():
+		_bark_tween.kill()
+	TideKit.place(_bark, BARK_RECT, 2.4)
+	_bark.scale = Vector2.ONE
+	_bark.modulate.a = 1.0
+	_bark.show()
+	TideFx.pop_in(_bark, 0.5, -10.0)
+	_bark_tween = create_tween()
+	_bark_tween.tween_interval(3.2)
+	_bark_tween.tween_property(_bark, "scale", Vector2(0.6, 0.6), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	_bark_tween.tween_callback(_hide_bark)
+
+
+func _hide_bark() -> void:
+	_bark.hide()
+	_bark.scale = Vector2.ONE
+	_bark_face.texture = null
+
+
 func _build_debug() -> void:
 	_debug_panel = TideKit.group(self, DEBUG_RECT, 1.6)
 	var back := TideKit.panel(

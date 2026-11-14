@@ -31,6 +31,8 @@ var hud: BoatHud
 var menu: TideMainMenu
 var menu_layer: CanvasLayer
 var menu_open := false
+var prologue: TidePrologue
+var prologue_seen := false
 var inspector: WorldInspector
 var photo_mode: BoatPhotoMode
 var raid: RaidRun
@@ -790,6 +792,9 @@ func _build_tide_menu() -> void:
 	host.add_child(stage)
 	menu = TideMainMenu.new()
 	stage.canvas.add_child(menu)
+	prologue = TidePrologue.new()
+	stage.canvas.add_child(prologue)
+	prologue.finished.connect(_on_prologue_finished)
 	menu.voyage_requested.connect(_on_menu_voyage)
 	menu.continue_requested.connect(_close_menu)
 	menu.quit_requested.connect(_on_menu_quit)
@@ -811,6 +816,20 @@ func _close_menu() -> void:
 
 
 func _on_menu_voyage() -> void:
+	# Первый выход за сеанс начинается с пролога: мир остаётся на паузе меню.
+	if prologue != null and not prologue_seen:
+		prologue_seen = true
+		menu.close()
+		prologue.open()
+		return
+	_start_voyage()
+
+
+func _on_prologue_finished() -> void:
+	_start_voyage()
+
+
+func _start_voyage() -> void:
 	_close_menu()
 	if raid != null and not raid.engaged():
 		# start() сам скажет, если под килем ещё мелко.
@@ -1091,6 +1110,8 @@ func gameplay_paused() -> bool:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if menu_open:
+		if prologue != null and prologue.visible:
+			return
 		if event is InputEventKey and event.pressed and not event.echo:
 			if event.physical_keycode == KEY_ESCAPE:
 				_close_menu()

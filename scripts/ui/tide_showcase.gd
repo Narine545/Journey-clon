@@ -12,6 +12,7 @@ var upgrade: TideUpgradeScreen
 var journal: TidePauseJournal
 var report: TideGameOverReport
 var menu: TideMainMenu
+var prologue: TidePrologue
 var _clock := 0.0
 var _sea: Control
 
@@ -46,6 +47,8 @@ func _ready() -> void:
 	menu = TideMainMenu.new()
 	canvas.add_child(menu)
 	menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	prologue = TidePrologue.new()
+	canvas.add_child(prologue)
 	set_process(true)
 	if OS.has_environment("TIDE_SHOWCASE_QUIT"):
 		_run_sequence.call_deferred()
@@ -200,6 +203,17 @@ func _run_sequence() -> void:
 	menu.open()
 	await _wait(44)
 	await shot.capture("tide_06_menu")
+	menu.close()
+
+	prologue.open()
+	await _wait(20)
+	prologue.show_line(4)
+	await _wait(24)
+	await shot.capture("tide_08_prologue")
+	prologue.show_line(1)
+	await _wait(24)
+	await shot.capture("tide_09_prologue_mother")
+	prologue.close()
 
 	print("[TIDE SHOWCASE] кадры сняты")
 	await _wait(6)
