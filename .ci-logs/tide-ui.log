@@ -17,7 +17,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_01_upgrade.png 1920x1080
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_02_upgrade_stamp.png 1920x1080
-[TIDE SHOWCASE] экран=(1920.0, 1080.0) окно=(1920, 1080) холст=(1920.0, 1080.0) масштаб=(1.0, 1.0) плита_осадки=[P: (36.78139, 790.1255), S: (470.0, 258.0)] плита_уровня=[P: (26.63126, 120.8463), S: (236.0, 100.0)] плита_цели=[P: (597.4062, 101.22), S: (728.0, 84.0)] плита_добычи=[P: (1524.146, 842.7921), S: (344.0, 144.0)]
+[TIDE SHOWCASE] экран=(1920.0, 1080.0) окно=(1920, 1080) холст=(1920.0, 1080.0) масштаб=(1.0, 1.0) плита_осадки=[P: (26.66187, 807.9033), S: (500.0, 250.0)] плита_уровня=[P: (26.07108, 27.68871), S: (150.0, 112.0)] плита_цели=[P: (560.8929, 111.0682), S: (799.9999, 95.99999)] плита_добычи=[P: (1547.57, 858.2677), S: (330.0, 164.0)]
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_03_hud.png 1920x1080
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_04_journal.png 1920x1080
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/tide_05_report.png 1920x1080
