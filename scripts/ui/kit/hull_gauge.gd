@@ -45,7 +45,10 @@ func _rebuild() -> void:
 		return
 	var points := TideShapes.hull(size)
 	_water.polygon = points
-	_water.uv = points
+	var normalized := PackedVector2Array()
+	for point in points:
+		normalized.append(Vector2(point.x / maxf(1.0, size.x), point.y / maxf(1.0, size.y)))
+	_water.uv = normalized
 	_material.set_shader_parameter("poly_size", size)
 	_material.set_shader_parameter("fill", 1.0 - hp)
 	_material.set_shader_parameter("danger", 1.0 if hp < 0.25 else 0.0)

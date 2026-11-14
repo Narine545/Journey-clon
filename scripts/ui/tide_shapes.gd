@@ -101,19 +101,15 @@ static func pennant(size: Vector2, tail: float = 0.0) -> PackedVector2Array:
 static func hull(size: Vector2) -> PackedVector2Array:
 	var w := maxf(20.0, size.x)
 	var h := maxf(20.0, size.y)
-	return PackedVector2Array(
-		[
-			Vector2(w * 0.5, 0.0),
-			Vector2(w * 0.74, h * 0.14),
-			Vector2(w * 0.9, h * 0.46),
-			Vector2(w * 0.94, h * 0.8),
-			Vector2(w * 0.8, h),
-			Vector2(w * 0.2, h),
-			Vector2(w * 0.06, h * 0.8),
-			Vector2(w * 0.1, h * 0.46),
-			Vector2(w * 0.26, h * 0.14),
-		]
-	)
+	# Полуширина корпуса по длине: острый нос, полная середина, срезанная корма.
+	var profile := [0.02, 0.16, 0.3, 0.4, 0.46, 0.48, 0.48, 0.46, 0.42, 0.4, 0.4]
+	var steps := profile.size()
+	var points := PackedVector2Array()
+	for index in steps:
+		points.append(Vector2(w * (0.5 + float(profile[index])), h * float(index) / float(steps - 1)))
+	for index in range(steps - 1, -1, -1):
+		points.append(Vector2(w * (0.5 - float(profile[index])), h * float(index) / float(steps - 1)))
+	return points
 
 
 ## Стадион (звено якорной цепи, иллюминаторная скоба).

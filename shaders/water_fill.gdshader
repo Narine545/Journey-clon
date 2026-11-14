@@ -10,7 +10,7 @@ uniform vec4 water_color : source_color = vec4(0.208, 0.816, 0.729, 1.0);
 uniform vec4 crest_color : source_color = vec4(0.937, 0.918, 0.847, 1.0);
 uniform vec4 danger_color : source_color = vec4(0.890, 0.129, 0.180, 1.0);
 uniform vec4 hatch_color : source_color = vec4(0.937, 0.918, 0.847, 1.0);
-uniform vec2 poly_size = vec2(420.0, 210.0);
+uniform vec2 poly_size = vec2(420.0, 210.0); // размер силуэта в пикселях
 uniform float fill : hint_range(0.0, 1.0) = 0.3;
 uniform float danger : hint_range(0.0, 1.0) = 0.0;
 uniform float wave_amp = 4.5;
@@ -18,7 +18,8 @@ uniform float wave_speed = 1.7;
 uniform float hatch_step = 7.0;
 
 void fragment() {
-	vec2 uv = UV; // локальные пиксели полигона (uv = polygon points)
+	// UV приходит нормализованным (0…1), переводим в локальные пиксели силуэта.
+	vec2 uv = UV * poly_size;
 	float surface = mix(poly_size.y - 4.0, 4.0, clamp(fill, 0.0, 1.0));
 	float wave = sin(uv.x * 0.055 + TIME * wave_speed) * wave_amp
 		+ sin(uv.x * 0.021 - TIME * wave_speed * 0.7) * wave_amp * 0.55;
