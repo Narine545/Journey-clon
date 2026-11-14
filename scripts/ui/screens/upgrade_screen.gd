@@ -102,7 +102,7 @@ func _build() -> void:
 	add_child(TideFx.bob(_head, HEAD_DEG, 0.6, 3.0, 0.4))
 	add_child(TideFx.bob(_level, LEVEL_DEG, 1.1, 2.5, 2.6))
 
-	_stamp = TideKit.stamp(self, "ПОВЫШЕНИЕ", Rect2(580, 742, 760, 190), TideTokens.FLARE, 84, -12.0)
+	_stamp = TideKit.stamp(self, "ПОВЫШЕНИЕ", Rect2(660, 800, 760, 190), TideTokens.FLARE, 84, -12.0)
 
 
 ## entries: [{title, desc, preview}] — три карточки из RaidRun.

@@ -82,20 +82,20 @@ func _build() -> void:
 	# Вертикальная линейка между протоколом и сборкой.
 	TideKit.poly(
 		_sheet,
-		PackedVector2Array([Vector2(618, 186), Vector2(621, 186), Vector2(621, 630), Vector2(618, 630)]),
+		PackedVector2Array([Vector2(618, 186), Vector2(621, 186), Vector2(621, 648), Vector2(618, 648)]),
 		TideTokens.ink_alpha(0.3)
 	)
 	_build_label = TideKit.block(
 		_sheet, "", Rect2(650, 186, inner - 588.0, 310), 1, 19, TideTokens.ink_alpha(0.78), 3
 	)
 	_log = TideKit.block(
-		_sheet, "", Rect2(650, 508, inner - 588.0, 130), 1, 17, TideTokens.FLARE, 2
+		_sheet, "", Rect2(650, 528, inner - 588.0, 130), 1, 17, TideTokens.FLARE, 2
 	)
 
 	_restart = TideKit.button(
 		_sheet,
 		"НОВАЯ ВАХТА",
-		Rect2(MARGIN + 20.0, 660, 560, 112),
+		Rect2(MARGIN + 20.0, 680, 560, 108),
 		TideButton.Shape.SOLID,
 		TideTokens.SONAR,
 		0,
@@ -107,7 +107,7 @@ func _build() -> void:
 	_menu = TideKit.button(
 		_sheet,
 		"В МЕНЮ",
-		Rect2(MARGIN + 640.0, 680, 280, 80),
+		Rect2(MARGIN + 640.0, 698, 280, 78),
 		TideButton.Shape.SOLID,
 		TideTokens.FLARE,
 		0,
