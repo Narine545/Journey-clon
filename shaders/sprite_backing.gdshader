@@ -13,6 +13,14 @@ uniform float cutoff : hint_range(0.0, 1.0) = 0.35;
 
 const int RING = 16;
 
+varying vec4 tint;
+
+void vertex() {
+	// В fragment() COLOR уже умножен на текстуру, поэтому цвет узла
+	// (modulate) забираем здесь.
+	tint = COLOR;
+}
+
 void fragment() {
 	vec4 sprite = texture(TEXTURE, UV);
 	float cover = step(cutoff, sprite.a);
@@ -24,5 +32,5 @@ void fragment() {
 		cover = max(cover, step(cutoff, texture(TEXTURE, UV + dir * spread * 0.5).a));
 	}
 	vec3 rgb = mix(backing_color.rgb, sprite.rgb, sprite.a);
-	COLOR = vec4(rgb, max(cover * backing_color.a, sprite.a)) * COLOR;
+	COLOR = vec4(rgb, max(cover * backing_color.a, sprite.a)) * tint;
 }

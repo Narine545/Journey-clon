@@ -346,7 +346,7 @@ func _draw_hold() -> void:
 			HORIZONTAL_ALIGNMENT_CENTER, 140.0
 		)
 		_write(
-			center + Vector2(-70, 104), "%s СЫР. · %s" % [String(_state["raw_text"][i]), ROLES[i]], 1, 13,
+			center + Vector2(-70, 104), "%s СЫР." % String(_state["raw_text"][i]), 1, 14,
 			TideTokens.foam_alpha(0.75), HORIZONTAL_ALIGNMENT_CENTER, 140.0
 		)
 	# Ярлык плашкоута висит на нижней кромке трюма.
@@ -471,7 +471,7 @@ func _draw_telegraph() -> void:
 	var radius := 150.0
 	var overdrive := float(_state["overdrive"]) > 0.0
 	_pie(center, radius + 24.0, PI, TAU, TideTokens.INK)
-	draw_rect(Rect2(-radius - 24.0, 38, (radius + 24.0) * 2.0, 34), TideTokens.INK)
+	draw_rect(Rect2(-radius - 24.0, 38, (radius + 24.0) * 2.0, 60), TideTokens.INK)
 	_ring(center, radius, PI, TAU, TideTokens.foam_alpha(0.22), 16.0)
 	var tone := TideTokens.FLARE if overdrive else TideTokens.SONAR
 	_ring(center, radius, PI, PI + PI * clampf(_speed, 0.0, 1.0), tone, 16.0)
@@ -502,11 +502,11 @@ func _draw_telegraph() -> void:
 		HORIZONTAL_ALIGNMENT_CENTER, 300.0
 	)
 	_write(
-		Vector2(-150, -62), "КОРПУС %d%%" % roundi(float(_state["hull"])), 1, 16,
+		Vector2(-150, 86), "КОРПУС %d%%" % roundi(float(_state["hull"])), 1, 16,
 		TideTokens.FLARE if hull_low else TideTokens.foam_alpha(0.85), HORIZONTAL_ALIGNMENT_CENTER, 300.0
 	)
 	if overdrive:
-		_write(Vector2(-150, -84), "ФОРСАЖ", 2, 18, TideTokens.FLARE, HORIZONTAL_ALIGNMENT_CENTER, 300.0)
+		_write(Vector2(-150, -50), "ФОРСАЖ", 2, 18, TideTokens.FLARE, HORIZONTAL_ALIGNMENT_CENTER, 300.0)
 
 
 ## Системы судна: три «монеты» с круговым отсчётом и диск сумерек.
@@ -524,11 +524,12 @@ func _draw_systems() -> void:
 		draw_circle(center, radius + 6.0, TideTokens.INK)
 		draw_circle(center, radius, TideTokens.DEEP)
 		if active:
-			_pie(center, radius, -PI * 0.5, -PI * 0.5 + TAU * left, TideTokens.SONAR)
+			# Круговой отсчёт: толстая дуга убывает по часовой стрелке.
+			_ring(center, radius - 9.0, -PI * 0.5, -PI * 0.5 + TAU * left, TideTokens.SONAR, 10.0)
 		var stock := int(_state["refined"][i])
 		_ring(center, radius, 0.0, TAU, color if stock > 0 else TideTokens.foam_alpha(0.3), 4.0)
 		_write(
-			center + Vector2(-30, 14), str(i + 1), 1, 36, TideTokens.INK if active and left > 0.5 else TideTokens.FOAM,
+			center + Vector2(-30, 13), str(i + 1), 1, 34, TideTokens.FOAM,
 			HORIZONTAL_ALIGNMENT_CENTER, 60.0
 		)
 		_write(
@@ -558,8 +559,10 @@ func _draw_action() -> void:
 	var origin := -plate_size * 0.5
 	var shape := TideShapes.offset(TideShapes.plate(plate_size, 14.0, 10.0), origin)
 	TideShapes.fill(self, TideShapes.offset(shape, Vector2(8, 9)), TideTokens.FLARE if tone == 2 else TideTokens.INK)
-	TideShapes.fill(self, shape, TideTokens.DEEP)
 	var pump := clampf(float(_state["pump"]), 0.0, 1.0)
+	# Пока работает насос, плашка становится бумажной: сонарь заливает её
+	# слева направо, чернильный текст читается на обеих половинах.
+	TideShapes.fill(self, shape, TideTokens.FOAM if pump > 0.0 else TideTokens.DEEP)
 	if pump > 0.0:
 		# Насос: плашка заливается слева направо по своей же форме.
 		var edge := TideShapes.bounds_of(shape).position.x + TideShapes.bounds_of(shape).size.x * pump
@@ -571,13 +574,16 @@ func _draw_action() -> void:
 	if not key.is_empty():
 		var key_w := TideTokens.font_of(1).get_string_size(key, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + 28.0
 		var cap := TideShapes.offset(TideShapes.plate(Vector2(key_w, 42), 6.0), Vector2(origin.x + 24.0, -21.0))
-		TideShapes.fill(self, cap, TideTokens.FOAM)
-		_write(Vector2(origin.x + 24.0, 9.0), key, 1, 22, TideTokens.INK, HORIZONTAL_ALIGNMENT_CENTER, key_w)
+		TideShapes.fill(self, cap, TideTokens.INK if pump > 0.0 else TideTokens.FOAM)
+		_write(
+			Vector2(origin.x + 24.0, 9.0), key, 1, 22, TideTokens.FOAM if pump > 0.0 else TideTokens.INK,
+			HORIZONTAL_ALIGNMENT_CENTER, key_w
+		)
 		text_x += key_w + 14.0
 	var room := plate_size.x * 0.5 - text_x - 30.0
 	var color := TideTokens.FOAM if tone == 0 else (TideTokens.SONAR if tone == 1 else TideTokens.FOAM)
 	if pump > 0.0:
-		color = TideTokens.INK if pump > 0.6 else TideTokens.FOAM
+		color = TideTokens.INK
 	var point := TideTokens.fit_point(TideTokens.font_of(1), _action_text, room, 24, 14)
 	_write(Vector2(text_x, 9.0), _action_text, 1, point, color)
 
