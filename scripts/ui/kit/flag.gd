@@ -11,6 +11,8 @@ signal flag_pressed(index: int)
 
 const SHADER := preload("res://shaders/flag_wave.gdshader")
 const POLE_W := 18.0
+## Тон приглушённого флага: то же, что 40 % поверх чернил, но непрозрачно.
+const DIM_TONE := Color(0.42, 0.44, 0.48, 1.0)
 ## Ось древка: его правая кромка заходит под полотно, зазора нет.
 const POLE_X := 13.0
 const POLE_THICK := 12.0
@@ -48,6 +50,8 @@ var _lean := 0.0
 var _time := 0.0
 var _locked := false
 var _tween: Tween
+var _dim_tween: Tween
+var _dimmed := false
 var _home := Vector2.ZERO
 var _has_home := false
 
@@ -94,7 +98,10 @@ func restore() -> void:
 	position = _home
 	scale = Vector2.ONE
 	rotation = deg_to_rad(rest_deg)
-	modulate.a = 1.0
+	if _dim_tween != null and _dim_tween.is_valid():
+		_dim_tween.kill()
+	_dimmed = false
+	modulate = Color.WHITE
 	_lean = 0.0
 	_set_hover(0.0)
 
@@ -309,14 +316,15 @@ func _gui_input(event: InputEvent) -> void:
 
 
 ## Наведение: полотно выпрямляется, флаг подрастает (от основания мачты —
-## значит, поднимается).
+## значит, поднимается). Отклик начинается в том же кадре: быстрый выход на
+## цель без «замаха», перелёт даёт только масштаб.
 func _animate(target: float) -> void:
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	_tween = create_tween()
 	_tween.set_parallel(true)
-	_tween.tween_method(_set_hover, _hover, target, TideTokens.HOVER_TIME * 2.0).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_tween.tween_property(self, "scale", Vector2.ONE * (1.0 + 0.05 * target), TideTokens.HOVER_TIME * 2.0).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_tween.tween_method(_set_hover, _hover, target, 0.1).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	_tween.tween_property(self, "scale", Vector2.ONE * (1.0 + 0.05 * target), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _set_hover(value: float) -> void:
@@ -326,16 +334,23 @@ func _set_hover(value: float) -> void:
 		_material.set_shader_parameter("droop", 1.0 - clampf(_hover, 0.0, 1.0) * 0.8)
 
 
-## Пригнуть и погасить флаг до 40 %, пока наведён соседний.
+func _set_lean(value: float) -> void:
+	_lean = value
+
+
+## Пригнуть и погасить флаг, пока наведён соседний. Гасим цветом, а не
+## прозрачностью: у полупрозрачного флага просвечивают наложения полотна,
+## тени и полосы (видны как грани).
 func dim(amount: bool) -> void:
-	if _locked:
+	if _locked or amount == _dimmed:
 		return
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(self, "modulate:a", 0.4 if amount else 1.0, TideTokens.HOVER_TIME * 2.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_method(
-		func(value: float) -> void: _lean = value, _lean, 2.4 if amount else 0.0, TideTokens.HOVER_TIME * 2.0
-	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_dimmed = amount
+	if _dim_tween != null and _dim_tween.is_valid():
+		_dim_tween.kill()
+	_dim_tween = create_tween()
+	_dim_tween.set_parallel(true)
+	_dim_tween.tween_property(self, "modulate", DIM_TONE if amount else Color.WHITE, 0.1).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	_dim_tween.tween_method(_set_lean, _lean, 2.4 if amount else 0.0, 0.12).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
 
 
 func hover_from_keyboard(active: bool) -> void:
@@ -356,7 +371,9 @@ func fly_up(rise: float = 30.0) -> void:
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	_set_hover(1.0)
-	modulate.a = 1.0
+	if _dim_tween != null and _dim_tween.is_valid():
+		_dim_tween.kill()
+	modulate = Color.WHITE
 	TideFx.splash(get_parent(), position + Vector2(size.x * 0.5, size.y), 16, TideTokens.FOAM)
 	TideFx.splash(get_parent(), position + Vector2(size.x * 0.3, size.y * 0.6), 10, tint)
 	var tween := create_tween()
@@ -371,6 +388,8 @@ func fall_down() -> void:
 	_locked = true
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
+	if _dim_tween != null and _dim_tween.is_valid():
+		_dim_tween.kill()
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "position:y", position.y + 420.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)

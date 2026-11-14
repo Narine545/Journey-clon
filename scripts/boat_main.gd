@@ -798,6 +798,7 @@ func _build_tide_menu() -> void:
 	menu.voyage_requested.connect(_on_menu_voyage)
 	menu.continue_requested.connect(_close_menu)
 	menu.quit_requested.connect(_on_menu_quit)
+	_start_in_harbor()
 	_open_menu()
 	_boot_mark("афиша открыта")
 
@@ -813,6 +814,18 @@ func _close_menu() -> void:
 	menu_open = false
 	if menu != null:
 		menu.close()
+
+
+## История начинается дома: лодка стоит у причала в бухте, а не в океане.
+## Автотесты идут без меню и стартуют по-прежнему с BOAT_START.
+func _start_in_harbor() -> void:
+	if harbor == null or boat == null:
+		return
+	harbor.moor_at_berth()
+	_camera_focus = boat.global_position + Vector3.UP * 0.8
+	camera.position = boat.global_position + Vector3(21.0, 27.0, 30.0)
+	camera.look_at(_camera_focus, Vector3.UP)
+	camera.reset_physics_interpolation()
 
 
 func _on_menu_voyage() -> void:
@@ -831,6 +844,10 @@ func _on_prologue_finished() -> void:
 
 func _start_voyage() -> void:
 	_close_menu()
+	if harbor != null and harbor.moored:
+		# Рейс начинается у причала: отдать швартовы и выйти на глубокую воду.
+		announce("ТИХАЯ БУХТА. [E] — ОТДАТЬ ШВАРТОВЫ, ЗАТЕМ ВЫХОДИТЕ НА ГЛУБОКУЮ ВОДУ.")
+		return
 	if raid != null and not raid.engaged():
 		# start() сам скажет, если под килем ещё мелко.
 		raid.start()

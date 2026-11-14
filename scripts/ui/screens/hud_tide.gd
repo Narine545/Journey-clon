@@ -54,7 +54,7 @@ var _keys_hint: Label
 var _debug_panel: Control
 var _debug_tab: TideButton
 var _debug_buttons := {}
-var _debug_open := true
+var _debug_open := false
 ## Реплика героини над плитой осадки: её укачивает всё сильнее.
 const BARK_RECT := Rect2(40, 470, 560, 196)
 var _bark: Control
@@ -467,7 +467,9 @@ func _build_debug() -> void:
 	_debug_tab.cut = 0.0
 	_debug_tab.focus_mode = Control.FOCUS_NONE
 	_debug_tab.pressed.connect(toggle_debug_panel)
-	_debug_tab.hide()
+	# По умолчанию панель свёрнута: виден только ярлык, раскрытие — F1 или клик.
+	_debug_panel.visible = _debug_open
+	_debug_tab.visible = not _debug_open
 
 
 func _paint_debug(button: TideButton, state: bool) -> void:

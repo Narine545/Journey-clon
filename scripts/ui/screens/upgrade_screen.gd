@@ -106,8 +106,12 @@ func _build() -> void:
 
 
 ## entries: [{title, desc, preview}] — три карточки из RaidRun.
+var _hovered := -1
+
+
 func open(entries: Array, level_from: int, level_to: int, rerolls: int, can_reroll: bool) -> void:
 	_busy = false
+	_hovered = -1
 	show()
 	_level_text.text = "%02d → %02d" % [level_from, level_to]
 	_reroll.set_caption("ПЕРЕБРОСИТЬ · %d" % rerolls)
@@ -189,15 +193,25 @@ func _stagger(node: Control, delay: float, from_scale: float, from_deg: float) -
 func _on_flag_hovered(index: int) -> void:
 	if _busy:
 		return
-	for flag in _flags:
-		flag.dim(flag.index != index)
+	_hovered = index
+	_apply_dim()
 
 
-func _on_flag_unhovered(_index: int) -> void:
+## Уход курсора применяется в конце кадра: при переходе с флага на флаг
+## соседи не «мигают» через полное освещение.
+func _on_flag_unhovered(index: int) -> void:
+	if _busy:
+		return
+	if _hovered == index:
+		_hovered = -1
+		_apply_dim.call_deferred()
+
+
+func _apply_dim() -> void:
 	if _busy:
 		return
 	for flag in _flags:
-		flag.dim(false)
+		flag.dim(_hovered >= 0 and flag.index != _hovered)
 
 
 func _on_flag_pressed(index: int) -> void:

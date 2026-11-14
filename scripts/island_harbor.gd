@@ -76,6 +76,12 @@ func interact() -> void:
 	if absf(main.boat.speed) > 1.2:
 		main.announce("ДЛЯ ШВАРТОВКИ СБРОСЬТЕ СКОРОСТЬ ДО 1.2 М/С.")
 		return
+	moor_at_berth()
+	main.announce("ТИХАЯ БУХТА: ПРИШВАРТОВАНЫ. [E] — ОТЧАЛИТЬ. БЕРЕГ ОСТАВЛЕН ПОД БУДУЩИЕ СЛУЖБЫ.")
+
+
+## Поставить лодку к причалу и завести швартовы (стыковка по [E] и старт игры).
+func moor_at_berth() -> void:
 	# Explicit docking action only: align in the checked berth, never via map/camera.
 	var boat := main.boat
 	boat.global_position.x = IslandLayout.BERTH.x
@@ -87,7 +93,6 @@ func interact() -> void:
 	boat._reset_trail(IslandLayout.BERTH)
 	boat.reset_physics_interpolation()
 	moored = true
-	main.announce("ТИХАЯ БУХТА: ПРИШВАРТОВАНЫ. [E] — ОТЧАЛИТЬ. БЕРЕГ ОСТАВЛЕН ПОД БУДУЩИЕ СЛУЖБЫ.")
 
 
 func blocks_hull(at: Vector2, yaw: float, radius: float = 1.7, half_length: float = 4.4) -> bool:

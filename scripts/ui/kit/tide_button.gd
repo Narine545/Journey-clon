@@ -153,6 +153,17 @@ func _on_down() -> void:
 func _on_up() -> void:
 	if disabled:
 		return
+	if not is_visible_in_tree():
+		# Экран закрыли прямо из обработчика нажатия: Godot шлёт button_up при
+		# скрытии. Эффектов не нужно — только вернуть кнопку в покой.
+		if _fx != null and _fx.is_valid():
+			_fx.kill()
+		scale = Vector2.ONE
+		rotation = _rest
+		_flash = 0.0
+		_wake = 1.0
+		_set_sink(0.0)
+		return
 	var kick := deg_to_rad(-2.5 if (get_index() % 2) == 0 else 2.5)
 	var rest := _rest
 	rotation = rest + kick

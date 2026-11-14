@@ -116,8 +116,10 @@ static func _particles(
 	gradient.set_color(0, Color(color, 1.0))
 	gradient.set_color(1, Color(color, 0.0))
 	particles.color_ramp = gradient
-	parent.add_child(particles)
 	particles.finished.connect(particles.queue_free)
+	# Родитель может быть занят (скрытие экрана, сборка детей) — тогда прямой
+	# add_child падает с ошибкой, поэтому узел добавляется отложенно.
+	parent.add_child.call_deferred(particles)
 	return particles
 
 
