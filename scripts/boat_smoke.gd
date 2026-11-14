@@ -701,6 +701,15 @@ func _check_shoal_navigation() -> void:
 	main.boat.set_trailer_enabled(true)
 	main.boat._trailer.global_position = bp - Vector3(outward.x, 0.0, outward.y) * 12.0
 	marks._check_course()
+	if not marks.warning:
+		print(
+			"[BOAT SMOKE] отладка отмели: прицеп=", main.boat.has_trailer,
+			" глубина=", marks.predicted_depth,
+			" лодка=", main.boat.global_position,
+			" прицеп_поз=", main.boat._trailer.global_position,
+			" буй=", bp,
+			" у_причала=", main.harbor != null and main.harbor.moored
+		)
 	_check(marks.warning, "отмель под прицепом также вызывает предупреждение")
 	main.boat.set_trailer_enabled(trailer_enabled)
 	main.boat.global_position = saved
@@ -1098,10 +1107,20 @@ func _check_raid_fx() -> void:
 	fx.step(0.04)
 	fx.render()
 	var body_pose := main.boat._body.get_global_transform_interpolated()
-	_check(is_equal_approx(fx._batch.get_instance_custom_data(0).r, 1.0)
+	var fx_ok := (
+		is_equal_approx(fx._batch.get_instance_custom_data(0).r, 1.0)
 		and fx._material.render_priority == 10
-		and fx._batch.get_instance_transform(0).origin.is_equal_approx(body_pose * RaidWeaponFx.MOUNTS[0]),
-		"вспышка сохраняет яркую фазу, следует за корпусом и рисуется после прозрачного моря")
+		and fx._batch.get_instance_transform(0).origin.is_equal_approx(body_pose * RaidWeaponFx.MOUNTS[0])
+	)
+	if not fx_ok:
+		print(
+			"[BOAT SMOKE] отладка вспышки: яркость=", fx._batch.get_instance_custom_data(0).r,
+			" приоритет=", fx._material.render_priority,
+			" факт=", fx._batch.get_instance_transform(0).origin,
+			" ожидание=", (body_pose * RaidWeaponFx.MOUNTS[0]).origin,
+			" кадр=", Engine.get_physics_interpolation_fraction()
+		)
+	_check(fx_ok, "вспышка сохраняет яркую фазу, следует за корпусом и рисуется после прозрачного моря")
 	var remaining := fx._remaining[0]
 	run.toggle_pause()
 	run._physics_process(0.5)
@@ -1666,7 +1685,7 @@ func _check_raid_result_layout() -> void:
 		and String(payload["build"]).contains("Q"),
 		"рапорт сохраняет статистику корпуса, сборки и последних записей")
 	_check(report._protocol.text == String(payload["protocol"])
-		and report._build.text == String(payload["build"]),
+		and report._build_label.text == String(payload["build"]),
 		"протокол рапорта показывает ровно те данные, что отдаёт рейд")
 	_check(report._restart.get_parent() == report
 		and report._menu.get_parent() == report

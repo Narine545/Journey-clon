@@ -97,7 +97,7 @@ func _build() -> void:
 	var rule_shape := PackedVector2Array(
 		[Vector2(200, 268), Vector2(1284, 252), Vector2(1284, 264), Vector2(200, 280)]
 	)
-	TideShapes.fill(_page, rule_shape, TideTokens.SONAR)
+	TideKit.poly(_page, rule_shape, TideTokens.SONAR)
 	_header = TideKit.mono(_page, "ВАХТА · 00:00", Vector2(200, 292), 21, TideTokens.ink_alpha(0.7), -0.8)
 
 	_list = Control.new()

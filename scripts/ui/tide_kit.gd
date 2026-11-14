@@ -25,6 +25,24 @@ static func place(control: Control, rect: Rect2, deg: float = 0.0) -> Control:
 	return control
 
 
+## Плоский полигон как отдельный узел — для мест, где рисовать нужно
+## не в _draw(), а по событию (записи журнала, линейки, правила).
+static func poly(
+	parent: Node,
+	points: PackedVector2Array,
+	color: Color,
+	offset: Vector2 = Vector2.ZERO
+) -> Polygon2D:
+	var node := Polygon2D.new()
+	node.polygon = points
+	node.color = color
+	node.position = offset
+	node.antialiased = false
+	node.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	parent.add_child(node)
+	return node
+
+
 static func panel(
 	parent: Node,
 	rect: Rect2,
