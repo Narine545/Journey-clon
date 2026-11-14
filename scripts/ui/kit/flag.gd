@@ -11,6 +11,9 @@ signal flag_pressed(index: int)
 
 const SHADER := preload("res://shaders/flag_wave.gdshader")
 const POLE_W := 18.0
+## Ось древка: его правая кромка заходит под полотно, зазора нет.
+const POLE_X := 13.0
+const POLE_THICK := 12.0
 const TITLE_MAX := 34
 const TITLE_MIN := 16
 const DESC_MAX := 25
@@ -188,7 +191,7 @@ func _rebuild_cloth() -> void:
 
 func _on_resized() -> void:
 	# Ось качки и масштаба — основание мачты.
-	pivot_offset = Vector2(POLE_W * 0.5, mast)
+	pivot_offset = Vector2(POLE_X, mast)
 	_rebuild_cloth()
 	_layout_text(title_point)
 
@@ -266,7 +269,7 @@ func _layout_text(title_cap: int) -> void:
 	_preview.position = Vector2(22.0, 0.0)
 	_preview.size = Vector2(tag_size.x - 30.0, tag_size.y)
 	# Номер клавиши — марка на мачте.
-	_key.position = Vector2(POLE_W * 0.5 - 19.0, size.y + tag_size.y + 62.0)
+	_key.position = Vector2(POLE_X - 19.0, size.y + tag_size.y + 62.0)
 	_key.size = Vector2(38.0, 38.0)
 	queue_redraw()
 
@@ -377,10 +380,14 @@ func fall_down() -> void:
 
 ## Мачта, топ и марка с номером — рисуются кодом, никаких картинок.
 func _draw() -> void:
-	var x := POLE_W * 0.5
-	draw_line(Vector2(x, -22.0), Vector2(x, mast), TideTokens.FOAM, 8.0)
+	var x := POLE_X
+	draw_line(Vector2(x, -22.0), Vector2(x, mast), TideTokens.FOAM, POLE_THICK)
+	# Марки-найтовы на древке у верхней и нижней шкаторины: видно, чем
+	# полотно принайтовлено.
+	for mark_y in [10.0, size.y - 16.0]:
+		draw_rect(Rect2(x - POLE_THICK * 0.5, mark_y, POLE_THICK, 5.0), TideTokens.INK)
 	# Топ мачты: гранёный, без скруглений.
-	var cap := TideShapes.offset(TideShapes.link(Vector2(26.0, 14.0), 5.0), Vector2(x - 13.0, -34.0))
+	var cap := TideShapes.offset(TideShapes.link(Vector2(30.0, 14.0), 5.0), Vector2(x - 15.0, -34.0))
 	TideShapes.fill(self, cap, TideTokens.FOAM)
 	# Фал от полотна к бирке.
 	if _tag != null and _tag.visible:
