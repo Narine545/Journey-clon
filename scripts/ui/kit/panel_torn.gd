@@ -10,6 +10,8 @@ extends Control
 @export var tooth_w := TideTokens.TOOTH_W
 @export var tooth_h := TideTokens.TOOTH_H
 @export var skew := 0.0
+## Прежняя несимметричная вырезка (портрет-реплика в рейде).
+@export var legacy := false
 @export var teeth := true
 @export var teeth_on_top := false
 @export var hatch := false
@@ -47,7 +49,13 @@ func configure(
 
 func _rebuild() -> void:
 	pivot_offset = size * 0.5
-	if teeth:
+	if legacy:
+		_polygon = (
+			TideShapes.torn_rect_legacy(size, cut, tooth_w, tooth_h, skew)
+			if teeth
+			else TideShapes.plate_legacy(size, skew, cut)
+		)
+	elif teeth:
 		_polygon = (
 			TideShapes.torn_rect_top(size, cut, tooth_w, tooth_h)
 			if teeth_on_top

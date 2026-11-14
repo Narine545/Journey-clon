@@ -365,14 +365,19 @@ func bump_loot() -> void:
 ## Момент выхода босса: штамп бьёт по кадру.
 func _build_bark() -> void:
 	_bark = TideKit.group(self, BARK_RECT, 2.4)
-	TideKit.panel(
+	# Портрет-реплика — единственное место, где осталась прежняя вырезка.
+	var speech := TideKit.panel(
 		_bark, Rect2(150, 34, BARK_RECT.size.x - 150.0, 128), TideTokens.FOAM, TideTokens.FLARE, false
 	)
+	speech.legacy = true
+	speech._rebuild()
 	# Окно портрета: вырезка лица, обрезается рамкой.
 	var frame := TideKit.panel(
 		_bark, Rect2(0, 0, 184, 196), TideTokens.DEEP, TideTokens.INK, false, 0.0, false
 	)
 	frame.cut = 18.0
+	frame.legacy = true
+	frame._rebuild()
 	var window := Control.new()
 	window.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	window.clip_contents = true

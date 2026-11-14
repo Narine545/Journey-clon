@@ -5,9 +5,75 @@ extends RefCounted
 ## Всё считается кодом в локальных координатах Control. Никаких картинок:
 ## форма — это полигон, тень — второй полигон со сдвигом, текстура — линии.
 
+## Лист с зубцами по нижней кромке. Зеркально симметричен: оба верхних угла
+## срезаны одинаково, боковины прямые. skew оставлен в сигнатуре и не
+## используется — наклонных и «обрезанных» плашек в интерфейсе больше нет.
+static func torn_rect(
+	size: Vector2,
+	cut: float = TideTokens.CUT,
+	tooth_w: float = TideTokens.TOOTH_W,
+	tooth_h: float = TideTokens.TOOTH_H,
+	_skew: float = 0.0
+) -> PackedVector2Array:
+	var w := maxf(16.0, size.x)
+	var h := maxf(16.0, size.y)
+	var c := clampf(cut, 2.0, minf(w, h) * 0.45)
+	var depth := clampf(tooth_h, 2.0, 22.0)
+	var teeth := maxi(2, roundi(w / clampf(tooth_w, 8.0, 40.0)))
+	var step := w / float(teeth)
+	var points := PackedVector2Array([Vector2(0.0, c), Vector2(c, 0.0), Vector2(w - c, 0.0), Vector2(w, c)])
+	points.append(Vector2(w, h))
+	for index in range(teeth - 1, -1, -1):
+		points.append(Vector2(step * (float(index) + 0.5), h - depth))
+		points.append(Vector2(step * float(index), h))
+	return points
+
+
+## Зубцы по верхней кромке — для «отрывных» лент и язычков. Симметричен.
+static func torn_rect_top(
+	size: Vector2,
+	cut: float = TideTokens.CUT,
+	tooth_w: float = TideTokens.TOOTH_W,
+	tooth_h: float = TideTokens.TOOTH_H
+) -> PackedVector2Array:
+	var w := maxf(16.0, size.x)
+	var h := maxf(16.0, size.y)
+	var c := clampf(cut, 2.0, minf(w, h) * 0.45)
+	var depth := clampf(tooth_h, 2.0, 22.0)
+	var teeth := maxi(2, roundi(w / clampf(tooth_w, 8.0, 40.0)))
+	var step := w / float(teeth)
+	var points := PackedVector2Array()
+	for index in range(teeth):
+		points.append(Vector2(step * float(index), 0.0))
+		points.append(Vector2(step * (float(index) + 0.5), depth))
+	points.append(Vector2(w, 0.0))
+	points.append(Vector2(w, h - c))
+	points.append(Vector2(w - c, h))
+	points.append(Vector2(c, h))
+	points.append(Vector2(0.0, h - c))
+	return points
+
+
+## Плашка (кнопки, ярлыки): прямоугольник с одинаково снятыми углами со всех
+## четырёх сторон. Фаска — большее из skew_px и cut.
+static func plate(size: Vector2, skew_px: float, cut: float = 0.0) -> PackedVector2Array:
+	var w := maxf(8.0, size.x)
+	var h := maxf(8.0, size.y)
+	var b := clampf(maxf(absf(skew_px), cut), 0.0, minf(w, h) * 0.34)
+	if b < 0.5:
+		return PackedVector2Array([Vector2(0.0, 0.0), Vector2(w, 0.0), Vector2(w, h), Vector2(0.0, h)])
+	return PackedVector2Array(
+		[
+			Vector2(b, 0.0), Vector2(w - b, 0.0), Vector2(w, b), Vector2(w, h - b),
+			Vector2(w - b, h), Vector2(b, h), Vector2(0.0, h - b), Vector2(0.0, b),
+		]
+	)
+
+
+## Прежняя несимметричная вырезка (осталась только у портрета-реплики в рейде).
 ## Панель с двумя срезанными углами и зубцами по нижней кромке.
 ## Возвращает замкнутый полигон в координатах (0,0)…size.
-static func torn_rect(
+static func torn_rect_legacy(
 	size: Vector2,
 	cut: float = TideTokens.CUT,
 	tooth_w: float = TideTokens.TOOTH_W,
@@ -43,34 +109,8 @@ static func torn_rect(
 	return points
 
 
-## Зубцы по верхней кромке — для «отрывных» лент и язычков.
-static func torn_rect_top(
-	size: Vector2,
-	cut: float = TideTokens.CUT,
-	tooth_w: float = TideTokens.TOOTH_W,
-	tooth_h: float = TideTokens.TOOTH_H
-) -> PackedVector2Array:
-	var w := maxf(16.0, size.x)
-	var h := maxf(16.0, size.y)
-	var c := clampf(cut, 2.0, minf(w, h) * 0.45)
-	var step := clampf(tooth_w, 8.0, 40.0)
-	var depth := clampf(tooth_h, 2.0, 22.0)
-	var points := PackedVector2Array()
-	var x := c
-	while x < w - step * 0.5:
-		points.append(Vector2(x, 0.0))
-		points.append(Vector2(x + step * 0.5, depth))
-		x += step
-	points.append(Vector2(w, 0.0))
-	points.append(Vector2(w, h - c))
-	points.append(Vector2(w - c, h))
-	points.append(Vector2(0.0, h))
-	points.append(Vector2(0.0, c))
-	return points
-
-
-## Скошенная плашка (кнопки, ярлыки, флаги-прямоугольники).
-static func plate(size: Vector2, skew_px: float, cut: float = 0.0) -> PackedVector2Array:
+## Прежняя скошенная плашка (кнопки, ярлыки, флаги-прямоугольники).
+static func plate_legacy(size: Vector2, skew_px: float, cut: float = 0.0) -> PackedVector2Array:
 	var w := maxf(8.0, size.x)
 	var h := maxf(8.0, size.y)
 	var c := clampf(cut, 0.0, minf(w, h) * 0.4)

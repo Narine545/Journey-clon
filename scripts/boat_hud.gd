@@ -214,7 +214,11 @@ func _action(next_b: Dictionary, boat_xz: Vector2) -> Array:
 	if not next_b.is_empty():
 		var at: Vector3 = next_b["buoy_pos"]
 		var distance := int(round(boat_xz.distance_to(Vector2(at.x, at.z))))
-		return ["E", "ДО БУЯ %d М · ПОДОЙДИТЕ НА 14 М" % distance, 0]
+		# Расстояние показывает талон цели: здесь текст не меняется на ходу,
+		# иначе плашка «подпрыгивала» бы на каждом метре.
+		if distance > 14:
+			return ["", "ИДИТЕ К БУЮ · ПОДОЙДИТЕ НА 14 М", 0]
+		return ["E", "БУЙ РЯДОМ", 0]
 	return ["", "ИЩИТЕ СВЕТЯЩИЕСЯ ПЯТНА И ЗАЖИГАЙТЕ МАЯКИ", 0]
 
 
@@ -233,10 +237,13 @@ func _block(slot: int, pivot: Vector2, base_deg: float, extra_scale: float = 1.0
 	if t <= 0.0:
 		return false
 	var grow := _back(t)
-	var index := slot % TideTokens.BOB_PERIOD.size()
-	var sway: float = TideTokens.BOB_AMP[index] * 0.8 * sin(
-		TAU * _time / TideTokens.BOB_PERIOD[index] + TideTokens.BOB_PHASE[index]
-	)
+	var sway := 0.0
+	if slot >= 0:
+		# slot < 0 — блок без покачивания.
+		var index := slot % TideTokens.BOB_PERIOD.size()
+		sway = TideTokens.BOB_AMP[index] * 0.8 * sin(
+			TAU * _time / TideTokens.BOB_PERIOD[index] + TideTokens.BOB_PHASE[index]
+		)
 	var deg := base_deg + sway - 10.0 * (1.0 - grow)
 	var scale_now := _factor * lerpf(0.5, 1.0, grow) * extra_scale
 	draw_set_transform(pivot * _factor, deg_to_rad(deg), Vector2(scale_now, scale_now))
@@ -275,31 +282,12 @@ func _ticks(center: Vector2, inner: float, outer: float, count: int, spin: float
 		draw_line(center + dir * inner, center + dir * outer, color, width, true)
 
 
-## Лист с зубчатой нижней кромкой: зеркально симметричен, оба верхних угла
-## срезаны одинаково, боковины прямые.
-func _sheet(size: Vector2, cut: float) -> PackedVector2Array:
-	var w := size.x
-	var h := size.y
-	var points := PackedVector2Array([Vector2(0.0, cut), Vector2(cut, 0.0), Vector2(w - cut, 0.0), Vector2(w, cut)])
-	var teeth := maxi(2, roundi(w / 26.0))
-	var step := w / float(teeth)
-	points.append(Vector2(w, h))
-	for index in range(teeth - 1, -1, -1):
-		points.append(Vector2(step * (float(index) + 0.5), h - 9.0))
-		points.append(Vector2(step * float(index), h))
-	return points
+func _sheet(extent: Vector2, cut: float) -> PackedVector2Array:
+	return TideShapes.torn_rect(extent, cut, 26.0, 9.0)
 
 
-## Плашка-ярлык: одинаковые скосы слева и справа (углы сняты со всех четырёх
-## сторон), без наклона и без срезанного угла.
-func _slab(size: Vector2, bevel: float) -> PackedVector2Array:
-	var w := size.x
-	var h := size.y
-	var b := minf(bevel, h * 0.5)
-	return PackedVector2Array([
-		Vector2(b, 0.0), Vector2(w - b, 0.0), Vector2(w, b), Vector2(w, h - b),
-		Vector2(w - b, h), Vector2(b, h), Vector2(0.0, h - b), Vector2(0.0, b),
-	])
+func _slab(extent: Vector2, bevel: float) -> PackedVector2Array:
+	return TideShapes.plate(extent, bevel)
 
 
 func _plate(rect: Rect2, paper: Color, under: Color, hatch: bool = false) -> void:
@@ -637,8 +625,8 @@ func _draw_shoal() -> void:
 	if not bool(_state["shoal"]):
 		_shoal_face = null
 		return
-	var beat := 1.0 + 0.04 * sin(_time * 9.0)
-	if not _block(0, Vector2(_view.x * 0.5, 330.0), -2.0, beat):
+	# Спокойная неподвижная метка: без пульсации и покачивания.
+	if not _block(-1, Vector2(_view.x * 0.5 + 40.0, 318.0), 0.0, 0.72):
 		return
 	var shape := TideShapes.offset(_sheet(Vector2(640, 84), 18.0), Vector2(-320, -42))
 	TideShapes.fill(self, TideShapes.offset(shape, Vector2(8, 9)), TideTokens.INK)

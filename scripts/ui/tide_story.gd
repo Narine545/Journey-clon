@@ -34,6 +34,11 @@ const HULL_BARKS := [
 	{"below": 0.35, "face": "fear_hull_1", "line": "Корпус трещит! Тётя меня убьёт…"},
 	{"below": 0.20, "face": "fear_hull_2", "line": "Мы сейчас утонем!"},
 ]
+## Заставка перед репликами: два кадра и подписи к ним.
+const INTRO := [
+	{"file": "intro_sleep", "line": "05:40. Тихая бухта ещё спит."},
+	{"file": "intro_awake", "line": "Мимо тоже хотела бы. Но у тёти Форнэль другие планы."},
+]
 const BOSS_BARK := {"face": "fear_big", "line": "Это ЧТО ещё такое?!"}
 
 ## Доля кадра портрета, где находится лицо (общая для всех вырезок Мимо).
@@ -50,7 +55,24 @@ static func backing(spread: float = 14.0) -> ShaderMaterial:
 
 
 static func portrait(face: String) -> Texture2D:
-	var path := "%s%s%s.webp" % [DIR, "" if face.begins_with("aunt_") else "heroine_", face]
+	return picture(("" if face.begins_with("aunt_") else "heroine_") + face)
+
+
+## Кадр заставки пролога: верхняя часть картинки (подушка, лицо, будильник)
+## широкой кинополосой.
+static func intro_frame(file: String) -> Texture2D:
+	var source := picture(file)
+	if source == null:
+		return null
+	var extent := Vector2(source.get_size())
+	var atlas := AtlasTexture.new()
+	atlas.atlas = source
+	atlas.region = Rect2(extent.x * 0.1, 0.0, extent.x * 0.8, extent.y * 0.42)
+	return atlas
+
+
+static func picture(file: String) -> Texture2D:
+	var path := "%s%s.webp" % [DIR, file]
 	if ResourceLoader.exists(path):
 		var texture := load(path) as Texture2D
 		if texture != null:

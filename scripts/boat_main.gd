@@ -832,8 +832,9 @@ func _on_menu_voyage() -> void:
 	# Первый выход за сеанс начинается с пролога: мир остаётся на паузе меню.
 	if prologue != null and not prologue_seen:
 		prologue_seen = true
-		menu.close()
+		# Пролог проявляется поверх афиши; афиша убирается, когда её уже не видно.
 		prologue.open()
+		get_tree().create_timer(0.5).timeout.connect(menu.close)
 		return
 	_start_voyage()
 

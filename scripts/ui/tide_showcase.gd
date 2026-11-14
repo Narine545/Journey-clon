@@ -260,7 +260,9 @@ func _run_sequence() -> void:
 	menu.close()
 
 	prologue.open()
-	await _wait(20)
+	prologue.show_intro(1)
+	await _wait(24)
+	await shot.capture("tide_11_intro")
 	prologue.show_line(4)
 	await _wait(24)
 	await shot.capture("tide_08_prologue")

@@ -1,7 +1,7 @@
 class_name TideButton
 extends Button
 ## Кнопка-плашка со срезанными углами.
-## Hover: сдвиг 4 px, усиление skew, плашка приподнимается над оттиском.
+## Hover: сдвиг 4 px, плашка приподнимается над оттиском.
 ## Нажатие: плашка вдавливается в свой оттиск (scale 0.93, 0.06 с).
 ## Отпускание: отскок TRANS_BACK с рывком поворота, пенная вспышка по форме,
 ## расходящийся контур-«кильватер» и брызги из-под нижней кромки.
@@ -81,21 +81,22 @@ func _fit_caption() -> void:
 
 
 func _tail() -> float:
-	return size.y * 0.42 if variant == Shape.PENNANT else 0.0
+	return 0.0
 
 
 func _outline_points() -> PackedVector2Array:
-	var lean := skew * (1.0 + 0.35 * _hover)
 	if variant != Shape.PENNANT:
-		return TideShapes.plate(size, lean, cut)
-	# Вымпел: скошенная плашка с вырезом «ласточкин хвост» на свободном конце.
+		return TideShapes.plate(size, skew, cut)
+	# Вымпел: плашка с одинаковыми остриями слева и справа.
+	var tip := minf(size.y * 0.42, size.x * 0.2)
 	return PackedVector2Array(
 		[
-			Vector2(lean + cut, 0.0),
-			Vector2(size.x + lean, 0.0),
-			Vector2(size.x - _tail(), size.y * 0.5),
-			Vector2(size.x - lean, size.y),
-			Vector2(-lean - cut, size.y),
+			Vector2(tip, 0.0),
+			Vector2(size.x - tip, 0.0),
+			Vector2(size.x, size.y * 0.5),
+			Vector2(size.x - tip, size.y),
+			Vector2(tip, size.y),
+			Vector2(0.0, size.y * 0.5),
 		]
 	)
 

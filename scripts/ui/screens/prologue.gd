@@ -14,6 +14,8 @@ const BACK_RECT := Rect2(1090, -80, 720, 1300)
 const BACK_DEG := 4.0
 const FACE_RECT := Rect2(1000, 30, 800, 1434)
 const TYPE_SPEED := 52.0
+## Кинополоса заставки.
+const BAND := Rect2(0, 250, 1920, 568)
 
 var lines: Array = TideStory.PROLOGUE
 var _index := -1
@@ -29,6 +31,14 @@ var _counter: Label
 var _hint: Label
 var _skip: TideButton
 var _type: Tween
+## Заставка: -1 — не идёт, 0 — «спит», 1 — «проснулась».
+var _intro_step := -1
+var _intro: Control
+var _intro_shots: Array[TextureRect] = []
+var _intro_caption: Label
+var _intro_flash: ColorRect
+var _intro_tween: Tween
+var _fade: Tween
 
 
 func _ready() -> void:
@@ -94,9 +104,62 @@ func _build() -> void:
 	_skip.focus_mode = Control.FOCUS_NONE
 	_skip.pressed.connect(skip)
 
+	_build_intro()
+	move_child(_skip, -1)
+
 	add_child(TideFx.bob(_box, BOX_DEG, 0.6, 2.9, 0.4))
 	add_child(TideFx.bob(_back, BACK_DEG, 0.7, 3.1, 2.1))
 	add_child(TideFx.bob(head, -3.0, 0.5, 2.6, 4.0))
+
+
+func _build_intro() -> void:
+	_intro = Control.new()
+	_intro.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	TideKit.place(_intro, Rect2(Vector2.ZERO, TideTokens.BASE))
+	_intro.pivot_offset = TideTokens.BASE * 0.5
+	add_child(_intro)
+	var ink := ColorRect.new()
+	ink.color = TideTokens.INK
+	ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	TideKit.place(ink, Rect2(Vector2(-400, -300), TideTokens.BASE + Vector2(800, 600)))
+	_intro.add_child(ink)
+	TideKit.isobaths(_intro, Rect2(Vector2.ZERO, TideTokens.BASE), 0.06, 36.0)
+	# Кинополоса с кадром: два слоя, второй проявляется поверх первого.
+	var clip := Control.new()
+	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	clip.clip_contents = true
+	TideKit.place(clip, BAND)
+	_intro.add_child(clip)
+	for index in range(2):
+		var shot := TextureRect.new()
+		shot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		shot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		TideKit.place(shot, Rect2(Vector2.ZERO, BAND.size))
+		shot.pivot_offset = BAND.size * Vector2(0.56, 0.5)
+		clip.add_child(shot)
+		_intro_shots.append(shot)
+	_intro_flash = ColorRect.new()
+	_intro_flash.color = TideTokens.FOAM
+	_intro_flash.modulate.a = 0.0
+	_intro_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	TideKit.place(_intro_flash, Rect2(Vector2.ZERO, BAND.size))
+	clip.add_child(_intro_flash)
+	# Цветные кромки полосы.
+	for edge in range(2):
+		var rule := ColorRect.new()
+		rule.color = TideTokens.FLARE if edge == 0 else TideTokens.SONAR
+		rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		TideKit.place(rule, Rect2(-400, BAND.position.y - 8.0 if edge == 0 else BAND.end.y, 2720, 8))
+		_intro.add_child(rule)
+	TideKit.text(_intro, "ПРОЛОГ · СУББОТА", Vector2(102, 96), 1, 22, TideTokens.SONAR)
+	TideKit.headline(_intro, "ТИХАЯ БУХТА", Vector2(96, 126), 860.0, 80, TideTokens.FOAM, 8, -10.0)
+	_intro_caption = TideKit.block(
+		_intro, "", Rect2(160, BAND.end.y + 44.0, 1600, 140), 0, 46, TideTokens.FOAM, 2
+	)
+	_intro_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_intro_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_intro.hide()
 
 
 func open() -> void:
@@ -104,14 +167,112 @@ func open() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_active = true
 	_index = -1
+	# Мягкий вход поверх афиши вместо мгновенной смены кадра.
+	modulate.a = 0.0
+	if _fade != null and _fade.is_valid():
+		_fade.kill()
+	_fade = create_tween()
+	_fade.tween_property(self, "modulate:a", 1.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if not _start_intro():
+		_begin_dialogue()
+
+
+func _begin_dialogue() -> void:
 	TideFx.pop_in(_back, 0.8, -8.0)
 	TideFx.pop_in(_box, 0.6, -8.0)
 	TideFx.splash(self, BOX_RECT.position + Vector2(BOX_RECT.size.x * 0.5, BOX_RECT.size.y), 14)
 	_advance()
 
 
+func _start_intro() -> bool:
+	for index in range(2):
+		var texture := TideStory.intro_frame(String(TideStory.INTRO[index]["file"]))
+		if texture == null:
+			return false
+		_intro_shots[index].texture = texture
+	_intro.show()
+	_intro.modulate.a = 1.0
+	_intro.scale = Vector2.ONE
+	_intro_shots[1].modulate.a = 0.0
+	_intro_flash.modulate.a = 0.0
+	_hint.hide()
+	_show_intro_step(0)
+	return true
+
+
+## Кадр заставки: 0 — медленный наезд на спящую, 1 — вспышка и рывок.
+func _show_intro_step(step: int) -> void:
+	_intro_step = step
+	if _intro_tween != null and _intro_tween.is_valid():
+		_intro_tween.kill()
+	_intro_caption.text = String(TideStory.INTRO[step]["line"])
+	_intro_caption.visible_ratio = 0.0
+	_intro_tween = create_tween()
+	_intro_tween.set_parallel(true)
+	_intro_tween.tween_property(_intro_caption, "visible_ratio", 1.0, 0.9)
+	if step == 0:
+		_intro_shots[0].scale = Vector2(1.16, 1.16)
+		_intro_tween.tween_property(_intro_shots[0], "scale", Vector2.ONE, 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		_intro_shots[1].modulate.a = 1.0
+		_intro_shots[1].scale = Vector2(1.22, 1.22)
+		_intro_flash.modulate.a = 0.9
+		_intro_tween.tween_property(_intro_flash, "modulate:a", 0.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		_intro_tween.tween_property(_intro_shots[1], "scale", Vector2(1.04, 1.04), 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		TideFx.shake(_intro, 6.0, 0.14)
+	# Кадр сам сменится, если ничего не нажимать.
+	_intro_tween.chain().tween_interval(1.2 if step == 0 else 3.6)
+	_intro_tween.chain().tween_callback(_intro_next)
+
+
+func _intro_next() -> void:
+	if _intro_step == 0:
+		_show_intro_step(1)
+		return
+	_end_intro(false)
+	_begin_dialogue()
+
+
+func _end_intro(instant: bool) -> void:
+	_intro_step = -1
+	if _intro_tween != null and _intro_tween.is_valid():
+		_intro_tween.kill()
+	_hint.show()
+	if instant or not _intro.visible:
+		_hide_intro()
+		return
+	# Заставка «схлопывается» в полосу и уходит, открывая сцену с репликами.
+	_intro_tween = create_tween()
+	_intro_tween.set_parallel(true)
+	_intro_tween.tween_property(_intro, "scale:y", 0.0, 0.32).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	_intro_tween.tween_property(_intro, "modulate:a", 0.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_intro_tween.chain().tween_callback(_hide_intro)
+
+
+func _hide_intro() -> void:
+	_intro.hide()
+	for shot in _intro_shots:
+		shot.texture = null
+
+
+## Кадр заставки по номеру, без ожидания (витрина).
+func show_intro(step: int) -> void:
+	if not _start_intro():
+		return
+	modulate.a = 1.0
+	if step >= 1:
+		_show_intro_step(1)
+	_intro_tween.kill()
+	_intro_caption.visible_ratio = 1.0
+	_intro_flash.modulate.a = 0.0
+	_intro_shots[_intro_step].scale = Vector2(1.04, 1.04)
+
+
 func close() -> void:
 	_active = false
+	_end_intro(true)
+	if _fade != null and _fade.is_valid():
+		_fade.kill()
 	hide()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_face.texture = null
@@ -127,6 +288,8 @@ func skip() -> void:
 
 ## Показать реплику по номеру сразу целиком (витрина и проверки).
 func show_line(number: int) -> void:
+	_end_intro(true)
+	modulate.a = 1.0
 	_finish_typing()
 	_index = clampi(number, 0, lines.size() - 1) - 1
 	_advance()
@@ -144,6 +307,9 @@ func _finish_typing() -> void:
 
 
 func _advance() -> void:
+	if _intro_step >= 0:
+		_intro_next()
+		return
 	if _typing():
 		_finish_typing()
 		return
