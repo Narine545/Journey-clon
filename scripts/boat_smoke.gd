@@ -697,6 +697,8 @@ func _check_shoal_navigation() -> void:
 	main.boat.rotation.y = yaw
 	main.boat.speed = 0.0
 	marks._check_course()
+	print("[BOAT SMOKE] отмель на глубокой воде: предупреждение=", marks.warning,
+		" глубина=", marks.predicted_depth, " скорость=", main.boat.speed)
 	_check(not marks.warning, "на глубокой воде предупреждение гаснет")
 	main.boat.set_trailer_enabled(true)
 	main.boat._trailer.global_position = bp - Vector3(outward.x, 0.0, outward.y) * 12.0
@@ -1100,12 +1102,19 @@ func _check_raid_fx() -> void:
 	var fx := run.weapon_fx
 	var previous_setting := run.effects_enabled
 	run.effects_enabled = true
+	print("[BOAT SMOKE] FX до выстрела: остаток=", fx._remaining, " видимых=", fx._batch.visible_instance_count)
 	fx.emit(0, run.forward())
+	print("[BOAT SMOKE] FX после emit: остаток=", fx._remaining, " id=", fx.get_instance_id())
 	fx.render()
+	print("[BOAT SMOKE] FX после render: видимых=", fx._batch.visible_instance_count,
+		" cd=", fx._batch.get_instance_custom_data(0),
+		" tr=", fx._batch.get_instance_transform(0).origin)
 	_check(fx._batch.instance_count == 6 and fx._batch.visible_instance_count == 6,
 		"дульная вспышка использует фиксированные шесть side/face-квадов")
 	fx.step(0.04)
+	print("[BOAT SMOKE] FX после step: остаток=", fx._remaining)
 	fx.render()
+	print("[BOAT SMOKE] FX после render2: видимых=", fx._batch.visible_instance_count)
 	var body_pose := main.boat._body.get_global_transform_interpolated()
 	var fx_ok := (
 		is_equal_approx(fx._batch.get_instance_custom_data(0).r, 1.0)
