@@ -35,7 +35,7 @@ func _init() -> void:
 	mouse_exited.connect(queue_redraw)
 	focus_entered.connect(queue_redraw)
 	focus_exited.connect(queue_redraw)
-	resized.connect(queue_redraw)
+	resized.connect(_adapt_type)
 	_margin.minimum_size_changed.connect(_sync_minimum, CONNECT_DEFERRED)
 
 
@@ -55,6 +55,18 @@ func _ignore_mouse(node: Control) -> void:
 			_ignore_mouse(child)
 
 
+func _adapt_type() -> void:
+	var narrow := size.x < 320.0
+	var title_size := 22 if narrow else 25
+	heading.add_theme_font_size_override("font_size", title_size)
+	heading.custom_minimum_size.y = float(title_size) * 2.5
+	description.add_theme_font_size_override("font_size", 15 if narrow else 16)
+	description.custom_minimum_size.y = 58.0
+	effect.add_theme_font_size_override("font_size", 18 if narrow else 19)
+	_sync_minimum.call_deferred()
+	queue_redraw()
+
+
 func _sync_minimum() -> void:
 	custom_minimum_size.y = maxf(280.0, _margin.get_combined_minimum_size().y + 8.0)
 
@@ -67,8 +79,7 @@ func set_content(
 	description.text = explanation
 	effect.text = values
 	tooltip_text = "%s\n%s\n%s" % [name_text, explanation, values]
-	_sync_minimum.call_deferred()
-	queue_redraw()
+	_adapt_type()
 
 
 func _draw() -> void:
@@ -82,10 +93,12 @@ func _draw() -> void:
 	var backing := PackedVector2Array()
 	for point in outline:
 		backing.append(point + Vector2(0, 5))
-	draw_colored_polygon(backing, ink)
-	draw_colored_polygon(outline, Color("efe8dc"))
+	RaidCutPanel.smooth_polygon(self, backing, ink)
+	RaidCutPanel.smooth_polygon(self, outline, Color("efe8dc"))
 	draw_line(Vector2(16, 6), Vector2(w - 12, 9), ink, 5.0 if active else 2.0, true)
 	if active:
-		draw_colored_polygon(
-			PackedVector2Array([Vector2(w - 24, 18), Vector2(w - 10, 24), Vector2(w - 24, 30)]), ink
+		RaidCutPanel.smooth_polygon(
+			self,
+			PackedVector2Array([Vector2(w - 24, 18), Vector2(w - 10, 24), Vector2(w - 24, 30)]),
+			ink
 		)

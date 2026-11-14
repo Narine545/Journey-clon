@@ -6,6 +6,15 @@ var underprint := Color("e5553e")
 var cut := 14.0
 
 
+static func smooth_polygon(canvas: CanvasItem, points: PackedVector2Array, color: Color) -> void:
+	canvas.draw_colored_polygon(points, color)
+	var perimeter := points.duplicate()
+	if not perimeter.is_empty():
+		perimeter.append(perimeter[0])
+		# Matching-color antialiased edge covers the hard fill boundary, no viewport MSAA needed.
+		canvas.draw_polyline(perimeter, color, 1.0, true)
+
+
 func _init() -> void:
 	var spacing := StyleBoxEmpty.new()
 	spacing.content_margin_left = 18
@@ -27,6 +36,6 @@ func _draw() -> void:
 	var shadow := PackedVector2Array()
 	for point in shape:
 		shadow.append(point + Vector2(-5, 5))
-	draw_colored_polygon(shadow, underprint)
-	draw_colored_polygon(shape, paper)
+	smooth_polygon(self, shadow, underprint)
+	smooth_polygon(self, shape, paper)
 	draw_line(Vector2(edge + 4, 3), Vector2(width - 3, 6), Color("efe8dc"), 1.0, true)

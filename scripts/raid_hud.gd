@@ -107,6 +107,12 @@ func setup() -> void:
 	modal_paper.paper = Color("111619fc")
 	modal_paper.underprint = Color("c83f30")
 	modal_paper.cut = 20.0
+	var modal_spacing := StyleBoxEmpty.new()
+	modal_spacing.content_margin_left = 26
+	modal_spacing.content_margin_right = 26
+	modal_spacing.content_margin_top = 22
+	modal_spacing.content_margin_bottom = 22
+	_modal.add_theme_stylebox_override("panel", modal_spacing)
 	# Modal blocks gameplay clicks; its scroll/button descendants retain native input.
 	_modal.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(_modal)
@@ -545,7 +551,8 @@ func _draw() -> void:
 	var main := run.main
 	var accent := Color("78dfcb")
 	var time_left := size.x * 0.5 - 65.0
-	draw_colored_polygon(
+	RaidCutPanel.smooth_polygon(
+		self,
 		PackedVector2Array(
 			[
 				Vector2(time_left + 8, 14),
@@ -631,7 +638,8 @@ func _draw_boss_objective(enemy: Dictionary) -> void:
 	# Slanted graphic backing, independent from the stable numerical HP/text.
 	var left := size.x * 0.3 - 12.0
 	var right := size.x * 0.7 + 12.0
-	draw_colored_polygon(
+	RaidCutPanel.smooth_polygon(
+		self,
 		PackedVector2Array(
 			[Vector2(left + 10, 50), Vector2(right, 53), Vector2(right - 10, 98), Vector2(left, 94)]
 		),
@@ -672,7 +680,8 @@ func _draw_boss_objective(enemy: Dictionary) -> void:
 	)
 	var anchor := center + direction * travel
 	var side := direction.orthogonal()
-	draw_colored_polygon(
+	RaidCutPanel.smooth_polygon(
+		self,
 		PackedVector2Array(
 			[
 				anchor + direction * 16.0,

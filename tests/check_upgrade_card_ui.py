@@ -23,3 +23,8 @@ assert '_title_material' not in h
 for forbidden in ('run.', 'rotation', 'Tween', 'Time.', '_gui_input'):
     assert forbidden not in s
 print('PASS cut-paper cards: distinct typography, wrapped previews, native focus/input and modal continuity')
+
+assert "heading.custom_minimum_size.y" in s
+assert "description.custom_minimum_size.y = 58.0" in s
+assert "resized.connect(_adapt_type)" in s
+assert "RaidCutPanel.smooth_polygon" in s
