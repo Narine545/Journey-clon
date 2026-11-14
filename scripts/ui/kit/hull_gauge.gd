@@ -88,12 +88,13 @@ func _draw_lines() -> void:
 				right = point if point.x > right.x else right
 				left = point if point.x < left.x else left
 		_lines.draw_line(left, right, TideTokens.foam_alpha(0.16), 1.0, true)
+		# Цифра читается и на телe воды, и на штриховке: подложка из ink-тени.
+		var at := Vector2(size.x * 0.985 - 26.0, y + 5.0)
+		var caption := "%d" % (100 - index * 25)
 		_lines.draw_string(
-			font,
-			Vector2(size.x * 0.985 - 26.0, y + 5.0),
-			"%d" % (100 - index * 25),
-			HORIZONTAL_ALIGNMENT_RIGHT,
-			26.0,
-			12,
-			TideTokens.foam_alpha(0.4)
+			font, at + Vector2(1.0, 1.0), caption, HORIZONTAL_ALIGNMENT_RIGHT, 26.0, 12,
+			TideTokens.ink_alpha(0.55)
+		)
+		_lines.draw_string(
+			font, at, caption, HORIZONTAL_ALIGNMENT_RIGHT, 26.0, 12, TideTokens.foam_alpha(0.66)
 		)
