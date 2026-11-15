@@ -251,7 +251,7 @@ func _apply_atmosphere(n01: float) -> void:
 	# Под луной искры ярче самой воды: глиттер живёт в цвете поверхности
 	# и без запаса по яркости тонул в ночной синеве.
 	water.set_param("sun_col", Color("ffcc85").lerp(Color("b4d2f0"), night01)
-		* lerpf(1.0, 0.72, weather.cloud_amount) * (1.0 + 3.0 * moon))
+		* lerpf(1.0, 0.72, weather.cloud_amount) * (1.0 + 1.7 * moon))
 	# Одна дальняя дымка у моря и берега: ясность не создаёт нового стыка.
 	var haze_distance := lerpf(340.0, 130.0, night01) * lerpf(1.4, 1.0, effective_fog)
 	water.set_param("fog_distance", haze_distance)
@@ -263,7 +263,7 @@ func _apply_atmosphere(n01: float) -> void:
 	# В сумерках вода ещё держит свет неба: без этого под низким солнцем
 	# море чернело раньше, чем наступала ночь.
 	water.set_param("night_surface_fill", 0.18 * water_night + 0.26 * dusk)
-	water.set_param("glitter_amount", lerpf(0.32, 0.18, night01) + 0.10 * moon)
+	water.set_param("glitter_amount", lerpf(0.32, 0.18, night01) + 0.04 * moon)
 	# Это широкая искусственная дорожка, НЕ отдельные искры-глиттер.
 	# Плавно убрать её до наступления полной темноты.
 	water.set_param("sun_path_amount", 0.09 * (1.0 - clampf((night01 - 0.25) / 0.53, 0.0, 1.0)))

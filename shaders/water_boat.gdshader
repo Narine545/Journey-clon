@@ -520,7 +520,7 @@ void light() {
 		// Толща воды подхватывает луч по всей длине, а искры в нём
 		// загораются независимо от угла — те же ячейки, что у глиттера.
 		SPECULAR_LIGHT += radiance * local_scatter
-			* (local_scatter_tint + vec3(2.2) * local_glitter_mask);
+			* (local_scatter_tint + vec3(1.5) * local_glitter_mask);
 	}
 
 	if (proxima_test < 0.5) {
