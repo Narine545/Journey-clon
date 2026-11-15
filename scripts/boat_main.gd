@@ -87,6 +87,7 @@ var _debug_night_step := 0
 
 var _capture_frames := 0
 var _camera_focus := Vector3.ZERO
+var _cloud_shadow_offset := Vector2.ZERO
 var _beacon_anim_time := 0.0
 var _atmosphere_timer := 0.0
 
@@ -262,6 +263,14 @@ func _apply_atmosphere(n01: float) -> void:
 	var haze_distance := lerpf(340.0, 130.0, night01) * lerpf(1.4, 1.0, effective_fog)
 	water.set_param("fog_distance", haze_distance)
 	coast.set_sand("fog_distance", haze_distance)
+	# Тени облаков: днём отчётливые, под луной едва заметные; в пасмурную
+	# погоду пятна сливаются, поэтому контраст падает, а покрытие растёт.
+	var cloud_strength := lerpf(1.0, 0.45, night01) * lerpf(1.0, 0.55, weather.cloud_amount)
+	var cloud_edge := lerpf(0.60, 0.40, weather.cloud_amount)
+	water.set_param("cloud_shadow", cloud_strength)
+	water.set_param("cloud_threshold", cloud_edge)
+	coast.set_sand("cloud_shadow", cloud_strength)
+	coast.set_sand("cloud_threshold", cloud_edge)
 	water.set_param("mega_amp", lerpf(0.25, 0.31, night01))
 	water.set_param("ripple_strength", 0.10)
 	# Ночной фон только у моря: скрытые пятна не подсвечиваем.
@@ -1318,6 +1327,10 @@ func _process(delta: float) -> void:
 		_rme4_volume.global_position = Vector3(boat.global_position.x, RME4_BOX_Y,
 			boat.global_position.z)
 	_beacon_anim_time += delta
+	# Тени облаков плывут по ветру одинаково над водой и песком.
+	_cloud_shadow_offset += Vector2(0.32, -0.95) * delta * 1.7
+	water.set_param("cloud_offset", _cloud_shadow_offset)
+	coast.set_sand("cloud_offset", _cloud_shadow_offset)
 	var gameplay_delta := 0.0 if gameplay_paused() else delta
 	sonar_timer = maxf(0.0, sonar_timer - gameplay_delta)
 	var had_overdrive := overdrive_timer > 0.0

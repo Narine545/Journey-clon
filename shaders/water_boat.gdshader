@@ -88,6 +88,31 @@ uniform vec4 u_vessel_state = vec4(0.0, 0.0, 0.0, 0.0);
 uniform vec4 u_trailer_state = vec4(0.0, 0.0, 0.0, 0.0);
 uniform vec4 u_wake_trail[20]; // xy = world_xz, z = birth_time, w = speed_at_birth
 
+
+// Тени облаков: одна и та же функция у воды и песка, в мировых метрах,
+// поэтому пятно тени переходит через береговую линию без шва.
+uniform float cloud_shadow : hint_range(0.0, 1.0) = 0.0;
+uniform float cloud_threshold : hint_range(0.0, 1.0) = 0.60;
+uniform vec2 cloud_offset = vec2(0.0);
+
+float cloud_hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float cloud_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(cloud_hash(i), cloud_hash(i + vec2(1.0, 0.0)), f.x),
+		mix(cloud_hash(i + vec2(0.0, 1.0)), cloud_hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+float cloud_shade(vec2 world_xz) {
+	vec2 p = world_xz + cloud_offset;
+	float n = cloud_noise(p * 0.0085) * 0.62 + cloud_noise(p * 0.023 + vec2(13.1, 7.7)) * 0.38;
+	return cloud_shadow * smoothstep(cloud_threshold - 0.10, cloud_threshold + 0.14, n);
+}
+
 varying vec3 w_pos;
 // Fragment -> light varying: полная форма воды только для локальных ламп.
 varying vec3 local_light_normal;
@@ -378,7 +403,12 @@ void fragment() {
 	vec3 H = normalize(V + L);
 	// Плотность мировых ячеек постоянна на экране ортографической камеры:
 	// ступенчатый LOD по расстоянию рисовал заметные концентрические зоны.
-	float density = 4.0;
+	// Отдаление камеры: ячейки искр укрупняются ступенями, иначе при
+	// взгляде издалека они становятся меньше пикселя и блеск пропадает.
+	float glit_zoom = PROJECTION_MATRIX[3][3] > 0.5
+		? 2.0 / max(abs(PROJECTION_MATRIX[1][1]), 1e-5) / 32.0 : 1.0;
+	float glit_lod = glit_zoom < 1.45 ? 1.0 : (glit_zoom < 2.9 ? 2.0 : 4.0);
+	float density = 4.0 / glit_lod;
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));
@@ -424,6 +454,8 @@ void fragment() {
 	local_glitter_mask = glint * glit_fade * (1.0 - foam)
 		* (1.0 + crest * swell_light_detail * 0.65);
 	base = mix(base, foam_col * (0.82 + 0.18 * ndl), foam * 0.92);
+
+	base *= 1.0 - 0.42 * cloud_shade(wp);
 
 	// ---------- дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));

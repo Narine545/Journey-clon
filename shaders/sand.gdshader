@@ -71,6 +71,34 @@ uniform vec2 sand_origin = vec2(0.0, 0.0); // мировой угол окна �
 uniform float sand_texel = 0.12;           // метров на тексель
 uniform float sand_edge = 40.0;            // текселей мягкого заноса у края окна
 
+
+// Тени облаков: одна и та же функция у воды и песка, в мировых метрах,
+// поэтому пятно тени переходит через береговую линию без шва.
+uniform float cloud_shadow : hint_range(0.0, 1.0) = 0.0;
+uniform float cloud_threshold : hint_range(0.0, 1.0) = 0.60;
+uniform vec2 cloud_offset = vec2(0.0);
+
+float cloud_hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float cloud_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(cloud_hash(i), cloud_hash(i + vec2(1.0, 0.0)), f.x),
+		mix(cloud_hash(i + vec2(0.0, 1.0)), cloud_hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+float cloud_shade(vec2 world_xz) {
+	vec2 p = world_xz + cloud_offset;
+	float n = cloud_noise(p * 0.0085) * 0.62 + cloud_noise(p * 0.023 + vec2(13.1, 7.7)) * 0.38;
+	return cloud_shadow * smoothstep(cloud_threshold - 0.10, cloud_threshold + 0.14, n);
+}
+
+// Искры песка под лампой: маска ячеек из fragment() для light().
+uniform float lamp_glitter : hint_range(0.0, 2.0) = 0.55;
+varying float lamp_glitter_mask;
 varying vec3 w_pos;
 varying vec3 w_normal;
 varying vec2 v_dune; // x — 0..1 высота дюны (приходит из геометрии через UV2)
@@ -256,7 +284,12 @@ void fragment() {
 	// камеры; теперь все ячейки песка одинакового размера в мировых метрах.
 	float need = 900.0 / max(dist, 0.001);
 	float perspective_density = clamp(pow(2.0, floor(log2(need / 3.0))) * 3.0, 6.0, 130.0);
-	float density = mix(perspective_density, 12.0, orthographic_glitter);
+	// Отдаление камеры: ячейки искр укрупняются ступенями, иначе при
+	// взгляде издалека они становятся меньше пикселя и блеск пропадает.
+	float glit_zoom = PROJECTION_MATRIX[3][3] > 0.5
+		? 2.0 / max(abs(PROJECTION_MATRIX[1][1]), 1e-5) / 32.0 : 1.0;
+	float glit_lod = glit_zoom < 1.45 ? 1.0 : (glit_zoom < 2.9 ? 2.0 : 4.0);
+	float density = mix(perspective_density, 12.0 / glit_lod, orthographic_glitter);
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));
@@ -277,10 +310,18 @@ void fragment() {
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
 	float glit_fade = exp(-dist * 0.004); // искры живут далеко, до горизонта
 	glint *= (1.0 - 0.85 * wet) * (1.0 - 0.8 * upland); // мокрый песок не сверкает
-	glint *= 1.0 - smoothstep(0.12, 0.82, night_amount); // ночью оставляем только искры в тенях
+	// Под лампой и маяком песок искрит всегда: свои ячейки, без дневного
+	// порога, — иначе освещённый ночью песок выглядит пластиком.
+	lamp_glitter_mask = step(0.80, cellid)
+		* (0.40 + 0.60 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0)))
+		* (1.0 - 0.85 * churn) * (1.0 - 0.85 * wet) * (1.0 - 0.8 * upland);
+	// Ночью под луной остаётся часть искр, холоднее по цвету.
+	float night_glint = smoothstep(0.12, 0.82, night_amount);
+	glint *= 1.0 - 0.60 * night_glint;
 	// искры бьют сильно (2+ единицы) — даже на ярком песке после
 	// Filmic-тонмаппинга они остаются точками, а glow даёт им ореол
-	base += vec3(1.0, 0.92, 0.70) * (sun_lobe * 2.0 + sky_lobe * 2.2)
+	base += mix(vec3(1.0, 0.92, 0.70), vec3(0.74, 0.86, 1.0), night_glint)
+		* (sun_lobe * 2.0 + sky_lobe * 2.2)
 		* glint * glit_fade * mix(0.75, 1.0, ao);
 	// шёлковый отблеск с ФРЕНЕЛЕМ (PBR-отклик): у кромки дюн, под скользящим
 	// взглядом, песок «мокро» блестит сильнее — независимо от солнца
@@ -294,6 +335,8 @@ void fragment() {
 		* smoothstep(0.0, 0.5, wrap) * (1.0 - churn * 0.5);
 	// скользящий ракурс: ближний песок у кромки дюны слегка рдеет
 	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.10 * ao * near_gloss;
+
+	base *= 1.0 - 0.42 * cloud_shade(wp);
 
 	// ---------- 4. Дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
@@ -373,6 +416,9 @@ void light() {
 	float stars_here = max(max(star_1, star_2), max(star_3, star_4));
 	DIFFUSE_LIGHT += vec3(1.65, 1.90, 2.40) * stars_here
 		* cast_shadow * dry_sand * star_zone * night_stars * shadow_star_intensity;
+	if (!LIGHT_IS_DIRECTIONAL) {
+		SPECULAR_LIGHT += LIGHT_COLOR * ATTENUATION * lamp_glitter_mask * lamp_glitter;
+	}
 	if (nl > 0.0) {
 	vec3 h = normalize(v + l);
 	float nh = clamp(dot(h, n), 0.0, 1.0);
