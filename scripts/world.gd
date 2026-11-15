@@ -404,7 +404,7 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	# Солнце гаснет к моменту подмены направления, затем поднимается луна.
 	# Раньше ночной ключ светил из-под горизонта и не освещал ничего:
 	# форму держала одна ровная заливка, отсюда плоская ночь.
-	var sun_part := lerpf(0.85, key, sunset) * (1.0 - smoothf(n, 0.56, MOON_SWAP))
+	var sun_part := (lerpf(0.85, key, sunset) + 0.22 * dusk) * (1.0 - smoothf(n, 0.56, MOON_SWAP))
 	var moon_part := (0.44 + fill_energy) * moon
 	_sun.light_energy = (sun_part + moon_part) * lerpf(1.0, lerpf(0.68, 0.92, sunset), cloud)
 	# Ключ НЕ должен гаснуть в воздухе вместе с диском. Прежнее
@@ -428,7 +428,7 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	# В сумерках заливка держится дольше: небо ещё светит, когда солнце
 	# уже низко, иначе вода под рыжим ключом уходит в бурый.
 	_env.ambient_light_energy = lerpf(0.72, 0.25 if boat_lighting_profile else 0.34, n) \
-		+ 0.16 * dusk
+		+ 0.30 * dusk
 	_env.tonemap_exposure = lerpf(0.95, 1.05, n) + 0.12 * moon
 
 	# --- Туман ---------------------------------------------------------

@@ -216,6 +216,7 @@ func _apply_atmosphere(n01: float) -> void:
 	var sun := world.boat_key_dir(night01)
 	var moon := world.boat_moon01(night01)
 	var dusk := sin(clampf((night01 - 0.16) / 0.58, 0.0, 1.0) * PI)
+	effective_fog = maxf(effective_fog, 0.22 * moon)
 	game.sun_dir = sun
 	# Один вызов вместо трёх конфликтующих. Раньше здесь шли подряд
 	# apply_night01(), apply_sun() и fade_boat_sun(), и все три писали одни
@@ -227,9 +228,9 @@ func _apply_atmosphere(n01: float) -> void:
 		_apply_fog_diagnostic()
 	if _rme4_material != null:
 		_rme4_material.set_shader_parameter("night_factor", night01)
-		# Ясной ночью в слое воздуха остаётся тонкая дымка: без неё ни луна,
-		# ни фонари не дают ни луча, ни ореола.
-		_rme4_material.set_shader_parameter("weather_fog", maxf(effective_fog, 0.22 * moon))
+		# Ясной ночью effective_fog не падает ниже тонкой дымки: без неё ни
+		# луна, ни фонари не дают в воздухе ни луча, ни ореола.
+		_rme4_material.set_shader_parameter("weather_fog", effective_fog)
 		_rme4_material.set_shader_parameter("sun_direction", sun)
 	coast.apply_sun(sun)
 	water.apply_sun(sun)
@@ -238,11 +239,11 @@ func _apply_atmosphere(n01: float) -> void:
 	# Ночная вода — глубокая синева под луной, а не чернота; в сумерках
 	# палитра проходит через сливовый, чтобы рыжий свет не давал бурого.
 	water.set_param("water_shallow", Color("49a9a2").lerp(Color("1c5560"), night01)
-		.lerp(Color("a8707e"), 0.40 * dusk))
+		.lerp(Color("b47a86"), 0.55 * dusk))
 	water.set_param("water_mid", Color("258b91").lerp(Color("103a50"), night01)
-		.lerp(Color("5a3f74"), 0.50 * dusk))
+		.lerp(Color("6a4a84"), 0.65 * dusk))
 	water.set_param("water_deep", Color("0f5668").lerp(Color("0a2140"), night01)
-		.lerp(Color("30275a"), 0.55 * dusk))
+		.lerp(Color("3c2f6a"), 0.70 * dusk))
 	water.set_param("horizon_col", Color("6996a0").lerp(Color("2b3f5c"), night01)
 		.lerp(Color("e8956a"), 0.55 * dusk))
 	water.set_param("sky_col", Color("447084").lerp(Color("16243e"), night01)
@@ -257,8 +258,10 @@ func _apply_atmosphere(n01: float) -> void:
 	water.set_param("ripple_strength", 0.10)
 	# Ночной фон только у моря: скрытые пятна не подсвечиваем.
 	var water_night := smoothstep(0.35, 0.80, night01)
-	water.set_param("night_surface_fill", 0.18 * water_night)
-	water.set_param("glitter_amount", lerpf(0.32, 0.18, night01) + 0.08 * moon)
+	# В сумерках вода ещё держит свет неба: без этого под низким солнцем
+	# море чернело раньше, чем наступала ночь.
+	water.set_param("night_surface_fill", 0.18 * water_night + 0.26 * dusk)
+	water.set_param("glitter_amount", lerpf(0.32, 0.18, night01) + 0.08 * moon - 0.12 * dusk)
 	# Это широкая искусственная дорожка, НЕ отдельные искры-глиттер.
 	# Плавно убрать её до наступления полной темноты.
 	water.set_param("sun_path_amount", 0.09 * (1.0 - clampf((night01 - 0.25) / 0.53, 0.0, 1.0)))
