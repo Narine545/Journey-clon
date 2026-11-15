@@ -11,6 +11,11 @@ extends Node3D
 const BOAT_DAY_SUN := Vector3(-0.36, 0.76, -0.54)
 const BOAT_DUSK_SUN := Vector3(-0.62, 0.22, -0.75)
 const BOAT_NIGHT_SUN := Vector3(-0.71, -0.24, -0.66)
+## Луна стоит за сценой, напротив камеры: длинные тени ложатся к зрителю,
+## а на воде остаётся серебряная дорожка. Один и тот же DirectionalLight3D
+## служит солнцем и луной — второй источник с тенями не нужен.
+const BOAT_MOON := Vector3(-0.28, 0.52, -0.81)
+const MOON_SWAP := 0.70
 
 
 var game: GameState # автозагрузка Game
@@ -344,6 +349,19 @@ func boat_sun_dir(n01: float) -> Vector3:
 	return dusk.lerp(BOAT_NIGHT_SUN, clampf((n - 0.55) / 0.45, 0.0, 1.0)).normalized()
 
 
+## Доля лунного света: 0 до захода солнца, 1 глубокой ночью.
+func boat_moon01(n01: float) -> float:
+	return smoothf(n01, MOON_SWAP, 0.86)
+
+
+## Направление НА ключевой источник: солнце, а после его захода — луна.
+## В момент подмены яркость ключа равна нулю, поэтому скачка теней нет.
+func boat_key_dir(n01: float) -> Vector3:
+	if n01 >= MOON_SWAP:
+		return BOAT_MOON.normalized()
+	return boat_sun_dir(n01)
+
+
 ## ЕДИНСТВЕННЫЙ писатель лодочной атмосферы.
 ##
 ## Прежняя схема была «apply_night01(n) → apply_sun(dir) → fade_boat_sun(n)»,
@@ -375,13 +393,20 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	var daylight := Color(1.0, 0.83, 0.66).lerp(Color(1.0, 0.97, 0.92), elev01)
 	# На закате ключ уходит в янтарь сильнее, чем даёт одна высота солнца,
 	# иначе сумерки получались белёсыми, а не золотыми.
-	daylight = daylight.lerp(Color(1.0, 0.62, 0.38), sin(sunset * PI) * 0.75)
+	var dusk := sin(sunset * PI)
+	var moon := boat_moon01(n)
+	daylight = daylight.lerp(Color(1.0, 0.66, 0.46), dusk * 0.75)
 	# В ночную синеву уходим только во второй половине заката, чтобы
 	# золотой час не гасили сразу.
 	_sun.light_color = daylight.lerp(Color(0.58, 0.71, 0.94),
-		smoothf(sunset, 0.55, 1.0))
+		smoothf(sunset, 0.55, 1.0)).lerp(Color(0.56, 0.72, 1.0), moon)
 	var key := minf(0.42, fill_energy + 0.08) if boat_lighting_profile else fill_energy
-	_sun.light_energy = lerpf(0.85, key, sunset) * lerpf(1.0, lerpf(0.68, 0.92, sunset), cloud)
+	# Солнце гаснет к моменту подмены направления, затем поднимается луна.
+	# Раньше ночной ключ светил из-под горизонта и не освещал ничего:
+	# форму держала одна ровная заливка, отсюда плоская ночь.
+	var sun_part := lerpf(0.85, key, sunset) * (1.0 - smoothf(n, 0.56, MOON_SWAP))
+	var moon_part := (0.44 + fill_energy) * moon
+	_sun.light_energy = (sun_part + moon_part) * lerpf(1.0, lerpf(0.68, 0.92, sunset), cloud)
 	# Ключ НЕ должен гаснуть в воздухе вместе с диском. Прежнее
 	# 0.75 * (1 - sunset) обнуляло его к ночи, и туман оставался плоским
 	# серым wash'ем от ambient_inject. Теперь вклад ключа умеренный:
@@ -400,8 +425,11 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	_sky_mat.set_shader_parameter("daylight_scatter", lerpf(1.0, 0.16, sunset))
 
 	# --- Заливка и пост ------------------------------------------------
-	_env.ambient_light_energy = lerpf(0.72, 0.25 if boat_lighting_profile else 0.34, n)
-	_env.tonemap_exposure = lerpf(0.95, 1.05, n)
+	# В сумерках заливка держится дольше: небо ещё светит, когда солнце
+	# уже низко, иначе вода под рыжим ключом уходит в бурый.
+	_env.ambient_light_energy = lerpf(0.72, 0.25 if boat_lighting_profile else 0.34, n) \
+		+ 0.16 * dusk
+	_env.tonemap_exposure = lerpf(0.95, 1.05, n) + 0.12 * moon
 
 	# --- Туман ---------------------------------------------------------
 	_env.fog_light_color = Game.HORIZON_COL.lerp(Color(0.15, 0.20, 0.34), n)
@@ -414,6 +442,9 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	if rme4_active:
 		_env.volumetric_fog_density = 0.0
 	else:
+		# Ясной ночью в воздухе остаётся тонкая дымка: без неё ни лунный
+		# свет, ни фонари не дают в воздухе ни луча, ни ореола.
+		fog = maxf(fog, 0.22 * moon)
 		_env.volumetric_fog_density = lerpf(0.010, 0.018, n) * fog
 	_env.volumetric_fog_albedo = Color(0.55, 0.60, 0.68).lerp(Color(0.30, 0.36, 0.48), n)
 	# ambient_inject в Godot умножается на ambient_light_energy, поэтому

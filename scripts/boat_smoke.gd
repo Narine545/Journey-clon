@@ -252,7 +252,7 @@ func _physics_process(_delta: float) -> void:
 			gap >= float(rf["radius"]) + 1.85 - 0.01,
 			"риф гасит скорость, повреждает корпус и не телепортирует его внутрь")
 		main._apply_atmosphere(0.88)
-		_check(main.world._sun.light_energy > 0.23 and main.world._sun.light_energy < 0.29 and
+		_check(main.world._sun.light_energy > 0.45 and main.world._sun.light_energy < 0.75 and
 			float(main.water.material().get_shader_parameter("sun_path_amount")) < 0.001 and
 			main.world._env.volumetric_fog_density > 0.013,
 			"ночью нет световой дорожки, а слабый свет сохраняет объём в тумане")
@@ -263,8 +263,8 @@ func _physics_process(_delta: float) -> void:
 			"ключевой свет продолжает рассеиваться в тумане и ночью")
 		# Регресс «странный свет ночью»: ночное направление было
 		# (-0.62, +0.22, -0.75), то есть светило не садилось.
-		_check(main.game.sun_dir.y < 0.0,
-			"к ночи солнце действительно уходит под горизонт")
+		_check(main.world.boat_sun_dir(0.88).y < 0.0 and main.game.sun_dir.y > 0.3,
+			"к ночи солнце уходит под горизонт, а ключом становится луна над ним")
 		var day_sun_y: float = main.world.boat_sun_dir(0.0).y
 		_check(day_sun_y > 0.5 and main.world.boat_sun_dir(0.45).y > 0.0,
 			"днём солнце высоко, на закате ещё над горизонтом")
@@ -406,7 +406,7 @@ func _physics_process(_delta: float) -> void:
 			"[L] меняет только тонмаппер, сохраняя свет, небо и воду")
 		main.debug_toggle_lighting()
 		main.debug_adjust_fill(0.04)
-		_check(main.world._sun.light_energy > 0.29 and
+		_check(main.world._sun.light_energy > 0.62 and
 			is_equal_approx(float(main.water.material().get_shader_parameter("glitter_amount")), night_glitter),
 			"[9] добавляет объёмный свет, не изменяя глиттер")
 		main.debug_adjust_fill(-0.04)

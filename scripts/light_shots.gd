@@ -21,7 +21,8 @@ func _run() -> void:
 	main.debug_night_paused = true
 	main.hud.modulate.a = 0.0
 	if main.sea_look_trial != null:
-		main.sea_look_trial.visible = false
+		main.sea_look_trial.offset = Vector2(-4000.0, 0.0)
+	main._start_in_harbor()
 	await _shooter.wait_frames_count(20)
 
 	await _shot("light_01_day_harbor", 12.0, 0.0)
