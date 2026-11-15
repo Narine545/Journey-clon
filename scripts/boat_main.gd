@@ -200,6 +200,10 @@ func _ready() -> void:
 		var test := BoatSmoke.new()
 		add_child(test)
 		test.setup(self)
+	if OS.get_environment("TIDE_LIGHT_SHOTS") == "1":
+		var light_shots := LightShots.new()
+		add_child(light_shots)
+		light_shots.setup(self)
 
 
 func _apply_atmosphere(n01: float) -> void:
@@ -786,7 +790,8 @@ func interact_with_beacon() -> void:
 func _build_tide_menu() -> void:
 	# Витрина нужна живому игроку; автотесты и рендер-проверки идут без меню.
 	for variable in [
-		"JOURNEY_BOAT_SMOKE", "JOURNEY_BOAT_SHOT", "JOURNEY_BOAT_SHOT_DRIVE", "JOURNEY_SHOT"
+		"JOURNEY_BOAT_SMOKE", "JOURNEY_BOAT_SHOT", "JOURNEY_BOAT_SHOT_DRIVE", "JOURNEY_SHOT",
+		"TIDE_LIGHT_SHOTS"
 	]:
 		if OS.has_environment(variable):
 			return
