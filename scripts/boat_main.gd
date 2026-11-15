@@ -266,7 +266,7 @@ func _apply_atmosphere(n01: float) -> void:
 	# Тени облаков: днём отчётливые, под луной едва заметные; в пасмурную
 	# погоду пятна сливаются, поэтому контраст падает, а покрытие растёт.
 	var cloud_strength := lerpf(1.0, 0.45, night01) * lerpf(1.0, 0.55, weather.cloud_amount)
-	var cloud_edge := lerpf(0.60, 0.40, weather.cloud_amount)
+	var cloud_edge := lerpf(0.58, 0.42, weather.cloud_amount)
 	water.set_param("cloud_shadow", cloud_strength)
 	water.set_param("cloud_threshold", cloud_edge)
 	coast.set_sand("cloud_shadow", cloud_strength)
@@ -1328,7 +1328,7 @@ func _process(delta: float) -> void:
 			boat.global_position.z)
 	_beacon_anim_time += delta
 	# Тени облаков плывут по ветру одинаково над водой и песком.
-	_cloud_shadow_offset += Vector2(0.32, -0.95) * delta * 1.7
+	_cloud_shadow_offset += Vector2(0.32, -0.95) * delta * 3.0
 	water.set_param("cloud_offset", _cloud_shadow_offset)
 	coast.set_sand("cloud_offset", _cloud_shadow_offset)
 	var gameplay_delta := 0.0 if gameplay_paused() else delta

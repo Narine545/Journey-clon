@@ -35,6 +35,9 @@ func _run() -> void:
 	await _shot("light_05_night_sea_fog", 23.0, 1.0)
 	await _shot("light_08_dusk_sea", 19.75, 0.1)
 	await _shot("light_09_day_sea", 12.0, 0.0)
+	main.camera.size = 96.0
+	await _shot("light_11_day_sea_wide", 12.0, 0.0)
+	main.camera.size = 32.0
 
 	for i in range(main.refined.size()):
 		main.refined[i] = 9

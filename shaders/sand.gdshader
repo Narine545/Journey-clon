@@ -92,12 +92,12 @@ float cloud_noise(vec2 p) {
 
 float cloud_shade(vec2 world_xz) {
 	vec2 p = world_xz + cloud_offset;
-	float n = cloud_noise(p * 0.0085) * 0.62 + cloud_noise(p * 0.023 + vec2(13.1, 7.7)) * 0.38;
-	return cloud_shadow * smoothstep(cloud_threshold - 0.10, cloud_threshold + 0.14, n);
+	float n = cloud_noise(p * 0.019) * 0.66 + cloud_noise(p * 0.052 + vec2(13.1, 7.7)) * 0.34;
+	return cloud_shadow * smoothstep(cloud_threshold - 0.05, cloud_threshold + 0.07, n);
 }
 
 // Искры песка под лампой: маска ячеек из fragment() для light().
-uniform float lamp_glitter : hint_range(0.0, 2.0) = 0.55;
+uniform float lamp_glitter : hint_range(0.0, 2.0) = 0.45;
 varying float lamp_glitter_mask;
 varying vec3 w_pos;
 varying vec3 w_normal;
@@ -284,12 +284,7 @@ void fragment() {
 	// камеры; теперь все ячейки песка одинакового размера в мировых метрах.
 	float need = 900.0 / max(dist, 0.001);
 	float perspective_density = clamp(pow(2.0, floor(log2(need / 3.0))) * 3.0, 6.0, 130.0);
-	// Отдаление камеры: ячейки искр укрупняются ступенями, иначе при
-	// взгляде издалека они становятся меньше пикселя и блеск пропадает.
-	float glit_zoom = PROJECTION_MATRIX[3][3] > 0.5
-		? 2.0 / max(abs(PROJECTION_MATRIX[1][1]), 1e-5) / 32.0 : 1.0;
-	float glit_lod = glit_zoom < 1.45 ? 1.0 : (glit_zoom < 2.9 ? 2.0 : 4.0);
-	float density = mix(perspective_density, 12.0 / glit_lod, orthographic_glitter);
+	float density = mix(perspective_density, 12.0, orthographic_glitter);
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));
@@ -310,11 +305,9 @@ void fragment() {
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
 	float glit_fade = exp(-dist * 0.004); // искры живут далеко, до горизонта
 	glint *= (1.0 - 0.85 * wet) * (1.0 - 0.8 * upland); // мокрый песок не сверкает
-	// Под лампой и маяком песок искрит всегда: свои ячейки, без дневного
-	// порога, — иначе освещённый ночью песок выглядит пластиком.
-	lamp_glitter_mask = step(0.80, cellid)
-		* (0.40 + 0.60 * (0.5 + 0.5 * sin(TIME * rate + cellid * 71.0)))
-		* (1.0 - 0.85 * churn) * (1.0 - 0.85 * wet) * (1.0 - 0.8 * upland);
+	// Под лампой и маяком работает ТОТ ЖЕ дневной глиттер: те же ячейки
+	// и тот же «небесный» лоб, что днём, — редкие вспышки, а не ковёр.
+	lamp_glitter_mask = glint * sky_lobe * 2.2;
 	// Ночью под луной остаётся часть искр, холоднее по цвету.
 	float night_glint = smoothstep(0.12, 0.82, night_amount);
 	glint *= 1.0 - 0.60 * night_glint;
@@ -336,7 +329,7 @@ void fragment() {
 	// скользящий ракурс: ближний песок у кромки дюны слегка рдеет
 	base += vec3(0.90, 0.55, 0.35) * (fres - 0.35) * 0.10 * ao * near_gloss;
 
-	base *= 1.0 - 0.42 * cloud_shade(wp);
+	base *= 1.0 + cloud_shadow * 0.07 - 0.42 * cloud_shade(wp);
 
 	// ---------- 4. Дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));

@@ -362,7 +362,7 @@ func set_night01(v: float) -> void:
 	m.set_shader_parameter("horizon_col", DAY_HORIZON.lerp(NIGHT_HORIZON, v))
 	m.set_shader_parameter("sky_col", DAY_SKY.lerp(NIGHT_SKY, v))
 	m.set_shader_parameter("fog_distance", lerpf(340.0, 130.0, v))
-	m.set_shader_parameter("glitter_amount", lerpf(0.20, 0.06, v))
+	m.set_shader_parameter("glitter_amount", lerpf(0.20, 0.12, v))
 	m.set_shader_parameter("night_amount", v)
 
 

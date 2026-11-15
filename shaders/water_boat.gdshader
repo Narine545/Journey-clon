@@ -109,8 +109,8 @@ float cloud_noise(vec2 p) {
 
 float cloud_shade(vec2 world_xz) {
 	vec2 p = world_xz + cloud_offset;
-	float n = cloud_noise(p * 0.0085) * 0.62 + cloud_noise(p * 0.023 + vec2(13.1, 7.7)) * 0.38;
-	return cloud_shadow * smoothstep(cloud_threshold - 0.10, cloud_threshold + 0.14, n);
+	float n = cloud_noise(p * 0.019) * 0.66 + cloud_noise(p * 0.052 + vec2(13.1, 7.7)) * 0.34;
+	return cloud_shadow * smoothstep(cloud_threshold - 0.05, cloud_threshold + 0.07, n);
 }
 
 varying vec3 w_pos;
@@ -403,12 +403,11 @@ void fragment() {
 	vec3 H = normalize(V + L);
 	// Плотность мировых ячеек постоянна на экране ортографической камеры:
 	// ступенчатый LOD по расстоянию рисовал заметные концентрические зоны.
-	// Отдаление камеры: ячейки искр укрупняются ступенями, иначе при
-	// взгляде издалека они становятся меньше пикселя и блеск пропадает.
+	float density = 4.0;
+	// Издалека искры мельче пикселя и тускнеют. Рисунок ячеек не трогаем
+	// (ступени укрупнения давали заметный скачок), плавно добавляем яркость.
 	float glit_zoom = PROJECTION_MATRIX[3][3] > 0.5
-		? 2.0 / max(abs(PROJECTION_MATRIX[1][1]), 1e-5) / 32.0 : 1.0;
-	float glit_lod = glit_zoom < 1.45 ? 1.0 : (glit_zoom < 2.9 ? 2.0 : 4.0);
-	float density = 4.0 / glit_lod;
+		? clamp(2.0 / max(abs(PROJECTION_MATRIX[1][1]), 1e-5) / 32.0, 1.0, 3.5) : 1.0;
 	vec2 celluv = floor(wp * density);
 	float cellid = hash12(celluv);
 	float cellb = hash12(celluv + vec2(7.31, 1.77));
@@ -431,7 +430,7 @@ void fragment() {
 	float glit_fade = 0.95 * (1.0 - 0.72 * near_shore);
 	// Лишь мягкая модуляция яркости: максимум +65% при штатном весе 0.65.
 	base += sun_col * (sun_lobe * 1.6 + sky_lobe * 0.26)
-		* glint * glit_fade * (1.0 + 1.0 * crest_gain);
+		* glint * glit_fade * (1.0 + 1.0 * crest_gain) * glit_zoom;
 
 	float path = pow(clamp(dot(N_ambient, H), 0.0, 1.0), 180.0);
 	base += sun_col * path * 0.55 * sun_path_amount * (1.0 - 0.85 * near_shore);
@@ -455,7 +454,8 @@ void fragment() {
 		* (1.0 + crest * swell_light_detail * 0.65);
 	base = mix(base, foam_col * (0.82 + 0.18 * ndl), foam * 0.92);
 
-	base *= 1.0 - 0.42 * cloud_shade(wp);
+	// Освещённая вода чуть светлее, чтобы тени не затемняли кадр в среднем.
+	base *= 1.0 + cloud_shadow * 0.07 - 0.42 * cloud_shade(wp);
 
 	// ---------- дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
