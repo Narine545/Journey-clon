@@ -42,6 +42,10 @@ uniform float night_surface_fill : hint_range(0.0, 0.3) = 0.0;
 uniform float local_water_response : hint_range(0.0, 1.0) = 1.0;
 // Мелкие отражения реальных локальных ламп, не emission и не новые ячейки.
 uniform float local_glitter_strength : hint_range(0.0, 2.0) = 0.65;
+// Рассеяние света ламп в толще воды: луч скользит почти вдоль поверхности,
+// и по одному косинусу падения вода оставалась чёрной в двух шагах от носа.
+uniform float local_scatter : hint_range(0.0, 0.3) = 0.0;
+uniform vec3 local_scatter_tint : source_color = vec3(0.10, 0.30, 0.32);
 // Усиление существующего глиттера на гребнях; 0 = прежние блики.
 uniform float swell_light_detail : hint_range(0.0, 1.0) = 0.0;
 
@@ -513,6 +517,10 @@ void light() {
 		float sparkle = pow(alignment, 48.0) * smoothstep(0.0, 0.18, nl);
 		SPECULAR_LIGHT += radiance * sparkle * local_glitter_mask
 			* local_glitter_strength * local_water_response;
+		// Толща воды подхватывает луч по всей длине, а искры в нём
+		// загораются независимо от угла — те же ячейки, что у глиттера.
+		SPECULAR_LIGHT += radiance * local_scatter
+			* (local_scatter_tint + vec3(2.2) * local_glitter_mask);
 	}
 
 	if (proxima_test < 0.5) {

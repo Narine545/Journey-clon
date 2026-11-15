@@ -248,8 +248,10 @@ func _apply_atmosphere(n01: float) -> void:
 		.lerp(Color("e8956a"), 0.55 * dusk))
 	water.set_param("sky_col", Color("447084").lerp(Color("16243e"), night01)
 		.lerp(Color("6c4c88"), 0.50 * dusk))
+	# Под луной искры ярче самой воды: глиттер живёт в цвете поверхности
+	# и без запаса по яркости тонул в ночной синеве.
 	water.set_param("sun_col", Color("ffcc85").lerp(Color("b4d2f0"), night01)
-		* lerpf(1.0, 0.72, weather.cloud_amount))
+		* lerpf(1.0, 0.72, weather.cloud_amount) * (1.0 + 3.0 * moon))
 	# Одна дальняя дымка у моря и берега: ясность не создаёт нового стыка.
 	var haze_distance := lerpf(340.0, 130.0, night01) * lerpf(1.4, 1.0, effective_fog)
 	water.set_param("fog_distance", haze_distance)
@@ -261,12 +263,13 @@ func _apply_atmosphere(n01: float) -> void:
 	# В сумерках вода ещё держит свет неба: без этого под низким солнцем
 	# море чернело раньше, чем наступала ночь.
 	water.set_param("night_surface_fill", 0.18 * water_night + 0.26 * dusk)
-	water.set_param("glitter_amount", lerpf(0.32, 0.18, night01) + 0.08 * moon - 0.12 * dusk)
+	water.set_param("glitter_amount", lerpf(0.32, 0.18, night01) + 0.10 * moon)
 	# Это широкая искусственная дорожка, НЕ отдельные искры-глиттер.
 	# Плавно убрать её до наступления полной темноты.
 	water.set_param("sun_path_amount", 0.09 * (1.0 - clampf((night01 - 0.25) / 0.53, 0.0, 1.0)))
 	# Лунная дорожка: тот же зеркальный отклик ключа, ночью чуть сильнее.
-	water.set_param("direct_specular_amount", 0.018 + 0.016 * moon)
+	water.set_param("direct_specular_amount", 0.018 + 0.006 * moon)
+	water.set_param("local_scatter", 0.07 * smoothstep(0.2, 0.7, night01))
 	water.set_param("local_water_response", 1.0 if debug_local_water_response else 0.0)
 	water.set_param("surface_light_detail", 0.16) # [L] не меняет нормаль воды
 	water.set_param("swell_light_detail", 0.65) # [K] — сравнение с прежней водой
@@ -346,7 +349,7 @@ func _build_beacons() -> void:
 		var top_light := OmniLight3D.new()
 		top_light.light_color = s["color"]
 		top_light.light_energy = 0.0
-		top_light.omni_range = 12.0
+		top_light.omni_range = 26.0
 		top_light.light_volumetric_fog_energy = 0.3
 		top_light.position = Vector3(0.0, 10.4, 0.0)
 		tower.add_child(top_light)
@@ -399,7 +402,7 @@ func _build_beacons() -> void:
 		buoy_light.position = Vector3(0.0, 1.65, 0.0)
 		buoy_light.light_color = Color("e88554")
 		buoy_light.light_energy = 0.35
-		buoy_light.omni_range = 3.0
+		buoy_light.omni_range = 7.0
 		buoy_light.omni_attenuation = 2.0
 		buoy_light.light_volumetric_fog_energy = 0.2
 		buoy.add_child(buoy_light)
@@ -777,7 +780,7 @@ func interact_with_beacon() -> void:
 	buoy_light.light_color = Color("52f29c")
 
 	var top_l: OmniLight3D = b["top_light"]
-	top_l.light_energy = 1.4
+	top_l.light_energy = 3.2
 	var spot_l: SpotLight3D = b["spot"]
 	spot_l.light_energy = 18.0
 	var optic_mat: StandardMaterial3D = b["optic_mat"]
