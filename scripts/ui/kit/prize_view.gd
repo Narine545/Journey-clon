@@ -41,7 +41,17 @@ func _ready() -> void:
 	camera.look_at_from_position(camera.position, Vector3.ZERO, Vector3.UP)
 	_pivot = Node3D.new()
 	_viewport.add_child(_pivot)
-	_pivot.add_child(ArtifactModel.build(ArtifactModel.PRIZE, 2.3))
+	show_item(-1)
+
+
+## Показать одну вещь коллекции; -1 — вся коллекция (или заглушка).
+func show_item(index: int) -> void:
+	for child in _pivot.get_children():
+		child.queue_free()
+	if index < 0:
+		_pivot.add_child(ArtifactModel.build(ArtifactModel.PRIZE, 2.3))
+	else:
+		_pivot.add_child(ArtifactModel.build_item(index, 2.1))
 
 
 func _process(delta: float) -> void:

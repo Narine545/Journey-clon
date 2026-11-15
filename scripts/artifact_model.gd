@@ -7,6 +7,50 @@ extends RefCounted
 const DIRS := ["res://assets/artifacts/", "res://assets/models/", "res://assets/", "res://"]
 const ORB := "cyber_orb.glb"
 const PRIZE := "food_collection_-_game_ready.glb"
+## Вещи коллекции: имя узла в модели и подпись. В бухте таких вещей не делают,
+## поэтому названия — как их описала бы Мимо.
+const ITEMS := [
+	["SM_Beer_Bottle_01", "БУТЫЛКА ТЁМНОГО СТЕКЛА"],
+	["SM_Beer_Can_01", "ЖЕСТЯНКА С ШИПУЧКОЙ"],
+	["SM_Beer_Can_02", "ЖЕСТЯНКА С ШИПУЧКОЙ, ВТОРАЯ"],
+	["SM_Bleach_01", "БЕЛАЯ ЕДКАЯ ЖИДКОСТЬ"],
+	["SM_Bottle_01", "ПРОЗРАЧНАЯ БУТЫЛЬ"],
+	["SM_Bottles_Pack_01", "СВЯЗКА БУТЫЛОК"],
+	["SM_Candies_01", "ПАКЕТ СЛАДКИХ КАМЕШКОВ"],
+	["SM_Canned_Food_05", "КОНСЕРВА БЕЗ ЭТИКЕТКИ"],
+	["SM_Canned_Food_06", "КОНСЕРВА С РЫБОЙ"],
+	["SM_Canned_Food_07", "КОНСЕРВА С БОБАМИ"],
+	["SM_Canned_Food_08", "КОНСЕРВА С ЧЕМ-ТО КРАСНЫМ"],
+	["SM_Canned_Food_09", "ПЛОСКАЯ КОНСЕРВА"],
+	["SM_Canned_Food_10", "ВЫСОКАЯ КОНСЕРВА"],
+	["SM_Canned_Food_11", "КОНСЕРВА С КОЛЬЦОМ"],
+	["SM_Canned_Food_12", "МЯТАЯ КОНСЕРВА"],
+	["SM_Canned_Food_13", "КОНСЕРВА НА ЧЁРНЫЙ ДЕНЬ"],
+	["SM_Cereal_01", "КОРОБКА ХРУСТЯЩИХ ХЛОПЬЕВ"],
+	["SM_Chewing_Gum_01", "ЖЕВАТЕЛЬНЫЕ ПЛАСТИНКИ"],
+	["SM_Chocolate_Bar_01", "ПЛИТКА ШОКОЛАДА"],
+	["SM_Chocolate_Bar_02", "ШОКОЛАД С ОРЕХАМИ"],
+	["SM_Coffee_Box_01", "КОРОБКА КОФЕ"],
+	["SM_Detergent_Liquid_01", "ЖИДКОСТЬ ДЛЯ СТИРКИ"],
+	["SM_Detergent_Powder_01", "СТИРАЛЬНЫЙ ПОРОШОК"],
+	["SM_Detergent_Powder_02", "ПОРОШОК В СИНЕЙ КОРОБКЕ"],
+	["SM_Detergent_Powder_03", "ПОРОШОК В БОЛЬШОЙ КОРОБКЕ"],
+	["SM_Dishwashing_Liquid_01", "СРЕДСТВО ДЛЯ ПОСУДЫ"],
+	["SM_Glue_01", "ТЮБИК КЛЕЯ"],
+	["SM_Juice_Carton_01", "КАРТОННЫЙ СОК"],
+	["SM_Matches_Box_01", "КОРОБОК СПИЧЕК"],
+	["SM_Milk_Bottle_01", "БУТЫЛКА МОЛОКА"],
+	["SM_Olive_Oil_01", "ЗЕЛЁНОЕ МАСЛО"],
+	["SM_Pasta_01", "ПАЧКА МАКАРОН"],
+	["SM_Pills_Box_01", "КОРОБОЧКА ПИЛЮЛЬ"],
+	["SM_Porridge_01", "КАША БЫСТРОЙ ВАРКИ"],
+	["SM_Protein_Jar_01", "БАНКА ПОРОШКА СИЛЫ"],
+	["SM_Salt_02", "СОЛЬ"],
+	["SM_Sausages_01", "СВЯЗКА СОСИСОК"],
+	["SM_Sause_01", "БУТЫЛОЧКА СОУСА"],
+	["SM_Snack_01", "ХРУСТЯЩАЯ ЗАКУСКА"],
+	["SM_Wine_Bottle_01", "БУТЫЛКА ВИНА"],
+]
 
 
 static func find(file: String) -> String:
@@ -18,15 +62,58 @@ static func find(file: String) -> String:
 
 ## Узел с моделью, вписанной в куб со стороной fit и поставленной центром в ноль.
 static func build(file: String, fit: float) -> Node3D:
-	var holder := Node3D.new()
-	var model: Node3D = null
-	var path := find(file)
-	if not path.is_empty():
-		var packed := load(path) as PackedScene
-		if packed != null:
-			model = packed.instantiate() as Node3D
+	var model := _load(file)
 	if model == null:
 		model = _placeholder(file == ORB)
+	return _fitted(model, fit)
+
+
+## Одна вещь из коллекции находок: остальные предметы и подставка убираются.
+static func build_item(index: int, fit: float) -> Node3D:
+	var model := _load(PRIZE)
+	if model == null or index < 0 or index >= ITEMS.size():
+		return build(PRIZE, fit)
+	var wanted := String(ITEMS[index][0])
+	var keep: Node = null
+	var extra: Array[Node] = []
+	for node in model.find_children("SM_*", "Node3D", true, false):
+		# Предметы — прямые дети общего корня; их собственные сетки не трогаем.
+		if String(node.get_parent().name).begins_with("SM_"):
+			continue
+		if keep == null and String(node.name) == wanted:
+			keep = node
+		else:
+			extra.append(node)
+	if keep == null:
+		model.free()
+		return build(PRIZE, fit)
+	for node in model.find_children("Plane*", "Node3D", true, false):
+		extra.append(node)
+	for node in extra:
+		if is_instance_valid(node):
+			node.get_parent().remove_child(node)
+			node.free()
+	return _fitted(model, fit)
+
+
+static func item_name(index: int) -> String:
+	if index < 0 or index >= ITEMS.size():
+		return "АРТЕФАКТ"
+	return String(ITEMS[index][1])
+
+
+static func _load(file: String) -> Node3D:
+	var path := find(file)
+	if path.is_empty():
+		return null
+	var packed := load(path) as PackedScene
+	if packed == null:
+		return null
+	return packed.instantiate() as Node3D
+
+
+static func _fitted(model: Node3D, fit: float) -> Node3D:
+	var holder := Node3D.new()
 	holder.add_child(model)
 	var box := _bounds(model, Transform3D.IDENTITY)
 	var longest := maxf(box.size.x, maxf(box.size.y, box.size.z))

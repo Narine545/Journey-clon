@@ -173,6 +173,8 @@ func _read_state() -> Dictionary:
 		"max_speed": main.boat.effective_max_speed(),
 		"hull": main.boat.hull_hp,
 		"night": main.night01,
+		"hour": main.clock_hours,
+		"clock": main.clock_text(),
 		"raw": main.raw,
 		"raw_text": raw_text,
 		"refined": main.refined,
@@ -207,7 +209,7 @@ func _action(next_b: Dictionary, boat_xz: Vector2) -> Array:
 	var resource_name := main.boat.target_name()
 	var trailer_resource := main.boat.trailer_target_name()
 	if main.harbor != null and main.harbor.moored:
-		return ["E", "ТИХАЯ БУХТА · ОТДАТЬ ШВАРТОВЫ", 1]
+		return ["E", "ОТДАТЬ ШВАРТОВЫ   ·   Z — ОТДОХНУТЬ", 1]
 	if main.harbor != null and main.harbor.near_berth():
 		return ["E", "ШВАРТОВКА · ХОД ДО 1.2 М/С", 1]
 	if main.raid_gate != null and main.raid_gate.in_range():
@@ -593,7 +595,16 @@ func _draw_systems() -> void:
 	draw_circle(moon, 36.0, TideTokens.FOAM)
 	_pie(moon, 36.0, -PI * 0.5, -PI * 0.5 + TAU * night, TideTokens.DEEP)
 	_ring(moon, 36.0, 0.0, TAU, TideTokens.FOAM, 3.0)
-	_write(moon + Vector2(-60, 64), "НОЧЬ %d%%" % roundi(night * 100.0), 1, 14, TideTokens.foam_alpha(0.8), HORIZONTAL_ALIGNMENT_CENTER, 120.0)
+	# Часовая стрелка: полный оборот — сутки, полночь внизу.
+	var hour := float(_state.get("hour", -1.0))
+	if hour >= 0.0:
+		var hand := Vector2.from_angle(TAU * hour / 24.0 + PI * 0.5)
+		draw_line(moon, moon + hand * 30.0, TideTokens.FLARE, 4.0, true)
+		draw_circle(moon, 5.0, TideTokens.FLARE)
+	var clock := String(_state.get("clock", ""))
+	if clock.is_empty():
+		clock = "НОЧЬ %d%%" % roundi(night * 100.0)
+	_write(moon + Vector2(-80, 64), clock, 1, 14, TideTokens.foam_alpha(0.8), HORIZONTAL_ALIGNMENT_CENTER, 160.0)
 	_write(Vector2(-150, -62), String(_state["weather"]), 1, 15, TideTokens.foam_alpha(0.8))
 
 

@@ -50,6 +50,12 @@ var notice_time := 0.0
 
 # Состояние игрового цикла (Маяки, Сумерки, Рифы, Сонар)
 var night01 := 0.0
+## Игровые часы. Сутки идут медленно (CLOCK_SCALE игровых секунд за реальную),
+## быстро время переводит только отдых у причала.
+const CLOCK_SCALE := 10.0
+var clock_hours := 6.5
+var clock_day := 1
+var rest: TideRest
 var weather := SeaWeather.new()
 var debug_instant_fog := false
 var sonar_timer := 12.0 # со старта даём краткий пеленг, чтобы игрок сразу увидел цель
@@ -799,6 +805,9 @@ func _build_tide_menu() -> void:
 	prologue = TidePrologue.new()
 	stage.canvas.add_child(prologue)
 	prologue.finished.connect(_on_prologue_finished)
+	rest = TideRest.new()
+	stage.canvas.add_child(rest)
+	rest.rested.connect(_on_rested)
 	menu.voyage_requested.connect(_on_menu_voyage)
 	menu.continue_requested.connect(_close_menu)
 	menu.quit_requested.connect(_on_menu_quit)
@@ -874,9 +883,54 @@ func debug_grant_materials() -> void:
 	announce("ТЕСТ: +3 ГОТОВЫХ ПИГМЕНТА КАЖДОГО ЦВЕТА")
 
 
+## Темнота по часам: день 07–18, сумерки до 21:30, ночь до 04:30, рассвет до 07.
+static func night_for_hour(hour: float) -> float:
+	var h := fposmod(hour, 24.0)
+	if h >= 7.0 and h <= 18.0:
+		return 0.0
+	if h > 18.0 and h < 21.5:
+		return 0.88 * smoothstep(18.0, 21.5, h)
+	if h >= 4.5 and h < 7.0:
+		return 0.88 * (1.0 - smoothstep(4.5, 7.0, h))
+	return 0.88
+
+
+func advance_clock(hours: float) -> void:
+	clock_hours += hours
+	while clock_hours >= 24.0:
+		clock_hours -= 24.0
+		clock_day += 1
+
+
+func clock_text() -> String:
+	var h := fposmod(clock_hours, 24.0)
+	var part := "НОЧЬ"
+	if h >= 5.0 and h < 11.0:
+		part = "УТРО"
+	elif h >= 11.0 and h < 18.0:
+		part = "ДЕНЬ"
+	elif h >= 18.0 and h < 22.0:
+		part = "ВЕЧЕР"
+	return "%s · %s" % [TideRest.clock_text(h), part]
+
+
+func open_rest() -> void:
+	if rest == null or rest.visible or harbor == null or not harbor.moored:
+		return
+	rest.open(clock_hours)
+
+
+func _on_rested(hours: float) -> void:
+	advance_clock(hours)
+	debug_night_paused = false
+	_apply_atmosphere(night_for_hour(clock_hours))
+	announce("ОТДОХНУЛИ. НА ЧАСАХ %s." % clock_text())
+
+
 func debug_cycle_night() -> void:
 	_debug_night_step = (_debug_night_step + 1) % 3
 	debug_night_paused = true
+	clock_hours = [12.0, 19.75, 23.0][_debug_night_step]
 	var presets := PackedFloat32Array([0.0, 0.45, 0.88])
 	_apply_atmosphere(presets[_debug_night_step])
 	announce("ТЕСТ: ВРЕМЯ СУТОК %d%% (ЗАФИКСИРОВАНО; [7] — ПРОДОЛЖИТЬ)" % int(round(night01 * 100.0)))
@@ -1131,6 +1185,8 @@ func gameplay_paused() -> bool:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if rest != null and rest.visible:
+		return
 	if menu_open:
 		if prologue != null and prologue.visible:
 			return
@@ -1166,6 +1222,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_T:
 				toggle_trailer_free()
+				get_viewport().set_input_as_handled()
+			KEY_Z:
+				open_rest()
 				get_viewport().set_input_as_handled()
 			KEY_E:
 				if harbor != null and (harbor.moored or harbor.near_berth()):
@@ -1239,8 +1298,9 @@ func _process(delta: float) -> void:
 
 	# Плавное наступление сумерек (в режиме smoke-теста оставляем яркий день)
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") != "1" and not debug_night_paused:
-		var night_rate := 0.0015 if all_beacons_lit else (0.0055 - float(lit_beacon_count()) * 0.0012)
-		night01 = minf(0.88, night01 + night_rate * delta)
+		if not menu_open:
+			advance_clock(delta * CLOCK_SCALE / 3600.0)
+		night01 = night_for_hour(clock_hours)
 	# Погода продолжает жить и при достигнутой полной ночи, и при
 	# отладочной остановке часов. Smoke использует фиксированный fixture.
 	if OS.get_environment("JOURNEY_BOAT_SMOKE") != "1":
@@ -1297,6 +1357,7 @@ func _process(delta: float) -> void:
 		resource_zones.update(delta)
 	hud.visible = (
 		not menu_open and not inspection_active() and not (raid != null and raid.engaged())
+		and not (rest != null and rest.visible)
 	)
 	hud.queue_redraw()
 	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":

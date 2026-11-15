@@ -437,7 +437,16 @@ func _report_payload() -> Dictionary:
 		]
 	if log_lines.is_empty():
 		log_lines = "ЖУРНАЛ ПУСТ"
+	var prize := -1
+	var prize_count := "НАХОДКА"
+	if win and run.main != null and run.main.raid_gate != null:
+		var gate: RaidGate = run.main.raid_gate
+		prize = gate.claim_prize()
+		var total := gate.found.size() + (0 if gate.found.has(prize) else 1)
+		prize_count = "НАХОДКА · %d ИЗ %d" % [total, ArtifactModel.ITEMS.size()]
 	return {
+		"prize": prize,
+		"prize_count": prize_count,
 		"win": win,
 		"title": "ЦЕЛЬ УНИЧТОЖЕНА" if win else "ПРОПАЛ БЕЗ ВЕСТИ",
 		"kicker": "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА",

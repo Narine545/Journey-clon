@@ -14,6 +14,9 @@ const MARGIN := 62.0
 var _page: Control
 var _face: TextureRect
 var _prize: Control
+var _prize_view: TidePrizeView
+var _prize_name: Label
+var _prize_count: Label
 var _sheet: Control
 var _title: TideTitleLabel
 var _kicker: Label
@@ -63,16 +66,14 @@ func _build() -> void:
 		_prize, Rect2(Vector2.ZERO, Vector2(440, 600)), TideTokens.FOAM, TideTokens.SONAR, true
 	)
 	card.hatch_color = TideTokens.deep_alpha(0.1)
-	TideKit.text(_prize, "НАХОДКА", Vector2(34, 30), 1, 20, TideTokens.ink_alpha(0.7))
+	_prize_count = TideKit.text(_prize, "НАХОДКА", Vector2(34, 30), 1, 20, TideTokens.ink_alpha(0.7))
 	TideKit.headline(_prize, "АРТЕФАКТ", Vector2(30, 54), 370.0, 46, TideTokens.INK, 4, -8.0)
-	var view := TidePrizeView.new()
+	_prize_view = TidePrizeView.new()
+	var view := _prize_view
 	TideKit.place(view, Rect2(16, 120, 408, 370))
 	_prize.add_child(view)
-	var note := TideKit.block(
-		_prize, "ИЗ ДРУГОГО МИРА. ЧТО ЭТО — НИКТО В БУХТЕ НЕ ЗНАЕТ.", Rect2(34, 496, 360, 70), 1, 17,
-		TideTokens.INK, 2
-	)
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_prize_name = TideKit.block(_prize, "", Rect2(34, 492, 372, 78), 1, 19, TideTokens.INK, 2)
+	_prize_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_prize.hide()
 	_sheet = TideKit.group(_page, SHEET_RECT, SHEET_DEG)
 	var paper := TideKit.panel(
@@ -159,6 +160,10 @@ func open(report: Dictionary) -> void:
 	_face.texture = null if win else TideStory.portrait("soaked")
 	_prize.visible = win
 	if win:
+		var prize := int(report.get("prize", -1))
+		_prize_view.show_item(prize)
+		_prize_name.text = "%s. ИЗ ДРУГОГО МИРА." % ArtifactModel.item_name(prize)
+		_prize_count.text = String(report.get("prize_count", "НАХОДКА"))
 		TideFx.pop_in(_prize, 0.6, -12.0)
 	_title.paper_color = TideTokens.SONAR if win else TideTokens.FLARE
 	_title.set_title(String(report.get("title", "ПРОПАЛ БЕЗ ВЕСТИ")))

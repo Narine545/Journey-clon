@@ -13,6 +13,7 @@ var journal: TidePauseJournal
 var report: TideGameOverReport
 var menu: TideMainMenu
 var prologue: TidePrologue
+var rest: TideRest
 var sail: BoatHud
 var _clock := 0.0
 var _sea: Control
@@ -50,6 +51,8 @@ func _ready() -> void:
 	menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prologue = TidePrologue.new()
 	canvas.add_child(prologue)
+	rest = TideRest.new()
+	canvas.add_child(rest)
 	sail = BoatHud.new()
 	sail.set_anchors_preset(Control.PRESET_FULL_RECT)
 	sail.visible = false
@@ -147,6 +150,8 @@ func _sail_state() -> Dictionary:
 		"sonar": 13.0,
 		"overdrive": 0.0,
 		"weather": "ПОГОДА: СВЕЖИЙ ВЕТЕР",
+		"hour": 14.5,
+		"clock": "14:30 · ДЕНЬ",
 		"camera": "ВЫСОТА 1.00× (27.0 м) · ОТДАЛЕНИЕ 1.00×",
 		"shoal": false,
 		"gate": {"dir": Vector2(-0.8, 0.6).normalized(), "dist": 240, "artifacts": 1},
@@ -255,6 +260,8 @@ func _run_sequence() -> void:
 	await shot.capture("tide_05_report")
 	var won := _report_data()
 	won["win"] = true
+	won["prize"] = 28
+	won["prize_count"] = "НАХОДКА · 3 ИЗ 40"
 	won["title"] = "ЦЕЛЬ УНИЧТОЖЕНА"
 	won["verdict"] = "КОРПУС ДОСТАВЛЕН В ПОРТ"
 	report.open(won)
@@ -278,6 +285,14 @@ func _run_sequence() -> void:
 	await _wait(24)
 	await shot.capture("tide_09_prologue_mother")
 	prologue.close()
+
+	rest.open(14.5)
+	await _wait(40)
+	await shot.capture("tide_13_rest")
+	rest.show_play(1)
+	await _wait(20)
+	await shot.capture("tide_14_rest_nap")
+	rest.close()
 
 	# Интерфейс плавания на синтетическом состоянии: сонар включён, насос работает.
 	sail.demo_state = _sail_state()
