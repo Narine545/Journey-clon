@@ -150,6 +150,16 @@ func _read_state() -> Dictionary:
 			"can_fuel": can_fuel,
 			"dir": Vector2(dir_t.dot(cam_right), -dir_t.dot(cam_up)).normalized(),
 		}
+	var gate := {}
+	if main.raid_gate != null and main.raid_gate.visible:
+		var rel_g: Vector2 = main.raid_gate.at() - boat_xz
+		if rel_g.length() > 0.5:
+			var dir_g := rel_g.normalized()
+			gate = {
+				"dir": Vector2(dir_g.dot(cam_right), -dir_g.dot(cam_up)).normalized(),
+				"dist": int(round(rel_g.length())),
+				"artifacts": main.raid_gate.artifacts,
+			}
 	var action := _action(next_b, boat_xz)
 	var pump_kind := -1
 	var pump := maxf(main.boat.pump_fraction(), main.boat.trailer_pump_fraction())
@@ -171,6 +181,7 @@ func _read_state() -> Dictionary:
 		"lit": main.lit_beacon_count(),
 		"total": main.beacons.size(),
 		"target": target,
+		"gate": gate,
 		"beacons": beacons,
 		"slicks": slicks,
 		"heading": Vector2(forward_xz.dot(cam_right), -forward_xz.dot(cam_up)).normalized(),
@@ -199,6 +210,8 @@ func _action(next_b: Dictionary, boat_xz: Vector2) -> Array:
 		return ["E", "ТИХАЯ БУХТА · ОТДАТЬ ШВАРТОВЫ", 1]
 	if main.harbor != null and main.harbor.near_berth():
 		return ["E", "ШВАРТОВКА · ХОД ДО 1.2 М/С", 1]
+	if main.raid_gate != null and main.raid_gate.in_range():
+		return ["E", "СФЕРА ИЗ ДРУГОГО МИРА · НАЧАТЬ РЕЙД", 2]
 	if not dock_b.is_empty():
 		if dock_b["lit"]:
 			return ["E", "ПРИЧАЛ МАЯКА «%s» · РЕМОНТ КОРПУСА" % String(dock_b["name"]).to_upper(), 1]
@@ -421,6 +434,27 @@ func _draw_compass() -> void:
 		var mark := PackedVector2Array([at + dir * 16.0, at - dir * 10.0 + side * 11.0, at - dir * 10.0 - side * 11.0])
 		draw_colored_polygon(mark, TideTokens.SONAR if is_lit else TideTokens.FLARE)
 		draw_polyline(TideShapes.closed(mark), TideTokens.INK, 2.0, true)
+	# Сфера рейда: мигающий ромб на ободе и расстояние под прибором.
+	var gate: Dictionary = _state.get("gate", {})
+	if not gate.is_empty():
+		var dir_g: Vector2 = gate["dir"]
+		var at_g := center + dir_g * (radius + 4.0)
+		var side_g := Vector2(-dir_g.y, dir_g.x)
+		var beat := 1.0 + 0.18 * sin(_time * 5.0)
+		var gem := PackedVector2Array([
+			at_g + dir_g * 17.0 * beat, at_g + side_g * 12.0 * beat,
+			at_g - dir_g * 17.0 * beat, at_g - side_g * 12.0 * beat,
+		])
+		draw_colored_polygon(gem, TideTokens.FOAM)
+		draw_polyline(TideShapes.closed(gem), TideTokens.INK, 3.0, true)
+		draw_circle(at_g, 4.5, TideTokens.FLARE)
+		var gate_text := "СФЕРА · %d М" % int(gate["dist"])
+		if int(gate.get("artifacts", 0)) > 0:
+			gate_text += "  ·  АРТЕФАКТОВ %d" % int(gate["artifacts"])
+		_write(
+			Vector2(-170, radius + 104.0), gate_text, 1, 16, TideTokens.FOAM,
+			HORIZONTAL_ALIGNMENT_CENTER, 340.0
+		)
 	var target: Dictionary = _state["target"]
 	if not target.is_empty():
 		var dir_t: Vector2 = target["dir"]

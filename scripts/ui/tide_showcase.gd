@@ -148,7 +148,8 @@ func _sail_state() -> Dictionary:
 		"overdrive": 0.0,
 		"weather": "ПОГОДА: СВЕЖИЙ ВЕТЕР",
 		"camera": "ВЫСОТА 1.00× (27.0 м) · ОТДАЛЕНИЕ 1.00×",
-		"shoal": true,
+		"shoal": false,
+		"gate": {"dir": Vector2(-0.8, 0.6).normalized(), "dist": 240, "artifacts": 1},
 		"key": "ПРОБЕЛ",
 		"action": "ЗАБРАТЬ С ЛЕВОГО БОРТА: КОРАЛЛ",
 		"tone": 1,
@@ -252,6 +253,13 @@ func _run_sequence() -> void:
 	report.open(_report_data())
 	await _wait(50)
 	await shot.capture("tide_05_report")
+	var won := _report_data()
+	won["win"] = true
+	won["title"] = "ЦЕЛЬ УНИЧТОЖЕНА"
+	won["verdict"] = "КОРПУС ДОСТАВЛЕН В ПОРТ"
+	report.open(won)
+	await _wait(60)
+	await shot.capture("tide_12_report_win")
 	report.hide()
 
 	menu.open()

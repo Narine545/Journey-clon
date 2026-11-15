@@ -13,6 +13,7 @@ const MARGIN := 62.0
 
 var _page: Control
 var _face: TextureRect
+var _prize: Control
 var _sheet: Control
 var _title: TideTitleLabel
 var _kicker: Label
@@ -56,6 +57,23 @@ func _build() -> void:
 	_face.material = TideStory.backing(12.0)
 	TideKit.place(_face, Rect2(1310, 170, 620, 1110), 3.0)
 	_page.add_child(_face)
+	# Находка за победу: модель вращается на бумажной карточке справа от рапорта.
+	_prize = TideKit.group(_page, Rect2(1400, 250, 470, 600), 3.0)
+	var card := TideKit.panel(
+		_prize, Rect2(Vector2.ZERO, Vector2(470, 600)), TideTokens.FOAM, TideTokens.SONAR, true
+	)
+	card.hatch_color = TideTokens.deep_alpha(0.1)
+	TideKit.text(_prize, "НАХОДКА", Vector2(34, 30), 1, 20, TideTokens.ink_alpha(0.7))
+	TideKit.headline(_prize, "АРТЕФАКТ", Vector2(30, 54), 400.0, 46, TideTokens.INK, 4, -8.0)
+	var view := TidePrizeView.new()
+	TideKit.place(view, Rect2(20, 120, 430, 370))
+	_prize.add_child(view)
+	var note := TideKit.block(
+		_prize, "ИЗ ДРУГОГО МИРА. ЧТО ЭТО — НИКТО В БУХТЕ НЕ ЗНАЕТ.", Rect2(34, 496, 402, 70), 1, 17,
+		TideTokens.INK, 2
+	)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_prize.hide()
 	_sheet = TideKit.group(_page, SHEET_RECT, SHEET_DEG)
 	var paper := TideKit.panel(
 		_sheet, Rect2(Vector2.ZERO, SHEET_RECT.size), TideTokens.FOAM, TideTokens.FLARE, true
@@ -136,9 +154,12 @@ func _build() -> void:
 
 ## report: {win, title, kicker, verdict, protocol, build, log}
 func open(report: Dictionary) -> void:
-	_face.texture = TideStory.portrait("soaked")
 	show()
 	var win: bool = report.get("win", false)
+	_face.texture = null if win else TideStory.portrait("soaked")
+	_prize.visible = win
+	if win:
+		TideFx.pop_in(_prize, 0.6, -12.0)
 	_title.paper_color = TideTokens.SONAR if win else TideTokens.FLARE
 	_title.set_title(String(report.get("title", "ПРОПАЛ БЕЗ ВЕСТИ")))
 	_kicker.text = String(report.get("kicker", "РАПОРТ КАПИТАНА · ВАХТА ЗАКРЫТА"))

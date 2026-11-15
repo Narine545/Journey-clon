@@ -36,6 +36,7 @@ var prologue_seen := false
 var inspector: WorldInspector
 var photo_mode: BoatPhotoMode
 var raid: RaidRun
+var raid_gate: RaidGate
 var camera_height := 26.2
 var camera_framing := BoatCameraFraming.new()
 var slicks: Array[ResourceSlick] = []
@@ -171,6 +172,9 @@ func _ready() -> void:
 	raid = RaidRun.new()
 	add_child(raid)
 	raid.setup(self)
+	raid_gate = RaidGate.new()
+	add_child(raid_gate)
+	raid_gate.setup(self)
 	_boot_mark("меню")
 	_build_tide_menu()
 	_boot_mark("постобработка")
@@ -850,8 +854,8 @@ func _start_voyage() -> void:
 		announce("ТИХАЯ БУХТА. [E] — ОТДАТЬ ШВАРТОВЫ, ЗАТЕМ ВЫХОДИТЕ НА ГЛУБОКУЮ ВОДУ.")
 		return
 	if raid != null and not raid.engaged():
-		# start() сам скажет, если под килем ещё мелко.
-		raid.start()
+		# Рейд больше не начинается из афиши: вход — сфера в открытом океане.
+		announce("В ОКЕАНЕ ВСПЛЫЛА СФЕРА ИЗ ДРУГОГО МИРА. СЛЕД — НА КОМПАСЕ, [E] РЯДОМ С НЕЙ.")
 
 
 func _on_menu_quit() -> void:
@@ -1166,6 +1170,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_E:
 				if harbor != null and (harbor.moored or harbor.near_berth()):
 					harbor.interact()
+				elif raid_gate != null and raid_gate.in_range():
+					raid_gate.enter()
 				else:
 					interact_with_beacon()
 				get_viewport().set_input_as_handled()
