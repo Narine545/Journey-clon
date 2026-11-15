@@ -355,7 +355,7 @@ func _build_beacons() -> void:
 		var top_light := OmniLight3D.new()
 		top_light.light_color = s["color"]
 		top_light.light_energy = 0.0
-		top_light.omni_range = 26.0
+		top_light.omni_range = 44.0
 		top_light.light_volumetric_fog_energy = 1.6
 		top_light.position = Vector3(0.0, 10.4, 0.0)
 		tower.add_child(top_light)
@@ -786,9 +786,9 @@ func interact_with_beacon() -> void:
 	buoy_light.light_color = Color("52f29c")
 
 	var top_l: OmniLight3D = b["top_light"]
-	top_l.light_energy = 3.2
+	top_l.light_energy = 7.0
 	var spot_l: SpotLight3D = b["spot"]
-	spot_l.light_energy = 18.0
+	spot_l.light_energy = 34.0
 	var optic_mat: StandardMaterial3D = b["optic_mat"]
 	optic_mat.emission_enabled = true
 	optic_mat.emission = col

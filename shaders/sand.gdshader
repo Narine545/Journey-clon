@@ -37,6 +37,10 @@ uniform float sea_swell = 0.055; // дыхание моря — как в water.
 
 // Общий переключатель прямого света Proxima + Schlick-GGX (A/B).
 uniform float proxima_test = 0.0;
+// Цвет песка под лампой. Ночная палитра делает ALBEDO почти чёрным, а
+// Forward+ домножает на него накопленный свет ещё раз: фонарь и маяк
+// на песке были не видны вовсе. Лампа показывает настоящий цвет песка.
+uniform vec3 lamp_sand_col : source_color = vec3(0.93, 0.52, 0.30);
 uniform float proxima_specular_strength = 0.55;
 uniform vec3 proxima_diffuse_fresnel_tint = vec3(1.0);
 uniform float proxima_diffuse_fresnel = 1.0;
@@ -389,8 +393,12 @@ void light() {
 		float fd90 = 0.5 + 2.0 * ROUGHNESS * hl * hl;
 		float burley_l = 1.0 + (fd90 - 1.0) * pow(1.0 - nl, 5.0);
 		float burley_v = 1.0 + (fd90 - 1.0) * pow(1.0 - nv, 5.0);
-		DIFFUSE_LIGHT += radiance * ALBEDO * (1.0 / PI)
-			* burley_l * burley_v * nl;
+		vec3 lamp_tint = lamp_sand_col * lamp_sand_col / max(ALBEDO, vec3(0.03));
+		vec3 diffuse_tint = LIGHT_IS_DIRECTIONAL ? ALBEDO : lamp_tint;
+		// Низкая лампа скользит вдоль дюн: мягкий заход света за склон.
+		float lamp_nl = LIGHT_IS_DIRECTIONAL ? nl : nl * 0.8 + 0.2;
+		DIFFUSE_LIGHT += radiance * diffuse_tint * (1.0 / PI)
+			* burley_l * burley_v * lamp_nl;
 		SPECULAR_LIGHT += radiance * d * gl * gv * f / max(4.0 * nl * nv, 1e-3);
 	} else {
 	// Diffuse Proxima: Fresnel tint, retroreflection и smooth terminator.

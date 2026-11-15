@@ -41,6 +41,9 @@ func _run() -> void:
 	main.debug_warp_to_beacon()
 	main.interact_with_beacon()
 	await _shot("light_06_night_beacon", 23.0, 0.35)
+	# Общий план: буй, башня маяка и песок вокруг неё.
+	main.camera.size = 84.0
+	await _shot("light_10_night_beacon_wide", 23.0, 0.0)
 
 	print("[LIGHT SHOTS] готово")
 	get_tree().quit(0)

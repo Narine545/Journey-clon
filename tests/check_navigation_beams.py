@@ -8,7 +8,7 @@ assert 'nav_mat := _material(nav_col, 0.1, 0.65, 0.24)' in vessel
 assert 'nav_col, 0.10, 1.1, nav_mat' in vessel
 assert 'spot.spot_range = 90.0' in main
 assert 'spot.spot_angle = 12.0' in main
-assert 'spot_l.light_energy = 18.0' in main
+assert 'spot_l.light_energy = 34.0' in main
 assert 'beam_pivot.rotation.y = atan2(-outward.x, -outward.y)' in main
 # All headlands start facing seaward, rather than assuming the sea lies west.
 for nx, nz in ((1, 0), (0, -1), (-1, 0), (0, 1)):
