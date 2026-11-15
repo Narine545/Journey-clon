@@ -393,7 +393,7 @@ void light() {
 		float fd90 = 0.5 + 2.0 * ROUGHNESS * hl * hl;
 		float burley_l = 1.0 + (fd90 - 1.0) * pow(1.0 - nl, 5.0);
 		float burley_v = 1.0 + (fd90 - 1.0) * pow(1.0 - nv, 5.0);
-		vec3 lamp_tint = lamp_sand_col * lamp_sand_col / max(ALBEDO, vec3(0.03));
+		vec3 lamp_tint = lamp_sand_col * 0.8 / max(ALBEDO, vec3(0.03));
 		vec3 diffuse_tint = LIGHT_IS_DIRECTIONAL ? ALBEDO : lamp_tint;
 		// Низкая лампа скользит вдоль дюн: мягкий заход света за склон.
 		float lamp_nl = LIGHT_IS_DIRECTIONAL ? nl : nl * 0.8 + 0.2;

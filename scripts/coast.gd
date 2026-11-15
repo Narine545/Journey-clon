@@ -344,9 +344,10 @@ const DAY_HOT := Color(1.00, 0.68, 0.36)
 const DAY_SHADE := Color(0.40, 0.32, 0.52)
 const DAY_HORIZON := Color(0.96, 0.66, 0.55)
 const DAY_SKY := Color(0.28, 0.24, 0.43)
-const NIGHT_SUNNY := Color(0.135, 0.155, 0.24)
-const NIGHT_HOT := Color(0.19, 0.215, 0.32)
-const NIGHT_SHADE := Color(0.055, 0.065, 0.115)
+# Под луной дюны читаются синевой, а не проваливаются в черноту.
+const NIGHT_SUNNY := Color(0.30, 0.35, 0.52)
+const NIGHT_HOT := Color(0.40, 0.45, 0.64)
+const NIGHT_SHADE := Color(0.10, 0.12, 0.21)
 const NIGHT_HORIZON := Color(0.22, 0.27, 0.40)
 const NIGHT_SKY := Color(0.04, 0.05, 0.10)
 
