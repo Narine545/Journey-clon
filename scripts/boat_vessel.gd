@@ -1289,7 +1289,7 @@ func _practical_light(parent: Node3D, at: Vector3, color: Color,
 	lamp.light_energy = energy
 	lamp.omni_range = reach
 	lamp.omni_attenuation = 2.0
-	lamp.light_volumetric_fog_energy = 0.15
+	lamp.light_volumetric_fog_energy = 0.8
 	lamp.shadow_enabled = false
 	lamp.set_meta("rated_energy", energy)
 	if lens != null:

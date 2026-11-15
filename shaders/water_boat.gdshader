@@ -498,6 +498,14 @@ void light() {
 	float nv = clamp(dot(n, v), 1e-3, 1.0);
 	vec3 radiance = LIGHT_COLOR * ATTENUATION;
 
+	// Толща воды подхватывает луч по всей длине, а искры в нём загораются
+	// независимо от угла. Считается ДО проверки nl: иначе обратные склоны
+	// волн, отвернувшиеся от низкого фонаря, оставались чёрными пятнами.
+	if (!LIGHT_IS_DIRECTIONAL) {
+		SPECULAR_LIGHT += radiance * local_scatter
+			* (local_scatter_tint + vec3(1.5) * local_glitter_mask);
+	}
+
 	if (nl > 0.0) {
 	vec3 h = normalize(v + l);
 	float nh = clamp(dot(h, n), 0.0, 1.0);
@@ -517,10 +525,6 @@ void light() {
 		float sparkle = pow(alignment, 48.0) * smoothstep(0.0, 0.18, nl);
 		SPECULAR_LIGHT += radiance * sparkle * local_glitter_mask
 			* local_glitter_strength * local_water_response;
-		// Толща воды подхватывает луч по всей длине, а искры в нём
-		// загораются независимо от угла — те же ячейки, что у глиттера.
-		SPECULAR_LIGHT += radiance * local_scatter
-			* (local_scatter_tint + vec3(1.5) * local_glitter_mask);
 	}
 
 	if (proxima_test < 0.5) {

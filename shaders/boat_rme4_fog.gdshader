@@ -102,6 +102,9 @@ void fog() {
 	vec3 legacy_albedo = mix(albedo, night_albedo, night);
 	// Туман, а не чёрный дым: оставляем достаточно рассеяния для фонаря.
 	vec3 low_fog_albedo = mix(vec3(0.75, 0.80, 0.82), vec3(0.58, 0.65, 0.73), night);
+	// На низком солнце слой у воды теплеет: рассвет и закат красят дымку.
+	low_fog_albedo = mix(low_fog_albedo, vec3(1.0, 0.74, 0.56),
+		low_sun * (1.0 - night) * 0.6);
 	ALBEDO = mix(legacy_albedo, low_fog_albedo, profile);
 
 	// Собственное свечение раньше заполняло ночные тени. Сохраняем лишь

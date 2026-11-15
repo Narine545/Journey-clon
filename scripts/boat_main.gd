@@ -217,6 +217,12 @@ func _apply_atmosphere(n01: float) -> void:
 	var moon := world.boat_moon01(night01)
 	var dusk := sin(clampf((night01 - 0.16) / 0.58, 0.0, 1.0) * PI)
 	effective_fog = maxf(effective_fog, 0.22 * moon)
+	# Утренняя дымка у воды: на рассвете низкое солнце подсвечивает её
+	# даже в ясную погоду. Автотест идёт на фиксированной погоде.
+	if OS.get_environment("JOURNEY_BOAT_SMOKE") != "1":
+		var hour := fposmod(clock_hours, 24.0)
+		var morning := smoothstep(4.5, 6.0, hour) * (1.0 - smoothstep(7.5, 9.5, hour))
+		effective_fog = maxf(effective_fog, 0.38 * morning)
 	game.sun_dir = sun
 	# Один вызов вместо трёх конфликтующих. Раньше здесь шли подряд
 	# apply_night01(), apply_sun() и fade_boat_sun(), и все три писали одни
@@ -350,7 +356,7 @@ func _build_beacons() -> void:
 		top_light.light_color = s["color"]
 		top_light.light_energy = 0.0
 		top_light.omni_range = 26.0
-		top_light.light_volumetric_fog_energy = 0.3
+		top_light.light_volumetric_fog_energy = 1.6
 		top_light.position = Vector3(0.0, 10.4, 0.0)
 		tower.add_child(top_light)
 
@@ -404,7 +410,7 @@ func _build_beacons() -> void:
 		buoy_light.light_energy = 0.35
 		buoy_light.omni_range = 7.0
 		buoy_light.omni_attenuation = 2.0
-		buoy_light.light_volumetric_fog_energy = 0.2
+		buoy_light.light_volumetric_fog_energy = 1.2
 		buoy.add_child(buoy_light)
 
 		buoy_dynamics.register(Vector2(buoy_pos.x, buoy_pos.z), 1.32, buoy)

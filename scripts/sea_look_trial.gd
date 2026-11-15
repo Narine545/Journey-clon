@@ -86,7 +86,7 @@ func _set_instant_fog(enabled: bool) -> void:
 
 
 func _layout() -> void:
-	_panel.position = Vector2(24, maxf(420.0, get_viewport().get_visible_rect().size.y - 275.0))
+	_panel.position = Vector2(24, maxf(420.0, get_viewport().get_visible_rect().size.y - 440.0))
 	_panel.custom_minimum_size = Vector2(300, 0)
 
 

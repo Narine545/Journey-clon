@@ -29,14 +29,14 @@ func setup(game: BoatMain) -> void:
 	_jetty_lamp.light_color = Color("edc796")
 	_jetty_lamp.light_energy = 0.05
 	_jetty_lamp.omni_range = 11.0
-	_jetty_lamp.light_volumetric_fog_energy = 0.15
+	_jetty_lamp.light_volumetric_fog_energy = 1.2
 	add_child(_jetty_lamp)
 	main._add_cyl(self, Vector3(124.0, 3.8, -45.4), 0.12, 0.12, 0.22, lamp_mat)
 	_porch_lamp = OmniLight3D.new()
 	_porch_lamp.position = Vector3(124.0, 3.8, -45.4)
 	_porch_lamp.light_color = Color("edc796")
 	_porch_lamp.omni_range = 7.0
-	_porch_lamp.light_volumetric_fog_energy = 0.1
+	_porch_lamp.light_volumetric_fog_energy = 0.9
 	add_child(_porch_lamp)
 	# IALA A: entering from the west, red to port (north), green to starboard.
 	for i in range(2):
