@@ -58,18 +58,18 @@ func _build() -> void:
 	TideKit.place(_face, Rect2(1310, 170, 620, 1110), 3.0)
 	_page.add_child(_face)
 	# Находка за победу: модель вращается на бумажной карточке справа от рапорта.
-	_prize = TideKit.group(_page, Rect2(1400, 250, 470, 600), 3.0)
+	_prize = TideKit.group(_page, Rect2(1396, 250, 440, 600), 3.0)
 	var card := TideKit.panel(
-		_prize, Rect2(Vector2.ZERO, Vector2(470, 600)), TideTokens.FOAM, TideTokens.SONAR, true
+		_prize, Rect2(Vector2.ZERO, Vector2(440, 600)), TideTokens.FOAM, TideTokens.SONAR, true
 	)
 	card.hatch_color = TideTokens.deep_alpha(0.1)
 	TideKit.text(_prize, "НАХОДКА", Vector2(34, 30), 1, 20, TideTokens.ink_alpha(0.7))
-	TideKit.headline(_prize, "АРТЕФАКТ", Vector2(30, 54), 400.0, 46, TideTokens.INK, 4, -8.0)
+	TideKit.headline(_prize, "АРТЕФАКТ", Vector2(30, 54), 370.0, 46, TideTokens.INK, 4, -8.0)
 	var view := TidePrizeView.new()
-	TideKit.place(view, Rect2(20, 120, 430, 370))
+	TideKit.place(view, Rect2(16, 120, 408, 370))
 	_prize.add_child(view)
 	var note := TideKit.block(
-		_prize, "ИЗ ДРУГОГО МИРА. ЧТО ЭТО — НИКТО В БУХТЕ НЕ ЗНАЕТ.", Rect2(34, 496, 402, 70), 1, 17,
+		_prize, "ИЗ ДРУГОГО МИРА. ЧТО ЭТО — НИКТО В БУХТЕ НЕ ЗНАЕТ.", Rect2(34, 496, 360, 70), 1, 17,
 		TideTokens.INK, 2
 	)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
