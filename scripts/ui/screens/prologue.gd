@@ -15,7 +15,7 @@ const BACK_DEG := 4.0
 const FACE_RECT := Rect2(1000, 30, 800, 1434)
 const TYPE_SPEED := 52.0
 ## Кинополоса заставки.
-const BAND := Rect2(0, 250, 1920, 568)
+const BAND := Rect2(0, 300, 1920, 454)
 
 var lines: Array = TideStory.PROLOGUE
 var _index := -1
@@ -211,14 +211,14 @@ func _show_intro_step(step: int) -> void:
 	_intro_tween.set_parallel(true)
 	_intro_tween.tween_property(_intro_caption, "visible_ratio", 1.0, 0.9)
 	if step == 0:
-		_intro_shots[0].scale = Vector2(1.16, 1.16)
+		_intro_shots[0].scale = Vector2(1.08, 1.08)
 		_intro_tween.tween_property(_intro_shots[0], "scale", Vector2.ONE, 6.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	else:
 		_intro_shots[1].modulate.a = 1.0
-		_intro_shots[1].scale = Vector2(1.22, 1.22)
+		_intro_shots[1].scale = Vector2(1.12, 1.12)
 		_intro_flash.modulate.a = 0.9
 		_intro_tween.tween_property(_intro_flash, "modulate:a", 0.0, 0.3).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		_intro_tween.tween_property(_intro_shots[1], "scale", Vector2(1.04, 1.04), 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_intro_tween.tween_property(_intro_shots[1], "scale", Vector2.ONE, 0.34).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		TideFx.shake(_intro, 6.0, 0.14)
 	# Кадр сам сменится, если ничего не нажимать.
 	_intro_tween.chain().tween_interval(1.2 if step == 0 else 3.6)
@@ -265,7 +265,7 @@ func show_intro(step: int) -> void:
 	_intro_tween.kill()
 	_intro_caption.visible_ratio = 1.0
 	_intro_flash.modulate.a = 0.0
-	_intro_shots[_intro_step].scale = Vector2(1.04, 1.04)
+	_intro_shots[_intro_step].scale = Vector2.ONE
 
 
 func close() -> void:

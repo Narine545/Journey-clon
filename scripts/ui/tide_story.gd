@@ -6,6 +6,7 @@ extends RefCounted
 ## кэшируются: в памяти живёт только тот, что сейчас на экране.
 
 const DIR := "res://assets/story/"
+## Мимо — по канону автора ей 18 лет.
 const HEROINE := "МИМО"
 const AUNT := "ТЁТЯ ФОРНЭЛЬ"
 
@@ -67,7 +68,8 @@ static func intro_frame(file: String) -> Texture2D:
 	var extent := Vector2(source.get_size())
 	var atlas := AtlasTexture.new()
 	atlas.atlas = source
-	atlas.region = Rect2(extent.x * 0.1, 0.0, extent.x * 0.8, extent.y * 0.42)
+	# Вся ширина кадра: общий план комнаты, лицо и руки не крупным планом.
+	atlas.region = Rect2(0.0, 0.0, extent.x, extent.y * 0.42)
 	return atlas
 
 
