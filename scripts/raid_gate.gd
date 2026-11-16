@@ -232,7 +232,7 @@ func _process(delta: float) -> void:
 ## Построить эффекты воды: брызги, свет из-под воды и пятно на поверхности.
 func _build_water_fx() -> void:
 	_spray = CPUParticles3D.new()
-	_spray.amount = 46
+	_spray.amount = 36
 	_spray.lifetime = 0.95
 	_spray.lifetime_randomness = 0.35
 	_spray.one_shot = true
@@ -252,8 +252,8 @@ func _build_water_fx() -> void:
 	_spray.scale_amount_curve = ProcTextures.grow_curve(0.35, 1.15)
 	_spray.color_ramp = ProcTextures.fade_ramp()
 	var drop := QuadMesh.new()
-	drop.size = Vector2(0.5, 0.5)
-	drop.material = ProcTextures.soft_material(Color(0.82, 0.94, 1.0, 0.80))
+	drop.size = Vector2(0.85, 0.85)
+	drop.material = ProcTextures.soft_material(Color(0.86, 0.96, 1.0, 0.85))
 	_spray.mesh = drop
 	_spray.position = Vector3(0.0, 0.0, 0.0)
 	add_child(_spray)
@@ -349,14 +349,16 @@ func _water_reaction(delta: float) -> void:
 	if under:
 		target = clampf(1.0 - (depth - ORB_RADIUS) / 12.0, 0.25, 1.0)
 	_glow = lerpf(_glow, target, clampf(delta * 9.0, 0.0, 1.0))
-	_ring = minf(_ring + delta * 1.9, 1.2)
+	_ring = minf(_ring + delta * 1.6, 1.25)
 	_ring_alpha = maxf(_ring_alpha - delta * 2.2, 0.0)
 	var live := _glow > 0.01 or _ring_alpha > 0.01
 	_glow_disc.visible = live
 	_glow_light.visible = live
 	if not live:
 		return
+	# Пока идёт всплеск, пятно шире: корона живёт на большом радиусе.
 	var spread := lerpf(5.0, 11.0, clampf((depth - ORB_RADIUS) / 6.0, 0.0, 1.0))
+	spread = maxf(spread, 15.0 * _ring_alpha)
 	_glow_disc.position = Vector3(0.0, _surface - position.y + 0.12, 0.0)
 	_glow_disc.scale = Vector3(spread, spread, 1.0)
 	_glow_mat.set_shader_parameter("glow_strength", _glow * 0.7)

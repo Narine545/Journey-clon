@@ -4,6 +4,7 @@ shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
 
 uniform vec4 glow_tint : source_color = vec4(0.21, 0.82, 0.73, 1.0);
+uniform vec4 ring_tint : source_color = vec4(0.86, 0.96, 1.0, 1.0);
 uniform float glow_strength : hint_range(0.0, 3.0) = 0.0;
 uniform float ring_radius : hint_range(0.0, 1.4) = 0.0;
 uniform float ring_alpha : hint_range(0.0, 2.0) = 0.0;
@@ -30,9 +31,15 @@ void fragment() {
 	float core = pow(inside, 3.0);
 	float body = pow(inside, 1.4) * (0.30 + 0.70 * swirl);
 	float glow = glow_strength * (body * 0.5 + core * 2.0);
-	// Кольцо у входа в воду и у выхода обратно — чёткая волна по поверхности.
-	float band = smoothstep(0.14, 0.02, abs(r - ring_radius));
-	float ring = ring_alpha * band * (0.35 + 0.65 * inside);
-	ALBEDO = glow_tint.rgb;
-	ALPHA = clamp(glow + ring, 0.0, 1.0);
+	// Всплеск у входа в воду и у выхода обратно: не ровное кольцо, а «корона»
+	// из водяных струй — по кадру сверху её видно сразу.
+	float band = smoothstep(0.15, 0.01, abs(r - ring_radius));
+	float ang = atan(uv.y, uv.x);
+	float rays = 0.45 + 0.55 * abs(sin(ang * 9.0 + TIME * 0.7));
+	float crown = ring_alpha * band * rays * (0.25 + 0.75 * inside);
+	// Пена внутри короны — сразу за гребнем.
+	float foam = ring_alpha * 0.35 * smoothstep(ring_radius, 0.0, r) * step(0.02, ring_radius);
+	float total = glow + crown + foam;
+	ALBEDO = mix(glow_tint.rgb, ring_tint.rgb, clamp((crown + foam) / max(total, 0.001), 0.0, 1.0));
+	ALPHA = clamp(total, 0.0, 1.0);
 }
