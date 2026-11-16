@@ -34,6 +34,7 @@ var _won := false
 var _rng := RandomNumberGenerator.new()
 # Отклик воды: брызги, кольца и свечение сквозь толщу.
 var _spray: CPUParticles3D
+var _foam: CPUParticles3D
 var _glow_light: OmniLight3D
 var _glow_disc: MeshInstance3D
 var _glow_mat: ShaderMaterial
@@ -125,9 +126,9 @@ func enter() -> bool:
 	# Сперва медленное погружение — вода принимает сферу и светится изнутри,
 	# — и только потом рывок в небо со всплеском на выходе.
 	_fly = create_tween()
-	_fly.tween_property(self, "_lift", 3.2 - DIVE_DEPTH - ORB_RADIUS, 0.55)\
+	_fly.tween_property(self, "_lift", 3.2 - DIVE_DEPTH - ORB_RADIUS, 0.75)\
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_fly.parallel().tween_property(self, "_spin", 7.0, 0.55)\
+	_fly.parallel().tween_property(self, "_spin", 7.0, 0.75)\
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_fly.chain().tween_property(self, "_lift", 95.0, 1.05)\
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -257,6 +258,35 @@ func _build_water_fx() -> void:
 	_spray.position = Vector3(0.0, 0.0, 0.0)
 	add_child(_spray)
 
+	# Пена: медленные крупные клочья, которые ещё висят над водой, когда
+	# капли уже улетели.
+	_foam = CPUParticles3D.new()
+	_foam.amount = 22
+	_foam.lifetime = 1.5
+	_foam.lifetime_randomness = 0.4
+	_foam.one_shot = true
+	_foam.emitting = false
+	_foam.explosiveness = 0.9
+	_foam.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	_foam.emission_sphere_radius = ORB_RADIUS
+	_foam.direction = Vector3.UP
+	_foam.spread = 85.0
+	_foam.initial_velocity_min = 1.0
+	_foam.initial_velocity_max = 3.2
+	_foam.gravity = Vector3(0.0, -1.2, 0.0)
+	_foam.damping_min = 1.2
+	_foam.damping_max = 2.4
+	_foam.scale_amount_min = 1.2
+	_foam.scale_amount_max = 2.4
+	_foam.scale_amount_curve = ProcTextures.grow_curve(0.5, 1.5)
+	_foam.color_ramp = ProcTextures.fade_ramp()
+	var puff := QuadMesh.new()
+	puff.size = Vector2(1.4, 1.4)
+	puff.material = ProcTextures.soft_material(Color(0.72, 0.86, 0.90, 0.32))
+	_foam.mesh = puff
+	_foam.position = Vector3(0.0, 0.0, 0.0)
+	add_child(_foam)
+
 	# Свет уходит под воду вместе со сферой, но светит уже от поверхности:
 	# так его видят и вода, и туман.
 	_glow_light = OmniLight3D.new()
@@ -292,10 +322,13 @@ func _splash(into_water: bool) -> void:
 	_spray.position = Vector3(0.0, _surface - position.y + ORB_RADIUS * 0.4, 0.0)
 	_spray.restart()
 	_spray.emitting = true
+	_foam.position = _spray.position
+	_foam.restart()
+	_foam.emitting = true
 	# Кольцо на поверхности: сила и скорость зависят от того, входит
 	# сфера в воду или вырывается из неё.
 	_ring = 0.06
-	_ring_alpha = 2.0 if not into_water else 1.6
+	_ring_alpha = 2.4 if not into_water else 1.9
 	_glow = maxf(_glow, 0.85)
 
 
@@ -326,9 +359,9 @@ func _water_reaction(delta: float) -> void:
 	var spread := lerpf(5.0, 11.0, clampf((depth - ORB_RADIUS) / 6.0, 0.0, 1.0))
 	_glow_disc.position = Vector3(0.0, _surface - position.y + 0.12, 0.0)
 	_glow_disc.scale = Vector3(spread, spread, 1.0)
-	_glow_mat.set_shader_parameter("glow_strength", _glow * 0.5)
+	_glow_mat.set_shader_parameter("glow_strength", _glow * 0.7)
 	_glow_mat.set_shader_parameter("ring_radius", _ring)
 	_glow_mat.set_shader_parameter("ring_alpha", _ring_alpha * 0.55)
 	_glow_light.position = Vector3(0.0, _surface - position.y + 1.4, 0.0)
-	_glow_light.light_energy = 5.5 * _glow + 3.0 * _ring_alpha
+	_glow_light.light_energy = 7.0 * _glow + 3.0 * _ring_alpha
 	_glow_light.omni_range = 12.0 + 8.0 * _glow

@@ -52,9 +52,12 @@ func _run() -> void:
 	_night_atmosphere(0.0)
 	_camera_on_gate()
 	await _shooter.wait_frames_count(20)
-	main.camera.size = 26.0
+	main.camera.size = 22.0
 	main.raid_gate.enter()
-	await _shooter.wait_frames_count(26)
+	for index in range(14):
+		await _shooter.wait_frames_count(3)
+		await _shooter.capture("light_20_orb_%02d" % index)
+	await _shooter.wait_frames_count(14)
 	await _shooter.capture("light_12_orb_dive")
 	await _shooter.wait_frames_count(14)
 	await _shooter.capture("light_13_orb_under")
