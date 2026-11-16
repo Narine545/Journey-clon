@@ -27,12 +27,12 @@ void fragment() {
 	// Пятно дышит и переливается, как свет, преломлённый толщей воды.
 	float swirl = n2(uv * 5.0 + vec2(TIME * 0.28, -TIME * 0.19))
 		* n2(uv * 9.0 - vec2(TIME * 0.41, TIME * 0.33));
-	float core = pow(inside, 4.0);
-	float body = pow(inside, 1.7) * (0.45 + 0.85 * swirl);
-	float glow = glow_strength * (body + core * 0.9);
-	// Кольцо у входа в воду и у выхода обратно.
-	float band = smoothstep(0.16, 0.0, abs(r - ring_radius));
-	float ring = ring_alpha * band * (0.55 + 0.45 * inside);
+	float core = pow(inside, 3.0);
+	float body = pow(inside, 1.4) * (0.30 + 0.70 * swirl);
+	float glow = glow_strength * (body * 0.5 + core * 1.4);
+	// Кольцо у входа в воду и у выхода обратно — чёткая волна по поверхности.
+	float band = smoothstep(0.10, 0.0, abs(r - ring_radius));
+	float ring = ring_alpha * band * (0.35 + 0.65 * inside);
 	ALBEDO = glow_tint.rgb;
 	ALPHA = clamp(glow + ring, 0.0, 1.0);
 }
