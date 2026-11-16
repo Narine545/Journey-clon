@@ -52,11 +52,12 @@ func _run() -> void:
 	_night_atmosphere(0.0)
 	_camera_on_gate()
 	await _shooter.wait_frames_count(20)
+	main.camera.size = 19.0
 	main.raid_gate.enter()
-	await _shooter.wait_frames_count(16)
-	await _shooter.capture("light_12_orb_dive")
-	await _shooter.wait_frames_count(9)
-	await _shooter.capture("light_13_orb_under")
+	# Отладочная серия: погружение сферы покадрово (3 кадра = 0,05 с).
+	for index in range(12):
+		await _shooter.wait_frames_count(3)
+		await _shooter.capture("light_20_orb_%02d" % index)
 
 	print("[LIGHT SHOTS] готово")
 	get_tree().quit(0)

@@ -231,7 +231,7 @@ func _process(delta: float) -> void:
 ## Построить эффекты воды: брызги, свет из-под воды и пятно на поверхности.
 func _build_water_fx() -> void:
 	_spray = CPUParticles3D.new()
-	_spray.amount = 64
+	_spray.amount = 90
 	_spray.lifetime = 0.95
 	_spray.lifetime_randomness = 0.35
 	_spray.one_shot = true
@@ -240,9 +240,9 @@ func _build_water_fx() -> void:
 	_spray.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	_spray.emission_sphere_radius = ORB_RADIUS * 0.8
 	_spray.direction = Vector3.UP
-	_spray.spread = 52.0
-	_spray.initial_velocity_min = 4.5
-	_spray.initial_velocity_max = 9.5
+	_spray.spread = 58.0
+	_spray.initial_velocity_min = 5.0
+	_spray.initial_velocity_max = 11.0
 	_spray.gravity = Vector3(0.0, -9.0, 0.0)
 	_spray.damping_min = 0.4
 	_spray.damping_max = 1.4
@@ -251,8 +251,8 @@ func _build_water_fx() -> void:
 	_spray.scale_amount_curve = ProcTextures.grow_curve(0.35, 1.15)
 	_spray.color_ramp = ProcTextures.fade_ramp()
 	var drop := QuadMesh.new()
-	drop.size = Vector2(0.42, 0.42)
-	drop.material = ProcTextures.soft_material(Color(0.84, 0.93, 1.0, 0.55))
+	drop.size = Vector2(0.75, 0.75)
+	drop.material = ProcTextures.soft_material(Color(0.88, 0.95, 1.0, 0.75))
 	_spray.mesh = drop
 	_spray.position = Vector3(0.0, 0.0, 0.0)
 	add_child(_spray)
@@ -264,7 +264,7 @@ func _build_water_fx() -> void:
 	_glow_light.light_energy = 0.0
 	_glow_light.omni_range = 26.0
 	_glow_light.omni_attenuation = 1.4
-	_glow_light.light_volumetric_fog_energy = 1.4
+	_glow_light.light_volumetric_fog_energy = 0.7
 	_glow_light.shadow_enabled = false
 	add_child(_glow_light)
 
@@ -323,10 +323,10 @@ func _water_reaction(delta: float) -> void:
 	_glow_light.visible = live
 	if not live:
 		return
-	var spread := lerpf(9.0, 26.0, clampf((depth - ORB_RADIUS) / 9.0, 0.0, 1.0))
+	var spread := lerpf(8.0, 20.0, clampf((depth - ORB_RADIUS) / 9.0, 0.0, 1.0))
 	_glow_disc.position = Vector3(0.0, _surface - position.y + 0.12, 0.0)
 	_glow_disc.scale = Vector3(spread, spread, 1.0)
-	_glow_mat.set_shader_parameter("glow_strength", _glow * 0.85)
+	_glow_mat.set_shader_parameter("glow_strength", _glow * 0.62)
 	_glow_mat.set_shader_parameter("ring_radius", _ring)
 	_glow_mat.set_shader_parameter("ring_alpha", _ring_alpha * 0.55)
 	_glow_light.position = Vector3(0.0, _surface - position.y + 1.4, 0.0)
