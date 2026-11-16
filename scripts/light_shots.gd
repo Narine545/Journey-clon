@@ -52,15 +52,14 @@ func _run() -> void:
 	_night_atmosphere(0.0)
 	_camera_on_gate()
 	await _shooter.wait_frames_count(20)
-	main.camera.size = 22.0
+	main.camera.size = 26.0
 	main.raid_gate.enter()
-	for index in range(14):
-		await _shooter.wait_frames_count(3)
-		await _shooter.capture("light_20_orb_%02d" % index)
-	await _shooter.wait_frames_count(14)
+	# Сфера уже под водой: пятно света сквозь толщу и всплеск на поверхности.
+	await _shooter.wait_frames_count(21)
 	await _shooter.capture("light_12_orb_dive")
-	await _shooter.wait_frames_count(14)
-	await _shooter.capture("light_13_orb_under")
+	# Сфера вырывается обратно — второй всплеск.
+	await _shooter.wait_frames_count(9)
+	await _shooter.capture("light_13_orb_out")
 
 	print("[LIGHT SHOTS] готово")
 	get_tree().quit(0)
