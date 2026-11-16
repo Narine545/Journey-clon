@@ -120,6 +120,7 @@ func _gen_glug() -> AudioStreamWAV:
 		var w := rng.randf_range(-1.0, 1.0)
 		lp += (w - lp) * 0.05
 		var env := minf(t / 0.03, 1.0) * exp(-t * 2.4)
+		env *= 1.0 - smoothstep(0.85, 1.15, t)
 		var tone := sin(TAU * (170.0 - 110.0 * t) * t) * 0.42
 		var value := (tone + lp * 0.35) * env
 		for bubble: Vector3 in bubbles:
