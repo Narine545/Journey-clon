@@ -17,7 +17,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 
 [BOOT] старт · 73 МБ
 [BOOT] мир собран · 93 МБ
-[BOOT] HUD рейда · 95 МБ
+[BOOT] HUD рейда · 96 МБ
 [BOOT] меню · 259 МБ
 [BOOT] постобработка · 259 МБ
 RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
