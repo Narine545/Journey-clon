@@ -140,6 +140,10 @@ func enter() -> bool:
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_fly.chain().tween_callback(_launched)
 	main.announce("СФЕРА ОТКЛИКНУЛАСЬ. ДЕРЖИТЕСЬ.")
+	if main.sound != null:
+		var where := Vector3(position.x, _surface, position.z)
+		main.sound.glug(where)
+		_sound_later("rise", where, 0.72)
 	return true
 
 
@@ -313,12 +317,20 @@ func _build_water_fx() -> void:
 
 ## Сфера пересекла поверхность — вода отвечает: кольца, брызги, свет.
 func _splash(into_water: bool) -> void:
-	var at := Vector2(position.x, position.z)
+	var spot := Vector2(position.x, position.z)
 	if main != null and main.water != null and main.water.field != null:
-		main.water.field.splash(at, 2.0)
+		main.water.field.splash(spot, 2.0)
 		if not into_water:
 			# Выход обратно: короткая серия колец вдогонку.
-			main.water.field.splash(at + Vector2(1.6, -1.1), 1.4)
+			main.water.field.splash(spot + Vector2(1.6, -1.1), 1.4)
+	# Звук идёт от поверхности: всплеск на входе, свист на выходе.
+	if main != null and main.sound != null:
+		var where := Vector3(spot.x, _surface, spot.y)
+		main.sound.splash(where, 1.0 if into_water else 0.85)
+		if into_water:
+			_sound_later("glug", where, 0.16)
+		else:
+			_sound_later("rise", where, 0.06)
 	_spray.position = Vector3(0.0, _surface - position.y + ORB_RADIUS * 0.4, 0.0)
 	_spray.restart()
 	_spray.emitting = true
@@ -367,3 +379,17 @@ func _water_reaction(delta: float) -> void:
 	_glow_light.position = Vector3(0.0, _surface - position.y + 1.4, 0.0)
 	_glow_light.light_energy = 7.0 * _glow + 3.0 * _ring_alpha
 	_glow_light.omni_range = 12.0 + 8.0 * _glow
+
+
+## Звук с задержкой: «буль» приходит, когда сфера уже под водой, свист —
+## когда она уже пошла вверх. Ждём через таймер, состояние не блокируем.
+func _sound_later(kind: String, where: Vector3, delay: float) -> void:
+	if main == null or main.sound == null:
+		return
+	await get_tree().create_timer(delay).timeout
+	if not is_inside_tree() or main == null or main.sound == null:
+		return
+	if kind == "glug":
+		main.sound.glug(where)
+	elif kind == "rise":
+		main.sound.rise(where)

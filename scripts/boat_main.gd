@@ -37,6 +37,7 @@ var inspector: WorldInspector
 var photo_mode: BoatPhotoMode
 var raid: RaidRun
 var raid_gate: RaidGate
+var sound: BoatSound
 var camera_height := 26.2
 var camera_framing := BoatCameraFraming.new()
 var slicks: Array[ResourceSlick] = []
@@ -182,6 +183,11 @@ func _ready() -> void:
 	raid_gate = RaidGate.new()
 	add_child(raid_gate)
 	raid_gate.setup(self)
+	_boot_mark("звук моря")
+	sound = BoatSound.new()
+	sound.name = "BoatSound"
+	add_child(sound)
+	sound.setup(self)
 	_boot_mark("меню")
 	_build_tide_menu()
 	_boot_mark("постобработка")
