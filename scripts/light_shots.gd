@@ -48,6 +48,16 @@ func _run() -> void:
 	main.camera.size = 84.0
 	await _shot("light_10_night_beacon_wide", 23.0, 0.0)
 
+	# Сфера-вход: погружение перед взлётом — всплеск, кольца и свет из-под воды.
+	_night_atmosphere(0.0)
+	_camera_on_gate()
+	await _shooter.wait_frames_count(20)
+	main.raid_gate.enter()
+	await _shooter.wait_frames_count(16)
+	await _shooter.capture("light_12_orb_dive")
+	await _shooter.wait_frames_count(9)
+	await _shooter.capture("light_13_orb_under")
+
 	print("[LIGHT SHOTS] готово")
 	get_tree().quit(0)
 
@@ -67,6 +77,34 @@ func _go_to_sea() -> void:
 	boat.reset_physics_interpolation()
 	main._camera_focus = boat.global_position + Vector3.UP * 0.8
 	main.camera.global_position = main._camera_focus + Vector3(21.0, 26.2, 30.0)
+	main.camera.look_at(main._camera_focus, Vector3.UP)
+
+
+## Ночная атмосфера без тумана: нужна для кадров со сферой.
+func _night_atmosphere(cloud: float) -> void:
+	main.clock_hours = 23.0
+	main.weather.fog_amount = 0.0
+	main.weather.cloud_amount = cloud
+	main.weather._hold_left = 99999.0
+	main.weather._transition_time = 0.0
+	main._apply_atmosphere(BoatMain.night_for_hour(23.0))
+
+
+## Лодка рядом со сферой, камера — на неё: видно погружение и отклик воды.
+func _camera_on_gate() -> void:
+	var gate := main.raid_gate
+	var spot := gate.at() + Vector2(16.0, 0.0)
+	main.harbor.moored = false
+	var boat := main.boat
+	boat.global_position = Vector3(spot.x, main.water.surface_height(spot.x, spot.y) + 0.08, spot.y)
+	boat.rotation.y = PI * 0.5
+	boat.speed = 0.0
+	boat._reset_trail(spot)
+	boat.reset_physics_interpolation()
+	var focus := gate.at()
+	main._camera_focus = Vector3(focus.x, main.water.surface_height(focus.x, focus.y) + 2.0, focus.y)
+	main.camera.size = 26.0
+	main.camera.global_position = main._camera_focus + Vector3(13.0, 16.0, 19.0)
 	main.camera.look_at(main._camera_focus, Vector3.UP)
 
 

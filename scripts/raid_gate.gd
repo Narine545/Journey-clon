@@ -9,6 +9,10 @@ const MIN_DEPTH := 8.0
 ## Открытый океан к западу от острова (карта Coast: x −280…620, край 64 м).
 const AREA := Rect2(-208.0, -330.0, 96.0, 660.0)
 const FALLBACK := Vector2(-185.0, 95.0)
+## Радиус сферы в метрах (модель вписана в 4.2 м).
+const ORB_RADIUS := 2.1
+## Глубина погружения перед взлётом: сфера сперва уходит под воду.
+const DIVE_DEPTH := 8.0
 
 var main: BoatMain
 var artifacts := 0
@@ -28,6 +32,16 @@ var _time := 0.0
 var _was_engaged := false
 var _won := false
 var _rng := RandomNumberGenerator.new()
+# Отклик воды: брызги, кольца и свечение сквозь толщу.
+var _spray: CPUParticles3D
+var _glow_light: OmniLight3D
+var _glow_disc: MeshInstance3D
+var _glow_mat: ShaderMaterial
+var _under := false
+var _glow := 0.0
+var _ring := 0.0
+var _ring_alpha := 0.0
+var _surface := 0.0
 
 
 func setup(scene: BoatMain) -> void:
@@ -41,6 +55,7 @@ func setup(scene: BoatMain) -> void:
 	_light.omni_range = 22.0
 	_light.position = Vector3(0.0, 3.0, 0.0)
 	add_child(_light)
+	_build_water_fx()
 	# У модели сферы своя анимация вращения колец — крутим её по кругу.
 	var player := _model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if player != null:
@@ -107,12 +122,21 @@ func enter() -> bool:
 	_launching = true
 	if _fly != null and _fly.is_valid():
 		_fly.kill()
+	# Сперва медленное погружение — вода принимает сферу и светится изнутри,
+	# — и только потом рывок в небо со всплеском на выходе.
 	_fly = create_tween()
-	_fly.set_parallel(true)
-	_fly.tween_property(self, "_lift", 90.0, 1.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	_fly.tween_property(self, "_shrink", 0.12, 1.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	_fly.tween_property(self, "_spin", 26.0, 1.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	_fly.tween_property(self, "_flare", 9.0, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_fly.tween_property(self, "_lift", 3.2 - DIVE_DEPTH - ORB_RADIUS, 0.55)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_fly.parallel().tween_property(self, "_spin", 7.0, 0.55)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_fly.chain().tween_property(self, "_lift", 95.0, 1.05)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_fly.parallel().tween_property(self, "_shrink", 0.12, 1.05)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_fly.parallel().tween_property(self, "_spin", 26.0, 1.05)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_fly.parallel().tween_property(self, "_flare", 9.0, 0.45)\
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_fly.chain().tween_callback(_launched)
 	main.announce("СФЕРА ОТКЛИКНУЛАСЬ. ДЕРЖИТЕСЬ.")
 	return true
@@ -135,10 +159,12 @@ func _arrive() -> void:
 	_shrink = 0.12
 	_spin = 0.0
 	_flare = 0.0
+	# Падает с неба, уходит под воду с головой — брызги и свечение — и
+	# всплывает уже на своём месте, тоже со всплеском.
 	_fly = create_tween()
 	_fly.set_parallel(true)
-	_fly.tween_property(self, "_lift", 0.0, 1.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_fly.tween_property(self, "_shrink", 1.0, 1.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_fly.tween_property(self, "_lift", 0.0, 1.9).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_fly.tween_property(self, "_shrink", 1.0, 1.9).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## Вещь, которую покажет рапорт победы: сперва те, что ещё не попадались.
@@ -187,6 +213,9 @@ func _process(delta: float) -> void:
 	_was_engaged = engaged
 	visible = not engaged
 	if not visible:
+		_under = false
+		_glow = 0.0
+		_ring_alpha = 0.0
 		return
 	# Парит над водой, медленно вращается и «дышит» светом; _lift, _shrink и
 	# _spin ведёт анимация взлёта и посадки.
@@ -195,4 +224,111 @@ func _process(delta: float) -> void:
 	_model.rotation.y += (0.6 + _spin) * delta
 	_model.rotation.x = 0.18 * sin(_time * 0.7)
 	_light.position.y = 3.0 + _lift
-	_light.light_energy = (2.6 + 1.2 * sin(_time * 2.1)) * _shrink + _flare
+	_light.light_energy = ((2.6 + 1.2 * sin(_time * 2.1)) * _shrink + _flare) * (1.0 - 0.72 * _glow)
+	_water_reaction(delta)
+
+
+## Построить эффекты воды: брызги, свет из-под воды и пятно на поверхности.
+func _build_water_fx() -> void:
+	_spray = CPUParticles3D.new()
+	_spray.amount = 64
+	_spray.lifetime = 0.95
+	_spray.lifetime_randomness = 0.35
+	_spray.one_shot = true
+	_spray.emitting = false
+	_spray.explosiveness = 0.95
+	_spray.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	_spray.emission_sphere_radius = ORB_RADIUS * 0.8
+	_spray.direction = Vector3.UP
+	_spray.spread = 52.0
+	_spray.initial_velocity_min = 4.5
+	_spray.initial_velocity_max = 9.5
+	_spray.gravity = Vector3(0.0, -9.0, 0.0)
+	_spray.damping_min = 0.4
+	_spray.damping_max = 1.4
+	_spray.scale_amount_min = 0.5
+	_spray.scale_amount_max = 1.3
+	_spray.scale_amount_curve = ProcTextures.grow_curve(0.35, 1.15)
+	_spray.color_ramp = ProcTextures.fade_ramp()
+	var drop := QuadMesh.new()
+	drop.size = Vector2(0.42, 0.42)
+	drop.material = ProcTextures.soft_material(Color(0.84, 0.93, 1.0, 0.55))
+	_spray.mesh = drop
+	_spray.position = Vector3(0.0, 0.0, 0.0)
+	add_child(_spray)
+
+	# Свет уходит под воду вместе со сферой, но светит уже от поверхности:
+	# так его видят и вода, и туман.
+	_glow_light = OmniLight3D.new()
+	_glow_light.light_color = Color("35d0ba")
+	_glow_light.light_energy = 0.0
+	_glow_light.omni_range = 26.0
+	_glow_light.omni_attenuation = 1.4
+	_glow_light.light_volumetric_fog_energy = 1.4
+	_glow_light.shadow_enabled = false
+	add_child(_glow_light)
+
+	_glow_mat = ShaderMaterial.new()
+	_glow_mat.shader = preload("res://shaders/orb_under_glow.gdshader")
+	var quad := QuadMesh.new()
+	quad.size = Vector2(1.0, 1.0)
+	quad.material = _glow_mat
+	_glow_disc = MeshInstance3D.new()
+	_glow_disc.mesh = quad
+	_glow_disc.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
+	_glow_disc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_glow_disc.visible = false
+	add_child(_glow_disc)
+
+
+## Сфера пересекла поверхность — вода отвечает: кольца, брызги, свет.
+func _splash(into_water: bool) -> void:
+	var at := Vector2(position.x, position.z)
+	if main != null and main.water != null and main.water.field != null:
+		main.water.field.splash(at, 2.0)
+		if not into_water:
+			# Выход обратно: короткая серия колец вдогонку.
+			main.water.field.splash(at + Vector2(1.6, -1.1), 1.4)
+	_spray.position = Vector3(0.0, _surface - position.y + ORB_RADIUS * 0.4, 0.0)
+	_spray.restart()
+	_spray.emitting = true
+	# Кольцо на поверхности: сила и скорость зависят от того, входит
+	# сфера в воду или вырывается из неё.
+	_ring = 0.10
+	_ring_alpha = 1.5 if not into_water else 1.15
+	_glow = maxf(_glow, 0.85)
+
+
+## Свечение сквозь воду и кольцо на поверхности.
+func _water_reaction(delta: float) -> void:
+	_surface = 0.0
+	if main != null and main.water != null:
+		_surface = main.water.surface_height(position.x, position.z)
+	var center := position.y + _model.position.y
+	var depth := _surface - center
+	var under := depth > ORB_RADIUS * 0.10
+	if under != _under:
+		_splash(under)
+		_under = under
+	# Чем глубже сфера, тем шире и мягче пятно света; у самой поверхности
+	# оно ярче и плотнее.
+	var target := 0.0
+	if under:
+		target = clampf(1.0 - (depth - ORB_RADIUS) / 12.0, 0.25, 1.0)
+	_glow = lerpf(_glow, target, clampf(delta * 9.0, 0.0, 1.0))
+	_ring = minf(_ring + delta * 1.5, 1.35)
+	_ring_alpha = maxf(_ring_alpha - delta * 1.25, 0.0)
+	var live := _glow > 0.01 or _ring_alpha > 0.01
+	_glow_disc.visible = live
+	_glow_light.visible = live
+	if not live:
+		return
+	var spread := lerpf(9.0, 26.0, clampf((depth - ORB_RADIUS) / 9.0, 0.0, 1.0))
+	_glow_disc.position = Vector3(0.0, _surface - position.y + 0.12, 0.0)
+	_glow_disc.scale = Vector3(spread, spread, 1.0)
+	_glow_mat.set_shader_parameter("glow_strength", _glow * 0.85)
+	_glow_mat.set_shader_parameter("ring_radius", _ring)
+	_glow_mat.set_shader_parameter("ring_alpha", _ring_alpha * 0.55)
+	_glow_light.position = Vector3(0.0, _surface - position.y + 1.4, 0.0)
+	_glow_light.light_energy = 9.0 * _glow + 4.0 * _ring_alpha
+	_glow_light.omni_range = 18.0 + 12.0 * _glow
