@@ -1,12 +1,13 @@
 Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 
-[BOOT] старт · 55 МБ
+[BOOT] старт · 56 МБ
 WORLD: Vulkan недоступен — Compatibility-фолбэк, волюметрический туман заменён плотной дымкой
-[BOOT] мир собран · 121 МБ
-[BOOT] HUD рейда · 122 МБ
-[BOOT] меню · 317 МБ
-[BOOT] постобработка · 317 МБ
-[BOOT] готово · 317 МБ
+[BOOT] мир собран · 122 МБ
+[BOOT] HUD рейда · 123 МБ
+[BOOT] звук моря · 317 МБ
+[BOOT] меню · 318 МБ
+[BOOT] постобработка · 318 МБ
+[BOOT] готово · 318 МБ
 [BOAT SMOKE] PASS волны CPU + шейдерное море
 [BOAT SMOKE] PASS лодка спущена на глубокую воду
 [BOAT SMOKE] PASS SDF-пятна распределены вокруг лодки
@@ -364,3 +365,5 @@ RETRO DEBUG: visible=false rect=(64.0, 64.0) viewport=(64.0, 64.0)
 [BOAT SMOKE] PASS общий вид показывает всю карту без дымки, не подменяя игровую погоду
 [BOAT SMOKE] PASS выход возвращает обычную камеру и прежние флаги атмосферы
 [BOAT SMOKE] итог: ВСЁ ПРОШЛО
+WARNING: 4 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
