@@ -37,3 +37,5 @@ RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_12_orb_dive.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_13_orb_out.png 1280x720
 [LIGHT SHOTS] готово
+WARNING: 4 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)
