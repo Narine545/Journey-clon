@@ -328,7 +328,7 @@ func _splash(into_water: bool) -> void:
 	# Кольцо на поверхности: сила и скорость зависят от того, входит
 	# сфера в воду или вырывается из неё.
 	_ring = 0.06
-	_ring_alpha = 2.4 if not into_water else 1.9
+	_ring_alpha = 1.35 if not into_water else 1.05
 	_glow = maxf(_glow, 0.85)
 
 
@@ -349,8 +349,8 @@ func _water_reaction(delta: float) -> void:
 	if under:
 		target = clampf(1.0 - (depth - ORB_RADIUS) / 12.0, 0.25, 1.0)
 	_glow = lerpf(_glow, target, clampf(delta * 9.0, 0.0, 1.0))
-	_ring = minf(_ring + delta * 1.6, 1.25)
-	_ring_alpha = maxf(_ring_alpha - delta * 2.2, 0.0)
+	_ring = minf(_ring + delta * 2.4, 1.2)
+	_ring_alpha = maxf(_ring_alpha - delta * 3.0, 0.0)
 	var live := _glow > 0.01 or _ring_alpha > 0.01
 	_glow_disc.visible = live
 	_glow_light.visible = live
@@ -358,12 +358,12 @@ func _water_reaction(delta: float) -> void:
 		return
 	# Пока идёт всплеск, пятно шире: корона живёт на большом радиусе.
 	var spread := lerpf(5.0, 11.0, clampf((depth - ORB_RADIUS) / 6.0, 0.0, 1.0))
-	spread = maxf(spread, 15.0 * _ring_alpha)
+	spread = maxf(spread, 7.5 * minf(_ring_alpha, 1.0))
 	_glow_disc.position = Vector3(0.0, _surface - position.y + 0.12, 0.0)
 	_glow_disc.scale = Vector3(spread, spread, 1.0)
-	_glow_mat.set_shader_parameter("glow_strength", _glow * 0.7)
+	_glow_mat.set_shader_parameter("glow_strength", _glow * 0.55)
 	_glow_mat.set_shader_parameter("ring_radius", _ring)
-	_glow_mat.set_shader_parameter("ring_alpha", _ring_alpha * 0.55)
+	_glow_mat.set_shader_parameter("ring_alpha", _ring_alpha * 0.4)
 	_glow_light.position = Vector3(0.0, _surface - position.y + 1.4, 0.0)
 	_glow_light.light_energy = 7.0 * _glow + 3.0 * _ring_alpha
 	_glow_light.omni_range = 12.0 + 8.0 * _glow
