@@ -10,12 +10,12 @@ extends Node3D
 ## а не «бег на месте».
 
 const SIDE_X := 1.65
-const HIP_Y := 0.55
+const HIP_Y := 0.15
 const HIP_Z := [-2.45, 2.45]
 const HIP_SIDE := [-1.0, 1.0]
 const THIGH := 3.4
 const SHIN := 3.5
-const STRIDE := 2.0
+const STRIDE := 1.8
 ## Доля цикла, когда ступня стоит на воде (остальное — перенос).
 const STANCE := 0.55
 const LIFT := 0.85
@@ -137,7 +137,7 @@ func _pose_leg(index: int, _delta: float) -> void:
 func _landing_point(hip_world: Vector3, side: float) -> Vector3:
 	var forward := -global_transform.basis.z
 	var side_dir := global_transform.basis.x
-	var land := hip_world + forward * STRIDE + side_dir * (1.5 * side)
+	var land := hip_world + forward * STRIDE + side_dir * (0.9 * side)
 	land.y = _water_y(land)
 	return land
 
@@ -195,7 +195,7 @@ func _segment(node: MeshInstance3D, from: Vector3, to: Vector3) -> void:
 
 func _set_foot(node: MeshInstance3D, at_world: Vector3) -> void:
 	var local := to_local(at_world)
-	node.transform = Transform3D(Basis.IDENTITY, local + Vector3(0.0, 0.02, 0.0))
+	node.transform = Transform3D(Basis.IDENTITY, local + Vector3(0.0, -0.06, 0.0))
 
 
 func _build() -> void:
@@ -216,8 +216,8 @@ func _build() -> void:
 			}
 			if side < 0.0:
 				leg["offset"] = 0.25 if z_index == 0 else 0.75
-			leg["thigh"] = _limb(0.66, 0.50, hair)
-			leg["shin"] = _limb(0.46, 0.34, hair)
+			leg["thigh"] = _limb(0.52, 0.40, hair)
+			leg["shin"] = _limb(0.38, 0.28, hair)
 			leg["foot"] = _foot()
 			_legs.append(leg)
 
@@ -239,7 +239,7 @@ func _limb(top: float, bottom: float, material: Material) -> MeshInstance3D:
 
 func _foot() -> MeshInstance3D:
 	var mesh := BoxMesh.new()
-	mesh.size = Vector3(0.72, 0.30, 1.30)
+	mesh.size = Vector3(0.62, 0.26, 1.15)
 	var node := MeshInstance3D.new()
 	node.mesh = mesh
 	node.material_override = _skin_material(SKIN_SHADE)
@@ -277,7 +277,7 @@ func _make_hair_texture() -> ImageTexture:
 		for y in range(height):
 			# Прядь то появляется, то пропадает: волосы, а не полосы.
 			var wobble := sin(float(y) * 0.55 + strand * TAU) * 0.5 + 0.5
-			var cover := clampf(dark * (0.55 + 0.75 * wobble) - 0.35, 0.0, 1.0)
+			var cover := clampf(dark * (0.55 + 0.75 * wobble) - 0.52, 0.0, 1.0)
 			var skin := SKIN.lerp(SKIN_SHADE, 0.35 * sin(float(y) * 0.12 + strand * 3.0) * 0.5 + 0.5)
 			var color := skin.lerp(Color(0.13, 0.10, 0.09), cover)
 			image.set_pixel(x, y, color)

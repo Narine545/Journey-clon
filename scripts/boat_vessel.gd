@@ -342,7 +342,7 @@ func _physics_process(delta: float) -> void:
 
 	var avg_water := (h_center * 2.0 + h_bow + h_stern + h_port + h_star) / 6.0
 	# На ногах корпус приподнят: судно несёт само себя над водой.
-	var legs_lift := 0.9 if raid_legs_active() else 0.0
+	var legs_lift := 4.2 if raid_legs_active() else 0.0
 	var target_y := avg_water + 0.08 + legs_lift - absf(speed) * 0.003
 	var y_err := target_y - global_position.y
 	_heave_vel = (_heave_vel + y_err * 28.0 * delta) * exp(-5.5 * delta)

@@ -67,7 +67,7 @@ func _run() -> void:
 	main.weather.fog_amount = 0.0
 	main.weather.cloud_amount = 0.1
 	main._apply_atmosphere(BoatMain.night_for_hour(12.0))
-	main.camera.size = 30.0
+	main.camera.size = 22.0
 	await _shooter.wait_frames_count(12)
 	main.raid.hud.modulate.a = 0.0
 	main.raid.start()
@@ -80,6 +80,10 @@ func _run() -> void:
 	await _shooter.capture("light_14_legs_01")
 	await _shooter.wait_frames_count(7)
 	await _shooter.capture("light_14_legs_02")
+	# Последний кадр — с интерфейсом рейда: видно плашку бонуса.
+	main.raid.hud.modulate.a = 1.0
+	await _shooter.wait_frames_count(6)
+	await _shooter.capture("light_14_legs_03")
 	Input.action_release("boat_forward")
 
 	print("[LIGHT SHOTS] готово")
