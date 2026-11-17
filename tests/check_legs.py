@@ -25,7 +25,7 @@ assert 'RaidStats.Channel.LEGS' in run
 assert 'GRAVITY, LEGS }' in stats
 # На ногах судно идёт по поверхности: меньшая требуемая глубина.
 assert 'return 0.55 if raid_legs_active() else 1.7' in vessel
-assert 'var legs_lift := 0.9 if raid_legs_active() else 0.0' in vessel
+assert 'var legs_lift := 4.2 if raid_legs_active() else 0.0' in vessel
 # Ноги живут в мире: IK, шаги с опорой, пинок.
 assert 'class_name RaidLegs' in legs
 assert 'func _knee(hip: Vector3, foot: Vector3, pole: Vector3) -> Vector3:' in legs

@@ -84,6 +84,17 @@ func _run() -> void:
 	main.raid.hud.modulate.a = 1.0
 	await _shooter.wait_frames_count(6)
 	await _shooter.capture("light_14_legs_03")
+	var legs_hud: TideHud = main.raid.hud.hud
+	print(
+		"[LEGS HUD] visible=%s rect=%s text=%s rank=%d timer=%.1f"
+		% [
+			legs_hud._legs_plate.visible,
+			legs_hud._legs_plate.get_global_rect(),
+			legs_hud._legs_label.text,
+			main.raid.legs_rank,
+			main.raid.legs_timer,
+		]
+	)
 	Input.action_release("boat_forward")
 
 	print("[LIGHT SHOTS] готово")

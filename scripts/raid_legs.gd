@@ -126,8 +126,13 @@ func _pose_leg(index: int, _delta: float) -> void:
 	var thigh: MeshInstance3D = leg["thigh"]
 	var shin: MeshInstance3D = leg["shin"]
 	var shoe: MeshInstance3D = leg["foot"]
+	var tuft: MeshInstance3D = leg["tuft"]
 	_segment(thigh, hip, knee)
 	_segment(shin, knee, foot)
+	# Клок волос под коленом: в мелком масштабе именно он читается как
+	# «волосатая нога», а не текстура на цилиндре.
+	var shin_dir := (foot - knee).normalized()
+	_segment(tuft, knee + shin_dir * 1.15, knee + shin_dir * 0.15)
 	_set_foot(shoe, foot_world)
 	if plant:
 		_splash(foot_world)
@@ -216,9 +221,10 @@ func _build() -> void:
 			}
 			if side < 0.0:
 				leg["offset"] = 0.25 if z_index == 0 else 0.75
-			leg["thigh"] = _limb(0.52, 0.40, hair)
-			leg["shin"] = _limb(0.38, 0.28, hair)
+			leg["thigh"] = _limb(0.56, 0.44, hair)
+			leg["shin"] = _limb(0.42, 0.30, hair)
 			leg["foot"] = _foot()
+			leg["tuft"] = _tuft()
 			_legs.append(leg)
 
 
@@ -232,6 +238,20 @@ func _limb(top: float, bottom: float, material: Material) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.mesh = mesh
 	node.material_override = material
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
+	return node
+
+
+func _tuft() -> MeshInstance3D:
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 0.58
+	mesh.bottom_radius = 0.08
+	mesh.height = 1.0
+	mesh.radial_segments = 7
+	var node := MeshInstance3D.new()
+	node.mesh = mesh
+	node.material_override = _skin_material(Color(0.16, 0.12, 0.10))
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(node)
 	return node
