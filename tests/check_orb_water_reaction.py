@@ -25,6 +25,7 @@ assert 'func splash(at_world: Vector3' in sound
 assert 'func glug(at_world: Vector3' in sound
 assert 'func rise(at_world: Vector3' in sound
 assert '_sea.volume_db = -23.0' in sound
-assert 'speed01 := clampf(absf(_main.boat.speed) / BoatVessel.MAX_SPEED' in sound
+# Шум воды под днищем убран: звук корабля не понравился.
+assert '_wash' not in sound and '_gen_wash_loop' not in sound
 # at() — функция класса; локальная переменная не должна её затенять.
 assert 'var at := Vector2(position.x, position.z)' not in gate

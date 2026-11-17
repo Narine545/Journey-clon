@@ -165,6 +165,8 @@ func _on_up() -> void:
 		_wake = 1.0
 		_set_sink(0.0)
 		return
+	# Отклик интерфейса: один тихий кап на нажатие.
+	UiSound.tap()
 	var kick := deg_to_rad(-2.5 if (get_index() % 2) == 0 else 2.5)
 	var rest := _rest
 	rotation = rest + kick

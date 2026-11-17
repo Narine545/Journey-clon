@@ -13,13 +13,10 @@ var _splash: AudioStreamPlayer3D
 var _glug: AudioStreamPlayer3D
 var _rise: AudioStreamPlayer3D
 var _sea: AudioStreamPlayer
-var _wash: AudioStreamPlayer
 var _rng := RandomNumberGenerator.new()
-var _main: BoatMain
 
 
-func setup(scene: BoatMain) -> void:
-	_main = scene
+func setup() -> void:
 	_rng.randomize()
 	_splash = _player3d(_gen_splash(), -7.0, 70.0)
 	_glug = _player3d(_gen_glug(), -11.0, 50.0)
@@ -31,22 +28,6 @@ func setup(scene: BoatMain) -> void:
 	_sea.volume_db = -23.0
 	add_child(_sea)
 	_sea.play()
-	# Шум воды под днищем: слышен только на ходу, громкость — от скорости.
-	_wash = AudioStreamPlayer.new()
-	_wash.stream = _gen_wash_loop()
-	_wash.volume_db = -60.0
-	add_child(_wash)
-	_wash.play()
-
-
-func _process(_delta: float) -> void:
-	if _main == null or _main.boat == null or _wash == null:
-		return
-	# Лодка молчит на стоянке и «шипит» водой на ходу.
-	var speed01 := clampf(absf(_main.boat.speed) / BoatVessel.MAX_SPEED, 0.0, 1.0)
-	var target := -90.0 if speed01 < 0.04 else lerpf(-32.0, -15.0, speed01)
-	_wash.volume_db = lerpf(_wash.volume_db, target, 0.08)
-	_wash.pitch_scale = lerpf(0.92, 1.06, speed01)
 
 
 ## Всплеск: вход в воду (вниз) или выход из неё (вверх).
@@ -150,34 +131,6 @@ func _gen_rise() -> AudioStreamWAV:
 		var env := minf(t / 0.22, 1.0) * pow(maxf(1.0 - tt, 0.0), 1.3)
 		s[i] = (lp * 1.1 + sin(phase) * 0.30) * env
 	return _stream(_peak_norm(s, 0.8), RATE, false)
-
-
-## Шум воды под днищем: тот же прибой, но плотнее и без «волн».
-func _gen_wash_loop() -> AudioStreamWAV:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 4411
-	var n := int(1.6 * RATE)
-	var fade := int(0.10 * RATE)
-	var total := n + fade
-	var buf := PackedFloat32Array()
-	buf.resize(total)
-	var lp1 := 0.0
-	var lp2 := 0.0
-	for i in total:
-		var w := rng.randf_range(-1.0, 1.0)
-		lp1 += (w - lp1) * 0.34
-		lp2 += (lp1 - lp2) * 0.20
-		var ph := float(i) / float(n)
-		buf[i] = lp2 * (0.85 + 0.15 * sin(TAU * 3.0 * ph))
-	var s := PackedFloat32Array()
-	s.resize(n)
-	for i in n:
-		if i < fade:
-			var k := float(i) / float(fade)
-			s[i] = buf[i] * k + buf[n + i] * (1.0 - k)
-		else:
-			s[i] = buf[i]
-	return _stream(_peak_norm(s, 0.6), RATE, true)
 
 
 ## Фон моря: тихий шум прибоя с медленными волнами громкости, бесшовно.

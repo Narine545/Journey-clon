@@ -187,7 +187,7 @@ func _ready() -> void:
 	sound = BoatSound.new()
 	sound.name = "BoatSound"
 	add_child(sound)
-	sound.setup(self)
+	sound.setup()
 	_boot_mark("меню")
 	_build_tide_menu()
 	_boot_mark("постобработка")
