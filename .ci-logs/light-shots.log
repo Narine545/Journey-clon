@@ -40,5 +40,4 @@ RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_14_legs_01.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_14_legs_02.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_14_legs_03.png 1280x720
-[LEGS HUD] visible=true rect=[P: (720.6181, 771.0828), S: (253.3333, 40.0)] text=НОГИ · ШАГ · 19 С rank=1 timer=18.1
 [LIGHT SHOTS] готово
