@@ -1,14 +1,14 @@
 class_name RaidStats
 extends RefCounted
 ## Bounded, in-memory raid measurements. No per-hit history, nodes, timers or saves.
-enum Channel { NOSE, SIDES, PULSE, MINES, GRAVITY }
+enum Channel { NOSE, SIDES, PULSE, MINES, GRAVITY, LEGS }
 enum Cause { CONTACT, SHELL, REEF, SHOAL, OTHER }
-var dealt := PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0])
+var dealt := PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 var evolution_times := PackedFloat64Array([-1.0, -1.0, -1.0, -1.0])
 var received := 0.0
 var debug_used := false
-var incoming := PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0])
-var incoming_hits := PackedInt32Array([0, 0, 0, 0, 0])
+var incoming := PackedFloat64Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+var incoming_hits := PackedInt32Array([0, 0, 0, 0, 0, 0])
 var last_cause := -1
 var last_hit_at := -1.0
 var repairs := 0

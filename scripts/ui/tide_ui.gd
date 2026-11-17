@@ -293,6 +293,7 @@ func _hud_state() -> Dictionary:
 		"wave": RaidWaves.label(run.elapsed),
 		"loot": run.salvage.collected,
 		"weapons": _weapons_line(),
+		"legs": _legs_line(),
 		"contacts": [],
 		"loot_dots": [],
 		"forward": run.forward(),
@@ -345,6 +346,17 @@ func _weapons_line() -> String:
 		_cooldown_text(run.pulse_cooldown),
 		"ГОТОВ" if run.stern_rank <= 0 else _cooldown_text(run.stern_charges.cooldown),
 	]
+
+
+## Строка временного бонуса: пусто, пока ноги не куплены.
+func _legs_line() -> String:
+	if run.legs_rank <= 0:
+		return ""
+	if run.legs_active():
+		return "НОГИ · ШАГ · %d С" % int(ceil(run.legs_timer))
+	if run.legs_cooldown > 0.0:
+		return "НОГИ · ОТДЫХ · %d С" % int(ceil(run.legs_cooldown))
+	return "НОГИ ГОТОВЫ · X"
 
 
 func _cooldown_text(seconds: float) -> String:

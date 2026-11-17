@@ -61,6 +61,27 @@ func _run() -> void:
 	await _shooter.wait_frames_count(9)
 	await _shooter.capture("light_13_orb_out")
 
+	# Ходячие ноги: временный бонус рейда, шаг по воде.
+	_go_to_sea()
+	main.clock_hours = 12.0
+	main.weather.fog_amount = 0.0
+	main.weather.cloud_amount = 0.1
+	main._apply_atmosphere(BoatMain.night_for_hour(12.0))
+	main.camera.size = 30.0
+	await _shooter.wait_frames_count(12)
+	main.raid.hud.modulate.a = 0.0
+	main.raid.start()
+	main.raid.legs_rank = 1
+	main.raid.start_legs()
+	Input.action_press("boat_forward")
+	await _shooter.wait_frames_count(36)
+	await _shooter.capture("light_14_legs_00")
+	await _shooter.wait_frames_count(7)
+	await _shooter.capture("light_14_legs_01")
+	await _shooter.wait_frames_count(7)
+	await _shooter.capture("light_14_legs_02")
+	Input.action_release("boat_forward")
+
 	print("[LIGHT SHOTS] готово")
 	get_tree().quit(0)
 

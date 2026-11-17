@@ -24,7 +24,7 @@ assert '_sound_later("rise", where, 0.72)' in gate
 assert 'func splash(at_world: Vector3' in sound
 assert 'func glug(at_world: Vector3' in sound
 assert 'func rise(at_world: Vector3' in sound
-assert '_sea.volume_db = -23.0' in sound
+assert '_sea' not in sound and '_gen_sea_loop' not in sound
 # Шум воды под днищем убран: звук корабля не понравился.
 assert '_wash' not in sound and '_gen_wash_loop' not in sound
 # at() — функция класса; локальная переменная не должна её затенять.

@@ -11,6 +11,16 @@ const SPEED_PER_RANK := 0.12
 const TURN_PER_RANK := 0.15
 const XP_MAX_RANK := 4
 const REROLLS := 2
+## Ходячие ноги: временный бонус. Длительность и урон растут с рангом.
+const LEGS_RANK_MAX := 3
+const LEGS_TIME := 20.0
+const LEGS_BONUS_TIME := 6.0
+const LEGS_COOLDOWN := 34.0
+const LEGS_SPEED := 1.25
+const LEGS_DAMAGE := 34.0
+const LEGS_DAMAGE_STEP := 0.35
+const LEGS_REACH := 11.0
+const LEGS_KICK_INTERVAL := 2.0
 const COLORS := [Color("ff4b35"), Color("ffe144"), Color("be62ff"), Color("39a9ff")]
 const UPGRADES := [
 	["Усиленные снаряды", "+8 базового урона орудий"],
@@ -32,6 +42,7 @@ const UPGRADES := [
 	["Стягивающие мины", "Отдельная сфера: притяжение, урон внутри, выброс"],
 	["Стабилизация стягивания", "+1 с существования стягивающей сферы"],
 	["Сжатие поля", "+4 урона в секунду внутри стягивающей сферы"],
+	["Ходячие ноги", "На время вырастают ноги: X — шаг по воде, пинки с борта"],
 ]
 var stats := RaidStats.new()
 var effects_enabled := true
@@ -46,6 +57,7 @@ var gravity_mines: GravityMines
 var sphere_mines: SphereMines
 var stern_charges: RaidSternCharges
 var salvage: RaidSalvage
+var legs: RaidLegs
 ## Видимый интерфейс рейда — TIDECUT (TideUi). Старый RaidHud больше не создаётся:
 ## вся его логика (пауза, итоги, отладка) перенесена в новые экраны.
 var hud
@@ -73,6 +85,10 @@ var gravity_damage_rank := 0
 var sphere_stability := 0
 var sphere_rank := 0
 var stern_rank := 0
+var legs_rank := 0
+var legs_timer := 0.0
+var legs_cooldown := 0.0
+var legs_kick_timer := 0.0
 var pulse_radius := 13.0
 var pulse_damage := 35.0
 var pulse_cooldown := 0.0
@@ -129,6 +145,10 @@ func setup(scene: BoatMain) -> void:
 	field_particles = RaidFieldParticles.new()
 	add_child(field_particles)
 	field_particles.setup(self)
+	legs = RaidLegs.new()
+	legs.name = "RaidLegs"
+	main.boat.add_child(legs)
+	legs.setup(main)
 	damage_fx = RaidDamageFx.new()
 	add_child(damage_fx)
 	damage_fx.setup(self)
@@ -193,6 +213,11 @@ func start() -> void:
 	sphere_stability = 0
 	sphere_rank = 0
 	stern_rank = 0
+	legs_rank = 0
+	legs_timer = 0.0
+	legs_cooldown = 0.0
+	legs_kick_timer = 0.0
+	legs.set_active(false)
 	pulse_radius = 13.0
 	pulse_damage = 35.0
 	pulse_cooldown = 0.0
@@ -252,6 +277,11 @@ func leave() -> void:
 	sphere_stability = 0
 	sphere_rank = 0
 	stern_rank = 0
+	legs_rank = 0
+	legs_timer = 0.0
+	legs_cooldown = 0.0
+	legs_kick_timer = 0.0
+	legs.set_active(false)
 	main.boat.hull_hp = _saved_hp
 	main.boat.speed = 0.0
 	main.debug_panel_visible = _saved_debug
@@ -416,6 +446,7 @@ func _physics_process(delta: float) -> void:
 	_hurt_timer = maxf(0.0, _hurt_timer - delta)
 	pulse_cooldown = maxf(0.0, pulse_cooldown - delta)
 	_pulse_flash = maxf(0.0, _pulse_flash - delta)
+	_step_legs(delta)
 	# Recycle only combat enemies, never fixed pigment resources. No XP for leaving.
 	_spawn_timer -= delta
 	_step_elites()
@@ -701,6 +732,8 @@ func _upgrade_pool() -> Array[int]:
 		available.append(17)
 	if gravity_rank > 0 and gravity_damage_rank < 3:
 		available.append(18)
+	if legs_rank < LEGS_RANK_MAX:
+		available.append(19)
 	if can_evolve_harpoon():
 		available.append(10)
 	if can_evolve_pulse():
@@ -823,6 +856,9 @@ func choose(index: int) -> void:
 			gravity_stability = mini(2, gravity_stability + 1)
 		18:
 			gravity_damage_rank = mini(3, gravity_damage_rank + 1)
+		19:
+			legs_rank = mini(LEGS_RANK_MAX, legs_rank + 1)
+			start_legs()
 	if choices[index] >= 10 and choices[index] <= 13:
 		stats.record_evolution(choices[index], elapsed)
 	upgrade_log.append({"at": elapsed, "kind": choices[index]})
@@ -834,6 +870,99 @@ func choose(index: int) -> void:
 	if xp >= xp_needed:
 		_offer_upgrade()
 	hud.refresh()
+
+
+## Ноги шагают прямо сейчас.
+func legs_active() -> bool:
+	return legs_timer > 0.0
+
+
+## Ноги куплены и готовы к новому шагу.
+func legs_ready() -> bool:
+	return state == State.RUNNING and legs_rank > 0 and not legs_active() and legs_cooldown <= 0.0
+
+
+## Урон пинка: растёт с рангом бонуса.
+func legs_damage() -> float:
+	return LEGS_DAMAGE * (1.0 + LEGS_DAMAGE_STEP * float(maxi(0, legs_rank - 1)))
+
+
+## X: поднять ноги. Пока они шагают, судно идёт по воде быстрее и не садится
+## на мель, а ноги сами пинают всё, что подошло к борту.
+func start_legs() -> void:
+	if state != State.RUNNING or main.inspection_active():
+		return
+	if legs_rank <= 0 or legs_active() or legs_cooldown > 0.0:
+		return
+	legs_timer = LEGS_TIME + LEGS_BONUS_TIME * float(maxi(0, legs_rank - 1))
+	legs_kick_timer = 0.7
+	if legs != null:
+		legs.set_active(true)
+	main.announce("НОГИ ПОШЛИ. ШАГ ПО ВОДЕ — X, ПИНОК — САМ.")
+	if main.sound != null:
+		var at := boat_at()
+		main.sound.splash(Vector3(at.x, Coast.SEA_LEVEL, at.y), 0.8)
+
+
+func _step_legs(delta: float) -> void:
+	if legs == null:
+		return
+	var was_active := legs_active()
+	legs_timer = maxf(0.0, legs_timer - delta)
+	if legs_timer <= 0.0:
+		if was_active:
+			legs.set_active(false)
+			legs_cooldown = LEGS_COOLDOWN
+			main.announce("НОГИ УСТАЛИ — ОТДЫХАЮТ.")
+		legs_cooldown = maxf(0.0, legs_cooldown - delta)
+		return
+	legs_kick_timer = maxf(0.0, legs_kick_timer - delta)
+	if legs_kick_timer > 0.0:
+		return
+	legs_kick_timer = LEGS_KICK_INTERVAL
+	_legs_kick()
+
+
+## Пинок: ближайшая цель под бортом получает удар и отлетает.
+func _legs_kick() -> void:
+	var at := boat_at()
+	var forward_at := forward()
+	var best: Dictionary = {}
+	var best_distance := INF
+	var best_offset := Vector2.ZERO
+	for enemy in enemies:
+		if float(enemy["hp"]) <= 0.0:
+			continue
+		var offset: Vector2 = enemy["at"] - at
+		var distance := offset.length() - float(enemy["radius"])
+		if distance > LEGS_REACH:
+			continue
+		# Пинаем впереди и по бортам: корму не достаём.
+		if distance > 1.0 and offset.normalized().dot(forward_at) < -0.30:
+			continue
+		if distance < best_distance:
+			best_distance = distance
+			best = enemy
+			best_offset = offset
+	if best.is_empty():
+		return
+	var power := legs_damage()
+	stats.record_damage(RaidStats.Channel.LEGS, float(best["hp"]), power)
+	best["hp"] = float(best["hp"]) - power
+	best["flash"] = 0.25
+	RaidMotion.kick(best, at, 7.5, LEGS_REACH)
+	var side := 1.0 if best_offset.length() < 0.001 or best_offset.dot(_right()) >= 0.0 else -1.0
+	if legs != null:
+		legs.kick(side)
+	var where := Vector3(best["at"].x, Coast.SEA_LEVEL, best["at"].y)
+	if main.water != null and main.water.field != null:
+		main.water.field.splash(Vector2(where.x, where.z), 1.6)
+	if main.sound != null:
+		main.sound.splash(where, 0.7)
+
+
+func _right() -> Vector2:
+	return Vector2(-forward().y, forward().x)
 
 
 func upgrade_preview(kind: int) -> String:
@@ -938,6 +1067,17 @@ func upgrade_preview(kind: int) -> String:
 				"Урон внутри: %d → %d/с"
 				% [8 + 4 * gravity_damage_rank, 12 + 4 * gravity_damage_rank]
 			)
+		19:
+			var next_rank := mini(LEGS_RANK_MAX, legs_rank + 1)
+			preview = (
+				"Шаг: %.0f → %.0f с\nПинок: %.0f → %.0f"
+				% [
+					LEGS_TIME + LEGS_BONUS_TIME * float(maxi(0, legs_rank - 1)),
+					LEGS_TIME + LEGS_BONUS_TIME * float(next_rank - 1),
+					LEGS_DAMAGE * (1.0 + LEGS_DAMAGE_STEP * float(maxi(0, legs_rank - 1))),
+					LEGS_DAMAGE * (1.0 + LEGS_DAMAGE_STEP * float(next_rank - 1)),
+				]
+			)
 	return preview
 
 
@@ -979,7 +1119,8 @@ func credit_xp(amount: int) -> void:
 
 
 func speed_multiplier() -> float:
-	return 1.0 + float(speed_rank) * SPEED_PER_RANK
+	var legs_boost := LEGS_SPEED if legs_active() else 1.0
+	return (1.0 + float(speed_rank) * SPEED_PER_RANK) * legs_boost
 
 
 func turn_multiplier() -> float:
@@ -997,6 +1138,9 @@ func toggle_pause() -> void:
 func _finish(result: State) -> void:
 	state = result
 	main.boat.speed = 0.0
+	legs_timer = 0.0
+	if legs != null:
+		legs.set_active(false)
 	hud.refresh()
 
 
@@ -1009,6 +1153,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.physical_keycode == KEY_Q:
 			pulse()
+			get_viewport().set_input_as_handled()
+		elif event.physical_keycode == KEY_X:
+			start_legs()
 			get_viewport().set_input_as_handled()
 		elif event.physical_keycode in [KEY_F5, KEY_F6, KEY_F7]:
 			# Быстрая отладка без захода в журнал; полный набор — ESC → «ОТЛАДКА · ТЕСТ».

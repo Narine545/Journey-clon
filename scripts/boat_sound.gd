@@ -3,31 +3,23 @@ extends Node
 ## Звуки моря в сцене лодки. Всё синтезируется кодом при запуске —
 ## бинарных звуковых ассетов в проекте нет, как и на берегу.
 ##
-## Набор намеренно скупой: всплеск сферы, глухой «буль» под водой, свист
-## взлёта и очень тихий фон моря. Никаких резких тембров и громких атак:
-## звук должен поддерживать картинку, а не спорить с ней.
+## Набор намеренно скупой: всплеск, глухой «буль» под водой и свист взлёта.
+## Никаких резких тембров и громких атак: звук поддерживает картинку,
+## а не спорит с ней. Фоновых петель нет — только события.
 
 const RATE := 22050
 
 var _splash: AudioStreamPlayer3D
 var _glug: AudioStreamPlayer3D
 var _rise: AudioStreamPlayer3D
-var _sea: AudioStreamPlayer
 var _rng := RandomNumberGenerator.new()
 
 
 func setup() -> void:
 	_rng.randomize()
 	_splash = _player3d(_gen_splash(), -7.0, 70.0)
-	_glug = _player3d(_gen_glug(), -11.0, 50.0)
+	_glug = _player3d(_gen_glug(), -6.0, 60.0)
 	_rise = _player3d(_gen_rise(), -9.0, 95.0)
-	# Фон моря — не позиционный и очень тихий: он не «играет», а просто
-	# не даёт морю быть беззвучным.
-	_sea = AudioStreamPlayer.new()
-	_sea.stream = _gen_sea_loop()
-	_sea.volume_db = -23.0
-	add_child(_sea)
-	_sea.play()
 
 
 ## Всплеск: вход в воду (вниз) или выход из неё (вверх).
@@ -94,23 +86,31 @@ func _gen_glug() -> AudioStreamWAV:
 	s.resize(n)
 	var lp := 0.0
 	var bubbles: Array[Vector3] = []
-	for index in range(5):
-		bubbles.append(Vector3(rng.randf_range(0.08, 0.75), rng.randf_range(120.0, 260.0), rng.randf_range(0.20, 0.40)))
+	for index in range(6):
+		bubbles.append(
+			Vector3(
+				rng.randf_range(0.06, 0.80),
+				rng.randf_range(320.0, 720.0),
+				rng.randf_range(0.22, 0.42)
+			)
+		)
 	for i in n:
 		var t := float(i) / RATE
 		var w := rng.randf_range(-1.0, 1.0)
-		lp += (w - lp) * 0.05
+		lp += (w - lp) * 0.10
 		var env := minf(t / 0.03, 1.0) * exp(-t * 2.4)
 		env *= 1.0 - smoothstep(0.85, 1.15, t)
-		var tone := sin(TAU * (170.0 - 110.0 * t) * t) * 0.42
-		var value := (tone + lp * 0.35) * env
+		# Тон уходит вниз, но остаётся в слышимой середине: 430 → 180 Гц.
+		# Прежний вариант жил на 60–170 Гц и на обычных динамиках пропадал.
+		var tone := sin(TAU * (430.0 - 250.0 * t) * t) * 0.40
+		var value := (tone + lp * 0.30) * env
 		for bubble: Vector3 in bubbles:
 			var bt := t - bubble.x
-			if bt < 0.0 or bt > 0.5:
+			if bt < 0.0 or bt > 0.55:
 				continue
-			value += sin(TAU * bubble.y * bt) * exp(-bt * 12.0) * bubble.z * 0.35
+			value += sin(TAU * bubble.y * bt) * exp(-bt * 11.0) * bubble.z * 0.34
 		s[i] = value
-	return _stream(_peak_norm(s, 0.75), RATE, false)
+	return _stream(_peak_norm(s, 0.8), RATE, false)
 
 
 ## Взлёт: шум и тон, ползущие вверх — «свист в небо», но без резкости.
@@ -131,35 +131,6 @@ func _gen_rise() -> AudioStreamWAV:
 		var env := minf(t / 0.22, 1.0) * pow(maxf(1.0 - tt, 0.0), 1.3)
 		s[i] = (lp * 1.1 + sin(phase) * 0.30) * env
 	return _stream(_peak_norm(s, 0.8), RATE, false)
-
-
-## Фон моря: тихий шум прибоя с медленными волнами громкости, бесшовно.
-func _gen_sea_loop() -> AudioStreamWAV:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 9127
-	var n := int(4.0 * RATE)
-	var fade := int(0.12 * RATE)
-	var total := n + fade
-	var buf := PackedFloat32Array()
-	buf.resize(total)
-	var lp1 := 0.0
-	var lp2 := 0.0
-	for i in total:
-		var w := rng.randf_range(-1.0, 1.0)
-		lp1 += (w - lp1) * 0.16
-		lp2 += (lp1 - lp2) * 0.06
-		var ph := float(i) / float(n)
-		var swell := 0.65 + 0.20 * sin(TAU * ph) + 0.15 * sin(TAU * 2.0 * ph + 0.9)
-		buf[i] = lp2 * swell
-	var s := PackedFloat32Array()
-	s.resize(n)
-	for i in n:
-		if i < fade:
-			var k := float(i) / float(fade)
-			s[i] = buf[i] * k + buf[n + i] * (1.0 - k)
-		else:
-			s[i] = buf[i]
-	return _stream(_peak_norm(s, 0.6), RATE, true)
 
 
 func _peak_norm(s: PackedFloat32Array, target: float) -> PackedFloat32Array:

@@ -122,6 +122,15 @@ func raid_speed_factor() -> float:
 	return 1.0
 
 
+## Осадка корпуса: на ногах судно идёт по поверхности и не садится на мель.
+func hull_draft_limit() -> float:
+	return 0.55 if raid_legs_active() else 1.7
+
+
+func raid_legs_active() -> bool:
+	return main != null and main.raid != null and main.raid.legs_active()
+
+
 func raid_turn_factor() -> float:
 	if main != null and main.raid != null and main.raid.engaged():
 		return main.raid.turn_multiplier()
@@ -302,13 +311,18 @@ func _physics_process(delta: float) -> void:
 		heading = -global_transform.basis.z
 		right = global_transform.basis.x
 	if not hit_reef:
-		if coast.water_depth(next.x, next.z) > 1.7:
+		if coast.water_depth(next.x, next.z) > hull_draft_limit():
 			if _make_room_for_trailer(next):
 				global_position = next
 			else:
 				speed = 0.0
 		else:
-			if _impact_cooldown <= 0.0 and absf(speed) > 4.5 and OS.get_environment("JOURNEY_BOAT_SMOKE") != "1":
+			if (
+				not raid_legs_active()
+				and _impact_cooldown <= 0.0
+				and absf(speed) > 4.5
+				and OS.get_environment("JOURNEY_BOAT_SMOKE") != "1"
+			):
 				_impact_cooldown = 1.2
 				apply_hull_damage(8.0, RaidStats.Cause.SHOAL)
 				main.announce("ПОСАДКА НА МЕЛЬ! КОРПУС %d%%" % int(round(hull_hp)))
@@ -327,7 +341,9 @@ func _physics_process(delta: float) -> void:
 	var h_star := water.surface_height(star_pt.x, star_pt.z)
 
 	var avg_water := (h_center * 2.0 + h_bow + h_stern + h_port + h_star) / 6.0
-	var target_y := avg_water + 0.08 - absf(speed) * 0.003
+	# На ногах корпус приподнят: судно несёт само себя над водой.
+	var legs_lift := 0.9 if raid_legs_active() else 0.0
+	var target_y := avg_water + 0.08 + legs_lift - absf(speed) * 0.003
 	var y_err := target_y - global_position.y
 	_heave_vel = (_heave_vel + y_err * 28.0 * delta) * exp(-5.5 * delta)
 	global_position.y += _heave_vel * delta

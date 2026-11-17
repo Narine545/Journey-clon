@@ -27,6 +27,8 @@ const RADAR_RECT := Rect2(1722, 286, 160, 160)
 const BOSS_RECT := Rect2(560, 118, 800, 96)
 const LOOT_RECT := Rect2(1540, 872, 330, 164)
 const WEAPON_RECT := Rect2(600, 962, 720, 56)
+## Временный бонус «ходячие ноги»: показывается только когда он есть.
+const LEGS_RECT := Rect2(600, 892, 380, 60)
 
 var _hull: TideHullGauge
 var _hull_plate: Control
@@ -41,6 +43,8 @@ var _loot_plate: Control
 var _loot_value: Label
 var _weapons_plate: Control
 var _weapons_label: Label
+var _legs_plate: Control
+var _legs_label: Label
 var _radar: TideRadar
 var _radar_note: Label
 var _boss_plate: Control
@@ -174,6 +178,21 @@ func _build() -> void:
 		HORIZONTAL_ALIGNMENT_CENTER
 	)
 	_weapons_label.size.y = WEAPON_RECT.size.y
+	# --- Временный бонус: ноги ---
+	_legs_plate = TideKit.group(self, LEGS_RECT, 1.4)
+	var legs_back := TideKit.panel(
+		_legs_plate, Rect2(Vector2.ZERO, LEGS_RECT.size), TideTokens.SONAR, TideTokens.INK, false
+	)
+	legs_back.skew = 12.0
+	legs_back.cut = 0.0
+	legs_back._rebuild()
+	_legs_label = TideKit.text(
+		_legs_plate, "", Vector2(24, 0), 1, 19, TideTokens.INK, LEGS_RECT.size.x - 48.0,
+		HORIZONTAL_ALIGNMENT_CENTER
+	)
+	_legs_label.size.y = LEGS_RECT.size.y
+	_legs_plate.hide()
+
 	_keys_hint = TideKit.text(
 		self, "ESC · ЖУРНАЛ     Q · ИМПУЛЬС     F1 · ОТЛАДКА", Vector2(480, 1028), 1, 19,
 		TideTokens.foam_alpha(0.8), 960.0, HORIZONTAL_ALIGNMENT_CENTER
@@ -214,6 +233,7 @@ func _build() -> void:
 	_add_bob(_porthole, 4, 3.0)
 	_add_bob(_loot_plate, 5, 4.0)
 	_add_bob(_weapons_plate, 6, -1.2, 0.6)
+	_add_bob(_legs_plate, 7, 1.4, 0.6)
 	_add_bob(_boss_plate, 1, 1.6, 0.6)
 	_set_engaged(false)
 
@@ -292,6 +312,14 @@ func push(state: Dictionary) -> void:
 			"font_size",
 			TideTokens.fit_point(TideTokens.mono_font(), weapons, WEAPON_RECT.size.x - 64.0, 19, 12)
 		)
+	var legs := String(state.get("legs", ""))
+	_legs_plate.visible = not legs.is_empty()
+	if not legs.is_empty() and _legs_label.text != legs:
+		_legs_label.text = legs
+		_legs_label.add_theme_font_size_override(
+			"font_size",
+			TideTokens.fit_point(TideTokens.mono_font(), legs, LEGS_RECT.size.x - 64.0, 19, 11)
+		)
 	_radar.push(state.get("contacts", []), state.get("loot_dots", []), state.get("forward", Vector2.UP))
 	_shoal.visible = bool(state.get("shoal", false))
 
@@ -308,6 +336,7 @@ func _set_engaged(value: bool) -> void:
 	_hull_plate.visible = value
 	_loot_plate.visible = value
 	_weapons_plate.visible = value
+	_legs_plate.visible = false
 	_keys_hint.visible = value
 	_radar.visible = value
 	_radar_note.visible = value
