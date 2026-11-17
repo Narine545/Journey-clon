@@ -365,5 +365,3 @@ RETRO DEBUG: visible=false rect=(64.0, 64.0) viewport=(64.0, 64.0)
 [BOAT SMOKE] PASS общий вид показывает всю карту без дымки, не подменяя игровую погоду
 [BOAT SMOKE] PASS выход возвращает обычную камеру и прежние флаги атмосферы
 [BOAT SMOKE] итог: ВСЁ ПРОШЛО
-WARNING: 4 ObjectDB instances were leaked at exit (run with `--verbose` for details).
-   at: cleanup (core/object/object.cpp:2536)
