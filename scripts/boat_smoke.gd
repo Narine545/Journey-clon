@@ -1647,6 +1647,13 @@ func _check_raid_stats() -> void:
 	run.enemies[0]["hp"] = 10.0
 	run.stern_charges._detonate({"at": at, "blast": -1.0, "radius": 8.0, "power": 78.0})
 	_check(is_equal_approx(stats.dealt[RaidStats.Channel.MINES], 10.0), "мина считает только снятый HP")
+	# Ходячие ноги: пинок снимает HP и питает свой канал статистики.
+	run.legs_rank = 1
+	run.enemies[0]["hp"] = 10.0
+	run._legs_kick()
+	_check(is_equal_approx(stats.dealt[RaidStats.Channel.LEGS], 10.0),
+		"пинок ноги считает только снятый HP")
+	run.legs_rank = 0
 	run._hurt_timer = 0.0
 	run._hurt(1000.0)
 	_check(is_equal_approx(stats.received, saved_hp)
