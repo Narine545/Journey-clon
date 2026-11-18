@@ -17,8 +17,8 @@ const SIDES := [-1.0, 1.0]
 const GROW_TIME := 0.4
 ## Сколько длится один жест: дотянуться, схватить, вернуться.
 const REACH_TIME := 0.85
-const SKIN := Color(0.86, 0.67, 0.55)
-const SKIN_SHADE := Color(0.70, 0.53, 0.45)
+const SKIN := Color(0.90, 0.72, 0.60)
+const SKIN_SHADE := Color(0.78, 0.60, 0.51)
 
 var main: BoatMain
 var _arms: Array[Dictionary] = []
@@ -80,7 +80,7 @@ func _flex(delta: float) -> void:
 func _pose(arm: Dictionary, delta: float) -> void:
 	var side: float = arm["side"]
 	var shoulder: Vector3 = arm["shoulder"]
-	var idle := shoulder + Vector3(side * 0.9, 0.45, 1.1)
+	var idle := shoulder + Vector3(side * 0.55, -0.35, 0.75)
 	var wrist_world := global_transform * idle
 	if bool(arm["busy"]):
 		arm["clock"] = float(arm["clock"]) + delta
@@ -123,10 +123,10 @@ func _hand(arm: Dictionary, wrist: Vector3, side: float) -> void:
 	var fingers: Array = arm["fingers"]
 	for index in range(fingers.size()):
 		var finger: MeshInstance3D = fingers[index]
-		var across := (float(index) - 1.5) * 0.30
+		var across := (float(index) - 1.5) * 0.42
 		var root := palm_pos + outward * 0.14 + Vector3(0.0, 0.0, across)
 		var dir := (outward * cos(curl) + Vector3.DOWN * sin(curl)).normalized()
-		_segment(finger, root, root + dir * 0.78)
+		_segment(finger, root, root + dir * 1.50)
 
 
 func _reach(shoulder: Vector3, wrist: Vector3) -> Vector3:
@@ -183,12 +183,12 @@ func _build() -> void:
 			"on_hit": Callable(),
 			"target": Vector3.ZERO,
 		}
-		arm["upper"] = _limb(0.78, 0.62, hair)
-		arm["lower"] = _limb(0.60, 0.46, hair)
-		arm["palm"] = _box(Vector3(0.48, 1.10, 0.72), SKIN)
+		arm["upper"] = _limb(0.72, 0.56, hair)
+		arm["lower"] = _limb(0.54, 0.42, hair)
+		arm["palm"] = _box(Vector3(0.55, 1.60, 1.20), SKIN)
 		var fingers: Array[MeshInstance3D] = []
 		for _index in range(4):
-			fingers.append(_box(Vector3(0.26, 0.26, 0.36), SKIN_SHADE))
+			fingers.append(_box(Vector3(0.42, 0.42, 0.50), SKIN_SHADE))
 		arm["fingers"] = fingers
 		_arms.append(arm)
 
@@ -241,8 +241,8 @@ func _make_hair_texture() -> ImageTexture:
 		var dark := rng.randf_range(0.35, 1.0)
 		for y in range(height):
 			var wobble := sin(float(y) * 0.55 + strand * TAU) * 0.5 + 0.5
-			var cover := clampf(dark * (0.55 + 0.75 * wobble) - 0.52, 0.0, 1.0)
+			var cover := clampf(dark * (0.55 + 0.75 * wobble) - 0.74, 0.0, 1.0)
 			var skin := SKIN.lerp(SKIN_SHADE, 0.35 * sin(float(y) * 0.12 + strand * 3.0) * 0.5 + 0.5)
-			image.set_pixel(x, y, skin.lerp(Color(0.13, 0.10, 0.09), cover))
+			image.set_pixel(x, y, skin.lerp(Color(0.26, 0.20, 0.17), cover))
 	image.generate_mipmaps()
 	return ImageTexture.create_from_image(image)

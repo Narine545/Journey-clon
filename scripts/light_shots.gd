@@ -118,18 +118,22 @@ func _run() -> void:
 	main.raid.enemies.clear()
 
 	# Пинок ноги: нога должна прийти в врага, а враг — отлететь.
+	# Руки на это время убираем, иначе они перехватят цель первыми.
 	main.raid.hud.modulate.a = 0.0
-	var kick_at: Vector2 = main.raid.boat_at() + bow.rotated(0.5) * 5.0
-	main.raid.enemies.append(_dummy_enemy(kick_at, 140.0, 903))
+	main.raid.hands_rank = 0
+	main.raid.hands.set_active(false)
+	var kick_at: Vector2 = main.raid.boat_at() + bow.rotated(0.35) * 7.5
+	main.raid.enemies.append(_dummy_enemy(kick_at, 160.0, 903))
 	main.raid._rebuild_grid()
-	await _shooter.wait_frames_count(5)
-	main.raid._legs_kick()
-	await _shooter.wait_frames_count(2)
+	await _shooter.wait_frames_count(6)
 	await _shooter.capture("light_17_kick_00")
-	await _shooter.wait_frames_count(4)
+	main.raid._legs_kick()
+	await _shooter.wait_frames_count(3)
 	await _shooter.capture("light_17_kick_01")
-	await _shooter.wait_frames_count(9)
+	await _shooter.wait_frames_count(5)
 	await _shooter.capture("light_17_kick_02")
+	await _shooter.wait_frames_count(10)
+	await _shooter.capture("light_17_kick_03")
 	main.raid.enemies.clear()
 
 	print("[LIGHT SHOTS] готово")
