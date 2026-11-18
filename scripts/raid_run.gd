@@ -28,6 +28,7 @@ const HANDS_RANK_MAX := 3
 const HANDS_INTERVAL := 3.0
 const HANDS_REACH := 13.0
 const HANDS_DAMAGE := 26.0
+const HANDS_DAMAGE_STEP := 0.45
 const HANDS_THROW := 16.0
 const COLORS := [Color("ff4b35"), Color("ffe144"), Color("be62ff"), Color("39a9ff")]
 const UPGRADES := [
