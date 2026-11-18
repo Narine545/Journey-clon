@@ -100,11 +100,12 @@ func _run() -> void:
 	main.raid.hands.set_active(true)
 	main.raid.hands_cooldown = 0.0
 	var bow: Vector2 = main.raid.forward()
-	var base: Vector2 = main.raid.boat_at() + bow * 9.0
+	var base: Vector2 = main.raid.boat_at() + bow * 6.5
 	main.raid.enemies.append(_dummy_enemy(base, 100.0, 901))
-	main.raid.enemies.append(_dummy_enemy(base + bow.orthogonal() * 5.0, 100.0, 902))
+	main.raid.enemies.append(_dummy_enemy(base + bow.orthogonal() * 4.5, 100.0, 902))
 	main.raid._rebuild_grid()
-	await _shooter.wait_frames_count(3)
+	# Руки успевают подняться из воды — только потом тянутся.
+	await _shooter.wait_frames_count(26)
 	await _shooter.capture("light_16_hands_00")
 	main.raid._hands_grab()
 	await _shooter.wait_frames_count(6)
@@ -116,6 +117,23 @@ func _run() -> void:
 	await _shooter.wait_frames_count(14)
 	main.raid.hud.modulate.a = 1.0
 	await _shooter.capture("light_16_hands_04")
+	main.raid.enemies.clear()
+
+	# Пинок ноги: нога должна прийти в врага, а враг — отлететь.
+	main.raid.hud.modulate.a = 0.0
+	var kick_at: Vector2 = main.raid.boat_at() + bow.rotated(0.5) * 5.0
+	main.raid.enemies.append(_dummy_enemy(kick_at, 140.0, 903))
+	main.raid._rebuild_grid()
+	await _shooter.wait_frames_count(6)
+	main.raid._legs_kick()
+	await _shooter.wait_frames_count(3)
+	await _shooter.capture("light_17_kick_00")
+	await _shooter.wait_frames_count(4)
+	await _shooter.capture("light_17_kick_01")
+	await _shooter.wait_frames_count(6)
+	await _shooter.capture("light_17_kick_02")
+	await _shooter.wait_frames_count(10)
+	await _shooter.capture("light_17_kick_03")
 	main.raid.enemies.clear()
 
 	print("[LIGHT SHOTS] готово")

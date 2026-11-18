@@ -8,17 +8,17 @@ extends Node3D
 ## двухзвенная IK, что у ног; ладонь и пальцы — коробки, пальцы сжимаются
 ## при хватке. Всё в системе координат лодки: нос — −Z, правый борт — +X.
 
-const SHOULDER_X := 1.9
-const SHOULDER_Y := 1.5
-const SHOULDER_Z := 0.4
-const UPPER := 2.7
-const LOWER := 2.7
+const SHOULDER_X := 2.5
+const SHOULDER_Y := 0.35
+const SHOULDER_Z := 0.0
+const UPPER := 4.0
+const LOWER := 4.0
 const SIDES := [-1.0, 1.0]
 const GROW_TIME := 0.4
 ## Сколько длится один жест: дотянуться, схватить, вернуться.
 const REACH_TIME := 0.85
-const SKIN := Color(0.80, 0.63, 0.53)
-const SKIN_SHADE := Color(0.66, 0.50, 0.43)
+const SKIN := Color(0.86, 0.67, 0.55)
+const SKIN_SHADE := Color(0.70, 0.53, 0.45)
 
 var main: BoatMain
 var _arms: Array[Dictionary] = []
@@ -80,7 +80,7 @@ func _flex(delta: float) -> void:
 func _pose(arm: Dictionary, delta: float) -> void:
 	var side: float = arm["side"]
 	var shoulder: Vector3 = arm["shoulder"]
-	var idle := shoulder + Vector3(side * 1.15, -0.35, 0.55)
+	var idle := shoulder + Vector3(side * 0.9, 0.45, 1.1)
 	var wrist_world := global_transform * idle
 	if bool(arm["busy"]):
 		arm["clock"] = float(arm["clock"]) + delta
@@ -123,10 +123,10 @@ func _hand(arm: Dictionary, wrist: Vector3, side: float) -> void:
 	var fingers: Array = arm["fingers"]
 	for index in range(fingers.size()):
 		var finger: MeshInstance3D = fingers[index]
-		var across := (float(index) - 1.5) * 0.22
+		var across := (float(index) - 1.5) * 0.30
 		var root := palm_pos + outward * 0.14 + Vector3(0.0, 0.0, across)
 		var dir := (outward * cos(curl) + Vector3.DOWN * sin(curl)).normalized()
-		_segment(finger, root, root + dir * 0.55)
+		_segment(finger, root, root + dir * 0.78)
 
 
 func _reach(shoulder: Vector3, wrist: Vector3) -> Vector3:
@@ -183,12 +183,12 @@ func _build() -> void:
 			"on_hit": Callable(),
 			"target": Vector3.ZERO,
 		}
-		arm["upper"] = _limb(0.52, 0.42, hair)
-		arm["lower"] = _limb(0.40, 0.32, hair)
-		arm["palm"] = _box(Vector3(0.30, 0.70, 0.44), SKIN)
+		arm["upper"] = _limb(0.78, 0.62, hair)
+		arm["lower"] = _limb(0.60, 0.46, hair)
+		arm["palm"] = _box(Vector3(0.48, 1.10, 0.72), SKIN)
 		var fingers: Array[MeshInstance3D] = []
 		for _index in range(4):
-			fingers.append(_box(Vector3(0.20, 0.20, 0.30), SKIN_SHADE))
+			fingers.append(_box(Vector3(0.26, 0.26, 0.36), SKIN_SHADE))
 		arm["fingers"] = fingers
 		_arms.append(arm)
 

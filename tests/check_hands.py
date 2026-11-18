@@ -14,7 +14,6 @@ assert 'available.append(20)' in run
 assert 'hands_rank = mini(HANDS_RANK_MAX, hands_rank + 1)' in run
 assert '"Хватка: %.0f → %.0f урона\\nПауза: %.1f → %.1f с"' in run
 assert 'const HANDS_RANK_MAX := 3' in run
-assert 'const HANDS_REACH := 13.0' in run
 
 # Хватка автоматическая: свой шаг рейда, без нажатия клавиши.
 assert 'func _step_hands(delta: float) -> void:' in run
@@ -29,7 +28,8 @@ assert 'enemy["thrown"] = 0.6' in motion
 assert 'RaidMotion.throw_at(victim, from_at, landing, HANDS_THROW)' in run
 # Второй враг получает удар от летящего тела.
 assert 'RaidMotion.kick(partner, at, HANDS_THROW * 0.45, 6.0)' in run
-assert 'main.announce("СХВАТИЛ И ШВЫРНУЛ.")' in run
+assert 'victim["at"] = at.lerp(from_at, 0.32)' in run
+assert 'const HANDS_REACH := 9.0' in run
 
 # Руки живут на корпусе: две руки, IK, пальцы сжимаются, урон по моменту хватки.
 assert 'class_name RaidHands' in hands

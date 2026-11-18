@@ -26,7 +26,7 @@ const DEATH_FLIGHT := 0.5
 ## Хватающие руки: пассивный бонус, работают сами.
 const HANDS_RANK_MAX := 3
 const HANDS_INTERVAL := 3.0
-const HANDS_REACH := 13.0
+const HANDS_REACH := 9.0
 const HANDS_DAMAGE := 26.0
 const HANDS_DAMAGE_STEP := 0.45
 const HANDS_THROW := 16.0
@@ -1062,6 +1062,9 @@ func hands_hit(victim: Dictionary, partner: Dictionary, power: float, from_at: V
 	var landing := at + (at - from_at).normalized() * 10.0
 	if not partner.is_empty() and float(partner["hp"]) > 0.0:
 		landing = Vector2(partner["at"])
+	# Хватка дёргает врага к борту: видно, что его взяли, а не толкнули.
+	victim["previous"] = at
+	victim["at"] = at.lerp(from_at, 0.32)
 	RaidMotion.throw_at(victim, from_at, landing, HANDS_THROW)
 	if main != null and main.water != null and main.water.field != null:
 		main.water.field.splash(at, 2.0)
@@ -1074,7 +1077,6 @@ func hands_hit(victim: Dictionary, partner: Dictionary, power: float, from_at: V
 		partner["hp"] = float(partner["hp"]) - slam
 		partner["flash"] = 0.3
 		RaidMotion.kick(partner, at, HANDS_THROW * 0.45, 6.0)
-	main.announce("СХВАТИЛ И ШВЫРНУЛ.")
 
 func _legs_kick() -> void:
 	var at := boat_at()
