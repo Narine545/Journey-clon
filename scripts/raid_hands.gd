@@ -80,7 +80,7 @@ func _flex(delta: float) -> void:
 func _pose(arm: Dictionary, delta: float) -> void:
 	var side: float = arm["side"]
 	var shoulder: Vector3 = arm["shoulder"]
-	var idle := shoulder + Vector3(side * 0.55, -0.35, 0.75)
+	var idle := shoulder + Vector3(side * 0.35, -1.8, 0.9)
 	var wrist_world := global_transform * idle
 	if bool(arm["busy"]):
 		arm["clock"] = float(arm["clock"]) + delta

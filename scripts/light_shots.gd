@@ -122,7 +122,8 @@ func _run() -> void:
 	main.raid.hud.modulate.a = 0.0
 	main.raid.hands_rank = 0
 	main.raid.hands.set_active(false)
-	var kick_at: Vector2 = main.raid.boat_at() + bow.rotated(0.35) * 7.5
+	main.camera.size = 34.0
+	var kick_at: Vector2 = main.raid.boat_at() + bow.rotated(-1.15) * 9.0
 	main.raid.enemies.append(_dummy_enemy(kick_at, 160.0, 903))
 	main.raid._rebuild_grid()
 	await _shooter.wait_frames_count(6)
