@@ -367,7 +367,6 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  52% ] [90m[1mreimport[22m | heroine_sly.webp[39m[0m
 [  53% ] [90m[1mreimport[22m | heroine_side_2.webp[39m[0m
 [  54% ] [90m[1mreimport[22m | heroine_side_1.webp[39m[0m
-[  54% ] [90m[1mreimport[22m | heroine_side_1.webp[39m[0m
 [  55% ] [90m[1mreimport[22m | heroine_reply_annoyed.webp[39m[0m
 [  56% ] [90m[1mreimport[22m | heroine_radio.webp[39m[0m
 [  58% ] [90m[1mreimport[22m | heroine_neutral.webp[39m[0m
@@ -399,7 +398,6 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  83% ] [90m[1mreimport[22m | rest_sleep.webp[39m[0m
 [  84% ] [90m[1mreimport[22m | rest_nap.webp[39m[0m
 [  86% ] [90m[1mreimport[22m | rest_laze.webp[39m[0m
-[  87% ] [90m[1mreimport[22m | intro_sleep.webp[39m[0m
 [  87% ] [90m[1mreimport[22m | intro_sleep.webp[39m[0m
 [  88% ] [90m[1mreimport[22m | intro_awake.webp[39m[0m
 [  89% ] [90m[1mreimport[22m | heroine_yawn.webp[39m[0m
@@ -441,9 +439,3 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  16% ] [90m[1mloading_editor_layout[22m | Loading docks...[39m[0m
 [92m[ DONE ][39m [1mloading_editor_layout[22m
 [0m
-SCRIPT ERROR: Parse Error: Identifier "bow" not declared in the current scope.
-          at: GDScript::reload (res://scripts/light_shots.gd:104)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/boat_main.gd:0)
-ERROR: Failed to load script "res://scripts/boat_main.gd" with error "Parse error".
-   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
