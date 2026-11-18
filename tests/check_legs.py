@@ -22,7 +22,7 @@ assert 'func legs_active() -> bool:' in run
 assert 'func start_legs() -> void:' in run
 assert '_legs_kick()' in run
 assert 'RaidStats.Channel.LEGS' in run
-assert 'GRAVITY, LEGS, HANDS }' in stats
+assert 'GRAVITY, LEGS }' in stats
 # На ногах судно идёт по поверхности: меньшая требуемая глубина.
 assert 'return 0.55 if raid_legs_active() else 1.7' in vessel
 assert 'var legs_lift := 4.2 if raid_legs_active() else 0.0' in vessel

@@ -23,13 +23,6 @@ const LEGS_REACH := 11.0
 const LEGS_KICK_INTERVAL := 2.0
 ## Сколько летит отброшенный насмерть враг, прежде чем уйти под воду.
 const DEATH_FLIGHT := 0.5
-## Хватающие руки: пассивный бонус, работают сами.
-const HANDS_RANK_MAX := 3
-const HANDS_INTERVAL := 3.0
-const HANDS_REACH := 9.0
-const HANDS_DAMAGE := 26.0
-const HANDS_DAMAGE_STEP := 0.45
-const HANDS_THROW := 16.0
 const COLORS := [Color("ff4b35"), Color("ffe144"), Color("be62ff"), Color("39a9ff")]
 const UPGRADES := [
 	["Усиленные снаряды", "+8 базового урона орудий"],
@@ -52,7 +45,6 @@ const UPGRADES := [
 	["Стабилизация стягивания", "+1 с существования стягивающей сферы"],
 	["Сжатие поля", "+4 урона в секунду внутри стягивающей сферы"],
 	["Ходячие ноги", "На время вырастают ноги: X — шаг по воде, пинки с борта"],
-	["Хватающие руки", "Автоматически хватают врага и швыряют его в другого"],
 ]
 var stats := RaidStats.new()
 var effects_enabled := true
@@ -68,7 +60,6 @@ var sphere_mines: SphereMines
 var stern_charges: RaidSternCharges
 var salvage: RaidSalvage
 var legs: RaidLegs
-var hands: RaidHands
 ## Видимый интерфейс рейда — TIDECUT (TideUi). Старый RaidHud больше не создаётся:
 ## вся его логика (пауза, итоги, отладка) перенесена в новые экраны.
 var hud
@@ -97,8 +88,6 @@ var sphere_stability := 0
 var sphere_rank := 0
 var stern_rank := 0
 var legs_rank := 0
-var hands_rank := 0
-var hands_cooldown := 0.0
 var legs_timer := 0.0
 var legs_cooldown := 0.0
 var legs_kick_timer := 0.0
@@ -162,10 +151,6 @@ func setup(scene: BoatMain) -> void:
 	legs.name = "RaidLegs"
 	main.boat.add_child(legs)
 	legs.setup(main)
-	hands = RaidHands.new()
-	hands.name = "RaidHands"
-	main.boat.add_child(hands)
-	hands.setup(main)
 	damage_fx = RaidDamageFx.new()
 	add_child(damage_fx)
 	damage_fx.setup(self)
@@ -235,10 +220,6 @@ func start() -> void:
 	legs_cooldown = 0.0
 	legs_kick_timer = 0.0
 	legs.set_active(false)
-	hands_rank = 0
-	hands_cooldown = 0.0
-	if hands != null:
-		hands.set_active(false)
 	pulse_radius = 13.0
 	pulse_damage = 35.0
 	pulse_cooldown = 0.0
@@ -303,10 +284,6 @@ func leave() -> void:
 	legs_cooldown = 0.0
 	legs_kick_timer = 0.0
 	legs.set_active(false)
-	hands_rank = 0
-	hands_cooldown = 0.0
-	if hands != null:
-		hands.set_active(false)
 	main.boat.hull_hp = _saved_hp
 	main.boat.speed = 0.0
 	main.debug_panel_visible = _saved_debug
@@ -472,7 +449,6 @@ func _physics_process(delta: float) -> void:
 	pulse_cooldown = maxf(0.0, pulse_cooldown - delta)
 	_pulse_flash = maxf(0.0, _pulse_flash - delta)
 	_step_legs(delta)
-	_step_hands(delta)
 	# Recycle only combat enemies, never fixed pigment resources. No XP for leaving.
 	_spawn_timer -= delta
 	_step_elites()
@@ -770,8 +746,6 @@ func _upgrade_pool() -> Array[int]:
 		available.append(18)
 	if legs_rank < LEGS_RANK_MAX:
 		available.append(19)
-	if hands_rank < HANDS_RANK_MAX:
-		available.append(20)
 	if can_evolve_harpoon():
 		available.append(10)
 	if can_evolve_pulse():
@@ -897,11 +871,6 @@ func choose(index: int) -> void:
 		19:
 			legs_rank = mini(LEGS_RANK_MAX, legs_rank + 1)
 			start_legs()
-		20:
-			hands_rank = mini(HANDS_RANK_MAX, hands_rank + 1)
-			hands.set_active(true)
-			hands_cooldown = 0.6
-			main.announce("РУКИ ПОДНЯЛИСЬ. ХВАТАЮТ ВСЁ, ЧТО ПОДОЙДЁТ.")
 	if choices[index] >= 10 and choices[index] <= 13:
 		stats.record_evolution(choices[index], elapsed)
 	upgrade_log.append({"at": elapsed, "kind": choices[index]})
@@ -967,116 +936,6 @@ func _step_legs(delta: float) -> void:
 
 
 ## Пинок: ближайшая цель под бортом получает удар и отлетает.
-
-func hands_damage() -> float:
-	return HANDS_DAMAGE * (1.0 + HANDS_DAMAGE_STEP * float(maxi(0, hands_rank - 1)))
-
-
-func hands_interval() -> float:
-	return maxf(1.4, HANDS_INTERVAL - 0.4 * float(maxi(0, hands_rank - 1)))
-
-
-func hands_ready() -> bool:
-	return hands_rank > 0 and (hands == null or not hands.busy())
-
-
-func _step_hands(delta: float) -> void:
-	if hands_rank <= 0 or hands == null:
-		return
-	hands_cooldown = maxf(0.0, hands_cooldown - delta)
-	# Ждём, пока прошлый жест закончится: руки не должны дёргаться внахлёст.
-	if hands.busy() or hands_cooldown > 0.0:
-		return
-	_hands_grab()
-
-
-## Выбор цели: ближайший враг в пределах вытянутой руки, лучше всего — тот,
-## рядом с которым стоит второй, чтобы швырнуть одного в другого.
-func _hands_grab() -> bool:
-	var at := boat_at()
-	var best: Dictionary = {}
-	var best_distance := INF
-	var best_offset := Vector2.ZERO
-	for enemy in enemies:
-		if float(enemy["hp"]) <= 0.0 or float(enemy.get("born", 0.0)) > 0.0:
-			continue
-		var offset: Vector2 = enemy["at"] - at
-		var distance := offset.length() - float(enemy["radius"])
-		if distance > HANDS_REACH:
-			continue
-		# Не хватаем за кормой — руки растут у миделя и тянутся вперёд.
-		if distance > 1.5 and offset.normalized().dot(forward()) < -0.45:
-			continue
-		var partner := _hands_partner(enemy)
-		var score := distance - (4.0 if not partner.is_empty() else 0.0)
-		if score < best_distance:
-			best_distance = score
-			best = enemy
-			best_offset = offset
-	if best.is_empty():
-		hands_cooldown = 0.2
-		return false
-	var side := 1.0 if best_offset.dot(_right()) >= 0.0 else -1.0
-	var partner := _hands_partner(best)
-	var power := hands_damage()
-	# Урон приходит не сразу: рука должна сначала дотянуться.
-	var hit := Callable(self, "hands_hit").bind(best, partner, power, at)
-	hands.grab(side, _hands_point(Vector2(best["at"])), hit)
-	hands_cooldown = hands_interval()
-	return true
-
-
-## Точка хватки: у самой воды, чтобы рука шла к врагу, а не в небо.
-func _hands_point(at_plane: Vector2) -> Vector3:
-	return Vector3(at_plane.x, Coast.SEA_LEVEL + 1.1, at_plane.y)
-
-
-## Кого швырнуть в жертву: ближайший другой враг рядом с ней.
-func _hands_partner(grabbed: Dictionary) -> Dictionary:
-	var at: Vector2 = grabbed["at"]
-	var best: Dictionary = {}
-	var best_distance := 7.0 + float(grabbed["radius"])
-	for enemy in enemies:
-		if enemy == grabbed or float(enemy["hp"]) <= 0.0:
-			continue
-		if int(enemy.get("combat_id", -1)) == int(grabbed.get("combat_id", -2)):
-			continue
-		if int(enemy.get("kind", 0)) == 3:
-			continue
-		var distance := (Vector2(enemy["at"]) - at).length() - float(enemy["radius"])
-		if distance < best_distance:
-			best_distance = distance
-			best = enemy
-	return best
-
-
-## Момент хватки: урон, бросок и, если рядом стоит второй враг, жертва летит
-## прямо в него и сшибает его с ног.
-func hands_hit(victim: Dictionary, partner: Dictionary, power: float, from_at: Vector2) -> void:
-	if float(victim["hp"]) <= 0.0:
-		return
-	var at: Vector2 = victim["at"]
-	stats.record_damage(RaidStats.Channel.HANDS, float(victim["hp"]), power)
-	victim["hp"] = float(victim["hp"]) - power
-	victim["flash"] = 0.3
-	var landing := at + (at - from_at).normalized() * 10.0
-	if not partner.is_empty() and float(partner["hp"]) > 0.0:
-		landing = Vector2(partner["at"])
-	# Хватка дёргает врага к борту: видно, что его взяли, а не толкнули.
-	victim["previous"] = at
-	victim["at"] = at.lerp(from_at, 0.32)
-	RaidMotion.throw_at(victim, from_at, landing, HANDS_THROW)
-	if main != null and main.water != null and main.water.field != null:
-		main.water.field.splash(at, 2.0)
-		main.water.field.splash(landing, 1.2)
-	if main != null and main.sound != null:
-		main.sound.splash(Vector3(at.x, Coast.SEA_LEVEL, at.y), 1.4)
-	if not partner.is_empty() and float(partner["hp"]) > 0.0:
-		var slam := power * 0.55
-		stats.record_damage(RaidStats.Channel.HANDS, float(partner["hp"]), slam)
-		partner["hp"] = float(partner["hp"]) - slam
-		partner["flash"] = 0.3
-		RaidMotion.kick(partner, at, HANDS_THROW * 0.45, 6.0)
 
 func _legs_kick() -> void:
 	var at := boat_at()
@@ -1235,17 +1094,6 @@ func upgrade_preview(kind: int) -> String:
 					LEGS_DAMAGE * (1.0 + LEGS_DAMAGE_STEP * float(next_rank - 1)),
 				]
 			)
-		20:
-			var next_hands := mini(HANDS_RANK_MAX, hands_rank + 1)
-			preview = (
-				"Хватка: %.0f → %.0f урона\nПауза: %.1f → %.1f с"
-				% [
-					hands_damage(),
-					HANDS_DAMAGE * (1.0 + HANDS_DAMAGE_STEP * float(maxi(0, next_hands - 1))),
-					hands_interval(),
-					maxf(1.4, HANDS_INTERVAL - 0.4 * float(maxi(0, next_hands - 1))),
-				]
-			)
 	return preview
 
 
@@ -1309,8 +1157,6 @@ func _finish(result: State) -> void:
 	legs_timer = 0.0
 	if legs != null:
 		legs.set_active(false)
-	if hands != null:
-		hands.set_active(false)
 	hud.refresh()
 
 

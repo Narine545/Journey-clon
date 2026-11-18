@@ -1654,38 +1654,6 @@ func _check_raid_stats() -> void:
 	_check(is_equal_approx(stats.dealt[RaidStats.Channel.LEGS], 10.0),
 		"пинок ноги считает только снятый HP")
 	run.legs_rank = 0
-	# Хватающие руки: тянутся к врагу, записывают свой канал и швыряют его
-	# во второго — тот получает удар летящим телом.
-	run.hands_rank = 1
-	var grab_at := run.boat_at() + run.forward() * 8.0
-	var victim := {
-		"at": grab_at, "hp": 100.0, "radius": 1.1, "flash": 0.0,
-		"kind": 0, "born": 0.0, "combat_id": 901,
-	}
-	var partner := {
-		"at": grab_at + run.forward().orthogonal() * 4.0, "hp": 100.0, "radius": 1.1,
-		"flash": 0.0, "kind": 0, "born": 0.0, "combat_id": 902,
-	}
-	run.enemies.append(victim)
-	run.enemies.append(partner)
-	run._rebuild_grid()
-	run.hands_cooldown = 0.0
-	_check(run._hands_grab(), "руки сами выбирают цель в пределах вытянутой руки")
-	_check(run.hands.busy(), "рука сначала тянется к врагу, урон приходит в момент хватки")
-	run.hands_hit(victim, partner, 30.0, run.boat_at())
-	_check(
-		is_equal_approx(stats.dealt[RaidStats.Channel.HANDS], 46.5),
-		"хватка и удар телом считают только снятый HP"
-	)
-	_check(
-		Vector2(victim["push_velocity"]).length() > 5.0
-			and is_equal_approx(float(partner["hp"]), 83.5),
-		"хватка швыряет врага во второго, а не просто отталкивает"
-	)
-	run.enemies.clear()
-	run.hands_rank = 0
-	run.hands.set_active(false)
-	run.hands_cooldown = 0.0
 	run._hurt_timer = 0.0
 	run._hurt(1000.0)
 	_check(is_equal_approx(stats.received, saved_hp)

@@ -42,21 +42,6 @@ static func from_contact(enemy: Dictionary, correction: Vector2, boat_speed: flo
 
 
 
-## Бросок рукой: врага уносит в заданную точку, а не просто отталкивает.
-## Скорость подобрана так, чтобы до цели он долетел за ~0,6 с.
-static func throw_at(enemy: Dictionary, from_at: Vector2, target: Vector2, strength: float) -> void:
-	if float(enemy["hp"]) <= 0.0 or RaidContacts.mobility(enemy) <= 0.0:
-		return
-	var offset: Vector2 = target - from_at
-	var distance := offset.length()
-	var direction := (
-		offset / distance if distance > 0.001 else Vector2.from_angle(float(enemy.get("combat_id", 0)))
-	)
-	var impulse := direction * maxf(0.0, strength) * inverse_mass(enemy)
-	enemy["push_velocity"] = impulse.limit_length(maxf(MAX_PUSH, strength))
-	enemy["thrown"] = 0.6
-
-
 static func step(enemy: Dictionary, target: Vector2, delta: float) -> Vector2:
 	if delta <= 0.0:
 		return Vector2.ZERO

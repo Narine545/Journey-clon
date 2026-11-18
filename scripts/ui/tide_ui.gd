@@ -294,7 +294,6 @@ func _hud_state() -> Dictionary:
 		"loot": run.salvage.collected,
 		"weapons": _weapons_line(),
 		"legs": _legs_line(),
-		"hands": _hands_line(),
 		"contacts": [],
 		"loot_dots": [],
 		"forward": run.forward(),
@@ -350,16 +349,6 @@ func _weapons_line() -> String:
 
 
 ## Строка временного бонуса: пусто, пока ноги не куплены.
-func _hands_line() -> String:
-	if run.hands_rank <= 0:
-		return ""
-	if run.hands != null and run.hands.busy():
-		return "РУКИ · ХВАТКА"
-	if run.hands_cooldown > 0.0:
-		return "РУКИ · ИЩУТ ЦЕЛЬ"
-	return "РУКИ ГОТОВЫ"
-
-
 func _legs_line() -> String:
 	if run.legs_rank <= 0:
 		return ""

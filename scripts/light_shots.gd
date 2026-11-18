@@ -94,34 +94,8 @@ func _run() -> void:
 	await _shooter.capture("light_14_legs_03")
 	Input.action_release("boat_forward")
 
-	# Хватающие руки: рука сама тянется к врагу и швыряет его во второго.
-	main.raid.enemies.clear()
-	main.raid.hands_rank = 1
-	main.raid.hands.set_active(true)
-	main.raid.hands_cooldown = 0.0
-	var bow: Vector2 = main.raid.forward()
-	var base: Vector2 = main.raid.boat_at() + bow * 6.5
-	main.raid.enemies.append(_dummy_enemy(base, 100.0, 901))
-	main.raid.enemies.append(_dummy_enemy(base + bow.orthogonal() * 4.5, 100.0, 902))
-	main.raid._rebuild_grid()
-	# Руки успевают подняться из воды — только потом тянутся к врагу.
-	await _shooter.wait_frames_count(24)
-	await _shooter.capture("light_16_hands_00")
-	main.raid._hands_grab()
-	await _shooter.wait_frames_count(5)
-	await _shooter.capture("light_16_hands_01")
-	await _shooter.wait_frames_count(7)
-	await _shooter.capture("light_16_hands_02")
-	await _shooter.wait_frames_count(10)
-	main.raid.hud.modulate.a = 1.0
-	await _shooter.capture("light_16_hands_03")
-	main.raid.enemies.clear()
-
 	# Пинок ноги: нога должна прийти в врага, а враг — отлететь.
-	# Руки на это время убираем, иначе они перехватят цель первыми.
 	main.raid.hud.modulate.a = 0.0
-	main.raid.hands_rank = 0
-	main.raid.hands.set_active(false)
 	main.camera.size = 34.0
 	var kick_at: Vector2 = main.raid.boat_at() + bow.rotated(-1.15) * 9.0
 	main.raid.enemies.append(_dummy_enemy(kick_at, 160.0, 903))
