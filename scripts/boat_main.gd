@@ -84,6 +84,7 @@ var _fog_diagnostic_saved_emission_energy := 0.0
 var _retro_rect: ColorRect
 var _rme4_volume: FogVolume
 var _rme4_material: ShaderMaterial
+var _fog_ground_ready := false
 var _debug_night_step := 0
 
 var _capture_frames := 0
@@ -240,6 +241,7 @@ func _apply_atmosphere(n01: float) -> void:
 	if debug_fog_diagnostic != 0:
 		_apply_fog_diagnostic()
 	if _rme4_material != null:
+		_feed_fog_ground()
 		_rme4_material.set_shader_parameter("night_factor", night01)
 		# Ясной ночью effective_fog не падает ниже тонкой дымки: без неё ни
 		# луна, ни фонари не дают в воздухе ни луча, ни ореола.
@@ -1127,6 +1129,18 @@ func _apply_fog_diagnostic() -> void:
 
 
 ## [O] — сравнение формы и собственного свечения одного FogVolume.
+## Карта дна нужна воздуху, чтобы теплеть у берега и холодеть над глубиной.
+## Она статична: отдаём один раз, а не каждый кадр.
+func _feed_fog_ground() -> void:
+	if _fog_ground_ready or coast == null or coast.height_tex == null:
+		return
+	_rme4_material.set_shader_parameter("ground_tex", coast.height_tex)
+	_rme4_material.set_shader_parameter("ground_origin", coast.grid_origin)
+	_rme4_material.set_shader_parameter("ground_cell", coast.grid_cell)
+	_rme4_material.set_shader_parameter("ground_n", float(coast.grid_n))
+	_fog_ground_ready = true
+
+
 func debug_toggle_mystery_atmosphere() -> void:
 	# O всегда возвращает рабочую атмосферу, даже если оставлен тест U.
 	while debug_fog_diagnostic != 0:

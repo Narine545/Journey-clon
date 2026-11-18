@@ -124,7 +124,7 @@ assert '_env.fog_density *= lerpf(0.35, 1.0, fog)' in world
 assert '_env.volumetric_fog_density = lerpf(0.010, 0.018, n) * fog' in world
 assert '_env.volumetric_fog_density = 0.0' in world  # No double density with RME4.
 assert '"coverage", lerpf(lerpf(0.34, 0.48, n), 0.88, cloud)' in world
-assert '* weather_fog;' in shader
+assert '* weather_fog' in shader
 assert 'if (diagnostic_volume)' in shader  # Diagnostic override deliberately bypasses climate.
 assert 'main.weather.label()' in Path('scripts/boat_hud.gd').read_text()
 assert 'KEY_F' not in main.split('func _unhandled_input',1)[1].split('func _process',1)[0]

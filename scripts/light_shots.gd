@@ -29,6 +29,8 @@ func _run() -> void:
 	await _shot("light_02_dusk_harbor", 19.75, 0.0)
 	await _shot("light_03_night_harbor", 23.0, 0.0)
 	await _shot("light_07_dawn_harbor", 6.0, 0.15)
+	# Берег в полдень, туман: тепло у песка.
+	await _shot("light_19_day_fog_harbor", 12.0, 1.0)
 
 	_go_to_sea()
 	await _shot("light_04_night_sea_clear", 23.0, 0.0)
@@ -37,6 +39,8 @@ func _run() -> void:
 	await _shot("light_09_day_sea", 12.0, 0.0)
 	main.camera.size = 96.0
 	await _shot("light_11_day_sea_wide", 12.0, 0.0)
+	# Тот же день в тумане: у берега воздух тёплый, над глубиной холодный.
+	await _shot("light_18_day_fog_sea", 12.0, 1.0)
 	main.camera.size = 32.0
 
 	for i in range(main.refined.size()):

@@ -49,6 +49,31 @@ uniform vec3 dusk_tint : source_color = vec3(0.72, 0.48, 0.34);
 // число выглядит большим, а в кадре даёт лишь лёгкое ночное дыхание воздуха.
 uniform float night_emission : hint_range(0.0, 0.6) = 0.16;
 
+// Карта дна от Coast (R32F: высота поверхности, суша ≥ 0, море < 0).
+// Тот же набор uniform-ов, что у воды: воздух должен знать, что под ним —
+// мелководье с песком или километровая глубина.
+uniform sampler2D ground_tex : filter_linear, repeat_disable;
+uniform vec2 ground_origin = vec2(-280.0, -450.0);
+uniform float ground_cell = 1.184;
+uniform float ground_n = 761.0;
+// Климат воздуха: у берега дымка тёплая (песок и мелководье греют),
+// над открытой водой — холодная синева.
+uniform vec3 shore_warm : source_color = vec3(1.16, 0.97, 0.80);
+uniform vec3 sea_cold : source_color = vec3(0.85, 0.94, 1.08);
+uniform float climate_strength : hint_range(0.0, 1.0) = 0.55;
+// Метры глубины, на которых климат успевает остыть от берега к морю.
+uniform float shore_depth_full = 34.0;
+
+float ground_at(vec2 wp) {
+	vec2 uv = (wp - ground_origin) / (ground_cell * (ground_n - 1.0));
+	if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) {
+		// За краем карты дна море глубокое: там воздух самый холодный.
+		return -100.0;
+	}
+	vec2 sample_uv = (uv * (ground_n - 1.0) + vec2(0.5)) / ground_n;
+	return texture(ground_tex, sample_uv).r;
+}
+
 void fog() {
 	vec3 wp = WORLD_POSITION;
 	float profile = clamp(mystery_profile, 0.0, 1.0);
@@ -92,8 +117,18 @@ void fog() {
 	float edge = mix(smoothstep(0.0, 18.0, -SDF), horizontal_edge, profile);
 
 	float night = clamp(night_factor, 0.0, 1.0);
+
+	// Тепло у берега / холод над глубиной. Основа — настоящая карта дна,
+	// поэтому воздух теплеет у любой отмели и любого острова, а не вокруг
+	// камеры: слой нигде не «ездит» за лодкой.
+	float depth_here = max(0.0, -ground_at(wp.xz));
+	float warmth = 1.0 - smoothstep(2.0, shore_depth_full, depth_here);
+
+	// У берега слой стоит плотнее: воздух влажный и держится у самой воды.
+	float coastal_body = mix(0.88, 1.22, warmth * climate_strength);
 	DENSITY = density_scale * mix(1.0, 4.0, profile)
-		* body * height_mask * edge * mix(0.90, 1.12, night) * weather_fog;
+		* body * height_mask * edge * mix(0.90, 1.12, night) * weather_fog
+		* mix(1.0, coastal_body, profile);
 
 	// Альбедо однократного рассеяния (НЕ домноженное на плотность — это
 	// сделает сам Godot). Тёплое на низком солнце, холодное ночью.
@@ -105,6 +140,14 @@ void fog() {
 	// На низком солнце слой у воды теплеет: рассвет и закат красят дымку.
 	low_fog_albedo = mix(low_fog_albedo, vec3(1.0, 0.74, 0.56),
 		low_sun * (1.0 - night) * 0.6);
+
+	// Перекраска по климату: множитель, а не подмена цвета. Яркость слоя
+	// задаёт свет, климат только смещает оттенок.
+	vec3 tint = mix(sea_cold, shore_warm, warmth);
+	tint = mix(vec3(1.0), tint,
+		climate_strength * mix(0.75, 1.0, warmth) * (1.0 - 0.45 * night));
+	low_fog_albedo *= tint;
+
 	ALBEDO = mix(legacy_albedo, low_fog_albedo, profile);
 
 	// Собственное свечение раньше заполняло ночные тени. Сохраняем лишь
