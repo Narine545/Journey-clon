@@ -35,3 +35,9 @@ assert 'main.water.field.splash(Vector2(at.x, at.z), 0.85)' in legs
 # Плашка бонуса в боевом HUD.
 assert 'НОГИ · ШАГ · %d С' in ui and 'НОГИ ГОТОВЫ · X' in ui
 assert 'const LEGS_RECT := Rect2(600, 892, 380, 60)' in hud
+
+# Появление без резины: ступни ставятся под бёдра, нога не длиннее себя.
+assert 'func _seed_feet() -> void:' in legs
+assert 'if value and not _want:' in legs
+assert 'var foot := _reach(hip, to_local(foot_world))' in legs
+assert 'var limit := THIGH + SHIN - 0.05' in legs

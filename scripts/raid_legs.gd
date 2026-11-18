@@ -50,6 +50,12 @@ func _process(delta: float) -> void:
 
 
 func set_active(value: bool) -> void:
+	if value and not _want:
+		# Появление: ступни сразу под бедрами. Иначе первые кадры тянулись
+		# к началу координат мира — со стороны это выглядело как резина,
+		# уползающая за край экрана.
+		_seed_feet()
+		_cycle = 0.0
 	_want = value
 	if value:
 		visible = true
@@ -70,6 +76,18 @@ func kick(side: float) -> void:
 
 
 ## Шаг ног. Вызывается из RaidRun каждый физический кадр.
+## Поставить ступни под бедра: точка опоры на воде рядом с бортом.
+func _seed_feet() -> void:
+	for index in range(_legs.size()):
+		var leg: Dictionary = _legs[index]
+		var hip_world: Vector3 = global_transform * (leg["hip"] as Vector3)
+		var spot := _landing_point(hip_world, float(leg["side"]))
+		leg["anchor"] = spot
+		leg["from"] = spot
+		leg["next"] = spot
+		leg["planted"] = true
+
+
 func step(delta: float, speed: float) -> void:
 	var target := 1.0 if _want else 0.0
 	_grow = move_toward(_grow, target, delta / GROW_TIME)
@@ -120,7 +138,7 @@ func _pose_leg(index: int, _delta: float) -> void:
 		var forward := -global_transform.basis.z
 		var aim := hip_world + forward * (3.6 * _kick_energy) + Vector3.UP * (1.9 * _kick_energy)
 		foot_world = foot_world.lerp(aim, clampf(_kick_energy * 1.35, 0.0, 1.0))
-	var foot := to_local(foot_world)
+	var foot := _reach(hip, to_local(foot_world))
 	var pole := Vector3(side * 0.55, 0.35, -1.0)
 	var knee := _knee(hip, foot, pole)
 	var thigh: MeshInstance3D = leg["thigh"]
@@ -133,7 +151,7 @@ func _pose_leg(index: int, _delta: float) -> void:
 	# «волосатая нога», а не текстура на цилиндре.
 	var shin_dir := (foot - knee).normalized()
 	_segment(tuft, knee + shin_dir * 1.15, knee + shin_dir * 0.15)
-	_set_foot(shoe, foot_world)
+	_set_foot(shoe, foot)
 	if plant:
 		_splash(foot_world)
 
@@ -198,9 +216,21 @@ func _segment(node: MeshInstance3D, from: Vector3, to: Vector3) -> void:
 	node.transform = Transform3D(Basis(right, up * length, forward), (from + to) * 0.5)
 
 
-func _set_foot(node: MeshInstance3D, at_world: Vector3) -> void:
-	var local := to_local(at_world)
+func _set_foot(node: MeshInstance3D, local: Vector3) -> void:
 	node.transform = Transform3D(Basis.IDENTITY, local + Vector3(0.0, -0.06, 0.0))
+
+
+## Нога физически не длиннее бедра и голени: точка ступни подтягивается к
+## бедру, если оказалась дальше вытянутой ноги (телепорт, прыжок камеры,
+## первый кадр появления).
+func _reach(hip: Vector3, foot: Vector3) -> Vector3:
+	var delta := foot - hip
+	var limit := THIGH + SHIN - 0.05
+	if delta.length() <= limit:
+		return foot
+	if delta.length() < 0.001:
+		return hip + Vector3.DOWN * limit
+	return hip + delta.normalized() * limit
 
 
 func _build() -> void:

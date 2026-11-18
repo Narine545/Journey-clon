@@ -72,9 +72,17 @@ func _run() -> void:
 	main.raid.hud.modulate.a = 0.0
 	main.raid.start()
 	main.raid.legs_rank = 1
-	main.raid.start_legs()
 	Input.action_press("boat_forward")
-	await _shooter.wait_frames_count(36)
+	await _shooter.wait_frames_count(10)
+	main.raid.start_legs()
+	# Первые кадры появления: ноги не должны тянуться за край экрана.
+	await _shooter.wait_frames_count(2)
+	await _shooter.capture("light_15_legs_appear_00")
+	await _shooter.wait_frames_count(5)
+	await _shooter.capture("light_15_legs_appear_01")
+	await _shooter.wait_frames_count(9)
+	await _shooter.capture("light_15_legs_appear_02")
+	await _shooter.wait_frames_count(20)
 	await _shooter.capture("light_14_legs_00")
 	await _shooter.wait_frames_count(7)
 	await _shooter.capture("light_14_legs_01")
