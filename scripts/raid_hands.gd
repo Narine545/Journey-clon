@@ -80,7 +80,11 @@ func _flex(delta: float) -> void:
 func _pose(arm: Dictionary, delta: float) -> void:
 	var side: float = arm["side"]
 	var shoulder: Vector3 = arm["shoulder"]
-	var idle := shoulder + Vector3(side * 0.35, -1.8, 0.9)
+	var idle := shoulder + Vector3(side * 1.0, -1.25, 0.55)
+	# В покое рука спрятана: видна только когда тянется, иначе торчит у борта.
+	var shown := bool(arm["busy"])
+	for node in arm["nodes"]:
+		(node as MeshInstance3D).visible = shown
 	var wrist_world := global_transform * idle
 	if bool(arm["busy"]):
 		arm["clock"] = float(arm["clock"]) + delta
@@ -186,10 +190,13 @@ func _build() -> void:
 		arm["upper"] = _limb(0.72, 0.56, hair)
 		arm["lower"] = _limb(0.54, 0.42, hair)
 		arm["palm"] = _box(Vector3(0.55, 1.60, 1.20), SKIN)
+		var nodes: Array[MeshInstance3D] = [arm["upper"], arm["lower"], arm["palm"]]
 		var fingers: Array[MeshInstance3D] = []
 		for _index in range(4):
 			fingers.append(_box(Vector3(0.42, 0.42, 0.50), SKIN_SHADE))
 		arm["fingers"] = fingers
+		nodes.append_array(fingers)
+		arm["nodes"] = nodes
 		_arms.append(arm)
 
 
