@@ -208,10 +208,10 @@ jobs:
       - name: World lighting shots (свет по времени суток)
         run: |
           TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
-            timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" \
+            timeout 1300 xvfb-run -a -s "-screen 0 1280x720x24" \
             godot_bin/godot --path . res://scenes/boat_main.tscn \
             --rendering-method forward_plus --resolution 1280x720 \
-            --fixed-fps 30 --quit-after 1500 > light-shots.log 2>&1 || true
+            --fixed-fps 30 --quit-after 2400 > light-shots.log 2>&1 || true
           tail -40 light-shots.log
           if grep -qiE "SCRIPT ERROR|SHADER ERROR|Parse Error" light-shots.log; then
             grep -iE "SCRIPT ERROR|SHADER ERROR|Parse Error" -A3 light-shots.log | head -20 | while read -r line; do
