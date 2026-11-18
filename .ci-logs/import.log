@@ -352,11 +352,11 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  50% ] [90m[1mreimport[22m | light_14_legs_03.png[39m[0m
 [  51% ] [90m[1mreimport[22m | light_14_legs_02.png[39m[0m
 [  52% ] [90m[1mreimport[22m | heroine_side_2.webp[39m[0m
-[  53% ] [90m[1mreimport[22m | heroine_side_1.webp[39m[0m
+[  52% ] [90m[1mreimport[22m | heroine_side_2.webp[39m[0m
 [  53% ] [90m[1mreimport[22m | heroine_side_1.webp[39m[0m
 [  54% ] [90m[1mreimport[22m | heroine_reply_annoyed.webp[39m[0m
 [  55% ] [90m[1mreimport[22m | heroine_radio.webp[39m[0m
-[  56% ] [90m[1mreimport[22m | heroine_neutral.webp[39m[0m
+[  55% ] [90m[1mreimport[22m | heroine_radio.webp[39m[0m
 [  56% ] [90m[1mreimport[22m | heroine_neutral.webp[39m[0m
 [  57% ] [90m[1mreimport[22m | heroine_nausea_3.webp[39m[0m
 [  59% ] [90m[1mreimport[22m | heroine_nausea_2.webp[39m[0m
@@ -427,17 +427,3 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 [  16% ] [90m[1mloading_editor_layout[22m | Loading docks...[39m[0m
 [92m[ DONE ][39m [1mloading_editor_layout[22m
 [0m
-SCRIPT ERROR: Parse Error: Identifier "HANDS_DAMAGE_STEP" not declared in the current scope.
-          at: GDScript::reload (res://scripts/raid_run.gd:971)
-SCRIPT ERROR: Parse Error: Identifier "HANDS_DAMAGE_STEP" not declared in the current scope.
-          at: GDScript::reload (res://scripts/raid_run.gd:1241)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/boat_vessel.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/buoy_dynamics.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/shoal_markers.gd:0)
-SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
-          at: GDScript::reload (res://scripts/boat_main.gd:0)
-ERROR: Failed to load script "res://scripts/boat_main.gd" with error "Parse error".
-   at: load (modules/gdscript/gdscript_resource_format.cpp:46)
