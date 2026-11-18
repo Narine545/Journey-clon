@@ -22,7 +22,7 @@ assert 'func legs_active() -> bool:' in run
 assert 'func start_legs() -> void:' in run
 assert '_legs_kick()' in run
 assert 'RaidStats.Channel.LEGS' in run
-assert 'GRAVITY, LEGS }' in stats
+assert 'GRAVITY, LEGS, HANDS }' in stats
 # На ногах судно идёт по поверхности: меньшая требуемая глубина.
 assert 'return 0.55 if raid_legs_active() else 1.7' in vessel
 assert 'var legs_lift := 4.2 if raid_legs_active() else 0.0' in vessel
@@ -30,7 +30,13 @@ assert 'var legs_lift := 4.2 if raid_legs_active() else 0.0' in vessel
 assert 'class_name RaidLegs' in legs
 assert 'func _knee(hip: Vector3, foot: Vector3, pole: Vector3) -> Vector3:' in legs
 assert 'const THIGH := 3.4' in legs and 'const SHIN := 3.5' in legs
-assert 'func kick(side: float) -> void:' in legs
+assert 'func kick(side: float, at_world: Vector3 = Vector3.ZERO) -> void:' in legs
+# Нога летит в конкретного врага, а не просто вперёд по курсу.
+assert '_kick_targeted = at_world != Vector3.ZERO' in legs
+assert 'legs.kick(side, Vector3(victim_at.x, Coast.SEA_LEVEL + 0.9, victim_at.y))' in run
+# Отброшенный насмерть враг не исчезает в кадре удара.
+assert 'const DEATH_FLIGHT := 0.5' in run
+assert 'dying["dying"] = DEATH_FLIGHT' in run
 assert 'main.water.field.splash(Vector2(at.x, at.z), 0.85)' in legs
 # Плашка бонуса в боевом HUD.
 assert 'НОГИ · ШАГ · %d С' in ui and 'НОГИ ГОТОВЫ · X' in ui

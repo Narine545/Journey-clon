@@ -94,8 +94,50 @@ func _run() -> void:
 	await _shooter.capture("light_14_legs_03")
 	Input.action_release("boat_forward")
 
+	# Хватающие руки: рука сама тянется к врагу и швыряет его во второго.
+	main.raid.enemies.clear()
+	main.raid.hands_rank = 1
+	main.raid.hands.set_active(true)
+	main.raid.hands_cooldown = 0.0
+	var bow: Vector2 = main.raid.forward()
+	var base: Vector2 = main.raid.boat_at() + bow * 9.0
+	main.raid.enemies.append(_dummy_enemy(base, 100.0, 901))
+	main.raid.enemies.append(_dummy_enemy(base + bow.orthogonal() * 5.0, 100.0, 902))
+	main.raid._rebuild_grid()
+	await _shooter.wait_frames_count(3)
+	await _shooter.capture("light_16_hands_00")
+	main.raid._hands_grab()
+	await _shooter.wait_frames_count(6)
+	await _shooter.capture("light_16_hands_01")
+	await _shooter.wait_frames_count(8)
+	await _shooter.capture("light_16_hands_02")
+	await _shooter.wait_frames_count(10)
+	await _shooter.capture("light_16_hands_03")
+	await _shooter.wait_frames_count(14)
+	main.raid.hud.modulate.a = 1.0
+	await _shooter.capture("light_16_hands_04")
+	main.raid.enemies.clear()
+
 	print("[LIGHT SHOTS] готово")
 	get_tree().quit(0)
+
+
+## Пустой враг для кадра: только то, что нужно отрисовке и движению.
+func _dummy_enemy(at: Vector2, hp: float, combat_id: int) -> Dictionary:
+	return {
+		"at": at,
+		"previous": at,
+		"hp": hp,
+		"max_hp": hp,
+		"radius": 1.1,
+		"kind": 0,
+		"born": 0.0,
+		"flash": 0.0,
+		"timer": 2.0,
+		"charge": 0.0,
+		"aim": Vector2.DOWN,
+		"combat_id": combat_id,
+	}
 
 
 func _go_to_sea() -> void:

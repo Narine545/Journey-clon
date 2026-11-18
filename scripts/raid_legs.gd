@@ -30,6 +30,10 @@ var _grow := 0.0
 var _want := false
 var _kick_energy := 0.0
 var _kick_leg := -1
+## Точка, в которую бьёт ступня: ставится из рейда, чтобы нога летела в врага,
+## а не просто вперёд по курсу.
+var _kick_target := Vector3.ZERO
+var _kick_targeted := false
 var _splash_cd := 0.0
 var _hair_texture: ImageTexture
 
@@ -66,8 +70,11 @@ func grown() -> bool:
 
 
 ## Пинок ногой с указанного борта (−1 левый, +1 правый).
-func kick(side: float) -> void:
+## at_world — точка удара (обычно сам враг); без неё нога бьёт вперёд по курсу.
+func kick(side: float, at_world: Vector3 = Vector3.ZERO) -> void:
 	_kick_energy = 1.0
+	_kick_target = at_world
+	_kick_targeted = at_world != Vector3.ZERO
 	_kick_leg = 0 if side < 0.0 else 2
 	for index in range(_legs.size()):
 		var leg: Dictionary = _legs[index]
@@ -98,7 +105,7 @@ func step(delta: float, speed: float) -> void:
 		return
 	visible = true
 	_splash_cd = maxf(0.0, _splash_cd - delta)
-	_kick_energy = maxf(0.0, _kick_energy - delta * 3.2)
+	_kick_energy = maxf(0.0, _kick_energy - delta * 2.2)
 	var pace := 0.75 + clampf(absf(speed), 0.0, 12.0) * 0.20
 	_cycle = fposmod(_cycle + delta * pace, 1.0)
 	for index in range(_legs.size()):
@@ -134,10 +141,12 @@ func _pose_leg(index: int, _delta: float) -> void:
 	leg["anchor"] = anchor
 	var foot_world := anchor
 	if _kick_leg == index and _kick_energy > 0.01:
-		# Пинок: ступня уходит вперёд и вверх, нога распрямляется.
-		var forward := -global_transform.basis.z
-		var aim := hip_world + forward * (3.6 * _kick_energy) + Vector3.UP * (1.9 * _kick_energy)
-		foot_world = foot_world.lerp(aim, clampf(_kick_energy * 1.35, 0.0, 1.0))
+		# Пинок: нога распрямляется в сторону врага, ступня уходит к нему.
+		var aim := hip_world + -global_transform.basis.z * (3.6 * _kick_energy)
+		if _kick_targeted:
+			aim = _kick_target
+		aim += Vector3.UP * (1.1 * _kick_energy)
+		foot_world = foot_world.lerp(aim, clampf(_kick_energy * 1.6, 0.0, 1.0))
 	var foot := _reach(hip, to_local(foot_world))
 	var pole := Vector3(side * 0.55, 0.35, -1.0)
 	var knee := _knee(hip, foot, pole)

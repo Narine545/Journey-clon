@@ -41,6 +41,22 @@ static func from_contact(enemy: Dictionary, correction: Vector2, boat_speed: flo
 	_add_push(enemy, correction.normalized() * minf(2.0, absf(boat_speed) * 0.16))
 
 
+
+## Бросок рукой: врага уносит в заданную точку, а не просто отталкивает.
+## Скорость подобрана так, чтобы до цели он долетел за ~0,6 с.
+static func throw_at(enemy: Dictionary, from_at: Vector2, target: Vector2, strength: float) -> void:
+	if float(enemy["hp"]) <= 0.0 or RaidContacts.mobility(enemy) <= 0.0:
+		return
+	var offset: Vector2 = target - from_at
+	var distance := offset.length()
+	var direction := (
+		offset / distance if distance > 0.001 else Vector2.from_angle(float(enemy.get("combat_id", 0)))
+	)
+	var impulse := direction * maxf(0.0, strength) * inverse_mass(enemy)
+	enemy["push_velocity"] = impulse.limit_length(maxf(MAX_PUSH, strength))
+	enemy["thrown"] = 0.6
+
+
 static func step(enemy: Dictionary, target: Vector2, delta: float) -> Vector2:
 	if delta <= 0.0:
 		return Vector2.ZERO
@@ -89,6 +105,13 @@ static func move_enemies(run: RaidRun, delta: float) -> void:
 	for enemy in run.enemies:
 		enemy["previous"] = enemy["at"]
 		if float(enemy["hp"]) <= 0.0:
+			# Убитый, но ещё летящий: инерция броска доносит его до воды.
+			if enemy.has("dying"):
+				var flight := maxf(0.0, float(enemy["dying"]) - delta)
+				enemy["dying"] = flight
+				var carried: Vector2 = enemy.get("push_velocity", Vector2.ZERO)
+				enemy["at"] = Vector2(enemy["at"]) + carried * delta
+				enemy["push_velocity"] = carried * exp(-2.4 * delta)
 			continue
 		if float(enemy["born"]) > 0.0:
 			enemy["born"] = maxf(0.0, float(enemy["born"]) - delta)
