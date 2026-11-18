@@ -101,7 +101,8 @@ func _run() -> void:
 	# Пинок ноги: нога должна прийти в врага, а враг — отлететь.
 	main.raid.hud.modulate.a = 0.0
 	main.camera.size = 34.0
-	var kick_at: Vector2 = main.raid.boat_at() + bow.rotated(-1.15) * 9.0
+	var kick_bow: Vector2 = main.raid.forward()
+	var kick_at: Vector2 = main.raid.boat_at() + kick_bow.rotated(-1.15) * 9.0
 	main.raid.enemies.append(_dummy_enemy(kick_at, 160.0, 903))
 	main.raid._rebuild_grid()
 	await _shooter.wait_frames_count(6)
