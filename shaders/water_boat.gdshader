@@ -87,6 +87,10 @@ uniform vec4 u_rings[24];
 uniform vec4 u_vessel_state = vec4(0.0, 0.0, 0.0, 0.0);
 uniform vec4 u_trailer_state = vec4(0.0, 0.0, 0.0, 0.0);
 uniform vec4 u_wake_trail[20]; // xy = world_xz, z = birth_time, w = speed_at_birth
+// Насколько вода «чувствует» корпус: 1 — судно на воде, 0 — судно поднято на
+// ногах. Гасит бурун у бортов, кильватер, волны Кельвина и вытеснение под
+// днищем, не трогая глиттер, лампы и глубину.
+uniform float hull_contact : hint_range(0.0, 1.0) = 1.0;
 
 
 // Тени облаков: одна и та же функция у воды и песка, в мировых метрах,
@@ -205,9 +209,9 @@ void vertex() {
 	vec2 ship_lp = to_ship_local(w_pos.xz, u_vessel_state.xy, u_vessel_state.z);
 	float spd01 = clamp(abs(u_vessel_state.w) / 10.0, 0.0, 1.2);
 	float d_bow = length(ship_lp - vec2(0.0, -5.2));
-	float bow_crest = exp(-d_bow * d_bow * 0.55) * 0.18 * spd01;
+	float bow_crest = exp(-d_bow * d_bow * 0.55) * 0.18 * spd01 * hull_contact;
 	float d_hull = hull_sdf(ship_lp);
-	float hull_cut = -(1.0 - smoothstep(-0.35, 0.20, d_hull)) * 0.30;
+	float hull_cut = -(1.0 - smoothstep(-0.35, 0.20, d_hull)) * 0.30 * hull_contact;
 
 	float y = hrip + bow_crest + hull_cut + event_ring_height(w_pos.xz) * shore_wave_fade;
 	VERTEX.y += y;
@@ -298,6 +302,7 @@ void fragment() {
 	// 1. Пенное обтекание непосредственно вдоль бортов корпуса и носового буруна
 	float hull_collar = exp(-pow((d_hull - 0.10) / (0.18 + 0.12 * spd01), 2.0)) * step(-0.06, d_hull);
 	hull_collar *= smoothstep(0.22, 0.75, turb_noise * 0.65 + fine_noise * 0.35);
+	hull_collar *= hull_contact;
 
 	// 2. Поиск ближайшей точки на мировой кривой пути u_wake_trail[20]
 	float best_d2 = 1e9;
@@ -335,6 +340,7 @@ void fragment() {
 		float lifetime = 1.0 - smoothstep(WAKE_FADE_START, WAKE_FADE_END, best_age);
 		float speed_fade = smoothstep(0.0, 0.8, best_spd);
 		float age_fade = exp(-best_age * 0.55) * lifetime * local_spd01 * speed_fade;
+		age_fade *= hull_contact;
 
 		// Центральная турбулентная струя от винтов (расширяется со временем вдоль кривой пути)
 		float wash_w = 0.55 + best_age * 0.36;

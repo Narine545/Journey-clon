@@ -42,6 +42,7 @@ var _roll_vel := 0.0
 
 var _trail_buffer := PackedVector4Array()
 var _trail_timer := 0.0
+var _hull_contact := 1.0
 var _last_trail_pos := Vector2.ZERO
 
 var _target: ResourceSlick # ручной насос лодки
@@ -428,6 +429,10 @@ func _reset_trail(at: Vector2) -> void:
 func _record_world_wake_trail(delta: float, heading: Vector3) -> void:
 	if water == null or water.field == null:
 		return
+	# На ногах корпус не касается воды: новый кильватер не рождается, а старый
+	# догорает сам по времени жизни.
+	if raid_legs_active():
+		return
 	var now := water.field.t
 	var stern_world := global_position - heading * 4.2
 	var stern_xz := Vector2(stern_world.x, stern_world.z)
@@ -454,6 +459,10 @@ func _sync_water_shader() -> void:
 	if water == null:
 		return
 	water.set_param("u_vessel_state", Vector4(global_position.x, global_position.z, rotation.y, speed))
+	# Плавно: при подъёме на ноги вода отпускает корпус, а не рубит след разом.
+	var contact_target := 0.0 if raid_legs_active() else 1.0
+	_hull_contact = lerpf(_hull_contact, contact_target, 0.08)
+	water.set_param("hull_contact", _hull_contact)
 	water.set_param("u_wake_trail", _trail_buffer)
 	if has_trailer and _trailer != null:
 		water.set_param("u_trailer_state", Vector4(_trailer.global_position.x, _trailer.global_position.z, _trailer.rotation.y, 1.0))

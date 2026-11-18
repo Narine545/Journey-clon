@@ -41,3 +41,9 @@ assert 'func _seed_feet() -> void:' in legs
 assert 'if value and not _want:' in legs
 assert 'var foot := _reach(hip, to_local(foot_world))' in legs
 assert 'var limit := THIGH + SHIN - 0.05' in legs
+
+# На ногах вода отпускает корпус: ни силуэта, ни следа.
+assert 'uniform float hull_contact : hint_range(0.0, 1.0) = 1.0;' in Path('shaders/water_boat.gdshader').read_text()
+assert 'water.set_param("hull_contact", _hull_contact)' in vessel
+assert 'var contact_target := 0.0 if raid_legs_active() else 1.0' in vessel
+assert 'if raid_legs_active():\n\t\treturn' in vessel
