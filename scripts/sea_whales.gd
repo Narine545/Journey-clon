@@ -183,6 +183,14 @@ func _build_whale(index: int) -> Dictionary:
 	fluke.material_override = body_mat
 	fluke.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	tail.add_child(fluke)
+	# Свечение: полоса по спине и пара огней на боках.
+	var glow_mat := StandardMaterial3D.new()
+	glow_mat.albedo_color = GLOW
+	glow_mat.emission_enabled = true
+	glow_mat.emission = GLOW
+	glow_mat.emission_energy_multiplier = 3.4
+	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow_mat.disable_receive_shadows = true
 	# Светящийся гребень вдоль спины: издалека читается сам зверь, а не
 	# только пятно света на воде под ним.
 	var spine := MeshInstance3D.new()
@@ -197,14 +205,6 @@ func _build_whale(index: int) -> Dictionary:
 	spine.scale = Vector3(BODY_LEN * 0.16, BODY_LEN * 0.12, BODY_LEN * 0.78)
 	spine.position = Vector3(0.0, BODY_LEN * 0.15, 0.0)
 	root.add_child(spine)
-	# Свечение: полоса по спине и пара огней на боках.
-	var glow_mat := StandardMaterial3D.new()
-	glow_mat.albedo_color = GLOW
-	glow_mat.emission_enabled = true
-	glow_mat.emission = GLOW
-	glow_mat.emission_energy_multiplier = 3.4
-	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	glow_mat.disable_receive_shadows = true
 	var spots := [Vector3(0.0, 0.16, -0.35), Vector3(0.0, 0.18, 0.15), Vector3(0.0, 0.14, 0.62)]
 	for spot in spots:
 		var dot := MeshInstance3D.new()
