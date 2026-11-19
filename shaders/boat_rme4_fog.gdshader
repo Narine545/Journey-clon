@@ -62,7 +62,7 @@ uniform vec3 shore_warm : source_color = vec3(1.16, 0.97, 0.80);
 uniform vec3 sea_cold : source_color = vec3(0.85, 0.94, 1.08);
 uniform float climate_strength : hint_range(0.0, 1.0) = 0.55;
 // Метры глубины, на которых климат успевает остыть от берега к морю.
-uniform float shore_depth_full = 34.0;
+uniform float shore_depth_full = 11.0;
 
 float ground_at(vec2 wp) {
 	vec2 uv = (wp - ground_origin) / (ground_cell * (ground_n - 1.0));
@@ -122,12 +122,13 @@ void fog() {
 	// поэтому воздух теплеет у любой отмели и любого острова, а не вокруг
 	// камеры: слой нигде не «ездит» за лодкой.
 	float depth_here = max(0.0, -ground_at(wp.xz));
-	float warmth = 1.0 - smoothstep(2.0, shore_depth_full, depth_here);
+	float warmth = 1.0 - smoothstep(1.5, shore_depth_full, depth_here);
 
 	// У берега слой стоит плотнее: воздух влажный и держится у самой воды.
-	float coastal_body = mix(0.88, 1.22, warmth * climate_strength);
+	// В открытом море плотность не ниже прежней: климат только добавляет.
+	float coastal_body = mix(1.0, 1.26, warmth * climate_strength);
 	DENSITY = density_scale * mix(1.0, 4.0, profile)
-		* body * height_mask * edge * mix(0.90, 1.12, night) * weather_fog
+		* body * height_mask * edge * mix(0.92, 1.20, night) * weather_fog
 		* mix(1.0, coastal_body, profile);
 
 	// Альбедо однократного рассеяния (НЕ домноженное на плотность — это

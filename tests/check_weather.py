@@ -120,7 +120,7 @@ assert 'set_shader_parameter("weather_fog", effective_fog)' in main
 assert 'coast.set_sand("fog_distance", haze_distance)' in main
 assert 'water.set_param("fog_distance", haze_distance)' in main
 assert 'weather_fog: float = 1.0' in world  # Other callers keep accepted baseline.
-assert '_env.fog_density *= lerpf(0.35, 1.0, fog)' in world
+assert '_env.fog_density *= lerpf(0.35, 1.9, fog)' in world
 assert '_env.volumetric_fog_density = lerpf(0.010, 0.018, n) * fog' in world
 assert '_env.volumetric_fog_density = 0.0' in world  # No double density with RME4.
 assert '"coverage", lerpf(lerpf(0.34, 0.48, n), 0.88, cloud)' in world

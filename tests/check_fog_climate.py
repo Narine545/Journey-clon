@@ -22,13 +22,13 @@ assert 'uniform vec3 shore_warm' in fog and 'uniform vec3 sea_cold' in fog
 assert 'float climate_strength' in fog
 assert 'float shore_depth_full' in fog
 assert 'float depth_here = max(0.0, -ground_at(wp.xz));' in fog
-assert 'float warmth = 1.0 - smoothstep(2.0, shore_depth_full, depth_here);' in fog
+assert 'float warmth = 1.0 - smoothstep(1.5, shore_depth_full, depth_here);' in fog
 # Тёплый/холодный оттенок — множитель: яркость задаёт свет, не климат.
 assert 'vec3 tint = mix(sea_cold, shore_warm, warmth);' in fog
 assert 'low_fog_albedo *= tint;' in fog
 assert '(1.0 - 0.45 * night)' in fog
 # У берега слой плотнее, но только в профиле низкого тумана.
-assert 'float coastal_body = mix(0.88, 1.22, warmth * climate_strength);' in fog
+assert 'float coastal_body = mix(1.0, 1.26, warmth * climate_strength);' in fog
 assert '* mix(1.0, coastal_body, profile);' in fog
 # Климат объявлен до плотности: warmth нужен и в DENSITY, и в ALBEDO.
 assert fog.index('float warmth =') < fog.index('DENSITY = density_scale')

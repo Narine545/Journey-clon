@@ -437,7 +437,9 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	# получается двойная пелена и сцена теряет глубину.
 	_env.fog_density = lerpf(0.0012, 0.0035, n) if not compat_fallback \
 		else lerpf(0.0011, 0.012, n)
-	_env.fog_density *= lerpf(0.35, 1.0, fog)
+	# Погода поднимает и дальнюю дымку: без неё низкий слой у воды остаётся
+	# островком вокруг лодки, а горизонт просматривается насквозь.
+	_env.fog_density *= lerpf(0.35, 1.9, fog)
 	_env.fog_aerial_perspective = lerpf(0.25, 0.42, n)
 	if rme4_active:
 		_env.volumetric_fog_density = 0.0
