@@ -17,7 +17,7 @@ assert 'clamp(mist_pockets, 0.0, 1.0) * profile' in fog
 assert 'body = mix(body, pocket_mask, pocket_mode);' in fog
 assert 'ceiling = mix(ceiling, 0.70 + height_noise * 0.95, pocket_mode);' in fog
 assert '* weather_fog' in fog
-assert fog.count('texture(density_noise,') == 4  # reuse noise, not a new sampler pass
+assert fog.count('texture(density_noise,') == 5  # reuse noise, not a new sampler pass
 for label in ('Цвет по глубине', 'Низкие клочья тумана'):
     assert label in trial
 assert 'main._rme4_material != null' in trial and '_mist_toggle.disabled = not supported' in trial

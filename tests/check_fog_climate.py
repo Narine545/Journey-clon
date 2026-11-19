@@ -29,7 +29,7 @@ assert 'low_fog_albedo *= tint;' in fog
 assert '(1.0 - 0.45 * night)' in fog
 # У берега слой плотнее, но только в профиле низкого тумана.
 assert 'float coastal_body = mix(1.0, 1.26, warmth * climate_strength);' in fog
-assert '* mix(1.0, coastal_body, profile);' in fog
+assert '* mix(1.0, coastal_body, profile)' in fog
 # Климат объявлен до плотности: warmth нужен и в DENSITY, и в ALBEDO.
 assert fog.index('float warmth =') < fog.index('DENSITY = density_scale')
 

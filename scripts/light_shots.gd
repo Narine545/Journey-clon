@@ -44,6 +44,15 @@ func _run() -> void:
 	# глубиной холодный. Широкий кадр тут бесполезен — вся рамка в дымке.
 	await _shot("light_18_day_fog_sea", 12.0, 1.0)
 
+	# Градации: идём через полосы разной плотности и высоты. Туман не должен
+	# быть одним и тем же пятном на всём пути.
+	main.camera.size = 110.0
+	for index in range(3):
+		await _shooter.capture("light_20_fog_veil_%02d" % index)
+		main.boat.global_position += Vector3(-75.0, 0.0, 0.0)
+		await _shooter.wait_frames_count(14)
+	main.camera.size = 32.0
+
 	for i in range(main.refined.size()):
 		main.refined[i] = 9
 	main.debug_warp_to_beacon()

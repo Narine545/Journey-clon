@@ -42,7 +42,7 @@ assert density(1.0, 1, .5, 1) > density(1.0, 1, .5, 0)
 for patches, label in ((0, 'gap'), (1, 'bank')):
     print(f'Reference {label}: old opacity {opacity(0, patches):.1%}, new {opacity(1, patches):.1%}')
 shader = Path('shaders/boat_rme4_fog.gdshader').read_text()
-assert shader.count('texture(density_noise,') == 4
+assert shader.count('texture(density_noise,') == 5  # + региональное поле градаций
 assert 'mix(1.0, 0.25, profile)' in shader
 assert 'mix(1.0, 0.35, profile)' in shader
 assert 'float ceiling = 1.2 + height_noise * 1.4;' in shader

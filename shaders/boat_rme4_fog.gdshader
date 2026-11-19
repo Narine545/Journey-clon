@@ -88,7 +88,17 @@ void fog() {
 	float detail = texture(density_noise, wp * 0.0910 - wind * 2.1).r;
 	float n = broad * 0.55 + mid * 0.30 + detail * 0.15;
 
-	float patches = smoothstep(patch_threshold, patch_threshold + 0.24, n);
+	// Крупные области: в одной полосе воздух стоит плотно, в соседней почти
+	// чист. Дрейфует медленнее облаков и медленно дышит во времени, поэтому
+	// туман не бывает «одним и тем же» — в него въезжаешь и выезжаешь.
+	float region = texture(density_noise,
+		vec3(wp.x * 0.0041, 0.63, wp.z * 0.0041)
+		+ wind * 0.12 + vec3(0.0, TIME * 0.0016, 0.0)).r;
+
+	// Порог пятен едет по региону: где-то почти сплошная пелена, где-то
+	// рваные клочья. В прежнем профиле порог постоянный.
+	float threshold = patch_threshold + (region - 0.5) * 0.26 * profile;
+	float patches = smoothstep(threshold, threshold + 0.24, n);
 	// Более тёмные просветы между массами, а не рост равномерной пелены.
 	float body = mix(mix(base_fill, 0.20, profile), 1.0, patches);
 
@@ -101,6 +111,10 @@ void fog() {
 	float pocket_mask = smoothstep(0.49, 0.73, broad * 0.70 + mid * 0.30);
 	body = mix(body, pocket_mask, pocket_mode);
 	float ceiling = 1.2 + height_noise * 1.4;
+	// Низкий профиль: высота полосы тоже своя у каждого региона — от тонкой
+	// плёнки у самой воды до банка в несколько метров.
+	ceiling = mix(ceiling,
+		1.5 + height_noise * 2.2 + (region - 0.5) * 1.1, profile);
 	ceiling = mix(ceiling, 0.70 + height_noise * 0.95, pocket_mode);
 	float legacy_height = 1.0 - smoothstep(7.0, 15.0, wp.y);
 	// Верх корпуса входит в слой частично, рубка/мачта остаются выше.
@@ -127,9 +141,13 @@ void fog() {
 	// У берега слой стоит плотнее: воздух влажный и держится у самой воды.
 	// В открытом море плотность не ниже прежней: климат только добавляет.
 	float coastal_body = mix(1.0, 1.26, warmth * climate_strength);
+	// Медленное дыхание полосы: минуты — не кадры. Пик и провал привязаны
+	// к региону, поэтому соседние полосы дышат вразнобой.
+	float breath = 1.0 + 0.16 * sin(TIME * 0.11 + region * 6.283);
 	DENSITY = density_scale * mix(1.0, 4.0, profile)
 		* body * height_mask * edge * mix(0.92, 1.20, night) * weather_fog
-		* mix(1.0, coastal_body, profile);
+		* mix(1.0, coastal_body, profile)
+		* mix(1.0, breath, profile);
 
 	// Альбедо однократного рассеяния (НЕ домноженное на плотность — это
 	// сделает сам Godot). Тёплое на низком солнце, холодное ночью.
