@@ -432,7 +432,12 @@ func apply_boat_atmosphere(n01: float, sun: Vector3, fill_energy: float,
 	_env.tonemap_exposure = lerpf(0.95, 1.05, n) + 0.12 * moon
 
 	# --- Туман ---------------------------------------------------------
-	_env.fog_light_color = Game.HORIZON_COL.lerp(Color(0.15, 0.20, 0.34), n)
+	# Плотный дневной туман — не песочная дымка заката: он обесцвечивает мир
+	# в холод, иначе кадр становится ровной бурой пеленой.
+	var fog_col := Game.HORIZON_COL.lerp(Color(0.15, 0.20, 0.34), n)
+	if fog > 0.5:
+		fog_col = fog_col.lerp(Color(0.66, 0.71, 0.76), 0.6 * (fog - 0.5) * (1.0 - dusk))
+	_env.fog_light_color = fog_col
 	# Дымка материалов остаётся лёгкой: основной воздух делает объём, иначе
 	# получается двойная пелена и сцена теряет глубину.
 	_env.fog_density = lerpf(0.0012, 0.0035, n) if not compat_fallback \

@@ -129,3 +129,7 @@ assert 'if (diagnostic_volume)' in shader  # Diagnostic override deliberately by
 assert 'main.weather.label()' in Path('scripts/boat_hud.gd').read_text()
 assert 'KEY_F' not in main.split('func _unhandled_input',1)[1].split('func _process',1)[0]
 print('OK: 25% day vs 80% night mist/fog selection, smooth bounded fronts, 20/60/144 Hz, frozen-clock weather, wiring.')
+
+# Плотный дневной туман уходит из песочного в холод: иначе ровная бурая пелена.
+assert "var fog_col := Game.HORIZON_COL.lerp(Color(0.15, 0.20, 0.34), n)" in world
+assert "_env.fog_light_color = fog_col" in world

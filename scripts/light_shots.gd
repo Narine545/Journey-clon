@@ -39,9 +39,10 @@ func _run() -> void:
 	await _shot("light_09_day_sea", 12.0, 0.0)
 	main.camera.size = 96.0
 	await _shot("light_11_day_sea_wide", 12.0, 0.0)
-	# Тот же день в тумане: у берега воздух тёплый, над глубиной холодный.
-	await _shot("light_18_day_fog_sea", 12.0, 1.0)
 	main.camera.size = 32.0
+	# Тот же день в тумане, обычный обзор: у берега воздух тёплый, над
+	# глубиной холодный. Широкий кадр тут бесполезен — вся рамка в дымке.
+	await _shot("light_18_day_fog_sea", 12.0, 1.0)
 
 	for i in range(main.refined.size()):
 		main.refined[i] = 9
