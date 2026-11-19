@@ -45,8 +45,11 @@ func _run() -> void:
 	await _shooter.wait_frames_count(8)
 	await _shooter.capture("light_21_whales_01")
 	await _shooter.wait_frames_count(16)
+	# Ближе: видно, что светится сам зверь, а не только вода под ним.
+	main.camera.size = 20.0
+	await _shooter.wait_frames_count(10)
 	await _shooter.capture("light_21_whales_02")
-	await _shooter.wait_frames_count(16)
+	await _shooter.wait_frames_count(14)
 	await _shooter.capture("light_21_whales_03")
 	main.camera.size = 32.0
 	await _shot("light_08_dusk_sea", 19.75, 0.1)

@@ -26,6 +26,9 @@ assert 'pool_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD' in whales
 assert 'OmniLight3D' not in whales and 'SpotLight3D' not in whales
 # Материалы создаются один раз при сборке, а не каждый кадр.
 assert whales.count('StandardMaterial3D.new()') == 4
+# Светится сам зверь: гребень по спине + крупные огни на боках.
+assert 'spine.material_override = glow_mat' in whales
+assert 'spine.scale = Vector3(BODY_LEN * 0.16, BODY_LEN * 0.12, BODY_LEN * 0.78)' in whales
 # Киты — мировые координаты, узел стаи только контейнер.
 assert 'root.top_level = true' in whales
 # След на воде берётся из готового поля колец, а не из новых частиц.

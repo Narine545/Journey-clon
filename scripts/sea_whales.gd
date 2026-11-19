@@ -138,14 +138,14 @@ func _place(whale: Dictionary, depth: float = -0.55, time: float = 0.0) -> void:
 	var halo: MeshInstance3D = whale["halo"]
 	halo.visible = fade > 0.02
 	var halo_mat: StandardMaterial3D = whale["halo_mat"]
-	halo_mat.albedo_color = Color(GLOW.r, GLOW.g, GLOW.b, 0.34 * fade)
+	halo_mat.albedo_color = Color(GLOW.r, GLOW.g, GLOW.b, 0.44 * fade)
 	var pool: MeshInstance3D = whale["pool"]
 	# Пятно на воде гаснет вместе с глубиной: свет уходит под воду.
 	var lit := clampf(1.0 + depth * 0.55, 0.0, 1.0) * fade
 	pool.visible = lit > 0.02
 	pool.position.y = -depth + 0.06
 	var pool_mat: StandardMaterial3D = whale["pool_mat"]
-	pool_mat.albedo_color = Color(GLOW.r, GLOW.g, GLOW.b, 0.5 * lit)
+	pool_mat.albedo_color = Color(GLOW.r, GLOW.g, GLOW.b, 0.34 * lit)
 	var tail: Node3D = whale["tail"]
 	tail.rotation.y = sin(time * 3.1 + float(whale["phase"])) * 0.35
 
@@ -183,6 +183,20 @@ func _build_whale(index: int) -> Dictionary:
 	fluke.material_override = body_mat
 	fluke.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	tail.add_child(fluke)
+	# Светящийся гребень вдоль спины: издалека читается сам зверь, а не
+	# только пятно света на воде под ним.
+	var spine := MeshInstance3D.new()
+	var spine_mesh := SphereMesh.new()
+	spine_mesh.radius = 0.5
+	spine_mesh.height = 1.0
+	spine_mesh.radial_segments = 10
+	spine_mesh.rings = 6
+	spine.mesh = spine_mesh
+	spine.material_override = glow_mat
+	spine.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	spine.scale = Vector3(BODY_LEN * 0.16, BODY_LEN * 0.12, BODY_LEN * 0.78)
+	spine.position = Vector3(0.0, BODY_LEN * 0.15, 0.0)
+	root.add_child(spine)
 	# Свечение: полоса по спине и пара огней на боках.
 	var glow_mat := StandardMaterial3D.new()
 	glow_mat.albedo_color = GLOW
@@ -202,7 +216,7 @@ func _build_whale(index: int) -> Dictionary:
 		dot.mesh = dot_mesh
 		dot.material_override = glow_mat
 		dot.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		dot.scale = Vector3(1.0, 0.55, 1.5)
+		dot.scale = Vector3(1.4, 0.7, 2.1)
 		dot.position = spot
 		root.add_child(dot)
 	# Ореол в воздухе: аддитивный билборд, ловит объёмный туман.
@@ -225,14 +239,14 @@ func _build_whale(index: int) -> Dictionary:
 	# Пятно света на самой воде.
 	var pool := MeshInstance3D.new()
 	var pool_quad := QuadMesh.new()
-	pool_quad.size = Vector2(BODY_LEN * 4.2, BODY_LEN * 5.4)
+	pool_quad.size = Vector2(BODY_LEN * 3.1, BODY_LEN * 5.8)
 	pool.mesh = pool_quad
 	var pool_mat := StandardMaterial3D.new()
 	pool_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	pool_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	pool_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	pool_mat.albedo_texture = _glow_tex
-	pool_mat.albedo_color = Color(GLOW.r, GLOW.g, GLOW.b, 0.5)
+	pool_mat.albedo_color = Color(GLOW.r, GLOW.g, GLOW.b, 0.34)
 	pool_mat.disable_receive_shadows = true
 	pool.material_override = pool_mat
 	pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
