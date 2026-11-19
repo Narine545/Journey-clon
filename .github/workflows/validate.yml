@@ -110,12 +110,12 @@ jobs:
           cp -f smoke.log .ci-logs/ 2>/dev/null || echo "smoke: пропущен" > .ci-logs/smoke.log
           cp -f boat-smoke.log .ci-logs/ 2>/dev/null || echo "boat-smoke: пропущен" > .ci-logs/boat-smoke.log
           git add .ci-logs
+          git commit -q -m "ci: логи headless-прогона ${GITHUB_SHA::7} [skip ci]" || true
           OURS=$(git rev-parse HEAD)
           for attempt in 1 2 3 4 5; do
             git fetch -q origin "${GITHUB_REF#refs/heads/}"
-            # Свои файлы накладываем на верхушку ветки: параллельные задачи
-            # пишут разные пути, и rebase на бинарных кадрах ломался, молча
-            # теряя всю пачку.
+            # свои файлы накладываем на верхушку ветки: параллельные задачи
+            # пишут разные пути, а rebase на бинарных кадрах ломался молча
             git reset -q --hard FETCH_HEAD
             git checkout -q "$OURS" -- .ci-logs 2>/dev/null || true
             if git diff --cached --quiet && git diff --quiet; then
@@ -241,18 +241,14 @@ jobs:
           cp -f tide-ui.log .ci-logs/ 2>/dev/null || echo "витрина: пропущена" > .ci-logs/tide-ui.log
           cp -f boat-boot.log .ci-logs/ 2>/dev/null || true
           cp -f light-shots.log .ci-logs/ 2>/dev/null || true
-          git add .ci-logs/light-shots.log 2>/dev/null || true
-          git add .ci-logs/tide-ui.log
-          git add .ci-logs/boat-boot.log 2>/dev/null || true
           if compgen -G "shots/*.png" > /dev/null; then
             git add shots
           fi
+          git add .ci-logs
+          git commit -q -m "ci: кадры витрины TIDECUT ${GITHUB_SHA::7} [skip ci]" || true
           OURS=$(git rev-parse HEAD)
           for attempt in 1 2 3 4 5; do
             git fetch -q origin "${GITHUB_REF#refs/heads/}"
-            # Свои файлы накладываем на верхушку ветки: параллельные задачи
-            # пишут разные пути, и rebase на бинарных кадрах ломался, молча
-            # теряя всю пачку.
             git reset -q --hard FETCH_HEAD
             git checkout -q "$OURS" -- shots .ci-logs/light-shots.log .ci-logs/tide-ui.log .ci-logs/boat-boot.log 2>/dev/null || true
             if git diff --cached --quiet && git diff --quiet; then
@@ -359,12 +355,10 @@ jobs:
             cp boat.png .ci-logs/shots/shot_boat.png
           fi
           git add .ci-logs
+          git commit -q -m "ci: рендер-артефакты прогона ${GITHUB_SHA::7} [skip ci]" || true
           OURS=$(git rev-parse HEAD)
           for attempt in 1 2 3 4 5; do
             git fetch -q origin "${GITHUB_REF#refs/heads/}"
-            # Свои файлы накладываем на верхушку ветки: параллельные задачи
-            # пишут разные пути, и rebase на бинарных кадрах ломался, молча
-            # теряя всю пачку.
             git reset -q --hard FETCH_HEAD
             git checkout -q "$OURS" -- .ci-logs 2>/dev/null || true
             if git diff --cached --quiet && git diff --quiet; then
