@@ -121,7 +121,9 @@ jobs:
 
   ui:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Витрина TIDECUT + живой запуск + серия кадров света: шаги идут подряд,
+    # и 25 минут на всё уже не хватало — задача отменялась вместе с артефактами.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
