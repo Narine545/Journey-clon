@@ -429,6 +429,7 @@ func _physics_process(_delta: float) -> void:
 		_check_slick_disturbance()
 		_check_partial_slick_collection()
 		_check_weather()
+		_check_sea_whales()
 		_check_world_inspector()
 		print("[BOAT SMOKE] итог: %s" % ("ВСЁ ПРОШЛО" if failures == 0 else "%d ОШИБОК" % failures))
 		get_tree().quit(0 if failures == 0 else 1)
@@ -542,6 +543,42 @@ func _check_partial_slick_collection() -> void:
 		"обычный респавн восстанавливает полный запас только после истощения")
 	main.raw[0] = stock
 	probe.queue_free()
+
+
+func _check_sea_whales() -> void:
+	var whales := main.sea_whales
+	_check(whales != null and whales.whales.size() == SeaWhales.POD_SIZE,
+		"стая светящихся китов собрана и ждёт темноты")
+	# Днём стаи нет совсем: включается только по темноте, с гистерезисом.
+	whales.active = false
+	whales.advance(0.5, 0.0)
+	_check(not whales.visible, "днём китов не видно")
+	whales.advance(0.5, 0.88)
+	_check(whales.active, "ночью стая выходит")
+	# Киты идут по морю и держатся в своём радиусе от судна.
+	var before: Vector2 = whales.whales[0]["at"]
+	for _step in range(60):
+		whales.advance(1.0 / 30.0, 0.88)
+	var after: Vector2 = whales.whales[0]["at"]
+	_check(after.distance_to(before) > 1.0, "киты плывут, а не стоят на месте")
+	var boat := Vector2(main.boat.global_position.x, main.boat.global_position.z)
+	var far := 0.0
+	for whale in whales.whales:
+		far = maxf(far, (Vector2(whale["at"]) - boat).length())
+	_check(far < SeaWhales.SWIM_RADIUS + 8.0, "стая не уходит от судна дальше своего радиуса")
+	# Свет — самосвечение и аддитивные блики: прожекторов на кита не тратим.
+	for whale in whales.whales:
+		var glow: StandardMaterial3D = whale["glow_mat"]
+		var halo: StandardMaterial3D = whale["halo_mat"]
+		var pool: StandardMaterial3D = whale["pool_mat"]
+		_check(glow.emission_enabled and glow.emission_energy_multiplier > 0.5,
+			"тело кита светится собственной эмиссией")
+		_check(halo.blend_mode == BaseMaterial3D.BLEND_MODE_ADD and
+			pool.blend_mode == BaseMaterial3D.BLEND_MODE_ADD and
+			not (whale["root"] as Node3D).find_children("*", "OmniLight3D", true, false).size(),
+			"свет кита — аддитивные блики без лишних источников света")
+	whales.active = false
+	whales.visible = false
 
 
 func _check_weather() -> void:

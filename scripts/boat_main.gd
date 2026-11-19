@@ -58,6 +58,8 @@ var clock_hours := 6.5
 var clock_day := 1
 var rest: TideRest
 var weather := SeaWeather.new()
+## Светящиеся киты: ночная стая в открытом море.
+var sea_whales: SeaWhales
 var debug_instant_fog := false
 var sonar_timer := 12.0 # со старта даём краткий пеленг, чтобы игрок сразу увидел цель
 var overdrive_timer := 0.0
@@ -198,6 +200,10 @@ func _ready() -> void:
 	add_child(sea_look_trial)
 	sea_look_trial.setup(self)
 	weather.setup()
+	sea_whales = SeaWhales.new()
+	sea_whales.name = "SeaWhales"
+	add_child(sea_whales)
+	sea_whales.setup(self)
 	_ensure_boat_input()
 	_boot_mark("готово")
 	if OS.get_environment("JOURNEY_BOAT_SHOT_DRIVE") == "1":
@@ -1373,6 +1379,9 @@ func _process(delta: float) -> void:
 			_apply_atmosphere(night01)
 
 	_update_reef_signals()
+	# Стая живёт своей жизнью: днём её нет, ночью она ходит вокруг судна.
+	if sea_whales != null:
+		sea_whales.advance(delta, night01)
 	buoy_dynamics.render_nodes()
 	# Вращение лучей зажжённых Маяков
 	for b in beacons:

@@ -35,6 +35,20 @@ func _run() -> void:
 	_go_to_sea()
 	await _shot("light_04_night_sea_clear", 23.0, 0.0)
 	await _shot("light_05_night_sea_fog", 23.0, 1.0)
+	# Светящиеся киты: ночная стая проходит у самого судна.
+	main.camera.size = 30.0
+	await _shot("light_21_whales_00", 23.0, 0.0)
+	var bow := Vector2(-sin(main.boat.global_rotation.y), -cos(main.boat.global_rotation.y))
+	main.sea_whales.place_near(
+		Vector2(main.boat.global_position.x, main.boat.global_position.z), bow
+	)
+	await _shooter.wait_frames_count(8)
+	await _shooter.capture("light_21_whales_01")
+	await _shooter.wait_frames_count(16)
+	await _shooter.capture("light_21_whales_02")
+	await _shooter.wait_frames_count(16)
+	await _shooter.capture("light_21_whales_03")
+	main.camera.size = 32.0
 	await _shot("light_08_dusk_sea", 19.75, 0.1)
 	await _shot("light_09_day_sea", 12.0, 0.0)
 	main.camera.size = 96.0
