@@ -569,6 +569,8 @@ func _check_sea_whales() -> void:
 	_check(whales.whales.size() == SeaWhales.WHALE_COUNT, "в море пара китов")
 	_check(whales._halos.size() == SeaWhales.WHALE_COUNT,
 		"у каждого кита своя аура свечения (ночью включается, днём гаснет)")
+	_check(whales._shadows.size() == SeaWhales.WHALE_COUNT,
+		"под водой кит читается тенью на поверхности")
 	# 900 шагов по 1/30 с: ни телепортов, ни утопления, ни прохода сквозь судно.
 	var max_step := 0.0
 	var min_gap := INF

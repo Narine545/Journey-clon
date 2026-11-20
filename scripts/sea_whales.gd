@@ -95,6 +95,9 @@ var _labels: Array[Label3D] = []
 var _halos: Array[MeshInstance3D] = []
 var _halo_mats: Array[ShaderMaterial] = []
 var _halo_amounts: Array[float] = []
+var _shadows: Array[MeshInstance3D] = []
+var _shadow_mats: Array[ShaderMaterial] = []
+var _shadow_amounts: Array[float] = []
 var _panel: Label
 var _marker_mat: StandardMaterial3D
 
@@ -125,6 +128,7 @@ func advance(delta: float, night01: float) -> void:
 	# пределами обзора проход выключаем совсем (на этом экономится кадр).
 	_fish.set_sdf_enabled(_any_in_view())
 	_update_halos(night01)
+	_update_shadows()
 	if debug_on:
 		_update_debug()
 
@@ -204,6 +208,52 @@ func _update_halos(night01: float) -> void:
 		if absf(amount - float(_halo_amounts[i])) > 0.02:
 			_halo_amounts[i] = amount
 			var mat: ShaderMaterial = _halo_mats[i]
+			mat.set_shader_parameter("strength", amount)
+
+
+## Тень под водой: плоский тёмный силуэт на поверхности над телом.
+## Чем глубже кит, тем бледнее тень; у поверхности её нет — там само тело.
+func _build_shadows() -> void:
+	for i in range(WHALE_COUNT):
+		var mat := ShaderMaterial.new()
+		mat.shader = load("res://shaders/whale_shadow.gdshader")
+		var quad := QuadMesh.new()
+		quad.size = Vector2(BODY_LEN * 1.9, BODY_LEN * 1.15)
+		var shadow := MeshInstance3D.new()
+		shadow.name = "WhaleShadow%d" % i
+		shadow.mesh = quad
+		shadow.material_override = mat
+		shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		shadow.extra_cull_margin = 24.0
+		shadow.visible = false
+		add_child(shadow)
+		_shadows.append(shadow)
+		_shadow_mats.append(mat)
+		_shadow_amounts.append(-1.0)
+
+
+func _update_shadows() -> void:
+	if _shadows.is_empty() or main == null or main.water == null:
+		return
+	for i in range(_shadows.size()):
+		var shadow: MeshInstance3D = _shadows[i]
+		if i >= whales.size():
+			shadow.visible = false
+			continue
+		var w: Whale = whales[i]
+		var surf := main.water.surface_height(w.pos.x, w.pos.z)
+		var depth := surf - w.y
+		if depth < 0.35 or depth > 9.0:
+			shadow.visible = false
+			continue
+		shadow.visible = true
+		shadow.global_position = Vector3(w.pos.x, surf + 0.05, w.pos.z)
+		shadow.rotation = Vector3(-PI * 0.5, -w.heading, 0.0)
+		# На самой поверхности тело видно само, тень нужна только под водой.
+		var amount := 0.46 * exp(-depth / 3.2) * clampf(depth / 0.8, 0.0, 1.0)
+		if absf(amount - float(_shadow_amounts[i])) > 0.02:
+			_shadow_amounts[i] = amount
+			var mat: ShaderMaterial = _shadow_mats[i]
 			mat.set_shader_parameter("strength", amount)
 
 
@@ -514,6 +564,7 @@ func _ensure() -> void:
 	_fish.push_glow(0.0)
 	_glow = 0.0
 	_build_halos()
+	_build_shadows()
 	_spawn_all()
 
 

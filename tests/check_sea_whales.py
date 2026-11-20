@@ -53,6 +53,12 @@ assert 'const TURN_RATE := 0.30' in whales
 assert 'main.water.field.wake(Vector2(w.pos.x, w.pos.z), strength)' in whales
 assert '_fish.splash_burst(' in whales
 assert 'func _blow(w: Whale) -> void:' in whales
+# Под водой тело читается тенью на поверхности, иначе не понять, где кит.
+assert 'res://shaders/whale_shadow.gdshader' in whales
+assert 'var amount := 0.46 * exp(-depth / 3.2)' in whales
+shadow = Path('shaders/whale_shadow.gdshader').read_text()
+assert 'render_mode blend_mix, unshaded, depth_draw_never' in shadow
+assert 'float r = length(vec2(uv.x, uv.y * 1.75));' in shadow
 # Свечение: аура (аддитивный квад) + эмиссия кожи в шейдере; днём гаснет.
 assert 'res://shaders/whale_glow.gdshader' in whales
 assert 'quad.size = Vector2(BODY_LEN * 2.6, BODY_LEN * 1.2)' in whales
@@ -91,5 +97,6 @@ assert 'main.sea_whales.place_near(main._camera_focus, fwd.normalized())' in sho
 assert '_check_sea_whales()' in smoke
 assert 'кит не телепортируется' in smoke
 assert 'у каждого кита своя аура свечения' in smoke
+assert 'под водой кит читается тенью на поверхности' in smoke
 assert 'кит не лезет под корпус' in smoke
 print('check_sea_whales: ok')
