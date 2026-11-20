@@ -163,7 +163,7 @@ func _build_halos() -> void:
 		var mat := ShaderMaterial.new()
 		mat.shader = load("res://shaders/whale_glow.gdshader")
 		var quad := QuadMesh.new()
-		quad.size = Vector2.ONE * BODY_LEN * 2.1
+		quad.size = Vector2(BODY_LEN * 2.6, BODY_LEN * 1.2)
 		var halo := MeshInstance3D.new()
 		halo.name = "WhaleHalo%d" % i
 		halo.mesh = quad
@@ -192,8 +192,8 @@ func _update_halos(night01: float) -> void:
 		var w: Whale = whales[i]
 		var surf := main.water.surface_height(w.pos.x, w.pos.z)
 		var depth := surf - w.y
-		var lit := clampf(1.0 - (depth - 0.2) / 6.0, 0.0, 1.0)
-		var amount := dark * lit * 0.55
+		var lit := clampf(1.0 - (depth - 0.2) / 4.0, 0.0, 1.0)
+		var amount := dark * lit * 0.42
 		var center := Vector3(w.pos.x, w.y, w.pos.z)
 		if amount < 0.02 or not cam.is_position_in_frustum(center):
 			halo.visible = false

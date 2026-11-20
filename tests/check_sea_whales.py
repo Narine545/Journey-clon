@@ -37,6 +37,7 @@ assert 'float hump = (1.0 - smoothstep(0.70, 1.20, hump_e))' in shader  # тём
 assert 'vec3 up = normalize(cross(side, dir));' in shader            # тангаж
 assert 'fish_sdf(p, C, s, u_fish_state[i].w, u_fish_pitch[i],' in shader
 assert 'out_col = scene_col * (1.0 - u_veil_dark * m)' in shader     # тень под водой
+assert 'float veil_cap = mix(0.10, 0.55,' in shader                  # горб виден
 
 # --- движение: пружина глубины, тангаж из вертикальной скорости, гребок с глайдом
 assert 'const SPRING := 1.7' in whales
@@ -54,8 +55,8 @@ assert '_fish.splash_burst(' in whales
 assert 'func _blow(w: Whale) -> void:' in whales
 # Свечение: аура (аддитивный квад) + эмиссия кожи в шейдере; днём гаснет.
 assert 'res://shaders/whale_glow.gdshader' in whales
-assert 'quad.size = Vector2.ONE * BODY_LEN * 2.1' in whales
-assert 'var amount := dark * lit * 0.55' in whales
+assert 'quad.size = Vector2(BODY_LEN * 2.6, BODY_LEN * 1.2)' in whales
+assert 'var amount := dark * lit * 0.42' in whales
 glow_shader = Path('shaders/whale_glow.gdshader').read_text()
 assert 'render_mode blend_add, unshaded, depth_draw_never' in glow_shader
 assert 'float falloff = exp(-r * r * 3.0)' in glow_shader

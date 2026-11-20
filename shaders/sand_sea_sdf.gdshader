@@ -482,7 +482,11 @@ void fragment() {
                                                         vec3 scene_col = texture(u_screen, SCREEN_UV).rgb;
                                                         out_col = scene_col * (1.0 - u_veil_dark * m)
                                                                 + avg * 0.18 * m;
-                                                        alpha = clamp(m * u_veil_strength * 0.35, 0.0, 0.10);
+                                                        // Каппа альфы: у рыбья модуля след по-прежнему
+                                                        // еле заметен, а киту под водой нужен читаемый горб.
+                                                        float veil_cap = mix(0.10, 0.55,
+                                                                clamp(u_veil_dark * 2.2, 0.0, 1.0));
+                                                        alpha = clamp(m * u_veil_strength * 0.35, 0.0, veil_cap);
                                                 }
                                         }
                         }
