@@ -21,7 +21,11 @@ const NIGHT_ON := 0.16 ## порог ночи, с которого киты вы
 const WHALE_COUNT := 2 ## пара: третья туша в кадре уже тесно
 const WHALE_SCALE := 1.9 ## SDF-тело L = 2.4·s: кит 3.7–4.3 м
 const SCHOOL_RADIUS := 22.0 ## насколько широко пара ходит вокруг точки
-const BOUNDS_RADIUS := 110.0 ## радиус raymarch-culling вокруг камеры, м
+const BOUNDS_RADIUS := 60.0 ## радиус raymarch-culling вокруг камеры, м
+## Качество реймарчинга для китов: тело крупное, ему хватает грубее и
+## вдвое дешевле, чем рыбьей стае (полноэкранный проход в каждую ночь).
+const SDF_STEPS := 48
+const SDF_EPSILON := 0.03
 const REGROUP_DIST := 80.0 ## дальше этого стаю переносим ближе к судну, м
 ## Тёмная спина с холодным отливом — кит, а не рыбка из закатной палитры.
 const TINT := Color(0.62, 0.76, 0.86)
@@ -118,5 +122,8 @@ func _ensure() -> void:
 	# Берег не нужен: киты живут в открытом море, ограничитель — не суша.
 	_fish.setup(main.game, main.water.level_y, main.water.field, null)
 	add_child(_fish)
+	if _fish.mat != null:
+		_fish.mat.set_shader_parameter("max_steps", SDF_STEPS)
+		_fish.mat.set_shader_parameter("epsilon", SDF_EPSILON)
 	_applied = 0.0
 	_fish.apply_night01(NIGHT_ON)

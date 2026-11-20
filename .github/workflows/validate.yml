@@ -219,7 +219,7 @@ jobs:
       - name: World lighting shots (свет по времени суток)
         run: |
           TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
-            timeout 1300 xvfb-run -a -s "-screen 0 1280x720x24" \
+            timeout 1700 xvfb-run -a -s "-screen 0 1280x720x24" \
             godot_bin/godot --path . res://scenes/boat_main.tscn \
             --rendering-method forward_plus --resolution 1280x720 \
             --fixed-fps 30 --quit-after 2400 > light-shots.log 2>&1 || true

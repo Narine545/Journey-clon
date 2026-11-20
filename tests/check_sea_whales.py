@@ -27,6 +27,9 @@ for banned in ('SphereMesh', 'BoxMesh', 'CapsuleMesh', 'CylinderMesh',
 assert 'const NIGHT_ON := 0.16' in whales
 assert 'if night01 < NIGHT_ON:' in whales
 assert 'const WHALE_COUNT := 2' in whales
+# Ночной полноэкранный проход дешевле рыбьего: крупному телу хватает грубее.
+assert 'const SDF_STEPS := 48' in whales and 'const SDF_EPSILON := 0.03' in whales
+assert 'set_shader_parameter("max_steps", SDF_STEPS)' in whales
 assert 'const WHALE_SCALE := 1.9' in whales
 # Стая ставится дугой перед точкой и переставляется, если судно ушло.
 assert 'place_school(at, fwd, SCHOOL_RADIUS, TINT)' in whales
