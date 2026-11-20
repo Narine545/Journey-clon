@@ -546,39 +546,28 @@ func _check_partial_slick_collection() -> void:
 
 
 func _check_sea_whales() -> void:
-	var whales := main.sea_whales
-	_check(whales != null and whales.whales.size() == SeaWhales.POD_SIZE,
-		"стая светящихся китов собрана и ждёт темноты")
-	# Днём стаи нет совсем: включается только по темноте, с гистерезисом.
-	whales.active = false
-	whales.advance(0.5, 0.0)
-	_check(not whales.visible, "днём китов не видно")
-	whales.advance(0.5, 0.88)
-	_check(whales.active, "ночью стая выходит")
-	# Киты идут по морю и держатся в своём радиусе от судна.
-	var before: Vector2 = whales.whales[0]["at"]
-	for _step in range(60):
-		whales.advance(1.0 / 30.0, 0.88)
-	var after: Vector2 = whales.whales[0]["at"]
-	_check(after.distance_to(before) > 1.0, "киты плывут, а не стоят на месте")
-	var boat := Vector2(main.boat.global_position.x, main.boat.global_position.z)
-	var far := 0.0
-	for whale in whales.whales:
-		far = maxf(far, (Vector2(whale["at"]) - boat).length())
-	_check(far < SeaWhales.SWIM_RADIUS + 8.0, "стая не уходит от судна дальше своего радиуса")
-	# Свет — самосвечение и аддитивные блики: прожекторов на кита не тратим.
-	for whale in whales.whales:
-		var glow: StandardMaterial3D = whale["glow_mat"]
-		var halo: StandardMaterial3D = whale["halo_mat"]
-		var pool: StandardMaterial3D = whale["pool_mat"]
-		_check(glow.emission_enabled and glow.emission_energy_multiplier > 0.5,
-			"тело кита светится собственной эмиссией")
-		_check(halo.blend_mode == BaseMaterial3D.BLEND_MODE_ADD and
-			pool.blend_mode == BaseMaterial3D.BLEND_MODE_ADD and
-			not (whale["root"] as Node3D).find_children("*", "OmniLight3D", true, false).size(),
-			"свет кита — аддитивные блики без лишних источников света")
-	whales.active = false
-	whales.visible = false
+	# Киты — не примитивы: их рисует тот же SDF-реймарчер, что рыб в модуле
+	# рыбалки (SandFish + sand_sea_sdf.gdshader), и только ночью.
+	_check(SeaWhales.NIGHT_ON > 0.0 and SeaWhales.NIGHT_ON < 0.4,
+		"киты выходят в сумерках, а не в полдень")
+	var whales := SeaWhales.new()
+	whales.setup(main)
+	main.add_child(whales)
+	whales.advance(0.0, 0.0)
+	_check(whales.get_node_or_null("WhaleSdf") == null,
+		"днём SDF-слой китов не создаётся вовсе")
+	whales.advance(0.0, 0.88)
+	var sdf: Node = whales.get_node_or_null("WhaleSdf")
+	_check(sdf is SandFish, "ночью киты живут тем же рендером существ, что рыбы модуля рыбалки")
+	if sdf is SandFish:
+		var fish: SandFish = sdf
+		_check(fish.fish_count == SeaWhales.WHALE_COUNT and fish.size_mul > 1.0,
+			"пара крупных существ вместо рыбьей стаи")
+		_check(fish._quad != null and fish._quad.mesh is QuadMesh and fish.mat != null,
+			"тело рисует SDF-квад, а не сетка-примитив")
+	whales.advance(0.0, 0.0)
+	_check(not whales.is_alive(), "с рассветом слой гаснет и перестаёт считаться")
+	whales.queue_free()
 
 
 func _check_weather() -> void:

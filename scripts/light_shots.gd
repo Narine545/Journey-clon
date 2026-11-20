@@ -35,22 +35,13 @@ func _run() -> void:
 	_go_to_sea()
 	await _shot("light_04_night_sea_clear", 23.0, 0.0)
 	await _shot("light_05_night_sea_fog", 23.0, 1.0)
-	# Светящиеся киты: ночная стая проходит у самого судна.
+	# Ночные киты: тот же SDF-рендер существ, что рисует рыб в модуле рыбалки.
 	main.camera.size = 30.0
-	await _shot("light_21_whales_00", 23.0, 0.0)
-	var bow := Vector2(-sin(main.boat.global_rotation.y), -cos(main.boat.global_rotation.y))
-	main.sea_whales.place_near(
-		Vector2(main.boat.global_position.x, main.boat.global_position.z), bow
-	)
-	await _shooter.wait_frames_count(8)
-	await _shooter.capture("light_21_whales_01")
-	await _shooter.wait_frames_count(16)
-	# Ближе: видно, что светится сам зверь, а не только вода под ним.
+	await _whale_shot("light_21_whales_00", 23.0, 0.0)
+	await _whale_shot("light_21_whales_01", 23.0, 0.28)
 	main.camera.size = 20.0
-	await _shooter.wait_frames_count(10)
-	await _shooter.capture("light_21_whales_02")
-	await _shooter.wait_frames_count(14)
-	await _shooter.capture("light_21_whales_03")
+	await _whale_shot("light_21_whales_02", 23.0, 0.12)
+	await _whale_shot("light_21_whales_03", 23.0, 0.55)
 	main.camera.size = 32.0
 	await _shot("light_08_dusk_sea", 19.75, 0.1)
 	await _shot("light_09_day_sea", 12.0, 0.0)
@@ -206,6 +197,17 @@ func _camera_on_gate() -> void:
 	main.camera.size = 26.0
 	main.camera.global_position = main._camera_focus + Vector3(13.0, 16.0, 19.0)
 	main.camera.look_at(main._camera_focus, Vector3.UP)
+
+
+## Кадр с китами: стаю ставим вокруг лодки прямо перед съёмкой — иначе
+## случайная ночная встреча в кадр не гарантированно попадает.
+func _whale_shot(file_name: String, hour: float, fog: float) -> void:
+	var fwd := -main.camera.global_transform.basis.z
+	fwd.y = 0.0
+	if fwd.length() < 0.01:
+		fwd = Vector3.FORWARD
+	main.sea_whales.place_near(main._camera_focus, fwd.normalized())
+	await _shot(file_name, hour, fog)
 
 
 func _shot(file_name: String, hour: float, fog: float) -> void:

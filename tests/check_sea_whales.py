@@ -1,41 +1,43 @@
-"""Светящиеся киты: ночная стая, самосвечение без лишних источников света."""
+"""Ночные киты — тот же SDF-рендер существ, что рыбы модуля рыбалки.
+
+Проверяем не «нарисованы ли киты», а чем именно они нарисованы: никаких
+мешей-примитивов и голых материалов, только SandFish + sand_sea_sdf.gdshader
+(хребет из плавленых сфер, спинной гребень, хвостовая лопасть, брызги).
+"""
 from pathlib import Path
 
 whales = Path('scripts/sea_whales.gd').read_text()
-main = Path('scripts/boat_main.gd').read_text()
+fish = Path('scripts/sand_fish.gd').read_text()
+boat = Path('scripts/boat_main.gd').read_text()
+shots = Path('scripts/light_shots.gd').read_text()
+smoke = Path('scripts/boat_smoke.gd').read_text()
+shader = Path('shaders/sand_sea_sdf.gdshader').read_text()
 
 assert 'class_name SeaWhales' in whales
-assert 'const POD_SIZE := 3' in whales
-assert 'const GLOW := Color(0.36, 0.96, 0.92)' in whales
-
-# Только ночью, с гистерезисом: днём стаи нет совсем.
-assert 'const NIGHT_IN := 0.42' in whales and 'const NIGHT_OUT := 0.26' in whales
-assert 'var want := night01 > NIGHT_IN if not active else night01 > NIGHT_OUT' in whales
-assert 'visible = _shown > 0.01' in whales
-
-# Стая живёт вокруг судна и не уходит за свой радиус.
-assert 'const SWIM_RADIUS := 120.0' in whales
-assert 'if offset.length() > SWIM_RADIUS:' in whales
-assert 'at += heading * float(whale["speed"]) * delta' in whales
-
-# Свет — эмиссия и аддитивные блики: ни одного источника света на кита.
-assert 'glow_mat.emission_enabled = true' in whales
-assert 'glow_mat.emission_energy_multiplier = 3.4' in whales
-assert 'halo_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD' in whales
-assert 'pool_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD' in whales
-assert 'OmniLight3D' not in whales and 'SpotLight3D' not in whales
-# Материалы создаются один раз при сборке, а не каждый кадр.
-assert whales.count('StandardMaterial3D.new()') == 4
-# Светится сам зверь: гребень по спине + крупные огни на боках.
-assert 'spine.material_override = glow_mat' in whales
-assert 'spine.scale = Vector3(BODY_LEN * 0.16, BODY_LEN * 0.12, BODY_LEN * 0.78)' in whales
-# Киты — мировые координаты, узел стаи только контейнер.
-assert 'root.top_level = true' in whales
-# След на воде берётся из готового поля колец, а не из новых частиц.
-assert 'main.water.field.splash(at - whale["dir"] * BODY_LEN * 0.5, 0.35)' in whales
-
-# Встроено в цикл мира.
-assert 'var sea_whales: SeaWhales' in main
-assert 'sea_whales.setup(self)' in main
-assert 'sea_whales.advance(delta, night01)' in main
-print('OK: киты выходят ночью, светятся сами и не стоят в кадре.')
+# Рендер — модуль рыбалки, а не собственный набор примитивов.
+assert 'SandFish.new()' in whales
+assert 'res://shaders/sand_sea_sdf.gdshader' in fish
+assert '_fish.setup(main.game, main.water.level_y, main.water.field, null)' in whales
+assert 'apply_night01' in whales and 'apply_sun' in whales
+# Ни одного меша-примитива: тело целиком процедурное.
+for banned in ('SphereMesh', 'BoxMesh', 'CapsuleMesh', 'CylinderMesh',
+               'StandardMaterial3D', 'MeshInstance3D.new()'):
+    assert banned not in whales, banned
+# Ленивый слой: при запуске (день, гавань) китов не существует.
+assert 'const NIGHT_ON := 0.16' in whales
+assert 'if night01 < NIGHT_ON:' in whales
+assert 'const WHALE_COUNT := 2' in whales
+assert 'const WHALE_SCALE := 1.35' in whales
+# Стая ставится дугой перед точкой и переставляется, если судно ушло.
+assert 'place_school(at, fwd, SCHOOL_RADIUS, TINT)' in whales
+assert 'REGROUP_DIST' in whales
+assert 'func place_school(' in fish
+# Само тело в шейдере — плавленые сферы + эллипсоидная лопасть.
+assert 'fish_sdf(' in shader
+assert 'sd_ell(' in shader
+# Проводка в игре, в головном тесте и в кадрах CI.
+assert 'sea_whales.advance(delta, night01)' in boat
+assert 'main.sea_whales.place_near(main._camera_focus, fwd.normalized())' in shots
+assert 'light_21_whales_00' in shots
+assert '_check_sea_whales()' in smoke
+print('check_sea_whales: ok')

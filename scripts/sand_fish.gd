@@ -203,6 +203,39 @@ func _spawn_fish(i: int, center: Vector2, respawn_at_home := false) -> void:
 	_respawn[i] = 0.0
 
 
+## Поставить стаю вокруг мировой точки (киты-ночники, кадры CI).
+## Не путать с _spawn_fish: там расселение вокруг камеры/берега, здесь —
+## явное место, которое сразу становится домашней территорией.
+func place_school(at: Vector3, forward := Vector3.FORWARD, radius := 30.0,
+		tint := Color(0, 0, 0)) -> void:
+	if _fpos.size() < MAX_FISH:
+		_init_fish()
+	_spawned = true
+	var base := atan2(forward.x, forward.z)
+	for i in range(fish_count):
+		# Дуга перед точкой (±28°), а не полный круг: стая не уходит за спину.
+		var t := 0.0 if fish_count <= 1 else float(i) / float(fish_count - 1)
+		var ang := base + (t - 0.5) * 0.98
+		var dist := radius * (0.9 + 0.25 * float(i % 2))
+		var p := Vector3(at.x + sin(ang) * dist, 0.0, at.z + cos(ang) * dist)
+		p.y = water_level - randf_range(1.2, 1.9)
+		_fpos[i] = p
+		_fish_home[i] = Vector2(p.x, p.z)
+		_fheading[i] = base + randf_range(-0.3, 0.3)
+		_fturn[i] = 0.0
+		_fspeed[i] = randf_range(1.6, 2.4)
+		_fsize[i] = randf_range(0.8, 0.95) * size_mul
+		_fphase[i] = randf() * TAU
+		_fperiod[i] = randf_range(9.0, 14.0)
+		_foffset[i] = randf() * _fperiod[i]
+		_fcruise[i] = randf_range(1.2, 1.9) # спина идёт по самой поверхности
+		_fjump[i] = _fsize[i] * randf_range(1.0, 1.4) * jump_mul
+		_fy[i] = p.y
+		_ftint[i] = tint if tint.r + tint.g + tint.b > 0.001 else PALETTE[i % PALETTE.size()]
+		_fscare[i] = 0.0
+		_respawn[i] = 0.0
+
+
 func _init_drops() -> void:
 	_dpos.resize(MAX_DROPS)
 	_dvel.resize(MAX_DROPS)

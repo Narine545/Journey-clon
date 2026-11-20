@@ -58,7 +58,7 @@ var clock_hours := 6.5
 var clock_day := 1
 var rest: TideRest
 var weather := SeaWeather.new()
-## Светящиеся киты: ночная стая в открытом море.
+## Ночные киты: тот же SDF-рендер существ, что в модуле рыбалки.
 var sea_whales: SeaWhales
 var debug_instant_fog := false
 var sonar_timer := 12.0 # со старта даём краткий пеленг, чтобы игрок сразу увидел цель
@@ -1379,7 +1379,7 @@ func _process(delta: float) -> void:
 			_apply_atmosphere(night01)
 
 	_update_reef_signals()
-	# Стая живёт своей жизнью: днём её нет, ночью она ходит вокруг судна.
+	# Стая живёт своей жизнью: днём слоя нет, ночью киты ходят в открытом море.
 	if sea_whales != null:
 		sea_whales.advance(delta, night01)
 	buoy_dynamics.render_nodes()
