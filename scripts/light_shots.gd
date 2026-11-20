@@ -212,6 +212,9 @@ func _whale_shot(file_name: String, hour: float, fog: float) -> void:
 		fwd = Vector3.FORWARD
 	main.sea_whales.place_near(main._camera_focus, fwd.normalized())
 	await _shot(file_name, hour, fog)
+	# В лог прогона: где кит и в каком он состоянии — по кадру это не всегда видно.
+	print("[WHALES] %s · в кадре: %s" % [main.sea_whales._debug_line(),
+		main.sea_whales._any_in_view()])
 
 
 func _shot(file_name: String, hour: float, fog: float) -> void:
