@@ -31,7 +31,7 @@ RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_04_night_sea_clear.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_05_night_sea_fog.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_21_whales_00.png 1280x720
-[WHALES] 0: дыхание -0.2м ≤2.8м/с · 1: нырок 1.3м ≤2.8м/с · в кадре: true
+[WHALES] 0: дыхание -0.2м ≤2.8м/с · 1: нырок 1.2м ≤2.8м/с · в кадре: true
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_21_whales_01.png 1280x720
 [WHALES] 0: дыхание -0.4м ≤2.8м/с · 1: нырок 1.4м ≤2.8м/с · в кадре: true
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_21_whales_02.png 1280x720
