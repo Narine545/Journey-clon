@@ -61,7 +61,7 @@ const CRUISE_MIN := 1.5
 const CRUISE_MAX := 2.7
 const SPRING := 1.7 ## жёсткость вертикальной пружины, 1/с²
 const SURFACE_DEPTH := -0.35 ## спина и гребень на виду
-const SHALLOW_DEPTH := 2.6 ## тело под поверхностью: видно тёмный силуэт
+const SHALLOW_DEPTH := 1.4 ## тело под поверхностью: спина у самой воды
 const DEEP_DEPTH := 6.5
 
 const DEEP_WATER := 5.0 ## м: ближе этого кит разворачивается в море
@@ -92,6 +92,9 @@ var _glow := -1.0
 var _markers: MeshInstance3D
 var _marker_mesh: ImmediateMesh
 var _labels: Array[Label3D] = []
+var _halos: Array[MeshInstance3D] = []
+var _halo_mats: Array[ShaderMaterial] = []
+var _halo_amounts: Array[float] = []
 var _panel: Label
 var _marker_mat: StandardMaterial3D
 
@@ -121,6 +124,7 @@ func advance(delta: float, night01: float) -> void:
 	# Полноэкранный raymarch нужен, только если кит реально в кадре: за
 	# пределами обзора проход выключаем совсем (на этом экономится кадр).
 	_fish.set_sdf_enabled(_any_in_view())
+	_update_halos(night01)
 	if debug_on:
 		_update_debug()
 
@@ -153,6 +157,56 @@ func place_near(at: Vector3, forward: Vector3) -> void:
 
 
 ## Ближайший кит к мировой точке (-1 — никого).
+## Аура свечения: по одному мягкому аддитивному кваду на кита.
+func _build_halos() -> void:
+	for i in range(WHALE_COUNT):
+		var mat := ShaderMaterial.new()
+		mat.shader = load("res://shaders/whale_glow.gdshader")
+		var quad := QuadMesh.new()
+		quad.size = Vector2.ONE * BODY_LEN * 2.1
+		var halo := MeshInstance3D.new()
+		halo.name = "WhaleHalo%d" % i
+		halo.mesh = quad
+		halo.material_override = mat
+		halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		halo.extra_cull_margin = 32.0
+		halo.visible = false
+		add_child(halo)
+		_halos.append(halo)
+		_halo_mats.append(mat)
+		_halo_amounts.append(-1.0)
+
+
+## Аура живёт только ночью и только в кадре; под водой она глуше — по ней и
+## видно, что кит идёт под поверхностью, а не парит над ней.
+func _update_halos(night01: float) -> void:
+	if _halos.is_empty():
+		return
+	var cam := main.camera if main != null else null
+	var dark := clampf(night01, 0.0, 1.0)
+	for i in range(_halos.size()):
+		var halo: MeshInstance3D = _halos[i]
+		if i >= whales.size() or cam == null:
+			halo.visible = false
+			continue
+		var w: Whale = whales[i]
+		var surf := main.water.surface_height(w.pos.x, w.pos.z)
+		var depth := surf - w.y
+		var lit := clampf(1.0 - (depth - 0.2) / 6.0, 0.0, 1.0)
+		var amount := dark * lit * 0.55
+		var center := Vector3(w.pos.x, w.y, w.pos.z)
+		if amount < 0.02 or not cam.is_position_in_frustum(center):
+			halo.visible = false
+			continue
+		halo.visible = true
+		halo.global_position = Vector3(w.pos.x, w.y + 0.9, w.pos.z)
+		halo.look_at(cam.global_position, Vector3.UP)
+		if absf(amount - float(_halo_amounts[i])) > 0.02:
+			_halo_amounts[i] = amount
+			var mat: ShaderMaterial = _halo_mats[i]
+			mat.set_shader_parameter("strength", amount)
+
+
 ## Есть ли тело в кадре (с запасом на габарит: 4 м в сторону камеры).
 func _any_in_view() -> bool:
 	if main == null or main.camera == null:
@@ -459,6 +513,7 @@ func _ensure() -> void:
 	_fish.push_veil(2.6, 0.45)
 	_fish.push_glow(0.0)
 	_glow = 0.0
+	_build_halos()
 	_spawn_all()
 
 

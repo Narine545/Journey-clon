@@ -567,6 +567,8 @@ func _check_sea_whales() -> void:
 			has_pitch = renderer.mat.shader.code.contains("u_fish_pitch")
 		_check(has_pitch, "тангаж уходит в шейдер: нырок носом вниз, всплытие носом вверх")
 	_check(whales.whales.size() == SeaWhales.WHALE_COUNT, "в море пара китов")
+	_check(whales._halos.size() == SeaWhales.WHALE_COUNT,
+		"у каждого кита своя аура свечения (ночью включается, днём гаснет)")
 	# 900 шагов по 1/30 с: ни телепортов, ни утопления, ни прохода сквозь судно.
 	var max_step := 0.0
 	var min_gap := INF
