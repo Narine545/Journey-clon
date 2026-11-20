@@ -192,7 +192,7 @@ vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float pitch, float phase,
         float latn = dot(qs, side) * ise;
         float upw = dot(qs, up) * ise;
         float back = smoothstep(-0.45, 0.55, upw);      // 0 брюхо, 1 спина
-        float skin = mix(1.20, 0.56, back);             // тёмная спина, светлое брюхо
+        float skin = mix(1.05, 0.50, back);             // тёмная спина, светлое брюхо
         float speck = step(0.87, hash12(floor(vec2(along, latn) * 6.0)));
         skin += speck * 0.34 * back;                    // крап ближе к спине
         // Продольные борозды на горле/брюхе — есть у всех полосатиков.
@@ -402,9 +402,10 @@ void fragment() {
                                 col += vec3(1.0, 0.85, 0.60)
                                         * pow(clamp(dot(n, h), 0.0, 1.0), 42.0) * 0.55;
                                 col += sand_shade * pow(1.0 - ndv, 3.0) * 0.30;
-                                // Биолюминесценция: кожа светится сама, ярче к
-                                // силуэту — тело читается и в полной темноте.
-                                col += albedo * u_glow
+                                // Биолюминесценция: холодное свечение кожи, ярче
+                                // к силуэту — тело читается и в полной темноте.
+                                vec3 lamp = mix(albedo, vec3(0.38, 0.78, 0.98), 0.55);
+                                col += lamp * u_glow
                                         * (0.22 + 0.78 * pow(1.0 - ndv, 2.4));
 
                                 // глиттер «мокрого песка»: редкие вспышки на теле
@@ -466,6 +467,14 @@ void fragment() {
                                                         float mi = tail_in * tail_out * edge * ripple
                                                                 * depth_fade * (1.0 - fz);
                                                         m = max(m, mi);
+                                                        // Тёмный горб: тело под водой читается
+                                                        // силуэтом под поверхностью, а не исчезает.
+                                                        float hump_e = length(vec2(along / (1.15 * s),
+                                                                across / (0.42 * s)));
+                                                        float hump = (1.0 - smoothstep(0.70, 1.20, hump_e))
+                                                                * depth_fade * (1.0 - fz)
+                                                                * clamp(u_veil_dark * 2.6, 0.0, 1.6);
+                                                        m = max(m, hump);
                                                         tw += u_fish_tint[i] * mi;
                                                 }
                                                 if (m > 0.003) {

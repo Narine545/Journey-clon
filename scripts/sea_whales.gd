@@ -53,8 +53,8 @@ const BODY_LEN := 6.0 ## м: молодой горбач рядом с 11-мет
 const BODY_SIZE := BODY_LEN / SDF_LEN ## s для шейдера
 const WHALE_COUNT := 2
 ## Кожа: тёмная спина, брюхо вытягивает шейдерный контражур.
-const TINT := Color(0.26, 0.36, 0.46)
-const GLOW_MAX := 0.55 ## биолюминесценция в полную ночь
+const TINT := Color(0.32, 0.44, 0.58)
+const GLOW_MAX := 0.95 ## биолюминесценция в полную ночь
 
 const TURN_RATE := 0.30 ## рад/с: кит разворачивается тяжело
 const CRUISE_MIN := 1.5
@@ -456,7 +456,7 @@ func _ensure() -> void:
 		_fish.mat.set_shader_parameter("max_steps", SDF_STEPS)
 		_fish.mat.set_shader_parameter("epsilon", SDF_EPSILON)
 	# Под водой тело должно читаться тёмным силуэтом, а не исчезать.
-	_fish.push_veil(2.4, 0.40)
+	_fish.push_veil(2.6, 0.45)
 	_fish.push_glow(0.0)
 	_glow = 0.0
 	_spawn_all()

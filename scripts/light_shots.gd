@@ -42,6 +42,10 @@ func _run() -> void:
 	main.camera.size = 20.0
 	await _whale_shot("light_21_whales_02", 23.0, 0.12)
 	await _whale_shot("light_21_whales_03", 23.0, 0.55)
+	# Те же киты в сумерках и днём: видно, что свечение включается только ночью.
+	main.camera.size = 26.0
+	await _whale_shot("light_21_whales_04", 19.75, 0.1)
+	await _whale_shot("light_21_whales_05", 12.0, 0.0)
 	main.camera.size = 32.0
 	await _shot("light_08_dusk_sea", 19.75, 0.1)
 	await _shot("light_09_day_sea", 12.0, 0.0)
