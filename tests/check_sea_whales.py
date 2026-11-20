@@ -63,6 +63,8 @@ assert 'float r = length(vec2(uv.x, uv.y * 1.75));' in shadow
 assert 'res://shaders/whale_glow.gdshader' in whales
 assert 'quad.size = Vector2(BODY_LEN * 2.6, BODY_LEN * 1.2)' in whales
 assert 'var amount := dark * lit * 0.42' in whales
+assert 'lift = surf + 0.35' in whales                       # свечение сквозь поверхность
+assert 'shadow.global_position = Vector3(w.pos.x, surf + 0.25, w.pos.z)' in whales
 glow_shader = Path('shaders/whale_glow.gdshader').read_text()
 assert 'render_mode blend_add, unshaded, depth_draw_never' in glow_shader
 assert 'float falloff = exp(-r * r * 3.0)' in glow_shader

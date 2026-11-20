@@ -203,7 +203,12 @@ func _update_halos(night01: float) -> void:
 			halo.visible = false
 			continue
 		halo.visible = true
-		halo.global_position = Vector3(w.pos.x, w.y + 0.9, w.pos.z)
+		# Под водой аура сама оказывается за поверхностью и гаснет — поднимаем
+		# её к самой воде, чтобы свечение читалось и сквозь поверхность.
+		var lift := w.y + 0.9
+		if depth > 0.4:
+			lift = surf + 0.35
+		halo.global_position = Vector3(w.pos.x, lift, w.pos.z)
 		halo.look_at(cam.global_position, Vector3.UP)
 		if absf(amount - float(_halo_amounts[i])) > 0.02:
 			_halo_amounts[i] = amount
@@ -247,7 +252,8 @@ func _update_shadows() -> void:
 			shadow.visible = false
 			continue
 		shadow.visible = true
-		shadow.global_position = Vector3(w.pos.x, surf + 0.05, w.pos.z)
+		# Чуть выше волны: иначе тень ныряет под гребень и пропадает.
+		shadow.global_position = Vector3(w.pos.x, surf + 0.25, w.pos.z)
 		shadow.rotation = Vector3(-PI * 0.5, -w.heading, 0.0)
 		# На самой поверхности тело видно само, тень нужна только под водой.
 		var amount := 0.46 * exp(-depth / 3.2) * clampf(depth / 0.8, 0.0, 1.0)
