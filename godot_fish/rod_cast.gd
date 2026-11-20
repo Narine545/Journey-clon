@@ -191,8 +191,11 @@ func _cast(power: float) -> void:
 	var dist := MIN_CAST + power * CAST_RANGE
 	# если смотрим на воду — ограничиваем прицел самой плоскостью воды
 	if fdir.y < -0.02 and water != null:
-		var tp := (water.level_y - origin.y) / fdir.y
-		var horiz := tp * sqrt(maxf(1.0 - fdir.y * fdir.y, 0.0))
+		# water/game в этом модуле объявлены без типа: у члена такого объекта
+		# нет выводимого типа, поэтому здесь только явные типы (иначе Godot 4.7
+		# не собирает скрипт и весь проект не открывается).
+		var tp: float = (water.level_y - origin.y) / fdir.y
+		var horiz: float = tp * sqrt(maxf(1.0 - fdir.y * fdir.y, 0.0))
 		dist = clampf(horiz, MIN_CAST, MIN_CAST + power * CAST_RANGE)
 	_bez_a = _tip.to_global(TIP_LOCAL)
 	_bez_c = Vector3(origin.x + hd.x * dist, water.level_y, origin.z + hd.y * dist)
@@ -394,7 +397,7 @@ func _escape() -> void:
 func _sit(delta: float) -> Vector3:
 	var bp := _bobber.global_position
 	if game != null:
-		var w2 := game.wind_dir()
+		var w2: Vector2 = game.wind_dir()
 		bp.x += w2.x * 0.12 * delta
 		bp.z += w2.y * 0.12 * delta
 	_dive = lerpf(_dive, _dive_tgt, 1.0 - exp(-9.0 * delta))

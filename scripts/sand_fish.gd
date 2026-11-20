@@ -227,8 +227,10 @@ func place_school(at: Vector3, forward := Vector3.FORWARD, radius := 30.0,
 		_fsize[i] = randf_range(0.8, 0.95) * size_mul
 		_fphase[i] = randf() * TAU
 		_fperiod[i] = randf_range(9.0, 14.0)
-		# Прыжок поставлен на «сейчас»: существо видно над водой с первого кадра.
-		_foffset[i] = fposmod(0.55 * _fperiod[i] - t, _fperiod[i])
+		# Чётные прыгают «сейчас» (видно с первого кадра), нечётные идут
+		# по поверхности — в кадре стая, а не синхронный взвод.
+		var peak := 0.55 if i % 2 == 0 else 0.0
+		_foffset[i] = fposmod(peak * _fperiod[i] - t, _fperiod[i])
 		# Спина идёт по самой поверхности: под водой тела не видно вовсе —
 		# луч обрывается на плоскости моря.
 		_fcruise[i] = randf_range(0.35, 0.6)
