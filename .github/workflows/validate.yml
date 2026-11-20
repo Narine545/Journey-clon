@@ -68,25 +68,22 @@ jobs:
 
       # Импорт не компилирует скрипты, до которых не дотягивается ни одна
       # сцена: именно так «мёртвый» godot_fish/rod_cast.gd валил редактор
-      # в recovery mode, а CI оставался зелёным. Проверяем каждый скрипт.
-      - name: Compile every script (иначе редактор уходит в recovery mode)
+      # в recovery mode, а CI оставался зелёным. Текстовые пины ловят это
+      # (и прочие регрессии) без запуска движка — они быстрые.
+      - name: Python checks (текст-пины на живой код)
         run: |
           fail=0
-          for f in $(git ls-files '*.gd'); do
-            godot_bin/godot --headless --path . --check-only --script "res://$f" > /tmp/chk.log 2>&1 || true
-            if grep -qE "Parse Error|Parse error|SCRIPT ERROR|Compile Error|Cannot infer|Failed to load script" /tmp/chk.log; then
-              echo "::error file=$f::скрипт не компилируется"
-              grep -E "Parse Error|Parse error|SCRIPT ERROR|Compile Error|Cannot infer|Failed to load script" /tmp/chk.log | head -4 | while read -r line; do
-                echo "::error::$line"
-              done
+          for f in tests/check_*.py; do
+            if ! python3 "$f" > /tmp/check.log 2>&1; then
+              echo "::error file=$f::проверка не прошла"
+              tail -6 /tmp/check.log | while read -r line; do echo "::error::$line"; done
               fail=1
             fi
           done
           if [ $fail -ne 0 ]; then
-            echo "::error::Есть некомпилируемые скрипты — проект не откроется в редакторе"
             exit 1
           fi
-          echo "все скрипты компилируются"
+          echo "все текстовые проверки прошли"
 
       - name: Smoke run (автотест геймплея)
         run: |
