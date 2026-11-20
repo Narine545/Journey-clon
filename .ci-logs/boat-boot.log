@@ -16,7 +16,7 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
 [BOOT] старт · 74 МБ
-[BOOT] мир собран · 95 МБ
+[BOOT] мир собран · 94 МБ
 [BOOT] HUD рейда · 97 МБ
 [BOOT] звук моря · 261 МБ
 [BOOT] меню · 262 МБ
