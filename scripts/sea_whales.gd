@@ -19,8 +19,8 @@ extends Node3D
 
 const NIGHT_ON := 0.16 ## порог ночи, с которого киты выходят из глубины
 const WHALE_COUNT := 2 ## пара: третья туша в кадре уже тесно
-const WHALE_SCALE := 1.35 ## SDF-тело ≈ 4 м на единицу размера: кит 3–5 м
-const SCHOOL_RADIUS := 30.0 ## насколько широко пара ходит вокруг точки
+const WHALE_SCALE := 1.9 ## SDF-тело L = 2.4·s: кит 3.7–4.3 м
+const SCHOOL_RADIUS := 22.0 ## насколько широко пара ходит вокруг точки
 const BOUNDS_RADIUS := 110.0 ## радиус raymarch-culling вокруг камеры, м
 const REGROUP_DIST := 80.0 ## дальше этого стаю переносим ближе к судну, м
 ## Тёмная спина с холодным отливом — кит, а не рыбка из закатной палитры.
@@ -71,7 +71,7 @@ func place_near(at: Vector3, forward: Vector3) -> void:
 		return
 	_fish.set_process(true)
 	_fish.set_sdf_enabled(true)
-	_fish.place_school(at, forward, SCHOOL_RADIUS, TINT)
+	_fish.place_school(at, forward, 14.0, TINT) # кадр: киты вокруг лодки
 	_home = Vector2(at.x, at.z)
 	_has_home = true
 

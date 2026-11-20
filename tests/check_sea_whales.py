@@ -27,7 +27,7 @@ for banned in ('SphereMesh', 'BoxMesh', 'CapsuleMesh', 'CylinderMesh',
 assert 'const NIGHT_ON := 0.16' in whales
 assert 'if night01 < NIGHT_ON:' in whales
 assert 'const WHALE_COUNT := 2' in whales
-assert 'const WHALE_SCALE := 1.35' in whales
+assert 'const WHALE_SCALE := 1.9' in whales
 # Стая ставится дугой перед точкой и переставляется, если судно ушло.
 assert 'place_school(at, fwd, SCHOOL_RADIUS, TINT)' in whales
 assert 'REGROUP_DIST' in whales

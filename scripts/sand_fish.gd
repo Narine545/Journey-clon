@@ -214,11 +214,11 @@ func place_school(at: Vector3, forward := Vector3.FORWARD, radius := 30.0,
 	var base := atan2(forward.x, forward.z)
 	for i in range(fish_count):
 		# Дуга перед точкой (±28°), а не полный круг: стая не уходит за спину.
-		var t := 0.0 if fish_count <= 1 else float(i) / float(fish_count - 1)
-		var ang := base + (t - 0.5) * 0.98
+		var frac := 0.0 if fish_count <= 1 else float(i) / float(fish_count - 1)
+		var ang := base + (frac - 0.5) * 0.98
 		var dist := radius * (0.9 + 0.25 * float(i % 2))
 		var p := Vector3(at.x + sin(ang) * dist, 0.0, at.z + cos(ang) * dist)
-		p.y = water_level - randf_range(1.2, 1.9)
+		p.y = water_level - 0.5
 		_fpos[i] = p
 		_fish_home[i] = Vector2(p.x, p.z)
 		_fheading[i] = base + randf_range(-0.3, 0.3)
@@ -227,8 +227,11 @@ func place_school(at: Vector3, forward := Vector3.FORWARD, radius := 30.0,
 		_fsize[i] = randf_range(0.8, 0.95) * size_mul
 		_fphase[i] = randf() * TAU
 		_fperiod[i] = randf_range(9.0, 14.0)
-		_foffset[i] = randf() * _fperiod[i]
-		_fcruise[i] = randf_range(1.2, 1.9) # спина идёт по самой поверхности
+		# Прыжок поставлен на «сейчас»: существо видно над водой с первого кадра.
+		_foffset[i] = fposmod(0.55 * _fperiod[i] - t, _fperiod[i])
+		# Спина идёт по самой поверхности: под водой тела не видно вовсе —
+		# луч обрывается на плоскости моря.
+		_fcruise[i] = randf_range(0.35, 0.6)
 		_fjump[i] = _fsize[i] * randf_range(1.0, 1.4) * jump_mul
 		_fy[i] = p.y
 		_ftint[i] = tint if tint.r + tint.g + tint.b > 0.001 else PALETTE[i % PALETTE.size()]
