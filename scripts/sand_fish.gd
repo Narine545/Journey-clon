@@ -233,7 +233,7 @@ func place_school(at: Vector3, forward := Vector3.FORWARD, radius := 30.0,
 		_foffset[i] = fposmod(peak * _fperiod[i] - t, _fperiod[i])
 		# Спина идёт по самой поверхности: под водой тела не видно вовсе —
 		# луч обрывается на плоскости моря.
-		_fcruise[i] = randf_range(0.35, 0.6)
+		_fcruise[i] = randf_range(-0.2, 0.0)
 		_fjump[i] = _fsize[i] * randf_range(1.0, 1.4) * jump_mul
 		_fy[i] = p.y
 		_ftint[i] = tint if tint.r + tint.g + tint.b > 0.001 else PALETTE[i % PALETTE.size()]

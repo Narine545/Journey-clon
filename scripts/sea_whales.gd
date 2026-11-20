@@ -19,7 +19,7 @@ extends Node3D
 
 const NIGHT_ON := 0.16 ## порог ночи, с которого киты выходят из глубины
 const WHALE_COUNT := 2 ## пара: третья туша в кадре уже тесно
-const WHALE_SCALE := 1.9 ## SDF-тело L = 2.4·s: кит 3.7–4.3 м
+const WHALE_SCALE := 2.0 ## SDF-тело L = 2.4·s: кит 3.8–4.6 м
 const SCHOOL_RADIUS := 22.0 ## насколько широко пара ходит вокруг точки
 const BOUNDS_RADIUS := 60.0 ## радиус raymarch-culling вокруг камеры, м
 ## Качество реймарчинга для китов: тело крупное, ему хватает грубее и
