@@ -127,7 +127,11 @@ assert '"coverage", lerpf(lerpf(0.34, 0.48, n), 0.88, cloud)' in world
 assert '* weather_fog' in shader
 assert 'if (diagnostic_volume)' in shader  # Diagnostic override deliberately bypasses climate.
 assert 'main.weather.label()' in Path('scripts/boat_hud.gd').read_text()
-assert 'KEY_F' not in main.split('func _unhandled_input',1)[1].split('func _process',1)[0]
+# Погодные/световые переключатели не занимают F-клавиши; свободные F9/F10
+# отданы отладке китов (маркеры и перенос судна к ближайшему киту).
+unhandled = main.split('func _unhandled_input', 1)[1].split('func _process', 1)[0]
+import re as _re
+assert set(_re.findall(r'KEY_F\d+', unhandled)) <= {'KEY_F9', 'KEY_F10'}
 print('OK: 25% day vs 80% night mist/fog selection, smooth bounded fronts, 20/60/144 Hz, frozen-clock weather, wiring.')
 
 # Плотный дневной туман уходит из песочного в холод: иначе ровная бурая пелена.

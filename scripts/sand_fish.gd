@@ -48,6 +48,8 @@ const PALETTE: Array[Color] = [
 @export_range(0.4, 2.0) var size_mul := 1.0 ## множитель размера существ
 @export_range(0.4, 2.4) var jump_mul := 1.0 ## множитель высоты прыжка
 
+## Внешнее управление: тела ведёт другой скрипт (киты), модуль только рисует.
+var external := false
 var water_level := 0.0
 var water_field: WaterField = null # кольца от всплесков (опционально)
 var game: GameState = null # автозагрузка Game — общее солнце и туман с водой/песком
@@ -71,6 +73,7 @@ var _fcruise := PackedFloat32Array()
 var _fjump := PackedFloat32Array()
 var _fy := PackedFloat32Array() # сглаженная высота центра
 var _ftint := PackedColorArray()
+var _fpitch := PackedFloat32Array() # тангаж тела, рад (+ нос вверх)
 
 # ---- капли-брызги ----
 var _dpos := PackedVector3Array()
@@ -145,6 +148,8 @@ func _init_fish() -> void:
 	_fjump.resize(MAX_FISH)
 	_fy.resize(MAX_FISH)
 	_ftint.resize(MAX_FISH)
+	_fpitch.resize(MAX_FISH)
+	_fpitch.fill(0.0)
 	_fscare.resize(MAX_FISH)
 	_respawn.resize(MAX_FISH)
 	_respawn.fill(0.0)
@@ -266,8 +271,55 @@ func splash_burst(world_pos: Vector3, strength := 1.0) -> void:
 	_burst(world_pos, clampf(strength, 0.2, 2.0))
 
 
+## Внешнее управление телами (киты): модуль рисует, но не живёт за них.
+func set_external(on := true) -> void:
+	external = on
+	if _fpos.size() < MAX_FISH:
+		_init_fish()
+
+
+## Тело слота i: мировая точка, курс, размер (s в шейдере), фаза волны тела,
+## цвет кожи и тангаж. Позиции выставляет владелец — здесь только приём.
+func push_creature(i: int, pos: Vector3, heading: float, size: float, phase: float,
+		tint: Color, pitch := 0.0) -> void:
+	if i < 0 or i >= MAX_FISH:
+		return
+	_fpos[i] = pos
+	_fheading[i] = heading
+	_fsize[i] = size
+	_fphase[i] = phase
+	_ftint[i] = tint
+	_fpitch[i] = clampf(pitch, -0.9, 0.9)
+
+
+## Свечение кожи (0 — нет) и насколько тёмным читается тело под водой.
+func push_veil(strength: float, dark: float) -> void:
+	if mat == null:
+		return
+	mat.set_shader_parameter("u_veil_strength", strength)
+	mat.set_shader_parameter("u_veil_dark", dark)
+
+
+func push_glow(value: float) -> void:
+	if mat != null:
+		mat.set_shader_parameter("u_glow", clampf(value, 0.0, 3.0))
+
+
+func _camera_cull_quad() -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam != null and _quad != null:
+		_quad.global_position = cam.global_position
+
+
 func _process(delta: float) -> void:
 	t += delta
+	if external:
+		# Позиции/курсы/тангаж уже выставлены push_creature(): ни спавна,
+		# ни «своей» жизни здесь нет.
+		_camera_cull_quad()
+		_sim_drops(delta)
+		_push_uniforms(_camera_xz())
+		return
 	var cam := get_viewport().get_camera_3d()
 	if not _spawned:
 		# main добавляет рыб ДО камеры: ждём кадр, когда она есть,
@@ -390,8 +442,10 @@ func _push_uniforms(center: Vector2) -> void:
 	mt.resize(MAX_FISH)
 	var tn := PackedVector3Array()
 	tn.resize(MAX_FISH)
+	var pt := PackedFloat32Array()
+	pt.resize(MAX_FISH)
 	for i in range(MAX_FISH):
-		if i == CATCH_SLOT:
+		if i == CATCH_SLOT and not external:
 			if _catch_active:
 				st[i] = Vector4(_catch_pos.x, _catch_pos.y, _catch_pos.z, _catch_heading)
 				mt[i] = Vector2(_catch_size, _catch_phase)
@@ -402,6 +456,8 @@ func _push_uniforms(center: Vector2) -> void:
 		st[i] = Vector4(_fpos[i].x, _fpos[i].y, _fpos[i].z, _fheading[i])
 		mt[i] = Vector2(_fsize[i], _fphase[i])
 		tn[i] = Vector3(_ftint[i].r, _ftint[i].g, _ftint[i].b)
+		if _fpitch.size() > i:
+			pt[i] = _fpitch[i]
 
 	var dp := PackedVector4Array()
 	dp.resize(MAX_DROPS)
@@ -414,6 +470,7 @@ func _push_uniforms(center: Vector2) -> void:
 	mat.set_shader_parameter("u_fish_state", st)
 	mat.set_shader_parameter("u_fish_meta", mt)
 	mat.set_shader_parameter("u_fish_tint", tn)
+	mat.set_shader_parameter("u_fish_pitch", pt)
 	mat.set_shader_parameter("u_catch_flex", _catch_flex)
 	mat.set_shader_parameter("u_drops", dp)
 	mat.set_shader_parameter("u_center", center)

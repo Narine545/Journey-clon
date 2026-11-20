@@ -546,27 +546,55 @@ func _check_partial_slick_collection() -> void:
 
 
 func _check_sea_whales() -> void:
-	# Киты — не примитивы: их рисует тот же SDF-реймарчер, что рыб в модуле
-	# рыбалки (SandFish + sand_sea_sdf.gdshader), и только ночью.
-	_check(SeaWhales.NIGHT_ON > 0.0 and SeaWhales.NIGHT_ON < 0.4,
-		"киты выходят в сумерках, а не в полдень")
+	# Киты — не примитивы и не «заводная игрушка»: тело рисует SDF-рендер
+	# модуля рыбалки, а движением управляет SeaWhales (пружина глубины,
+	# тангаж, объезд судна, мелководье, след в воде).
+	_check(SeaWhales.BODY_LEN >= 5.0 and SeaWhales.TURN_RATE > 0.0
+			and SeaWhales.TURN_RATE < 1.0,
+		"кит крупный и разворачивается тяжело, а не как модель на радиоуправлении")
 	var whales := SeaWhales.new()
 	whales.setup(main)
 	main.add_child(whales)
-	whales.advance(0.0, 0.0)
-	_check(whales.get_node_or_null("WhaleSdf") == null,
-		"днём SDF-слой китов не создаётся вовсе")
 	whales.advance(0.0, 0.88)
 	var sdf: Node = whales.get_node_or_null("WhaleSdf")
 	_check(sdf is SandFish, "ночью киты живут тем же рендером существ, что рыбы модуля рыбалки")
 	if sdf is SandFish:
-		var fish: SandFish = sdf
-		_check(fish.fish_count == SeaWhales.WHALE_COUNT and fish.size_mul > 1.0,
-			"пара крупных существ вместо рыбьей стаи")
-		_check(fish._quad != null and fish._quad.mesh is QuadMesh and fish.mat != null,
-			"тело рисует SDF-квад, а не сетка-примитив")
-	whales.advance(0.0, 0.0)
-	_check(not whales.is_alive(), "с рассветом слой гаснет и перестаёт считаться")
+		var renderer: SandFish = sdf
+		_check(renderer.external and renderer.fish_count == SeaWhales.WHALE_COUNT,
+			"модуль только рисует: движением китов управляет SeaWhales")
+		var has_pitch := false
+		if renderer.mat != null and renderer.mat.shader != null:
+			has_pitch = renderer.mat.shader.code.contains("u_fish_pitch")
+		_check(has_pitch, "тангаж уходит в шейдер: нырок носом вниз, всплытие носом вверх")
+	_check(whales.whales.size() == SeaWhales.WHALE_COUNT, "в море пара китов")
+	# 900 шагов по 1/30 с: ни телепортов, ни утопления, ни прохода сквозь судно.
+	var max_step := 0.0
+	var min_gap := INF
+	var depth_ok := true
+	var prev: Array[Vector2] = []
+	for w in whales.whales:
+		var p0: Vector2 = Vector2(w.pos.x, w.pos.z)
+		prev.append(p0)
+	for _i in range(900):
+		whales.advance(1.0 / 30.0, 0.88)
+		for k in range(whales.whales.size()):
+			var w = whales.whales[k]
+			var p: Vector2 = Vector2(w.pos.x, w.pos.z)
+			max_step = maxf(max_step, p.distance_to(prev[k]))
+			prev[k] = p
+			var depth: float = main.water.surface_height(w.pos.x, w.pos.z) - w.y
+			if depth < -2.5 or depth > 12.0 or not is_finite(depth):
+				depth_ok = false
+			var boat_at: Vector2 = Vector2(main.boat.global_position.x,
+				main.boat.global_position.z)
+			min_gap = minf(min_gap, p.distance_to(boat_at))
+	_check(max_step < 0.6, "кит не телепортируется: за кадр не больше %.2f м" % max_step)
+	_check(depth_ok, "глубина держится в разумных пределах: не тонет и не вылетает")
+	_check(min_gap > 6.0, "кит не лезет под корпус (минимальный зазор %.1f м)" % min_gap)
+	whales.debug_toggle()
+	_check(whales.debug_on and whales._debug_line() != "",
+		"отладка китов включается и печатает состояние стаи")
+	whales.debug_toggle()
 	whales.queue_free()
 
 

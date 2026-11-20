@@ -1228,6 +1228,29 @@ func debug_warp_to_beacon() -> void:
 	announce("ТЕСТ: У БУЯ «%s» — НАЖМИТЕ [E]" % target_b["name"].to_upper())
 
 
+## Отладка китов: перенести судно к ближайшему киту, чтобы не искать его.
+func debug_warp_to_whale() -> void:
+	if sea_whales == null or boat == null:
+		return
+	var index := sea_whales.nearest_to(boat.global_position)
+	if index < 0:
+		announce("КИТОВ ПОКА НЕТ")
+		return
+	var whale_pos: Vector3 = sea_whales.whales[index].pos
+	var at := Vector2(whale_pos.x + 14.0, whale_pos.z + 10.0)
+	var y := water.surface_height(at.x, at.y) + 0.08
+	boat.global_position = Vector3(at.x, y, at.y)
+	boat.speed = 0.0
+	boat._reset_trail(at)
+	boat.reset_physics_interpolation()
+	_camera_focus = boat.global_position + Vector3.UP * 0.8
+	camera.global_position = _camera_focus + Vector3(21.0, 26.2, 30.0)
+	camera.look_at(_camera_focus, Vector3.UP)
+	if not sea_whales.debug_on:
+		sea_whales.debug_toggle()
+	announce("КИТ %d — [F9] МАРКЕРЫ" % (index + 1))
+
+
 func camera_height_multiple() -> float:
 	return maxf(0.0, camera.global_position.y - Coast.SEA_LEVEL) / CAMERA_REFERENCE_HEIGHT
 
@@ -1333,6 +1356,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_H:
 				debug_toggle_headlight()
+				get_viewport().set_input_as_handled()
+			KEY_F9:
+				# Отладка китов: маркеры, состояния и расстояния на экране.
+				if sea_whales != null:
+					sea_whales.debug_toggle()
+				get_viewport().set_input_as_handled()
+			KEY_F10:
+				debug_warp_to_whale()
 				get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:

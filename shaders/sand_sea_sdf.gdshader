@@ -65,6 +65,14 @@ uniform vec3 u_drop_tint : source_color = vec3(0.98, 0.62, 0.38);
 
 // След подводной рыбы — очень тонкий и малоконтрастный.
 uniform float u_veil_strength = 0.42;
+// Насколько тень подводного тела темнит воду: кит под водой должен читаться
+// как тёмное тело под поверхностью, а не исчезать совсем.
+uniform float u_veil_dark = 0.12;
+// Наклон тела (рад): + нос вверх, - нос вниз. Без тангажа нырок выглядел
+// как равномерное погружение лифта.
+uniform float u_fish_pitch[7];
+// Биолюминесценция кожи (ночью существа светятся сами, как в модуле рыбалки).
+uniform float u_glow = 0.0;
 
 // КИТ ПЕСЧАНЫХ РЫБ (godot_fish): 3 слота × 12 костей, семь видов.
 const int FK_FISH = 3;
@@ -125,11 +133,14 @@ float sd_ell(vec3 p, vec3 r) {
 // амплитуда растёт к хвосту (0.05s -> 0.43s) — та же пластика, что у
 // «дыхания» моря, только быстрая. Плюс морда, спинной гребень и хвостовая
 // лопасть-«ласта» из двух сплюснутых эллипсоидов.
-vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float phase, vec3 tint,
-        float body_flex) {
-        vec3 dir = vec3(cos(heading), 0.0, sin(heading));
-        vec3 side = vec3(-dir.z, 0.0, dir.x);
-        vec3 up = vec3(0.0, 1.0, 0.0);
+vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float pitch, float phase,
+        vec3 tint, float body_flex) {
+        vec3 flat_dir = vec3(cos(heading), 0.0, sin(heading));
+        vec3 side = vec3(-flat_dir.z, 0.0, flat_dir.x);
+        // Курс + тангаж: тело наклоняется в нырок и на всплытии, плавники и
+        // лопасть поворачиваются вместе с осью тела.
+        vec3 dir = normalize(flat_dir * cos(pitch) + vec3(0.0, sin(pitch), 0.0));
+        vec3 up = normalize(cross(side, dir));
         float L = 2.4 * s;
 
         vec4 acc = vec4(0.0, 0.0, 0.0, 1e9);
@@ -172,6 +183,22 @@ vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float phase, vec3 tint,
         acc = sdf_smooth_union(acc, du, tint * 0.90, 0.15 * s);
         acc = sdf_smooth_union(acc, dl, tint * 0.90, 0.15 * s);
 
+        // ---- Кожа: контражур, крап, борозды ----
+        // Считается в системе тела, поэтому узор едет вместе с китом и не
+        // «плывёт» по поверхности, как натянутая на болванку текстура.
+        vec3 q = p - C;
+        float ise = 1.0 / max(s, 1e-3);
+        float along = dot(q, dir) * ise;
+        float latn = dot(q, side) * ise;
+        float upw = dot(q, up) * ise;
+        float back = smoothstep(-0.45, 0.55, upw);      // 0 брюхо, 1 спина
+        float skin = mix(1.20, 0.56, back);             // тёмная спина, светлое брюхо
+        float speck = step(0.87, hash12(floor(vec2(along, latn) * 6.0)));
+        skin += speck * 0.34 * back;                    // крап ближе к спине
+        // Продольные борозды на горле/брюхе — есть у всех полосатиков.
+        skin *= 1.0 - 0.13 * (0.5 + 0.5 * sin(along * 22.0)) * (1.0 - back);
+        acc.rgb *= skin;
+
         return acc;
 }
 
@@ -195,8 +222,8 @@ vec4 map(vec3 p) {
                         continue;
                 }
                 float body_flex = (i == 6) ? u_catch_flex : 1.0;
-                vec4 f = fish_sdf(p, C, s, u_fish_state[i].w, u_fish_meta[i].y,
-                        u_fish_tint[i], body_flex);
+                vec4 f = fish_sdf(p, C, s, u_fish_state[i].w, u_fish_pitch[i],
+                        u_fish_meta[i].y, u_fish_tint[i], body_flex);
                 acc = sdf_smooth_union(acc, f.w, f.rgb, 0.42 * s);
         }
 
@@ -375,6 +402,10 @@ void fragment() {
                                 col += vec3(1.0, 0.85, 0.60)
                                         * pow(clamp(dot(n, h), 0.0, 1.0), 42.0) * 0.55;
                                 col += sand_shade * pow(1.0 - ndv, 3.0) * 0.30;
+                                // Биолюминесценция: кожа светится сама, ярче к
+                                // силуэту — тело читается и в полной темноте.
+                                col += albedo * u_glow
+                                        * (0.22 + 0.78 * pow(1.0 - ndv, 2.4));
 
                                 // глиттер «мокрого песка»: редкие вспышки на теле
                                 vec2 gp = floor(p.xz * 5.0);
@@ -440,7 +471,7 @@ void fragment() {
                                                 if (m > 0.003) {
                                                         vec3 avg = tw / max(m, 1e-4);
                                                         vec3 scene_col = texture(u_screen, SCREEN_UV).rgb;
-                                                        out_col = scene_col * (1.0 - 0.12 * m)
+                                                        out_col = scene_col * (1.0 - u_veil_dark * m)
                                                                 + avg * 0.18 * m;
                                                         alpha = clamp(m * u_veil_strength * 0.35, 0.0, 0.10);
                                                 }
