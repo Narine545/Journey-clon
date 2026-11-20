@@ -186,11 +186,11 @@ vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float pitch, float phase,
         // ---- Кожа: контражур, крап, борозды ----
         // Считается в системе тела, поэтому узор едет вместе с китом и не
         // «плывёт» по поверхности, как натянутая на болванку текстура.
-        vec3 q = p - C;
+        vec3 qs = p - C; // своё имя: q уже занят спинным гребнем выше
         float ise = 1.0 / max(s, 1e-3);
-        float along = dot(q, dir) * ise;
-        float latn = dot(q, side) * ise;
-        float upw = dot(q, up) * ise;
+        float along = dot(qs, dir) * ise;
+        float latn = dot(qs, side) * ise;
+        float upw = dot(qs, up) * ise;
         float back = smoothstep(-0.45, 0.55, upw);      // 0 брюхо, 1 спина
         float skin = mix(1.20, 0.56, back);             // тёмная спина, светлое брюхо
         float speck = step(0.87, hash12(floor(vec2(along, latn) * 6.0)));
