@@ -24,16 +24,19 @@ func _run() -> void:
 		main.sea_look_trial.offset = Vector2(-4000.0, 0.0)
 	main._start_in_harbor()
 	await _shooter.wait_frames_count(20)
-	# Серия идёт ТРЕМЯ прогонами: посёлок, гавань и открытое море. Под
-	# софтверным Vulkan каждый кадр стоит около минуты, и даже половина
-	# серии уже вылетала по таймауту шага CI; трети укладываются с запасом.
+	# Серия идёт ЧЕТЫРЬМЯ прогонами: посёлок, гавань, море и рейд (маяк,
+	# сфера, ноги). Под софтверным Vulkan кадр стоит около минуты, и любая
+	# половина серии уже вылетала по таймауту шага CI.
 	var lane := OS.get_environment("TIDE_LIGHT_SET")
-	if lane != "sea" and lane != "harbor":
+	var all := lane == ""
+	if all or lane == "village":
 		await _village_shots()
-	if lane != "sea" and lane != "village":
+	if all or lane == "harbor":
 		await _harbor_shots()
-	if lane != "village" and lane != "harbor":
+	if all or lane == "sea":
 		await _sea_shots()
+	if all or lane == "raid":
+		await _raid_shots()
 	print("[LIGHT SHOTS] готово")
 	get_tree().quit(0)
 
@@ -89,6 +92,10 @@ func _sea_shots() -> void:
 	main.camera.size = 84.0
 	await _shot("light_10_night_beacon_wide", 23.0, 0.0)
 
+
+## Рейд: сфера-вход, всплески, маяк ночью и ходячие ноги с пинком.
+## Отдельный прогон: кадры идут пачками по несколько штук подряд.
+func _raid_shots() -> void:
 	# Сфера-вход: погружение перед взлётом — всплеск, кольца и свет из-под воды.
 	_night_atmosphere(0.0)
 	_camera_on_gate()

@@ -149,9 +149,10 @@ jobs:
 
   ui:
     runs-on: ubuntu-latest
-    # Витрина TIDECUT + живой запуск + серия кадров света: шаги идут подряд,
-    # и 25 минут на всё уже не хватало — задача отменялась вместе с артефактами.
-    timeout-minutes: 45
+    # Витрина TIDECUT + живой запуск + четыре полосы кадров света: под
+    # софтверным Vulkan каждый кадр стоит около минуты, и на всё вместе
+    # 45 минут уже не хватало — задача отменялась вместе с артефактами.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -269,7 +270,7 @@ jobs:
             exit 1
           fi
           grep -F "[LIGHT SHOTS] готово" light-harbor.log || (echo "::error::серия «гавань» не дошла до конца" && exit 1)
-      - name: World lighting shots — море, маяк, сфера, ноги
+      - name: World lighting shots — море и киты
         run: |
           TIDE_LIGHT_SET=sea TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
             timeout 1650 xvfb-run -a -s "-screen 0 1280x720x24" \
@@ -283,8 +284,24 @@ jobs:
             done
             exit 1
           fi
-          grep -F "[LIGHT SHOTS] готово" light-shots.log || (echo "::error::серия «море, маяк, сфера, ноги» не дошла до конца" && exit 1)
-          test -f shots/light_17_kick_03.png || (echo "::error::кадры ног не снялись" && exit 1)
+          grep -F "[LIGHT SHOTS] готово" light-shots.log || (echo "::error::серия «море и киты» не дошла до конца" && exit 1)
+          test -f shots/light_10_night_beacon_wide.png || (echo "::error::кадры маяка не снялись" && exit 1)
+      - name: World lighting shots — рейд (сфера, маяк, ноги)
+        run: |
+          TIDE_LIGHT_SET=raid TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
+            timeout 1200 xvfb-run -a -s "-screen 0 1280x720x24" \
+            godot_bin/godot --path . res://scenes/boat_main.tscn \
+            --rendering-method forward_plus --resolution 1280x720 \
+            --fixed-fps 30 --quit-after 1500 > light-raid.log 2>&1 || true
+          tail -40 light-raid.log
+          if grep -qiE "SCRIPT ERROR|SHADER ERROR|Parse Error" light-raid.log; then
+            grep -iE "SCRIPT ERROR|SHADER ERROR|Parse Error" -A3 light-raid.log | head -20 | while read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
+          grep -F "[LIGHT SHOTS] готово" light-raid.log || (echo "::error::серия «рейд» не дошла до конца" && exit 1)
+          test -f shots/light_17_kick_03.png || (echo "::error::кадры пинка не снялись" && exit 1)
       - name: Publish UI shots (всегда)
         if: always()
         run: |
@@ -296,6 +313,7 @@ jobs:
           cp -f light-shots.log .ci-logs/light-shots.log 2>/dev/null || true
           cp -f light-harbor.log .ci-logs/light-harbor.log 2>/dev/null || true
           cp -f light-village.log .ci-logs/light-village.log 2>/dev/null || true
+          cp -f light-raid.log .ci-logs/light-raid.log 2>/dev/null || true
           if compgen -G "shots/*.png" > /dev/null; then
             git add shots
           fi
@@ -305,7 +323,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             git fetch -q origin "${GITHUB_REF#refs/heads/}"
             git reset -q --hard FETCH_HEAD
-            git checkout -q "$OURS" -- shots .ci-logs/light-shots.log .ci-logs/light-harbor.log .ci-logs/light-village.log .ci-logs/tide-ui.log .ci-logs/boat-boot.log 2>/dev/null || true
+            git checkout -q "$OURS" -- shots .ci-logs/light-shots.log .ci-logs/light-harbor.log .ci-logs/light-village.log .ci-logs/light-raid.log .ci-logs/tide-ui.log .ci-logs/boat-boot.log 2>/dev/null || true
             if git diff --cached --quiet && git diff --quiet; then
               break
             fi

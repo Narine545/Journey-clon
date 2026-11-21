@@ -70,7 +70,7 @@ for shot in ('light_22_village_day', 'light_23_village_night', 'light_24_village
 # перестала укладываться в лимит шага CI и падала по таймауту.
 assert 'TIDE_LIGHT_SET' in shots and 'func _village_shots()' in shots
 _wf = Path('.github/workflows/validate.yml').read_text()
-for _lane in ('village', 'harbor', 'sea'):
+for _lane in ('village', 'harbor', 'sea', 'raid'):
     assert f'TIDE_LIGHT_SET={_lane}' in _wf, _lane
 assert 'HABS MA-857' in Path('docs/world/harbor_village.md').read_text()
 # --- Ни одна вызванная локальная функция не должна «исчезнуть» ----------
