@@ -36,6 +36,8 @@ var prologue: TidePrologue
 var prologue_seen := false
 var inspector: WorldInspector
 var photo_mode: BoatPhotoMode
+## Слой стиля «Золочёный прилив»: vaporwave × gothic поверх мира, под HUD.
+var style_layer: GiltStyle
 var raid: RaidRun
 var raid_gate: RaidGate
 var sound: BoatSound
@@ -121,6 +123,10 @@ func _ready() -> void:
 	coast.attach_sand(sand)
 	coast.set_sand("orthographic_glitter", 1.0)
 	coast.set_sand("island_biome", 1.0)
+	# Земля посёлка — каменное плато, а не продолжение пляжа. Радиус и центр
+	# держим здесь же, где ставится посёлок: шейдер не должен знать про него
+	# больше, чем нужно.
+	coast.set_gilt(IslandVillage.PLAZA, 46.0, 1.0)
 	water = WaterSurface.new()
 	water.shader_path = "res://shaders/water_boat.gdshader"
 	add_child(water)
@@ -204,6 +210,11 @@ func _ready() -> void:
 	add_child(sea_look_trial)
 	sea_look_trial.setup(self)
 	weather.setup()
+	# Слой стиля создаётся до первого _apply_atmosphere: он читает night01
+	# и должен появиться на кадре сразу, без «вспышки» на первом апдейте.
+	style_layer = GiltStyle.new()
+	add_child(style_layer)
+	style_layer.setup()
 	sea_whales = SeaWhales.new()
 	sea_whales.name = "SeaWhales"
 	add_child(sea_whales)
@@ -310,6 +321,9 @@ func _apply_atmosphere(n01: float) -> void:
 		boat.update_night_lights(night01, overdrive_timer > 0.0)
 		for slick in slicks:
 			slick.configure_night_visibility(boat._bow_spot, night01)
+	if style_layer != null:
+		# Ночь разжигает неон, день держит золото: один вызов на кадр воздуха.
+		style_layer.set_night(night01)
 	if inspector != null:
 		inspector.apply_view_override()
 
@@ -1357,6 +1371,23 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_9:
 				debug_adjust_fill(0.04)
+				get_viewport().set_input_as_handled()
+			KEY_C:
+				# Стиль мира [C]: выкл → 35% → 55% → 78% → выкл. Одна клавиша,
+				# потому что сравнивать варианты надо на ходу, а не в меню.
+				# F-клавиши заняты F9/F10 (киты) и редактором, поэтому C.
+				if style_layer != null:
+					var steps := [0.0, 0.35, 0.55, 0.78]
+					var next := 0.0
+					for i in range(steps.size()):
+						if steps[i] > style_layer.intensity + 0.001:
+							next = steps[i]
+							break
+					if not style_layer.enabled:
+						next = 0.35
+						style_layer.set_enabled(true)
+					style_layer.set_intensity(next)
+					announce("СТИЛЬ «ЗОЛОЧЁНЫЙ ПРИЛИВ»: %d%%" % int(round(next * 100.0)))
 				get_viewport().set_input_as_handled()
 			KEY_H:
 				debug_toggle_headlight()

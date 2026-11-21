@@ -187,9 +187,29 @@ func _village_shots() -> void:
 	main.inspector.update_camera(0.0)
 	await _shot("light_22_village_day", 12.0, 0.0)
 	await _shot("light_23_village_night", 23.0, 0.0)
+	# Улица целиком: обе линии дорог, площадь, рынок и силуэт часовни.
+	_village_frame(Vector3(192.0, 5.0, -31.0), -1.05, 0.62, 62.0)
+	await _shot("light_24_village_street", 12.0, 0.0)
+	_village_frame(Vector3(200.0, 5.0, -31.0), -0.95, 0.55, 56.0)
+	await _shot("light_25_village_dusk", 19.4, 0.0)
+	# Прибрежный храм-фонарь: точка входа с воды, видна с лодки.
+	_village_frame(Vector3(173.0, 3.0, -21.5), -2.25, 0.36, 30.0)
+	await _shot("light_26_shrine_night", 22.4, 0.0)
+	_village_frame(Vector3(173.0, 3.0, -21.5), -2.25, 0.36, 30.0)
+	await _shot("light_27_shrine_day", 11.0, 0.0)
 	main.inspector.set_free_camera(false)
 	main.inspector.visible = true
 	main._start_in_harbor()
+
+
+## Свободная камера на заданной точке с размером кадра: кадры посёлка
+## должны сниматься одним набором правил, а не ручными offset-ами.
+func _village_frame(focus: Vector3, yaw: float, pitch: float, size: float) -> void:
+	main.inspector._focus = focus
+	main.inspector._yaw = yaw
+	main.inspector._pitch = pitch
+	main.camera.size = size
+	main.inspector.update_camera(0.0)
 
 
 ## Ночная атмосфера без тумана: нужна для кадров со сферой.

@@ -352,10 +352,31 @@ const NIGHT_HORIZON := Color(0.22, 0.27, 0.40)
 const NIGHT_SKY := Color(0.04, 0.05, 0.10)
 
 
+## Земля посёлка живёт на своей палитре (gilt_*), но время суток — общее.
+## Без этого «каменное плато» оставалось бы дневным пятном ночью и светилось
+## бы в полдень: освещение сцены мирается, а albedo — нет.
+const GILT_DAY := Color(1.00, 0.97, 0.93)
+const GILT_NIGHT := Color(0.42, 0.46, 0.62)
+const GILT_DUSK := Color(1.00, 0.74, 0.66)
+
+
+func set_gilt(center: Vector2, radius: float, strength: float) -> void:
+	if material_override == null:
+		return
+	var m: ShaderMaterial = material_override
+	m.set_shader_parameter("gilt_center", center)
+	m.set_shader_parameter("gilt_radius", radius)
+	m.set_shader_parameter("gilt_strength", strength)
+
+
 func set_night01(v: float) -> void:
 	if material_override == null:
 		return
 	var m: ShaderMaterial = material_override
+	var gilt_tint := GILT_DAY.lerp(GILT_NIGHT, v)
+	# Сумерки красят камень в персиковый: под рыжим ключом гравий не сереет.
+	gilt_tint = gilt_tint.lerp(GILT_DUSK, 0.45 * sin(clampf(v, 0.0, 1.0) * PI))
+	m.set_shader_parameter("gilt_tint", gilt_tint)
 	m.set_shader_parameter("sand_sunny", DAY_SUNNY.lerp(NIGHT_SUNNY, v))
 	m.set_shader_parameter("sand_hot", DAY_HOT.lerp(NIGHT_HOT, v))
 	m.set_shader_parameter("sand_shade", DAY_SHADE.lerp(NIGHT_SHADE, v))
