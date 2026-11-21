@@ -31,17 +31,17 @@ RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_04_night_sea_clear.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_05_night_sea_fog.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_21_whales_00.png 1280x720
-[WHALES] 0: дыхание -0.1м 3.1м/с · 1: нырок 1.2м 3.1м/с · в кадре: true
+[WHALES] 0: дыхание -0.0м 3.1м/с · 1: нырок 1.5м 3.1м/с · в кадре: true
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_21_whales_01.png 1280x720
-[WHALES] 0: дыхание -0.1м 2.8м/с · 1: нырок 1.3м 2.8м/с · в кадре: true
+[WHALES] 0: дыхание -0.0м 2.8м/с · 1: нырок 1.3м 2.8м/с · в кадре: true
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_21_whales_02.png 1280x720
 [WHALES] 0: дыхание -0.5м 2.8м/с · 1: нырок 1.7м 2.8м/с · в кадре: true
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_21_whales_03.png 1280x720
 [WHALES] 0: дыхание -0.6м 2.8м/с · 1: нырок 1.2м 2.8м/с · в кадре: true
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_21_whales_04.png 1280x720
-[WHALES] 0: дыхание 0.0м 2.8м/с · 1: нырок 1.3м 2.8м/с · в кадре: true
+[WHALES] 0: дыхание -0.0м 2.8м/с · 1: нырок 1.3м 2.8м/с · в кадре: true
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_21_whales_05.png 1280x720
-[WHALES] 0: дыхание -0.1м 3.1м/с · 1: нырок 1.3м 3.1м/с · в кадре: true
+[WHALES] 0: дыхание -0.2м 3.1м/с · 1: нырок 1.3м 3.1м/с · в кадре: true
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_08_dusk_sea.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_09_day_sea.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_11_day_sea_wide.png 1280x720
