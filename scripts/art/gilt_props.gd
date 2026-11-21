@@ -316,19 +316,52 @@ func drying_rack(at: Vector3, yaw := 0.0) -> void:
 			at + bx * Vector3(x, 1.05 - sag, 0.05), 0.022, Color("3b4a3a"))
 
 
-## Полосатая будка/склад у причала: контейнер в стиле посёлка.
+## Полосатая будка/склад у причала: контейнер в стиле посёлка. Стоит у
+## съезда с пирса, поэтому «читается» с четырёх сторон: полосы и ланцет
+## повторены на обеих длинных стенах, а торцы получили дверь и погрузочный
+## помост — иначе с воды видна просто серая коробка.
 func store_hut(at: Vector3, yaw := 0.0) -> void:
 	var bx := Basis(Vector3.UP, yaw)
 	GiltShapes.box(_stone, at + bx * Vector3(0.0, 1.15, 0.0), Vector3(2.6, 2.3, 2.0),
 		Color("232838"), bx)
-	# Полосы эмали: две вертикальные полосы по фасаду — «портовая» метка.
-	for i in range(2):
-		GiltShapes.box(_gilt, at + bx * Vector3(-0.65 + float(i) * 1.3, 1.15, 1.01),
-			Vector3(0.42, 2.30, 0.06), palette_stripe(i), bx)
+	# Цоколь и верхний пояс: две линии, по которым коробка читается объёмом.
+	GiltShapes.box(_stone, at + bx * Vector3(0.0, 0.12, 0.0), Vector3(2.76, 0.24, 2.16),
+		Color("1b1f2b"), bx)
+	GiltShapes.box(_gilt, at + bx * Vector3(0.0, 2.22, 0.0), Vector3(2.72, 0.10, 2.12),
+		GiltPalette.GILT * 0.55, bx)
+	# Полосы эмали на обеих длинных стенах — «портовая» метка с любого борта.
+	for side in [1.0, -1.0]:
+		var depth: float = 1.01 * float(side)
+		for i in range(2):
+			GiltShapes.box(_gilt, at + bx * Vector3(-0.65 + float(i) * 1.3, 1.15, depth),
+				Vector3(0.42, 2.10, 0.06), palette_stripe(i), bx)
+	# Ланцет — на обеих длинных стенах: ночью будка светится на оба борта.
+	# Стекло красим по ТЕКУЩЕМУ вечеру (_night), а не «ночь навсегда»:
+	# днём это свинцовое стекло, ночью огонь даёт эмиссия общей сетки
+	# PropsGlass — так же, как у домов и у фонарей.
+	for face in [1.0, -1.0]:
+		var face_bx := bx * (Basis.IDENTITY if face > 0.0 else Basis(Vector3.UP, PI))
+		for side in [1.0, -1.0]:
+			GiltShapes.lancet(_glass, _gilt,
+				at + bx * Vector3(1.12 * float(side), 0.66, 1.02 * float(face)),
+				0.40, 1.00, GiltPalette.LAMP_NEON, GiltPalette.LEAD, _night, 0.05,
+				face_bx)
+	# Дверь с торца (+X): склад, куда что-то заносят. К ней — помост.
+	var side_bx := bx * Basis(Vector3.UP, PI * 0.5)
+	GiltShapes.extrude_z(_wood, GiltShapes.pointed_arch(0.52, 0.0, 0.70, 5),
+		1.28, 1.37, GiltPalette.WOOD_DARK, at, side_bx)
+	for i in range(3):
+		GiltShapes.beam(_dark, at + side_bx * Vector3(-0.26, 0.30 + float(i) * 0.30, 1.33),
+			at + side_bx * Vector3(0.26, 0.30 + float(i) * 0.30, 1.33), 0.022,
+			GiltPalette.IRON)
+	# Помост у двери: доски вплотную к стене (стена на 1.3 по X) и опора —
+	# иначе от стены до настила остаётся щель, и помост «висит».
+	GiltShapes.box(_wood, at + side_bx * Vector3(0.0, 0.12, 1.72), Vector3(1.30, 0.16, 0.84),
+		GiltPalette.WOOD_WARM)
+	GiltShapes.box(_stone, at + side_bx * Vector3(0.0, 0.02, 1.72), Vector3(1.10, 0.14, 0.66),
+		Color("1d212c"))
 	GiltShapes.pent_roof(_wood, at + bx * Vector3(0.0, 2.30, 0.10), 3.0, 2.4,
 		0.22, 0.34, GiltPalette.SLATE, GiltPalette.LEAD)
-	GiltShapes.lancet(_glass, _gilt, at + bx * Vector3(1.12, 0.60, 1.02), 0.40, 1.00,
-		GiltPalette.LAMP_NEON, GiltPalette.LEAD, 1.0, 0.05, bx)
 
 
 func palette_stripe(index: int) -> Color:

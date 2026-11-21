@@ -55,7 +55,13 @@ for func in ('pointed_arch', 'lancet', 'gable_roof', 'hip_roof', 'spire',
 assert 'static func facing' in shapes and 'bx * Vector3' in shapes
 props = Path('scripts/art/gilt_props.gd').read_text()
 for piece in ('gate', 'lamp_post', 'fountain', 'stall', 'fence', 'barrel',
-              'mooring_bell', 'drying_rack', 'arch'):
+              'mooring_bell', 'drying_rack', 'arch', 'store_hut'):
     assert f'func {piece}(' in props, piece
 assert 'gilt_neon_water.gdshader' in props
+# Стекло будки-склада не «ночь навсегда»: днём ланцет не горит бирюзой.
+hut = props.split('func store_hut(', 1)[1].split('\nfunc ', 1)[0]
+assert 'GiltPalette.LEAD, _night,' in hut, 'store_hut: стекло по текущему вечеру'
+assert ', 1.0, 0.05' not in hut, 'store_hut: night01 не должен быть константой'
+# Будка стоит у съезда: окна и полосы на обеих длинных стенах.
+assert 'for face in [1.0, -1.0]' in hut, 'store_hut: ланцет только на одной стене'
 print('check_gilt_style: ok')
