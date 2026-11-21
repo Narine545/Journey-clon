@@ -66,6 +66,10 @@ assert 'village.chapel' in smoke and 'village.shrine' in smoke
 for shot in ('light_22_village_day', 'light_23_village_night', 'light_24_village_street',
              'light_25_village_dusk', 'light_26_shrine_night', 'light_27_shrine_day'):
     assert shot in shots, shot
+# Кадры посёлка — отдельный прогон (TIDE_LIGHT_SET): с ними серия света
+# перестала укладываться в лимит шага CI и падала по таймауту.
+assert 'TIDE_LIGHT_SET' in shots and 'func _village_shots()' in shots
+assert 'TIDE_LIGHT_SET=village' in Path('.github/workflows/validate.yml').read_text()
 assert 'HABS MA-857' in Path('docs/world/harbor_village.md').read_text()
 # --- Ни одна вызванная локальная функция не должна «исчезнуть» ----------
 # Ровно это уронило импорт в CI: _build_shrine() вызывался, а функции не было,

@@ -24,8 +24,21 @@ func _run() -> void:
 		main.sea_look_trial.offset = Vector2(-4000.0, 0.0)
 	main._start_in_harbor()
 	await _shooter.wait_frames_count(20)
-	await _village_shots()
+	# Серия идёт в два прогона: мир (море, маяк, сфера, ноги) и посёлок.
+	# На общем раннере одна серия уже упиралась в лимит шага CI, и кадры
+	# терялись вместе с задачей; половинки укладываются вдвое быстрее.
+	var lane := OS.get_environment("TIDE_LIGHT_SET")
+	if lane != "world":
+		await _village_shots()
+	if lane != "village":
+		await _world_shots()
+	print("[LIGHT SHOTS] готово")
+	get_tree().quit(0)
 
+
+## Мир: гавань, море, киты, маяк, сфера и ходячие ноги. Отдельный прогон,
+## чтобы серия кадров не упиралась в лимит шага CI.
+func _world_shots() -> void:
 	await _shot("light_01_day_harbor", 12.0, 0.0)
 	await _shot("light_02_dusk_harbor", 19.75, 0.0)
 	await _shot("light_03_night_harbor", 23.0, 0.0)
@@ -135,10 +148,6 @@ func _run() -> void:
 	await _shooter.wait_frames_count(10)
 	await _shooter.capture("light_17_kick_03")
 	main.raid.enemies.clear()
-
-	print("[LIGHT SHOTS] готово")
-	get_tree().quit(0)
-
 
 ## Пустой враг для кадра: только то, что нужно отрисовке и движению.
 func _dummy_enemy(at: Vector2, hp: float, combat_id: int) -> Dictionary:
