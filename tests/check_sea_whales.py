@@ -20,16 +20,21 @@ assert 'body.global_basis = Basis(Vector3.UP, -w.heading) * Basis(Vector3.BACK, 
 body_shader = Path('shaders/whale_body.gdshader').read_text()
 assert 'unshaded' not in body_shader
 assert 'EMISSION = glow_color.rgb * glow_strength' in body_shader
-assert 'VERTEX.y += sin(swim_phase' in body_shader
+assert 'VERTEX.y += sin(phase_y)' in body_shader
 assert Path('assets/creatures/whale.obj').stat().st_size > 1000
 
 # --- движение: пружина глубины, тангаж из вертикальной скорости, гребок с глайдом
-assert 'const SPRING := 1.7' in whales
+assert 'const SPRING := 0.85' in whales
+assert 'const DEPTH_RATE := 0.75' in whales
+assert 'w.depth_current = move_toward' in whales
 assert 'var damping := 2.0 * sqrt(SPRING)' in whales
 assert 'w.vy += (SPRING * (target_y - w.y) - damping * w.vy) * delta' in whales
 assert 'main.water.surface_height(w.pos.x, w.pos.z)' in whales
 assert 'var pitch_want := clampf(atan2(w.vy, maxf(w.speed, 0.6)), -0.45, 0.45)' in whales
-assert 'var glide := 0.40 + 0.60 * (0.5 + 0.5 * sin(' in whales      # планирование
+assert 'var glide := 0.82 + 0.18 * sin(' in whales      # плавное планирование
+assert '_ready_for_transition(w, actual_depth)' in whales
+assert 'w.turn_velocity = lerpf' in whales
+assert 'NORMAL = normalize(vec3(NORMAL.x - dy_dx' in body_shader
 assert 'ST_SURFACE' in whales and 'ST_DIVE' in whales and 'ST_DEEP' in whales
 assert 'const TURN_RATE := 0.30' in whales
 
@@ -89,4 +94,5 @@ assert 'EMISSION += foam_col * whale_foam' in water_shader
 assert 'whale_shadow' not in water_shader
 assert 'main.water.set_param("u_whale_trails", trails)' in whales
 assert 'func _reset_trail(w: Whale)' in whales
-assert 'elif w.surface_contact and depth_now > 0.7:' in whales
+assert 'elif w.surface_contact and depth_now > BACK_HEIGHT + 0.35:' in whales
+assert 'bounds * 0.34 * exp(-depth_below * 1.15)' in water_shader

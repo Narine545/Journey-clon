@@ -545,11 +545,14 @@ void fragment() {
 			float along = dot(offset, dir);
 			float across = dot(offset, vec2(-dir.y, dir.x));
 			float center_y = w_pos.y - body.w;
-			if (along > -4.1 && along < 3.4 && abs(across) < 2.1
-					&& abs(scene_world.y - center_y) < 1.8) {
-				float depth_below = max(w_pos.y - scene_world.y, 0.0);
-				whale_transmission = max(whale_transmission, 0.58 * exp(-depth_below * 0.55));
-			}
+			// Плавные границы объёма, чтобы водяная вуаль не щёлкала по
+			// краю при покачивании. На глубине вода быстро скрывает тело;
+			// выступающая над водой часть остаётся непрозрачной геометрией.
+			float bounds = smoothstep(-4.3, -3.7, along) * (1.0 - smoothstep(3.0, 3.6, along));
+			bounds *= 1.0 - smoothstep(1.7, 2.2, abs(across));
+			bounds *= 1.0 - smoothstep(1.4, 2.0, abs(scene_world.y - center_y));
+			float depth_below = max(w_pos.y - scene_world.y, 0.0);
+			whale_transmission = max(whale_transmission, bounds * 0.34 * exp(-depth_below * 1.15));
 		}
 	}
 	ALPHA = clamp(min(a, obj_a), 0.0, 1.0);

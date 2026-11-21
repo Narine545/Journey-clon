@@ -34,7 +34,11 @@ class Whale:
 	var heading := 0.0
 	var speed := 1.8
 	var target_speed := 1.8
-	var depth_target := 0.0 ## м ниже поверхности, < 0 — спина над водой
+	var depth_target := 0.0 ## желаемая глубина центра
+	var depth_current := 0.0 ## ограниченная по скорости цель для пружины
+	var turn_velocity := 0.0
+	var avoidance := 0.0
+	var stroke_rate := 1.0
 	var state := 0
 	var timer := 0.0
 	var beat := 0.0 ## фаза волны тела (радианы)
@@ -57,7 +61,9 @@ const GLOW_MAX := 3.0 ## HDR-эмиссия кожи в полную ночь
 const TURN_RATE := 0.30 ## рад/с: кит разворачивается тяжело
 const CRUISE_MIN := 1.5
 const CRUISE_MAX := 2.7
-const SPRING := 1.7 ## жёсткость вертикальной пружины, 1/с²
+const SPRING := 0.85 ## жёсткость вертикальной пружины, 1/с²
+const DEPTH_RATE := 0.75 ## максимальная скорость изменения целевой глубины, м/с
+const BACK_HEIGHT := 0.85 ## высота спины над центром тела, м
 const SURFACE_DEPTH := 0.32 ## центр под водой: над волной остаётся спина
 const SHALLOW_DEPTH := 1.4 ## тело под поверхностью: спина у самой воды
 const DEEP_DEPTH := 6.5
@@ -118,9 +124,14 @@ func advance(delta: float, night01: float) -> void:
 		_glow = want_glow
 		for material in _body_mats:
 			material.set_shader_parameter("glow_strength", want_glow)
-	var step := minf(delta, 0.1) # после паузы меню не телепортируем животных
-	for w in whales:
-		_step(w, step)
+	# Небольшие подшаги сохраняют устойчивость пружины при редких кадрах.
+	# Ограничение защищает от телепорта после длительной паузы.
+	var remaining := clampf(delta, 0.0, 0.25)
+	while remaining > 0.00001:
+		var step := minf(remaining, 0.05)
+		for w in whales:
+			_step(w, step)
+		remaining -= step
 	_sync_water_effects()
 	# Полноэкранный raymarch нужен, только если кит реально в кадре: за
 	# пределами обзора проход выключаем совсем (на этом экономится кадр).
@@ -149,13 +160,16 @@ func place_near(at: Vector3, forward: Vector3) -> void:
 		w.target_speed = 1.8
 		w.state = ST_SURFACE if w.slot == 0 else ST_DIVE
 		w.depth_target = SURFACE_DEPTH if w.slot == 0 else SHALLOW_DEPTH
+		w.depth_current = w.depth_target
+		w.turn_velocity = 0.0
+		w.avoidance = 0.0
 		w.timer = 6.0
 		w.vy = 0.0
 		w.pitch = 0.0
 		w.y = main.water.surface_height(w.pos.x, w.pos.z) - w.depth_target
 		w.pos.y = w.y
 		w.prev_depth = w.depth_target
-		w.surface_contact = w.depth_target < 0.2
+		w.surface_contact = w.depth_target < BACK_HEIGHT
 		_reset_trail(w)
 		_push(w)
 
@@ -224,24 +238,38 @@ func _step(w: Whale, delta: float) -> void:
 	w.timer -= delta
 	w.interest = maxf(0.0, w.interest - delta)
 	w.ignore = maxf(0.0, w.ignore - delta)
-	if w.timer <= 0.0:
+	# Не выдаём дыхание за всплытие: дождаться выхода спины к поверхности,
+	# а не переключать состояние только по таймеру.
+	var actual_depth := main.water.surface_height(w.pos.x, w.pos.z) - w.y
+	if _ready_for_transition(w, actual_depth):
 		_next_state(w)
 
 	var pos2 := Vector2(w.pos.x, w.pos.z)
 	var desired := _desired_heading(w, pos2, delta)
 	var diff := wrapf(desired - w.heading, -PI, PI)
 	# Тяжёлый разворот: даже испугавшись, кит не меняет курс мгновенно.
-	var rate := TURN_RATE * (1.0 + 0.5 * clampf(w.interest, 0.0, 1.0)) * delta
-	w.heading += clampf(diff, -rate, rate)
+	var rate := TURN_RATE * (1.0 + 0.5 * clampf(w.interest, 0.0, 1.0))
+	var turn_want := clampf(diff * 0.65, -rate, rate)
+	w.turn_velocity = lerpf(w.turn_velocity, turn_want, 1.0 - exp(-1.3 * delta))
+	var turn_step := w.turn_velocity * delta
+	if absf(turn_step) > absf(diff) and signf(turn_step) == signf(diff):
+		turn_step = diff
+		w.turn_velocity = 0.0
+	w.heading += turn_step
 
-	w.speed = lerpf(w.speed, w.target_speed, 1.0 - exp(-1.1 * delta))
+	var speed_want := lerpf(w.target_speed, maxf(w.target_speed, CRUISE_MAX * 1.15), w.avoidance)
+	w.speed = lerpf(w.speed, speed_want, 1.0 - exp(-0.55 * delta))
 	w.pos.x += cos(w.heading) * w.speed * delta
 	w.pos.z += sin(w.heading) * w.speed * delta
 
 	# Высота: пружина к «поверхность − глубина». Критическое демпфирование,
 	# поэтому выход на новую глубину — плавная дуга, а не ступенька.
 	var surf := main.water.surface_height(w.pos.x, w.pos.z)
-	var target_y := surf - w.depth_target
+	w.depth_current = move_toward(w.depth_current, w.depth_target, DEPTH_RATE * delta)
+	# Зыбь влияет на выход у поверхности, но не качает кита на глубине.
+	var wave_weight := 1.0 - smoothstep(1.5, 4.5, w.depth_current)
+	var water_reference := lerpf(main.water.level_y, surf, wave_weight)
+	var target_y := water_reference - w.depth_current
 	var damping := 2.0 * sqrt(SPRING)
 	w.vy += (SPRING * (target_y - w.y) - damping * w.vy) * delta
 	w.y += w.vy * delta
@@ -249,15 +277,19 @@ func _step(w: Whale, delta: float) -> void:
 
 	# Тангаж — из вертикальной скорости: чем быстрее тонет, тем круче нос вниз.
 	var pitch_want := clampf(atan2(w.vy, maxf(w.speed, 0.6)), -0.45, 0.45)
-	w.pitch = lerpf(w.pitch, pitch_want, 1.0 - exp(-4.0 * delta))
+	w.pitch = lerpf(w.pitch, pitch_want, 1.0 - exp(-1.4 * delta))
 
 	# Гребок с планированием: частота хвоста медленно дышит, а не звенит.
 	w.glide_t += delta
-	var glide := 0.40 + 0.60 * (0.5 + 0.5 * sin(w.glide_t * 0.37 + float(w.slot) * 2.1))
-	w.beat += delta * (2.0 + 1.6 * w.speed) * glide
+	var glide := 0.82 + 0.18 * sin(w.glide_t * 0.22 + float(w.slot) * 2.1)
+	w.beat += delta * (1.15 + 0.32 * w.speed) * glide * w.stroke_rate
 
 	_water_reaction(w, delta, surf)
 	_push(w)
+
+
+func _ready_for_transition(w: Whale, actual_depth: float) -> bool:
+	return w.timer <= 0.0 and (w.state != ST_RISE or actual_depth < BACK_HEIGHT - 0.12)
 
 
 func _next_state(w: Whale) -> void:
@@ -274,22 +306,23 @@ func _next_state(w: Whale) -> void:
 			w.timer = randf_range(10.0, 20.0)
 		ST_DEEP:
 			w.state = ST_RISE
-			w.depth_target = SHALLOW_DEPTH
+			w.depth_target = SURFACE_DEPTH
 			w.target_speed = CRUISE_MAX
 			w.timer = randf_range(5.0, 9.0)
 		_:
 			w.state = ST_SURFACE
 			w.depth_target = SURFACE_DEPTH
 			w.target_speed = randf_range(1.0, 1.5)
-			w.timer = randf_range(3.0, 6.0)
-			_blow(w)
+			w.timer = randf_range(5.0, 9.0)
 
 
 ## Выдох на поверхности: фонтан брызг и кольцо в воде.
 func _blow(w: Whale) -> void:
 	if _fish == null:
 		return
-	var head := Vector3(w.pos.x, w.y + 0.6, w.pos.z)
+	var head_x := w.pos.x + cos(w.heading) * 1.6
+	var head_z := w.pos.z + sin(w.heading) * 1.6
+	var head := Vector3(head_x, main.water.surface_height(head_x, head_z), head_z)
 	_fish.splash_burst(head, 1.2)
 	if main.water.field != null:
 		main.water.field.splash(Vector2(w.pos.x, w.pos.z), 1.4)
@@ -301,16 +334,16 @@ func _water_reaction(w: Whale, delta: float, surf: float) -> void:
 	var was := w.prev_depth
 	w.prev_depth = depth_now
 	# Гистерезис: небольшие волны не создают непрерывные ложные всплески.
-	if not w.surface_contact and depth_now < 0.0:
+	if not w.surface_contact and depth_now < BACK_HEIGHT - 0.10:
 		w.surface_contact = true
-		if _fish != null and was > 0.0:
-			_fish.splash_burst(Vector3(w.pos.x, surf, w.pos.z), 1.35)
-	elif w.surface_contact and depth_now > 0.7:
+		if was > BACK_HEIGHT - 0.10 and w.state == ST_RISE:
+			_blow(w)
+	elif w.surface_contact and depth_now > BACK_HEIGHT + 0.35:
 		w.surface_contact = false
-		if _fish != null:
-			_fish.splash_burst(Vector3(w.pos.x, surf, w.pos.z), 1.0)
+		if _fish != null and w.state == ST_DIVE:
+			_fish.splash_burst(Vector3(w.pos.x, surf, w.pos.z), 0.8)
 	_record_trail(w, delta, depth_now)
-	if depth_now > 1.6:
+	if depth_now > BACK_HEIGHT + 0.02:
 		return
 	w.wake_t -= delta
 	if w.wake_t > 0.0:
@@ -333,12 +366,12 @@ func _record_trail(w: Whale, delta: float, depth: float) -> void:
 	if w.trail.size() != TRAIL_POINTS:
 		_reset_trail(w)
 	w.trail_clock -= delta
-	if w.trail_clock > 0.0 or depth > 1.6:
+	if w.trail_clock > 0.0 or depth > BACK_HEIGHT + 0.02:
 		return
 	w.trail_clock = TRAIL_SAMPLE
 	for i in range(TRAIL_POINTS - 1, 0, -1):
 		w.trail[i] = w.trail[i - 1]
-	var contact := clampf((1.6 - depth) / 1.6, 0.0, 1.0)
+	var contact := clampf((BACK_HEIGHT + 0.02 - depth) / 0.6, 0.0, 1.0)
 	var stern := Vector2(w.pos.x, w.pos.z) - Vector2(cos(w.heading), sin(w.heading)) * (BODY_LEN * 0.38)
 	w.trail[0] = Vector4(stern.x, stern.y, main.water.field.t, contact * clampf(w.speed / 1.8, 0.0, 1.0))
 
@@ -386,9 +419,10 @@ func _desired_heading(w: Whale, pos2: Vector2, delta: float) -> float:
 	dir += _shore_push(w, pos2) * 2.4
 	dir += _reef_push(pos2) * 2.0
 	var threat := _boat_threat(pos2)
+	var avoid_want := clampf(threat.length(), 0.0, 1.0)
+	w.avoidance = lerpf(w.avoidance, avoid_want, 1.0 - exp(-0.8 * delta))
 	if threat.length() > 0.01:
 		dir += threat * 3.0
-		w.target_speed = maxf(w.target_speed, CRUISE_MAX * 1.15)
 	else:
 		dir += _curiosity(w, pos2, delta) * 1.1
 	if dir.length() < 0.01:
@@ -544,6 +578,7 @@ func _spawn_all() -> void:
 	for i in range(WHALE_COUNT):
 		var w := Whale.new()
 		w.slot = i
+		w.stroke_rate = randf_range(0.90, 1.10)
 		_reset_trail(w)
 		w.state = ST_SURFACE if i == 0 else ST_DIVE
 		w.timer = randf_range(2.0, 6.0)
@@ -578,9 +613,13 @@ func _place_wild(w: Whale) -> void:
 		w.pos = Vector3(x, 0.0, z)
 		w.heading = randf() * TAU
 		w.depth_target = SURFACE_DEPTH if w.state == ST_SURFACE else DEEP_DEPTH
+		w.depth_current = w.depth_target
 		w.speed = randf_range(CRUISE_MIN, CRUISE_MAX)
 		w.target_speed = w.speed
 		w.y = main.water.surface_height(x, z) - w.depth_target
+		w.pos.y = w.y
+		w.prev_depth = w.depth_target
+		w.surface_contact = w.depth_target < BACK_HEIGHT
 		w.vy = 0.0
 		placed = true
 		break
@@ -591,7 +630,11 @@ func _place_wild(w: Whale) -> void:
 	w.pos = Vector3(main.coast.shore_x(z_fallback) - 90.0, 0.0, z_fallback)
 	w.heading = randf() * TAU
 	w.depth_target = DEEP_DEPTH
+	w.depth_current = w.depth_target
 	w.y = main.water.surface_height(w.pos.x, w.pos.z) - DEEP_DEPTH
+	w.pos.y = w.y
+	w.prev_depth = DEEP_DEPTH
+	w.surface_contact = false
 
 
 # ---------------------------------------------------------------------------

@@ -583,20 +583,39 @@ func _check_sea_whales() -> void:
 		_check(test_whale.trail[0] == old_point, "глубоко под водой новый след не создаётся")
 		whales._reset_trail(test_whale)
 		_check(test_whale.trail[0].w == 0.0, "перенос кита очищает старый след")
+	# Таймер не должен объявлять выдох, пока спина ещё далеко под водой.
+	var transition_whale := SeaWhales.Whale.new()
+	transition_whale.state = SeaWhales.ST_RISE
+	transition_whale.timer = 0.0
+	_check(not whales._ready_for_transition(transition_whale, 2.0),
+		"всплытие продолжается, пока кит под водой")
+	_check(whales._ready_for_transition(transition_whale, 0.5),
+		"дыхание начинается после выхода спины к поверхности")
+	transition_whale.state = SeaWhales.ST_SURFACE
+	transition_whale.depth_current = SeaWhales.SURFACE_DEPTH
+	whales._next_state(transition_whale)
+	_check(is_equal_approx(transition_whale.depth_current, SeaWhales.SURFACE_DEPTH)
+		and transition_whale.depth_target == SeaWhales.DEEP_DEPTH,
+		"начало нырка не меняет глубину мгновенно")
 	# 900 шагов по 1/30 с: ни телепортов, ни утопления, ни прохода сквозь судно.
 	var max_step := 0.0
 	var min_gap := INF
 	var depth_ok := true
+	var max_beat_step := 0.0
+	var prev_beats: Array[float] = []
 	var prev: Array[Vector2] = []
 	for w in whales.whales:
 		var p0: Vector2 = Vector2(w.pos.x, w.pos.z)
 		prev.append(p0)
+		prev_beats.append(w.beat)
 	for _i in range(900):
 		whales.advance(1.0 / 30.0, 0.88)
 		for k in range(whales.whales.size()):
 			var w = whales.whales[k]
 			var p: Vector2 = Vector2(w.pos.x, w.pos.z)
 			max_step = maxf(max_step, p.distance_to(prev[k]))
+			max_beat_step = maxf(max_beat_step, absf(w.beat - prev_beats[k]))
+			prev_beats[k] = w.beat
 			prev[k] = p
 			var depth: float = main.water.surface_height(w.pos.x, w.pos.z) - w.y
 			if depth < -2.5 or depth > 12.0 or not is_finite(depth):
@@ -606,6 +625,7 @@ func _check_sea_whales() -> void:
 			min_gap = minf(min_gap, p.distance_to(boat_at))
 	_check(max_step < 0.6, "кит не телепортируется: за кадр не больше %.2f м" % max_step)
 	_check(depth_ok, "глубина держится в разумных пределах: не тонет и не вылетает")
+	_check(max_beat_step < 0.10, "гребок хвоста плавный на каждом шаге")
 	_check(min_gap > 6.0, "кит не лезет под корпус (минимальный зазор %.1f м)" % min_gap)
 	whales.debug_toggle()
 	_check(whales.debug_on and whales._debug_line() != "",

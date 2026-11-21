@@ -21,9 +21,20 @@ float noise_whale(vec2 p) {
 }
 void vertex() {
 	body_pos = VERTEX;
-	float tail = smoothstep(0.0, 2.9, -VERTEX.x);
-	VERTEX.y += sin(swim_phase - VERTEX.x * 1.4) * tail * 0.18;
-	VERTEX.z += sin(swim_phase * 0.52 - VERTEX.x) * tail * 0.07;
+	// Мягкая волна проходит вдоль задней половины тела, а не шарнир в одном
+	// месте. Аналитически поворачиваем нормали вместе с деформацией: иначе
+	// блики остаются неподвижными и создают впечатление дёрганья.
+	float x = VERTEX.x;
+	float u = clamp(-x / 2.9, 0.0, 1.0);
+	float tail = u * u * (3.0 - 2.0 * u);
+	float tail_dx = (x < 0.0 && x > -2.9) ? -6.0 * u * (1.0 - u) / 2.9 : 0.0;
+	float phase_y = swim_phase - x * 0.8;
+	float phase_z = swim_phase * 0.55 - x * 0.65;
+	float dy_dx = 0.16 * (cos(phase_y) * -0.8 * tail + sin(phase_y) * tail_dx);
+	float dz_dx = 0.035 * (cos(phase_z) * -0.65 * tail + sin(phase_z) * tail_dx);
+	VERTEX.y += sin(phase_y) * tail * 0.16;
+	VERTEX.z += sin(phase_z) * tail * 0.035;
+	NORMAL = normalize(vec3(NORMAL.x - dy_dx * NORMAL.y - dz_dx * NORMAL.z, NORMAL.y, NORMAL.z));
 }
 void fragment() {
 	float back = smoothstep(-0.35, 0.42, body_pos.y);
