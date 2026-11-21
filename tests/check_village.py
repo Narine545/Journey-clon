@@ -69,7 +69,9 @@ for shot in ('light_22_village_day', 'light_23_village_night', 'light_24_village
 # Кадры посёлка — отдельный прогон (TIDE_LIGHT_SET): с ними серия света
 # перестала укладываться в лимит шага CI и падала по таймауту.
 assert 'TIDE_LIGHT_SET' in shots and 'func _village_shots()' in shots
-assert 'TIDE_LIGHT_SET=village' in Path('.github/workflows/validate.yml').read_text()
+_wf = Path('.github/workflows/validate.yml').read_text()
+for _lane in ('village', 'harbor', 'sea'):
+    assert f'TIDE_LIGHT_SET={_lane}' in _wf, _lane
 assert 'HABS MA-857' in Path('docs/world/harbor_village.md').read_text()
 # --- Ни одна вызванная локальная функция не должна «исчезнуть» ----------
 # Ровно это уронило импорт в CI: _build_shrine() вызывался, а функции не было,
