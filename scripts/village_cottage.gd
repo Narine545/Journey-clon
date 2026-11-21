@@ -498,6 +498,9 @@ func _smoke(at: Vector3) -> void:
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.vertex_color_use_as_albedo = true
+	# Мягкий диск вместо плоского квадрата: иначе дым читается «салфетками».
+	mat.albedo_texture = ProcTextures.radial(48, 1.6)
+	mat.disable_receive_shadows = true
 	quad.material = mat
 	particles.draw_pass_1 = quad
 	add_child(particles)

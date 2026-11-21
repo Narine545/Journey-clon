@@ -302,6 +302,64 @@ func _build_chapel() -> void:
 	steps.add_child(mesh)
 
 
+## Прибрежный храм-фонарь: посёлок «прощается» с морем в этой точке.
+## Стоит на склоне, поэтому у него свой каменный плинт и ступени от улицы.
+func _build_shrine() -> void:
+	var min_ground := INF
+	var max_ground := -INF
+	for x in [-1.6, 1.6]:
+		for z in [-1.3, 1.3]:
+			var ground := main.coast.ground_height(SHRINE_AT.x + float(x), SHRINE_AT.y + float(z))
+			min_ground = minf(min_ground, ground)
+			max_ground = maxf(max_ground, ground)
+	var floor_height := max_ground + 0.16
+	shrine = GiltShrine.new()
+	shrine.name = "ShoreShrine"
+	shrine.position = Vector3(SHRINE_AT.x, floor_height, SHRINE_AT.y)
+	# Фасад с дверью (+Z) смотрит на набережную: к нему ведут ступени.
+	shrine.rotation.y = 0.20
+	add_child(shrine)
+	shrine.build()
+	# Коллизия: габарит храма с запасом на крышу.
+	var solid := StaticBody3D.new()
+	solid.name = "ShrineCollision"
+	solid.position = shrine.position
+	add_child(solid)
+	var box := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(2.9, GiltShrine.HEIGHT + 1.4, 2.3)
+	box.shape = shape
+	box.position = Vector3(0.0, (GiltShrine.HEIGHT + 1.4) * 0.5, 0.0)
+	solid.add_child(box)
+	# Плинт до нижнего угла склона + ступени с улицы: ничего не парит.
+	var st := GiltShapes.begin()
+	var depth := maxf(0.35, floor_height - min_ground + 0.20)
+	GiltShapes.box(st, Vector3(SHRINE_AT.x, floor_height - depth * 0.5 - 0.06, SHRINE_AT.y),
+		Vector3(3.1, depth + 0.12, 2.6), Color("22262f"))
+	GiltShapes.box(st, Vector3(SHRINE_AT.x, floor_height - 0.02, SHRINE_AT.y),
+		Vector3(3.35, 0.16, 2.85), GiltPalette.STONE_COLD * 0.48)
+	for i in range(4):
+		var z := SHRINE_AT.y + 1.45 + float(i) * 0.34
+		var h := main.coast.ground_height(SHRINE_AT.x, z)
+		var step_y := lerpf(floor_height - 0.20, h + 0.06, float(i) / 3.0)
+		GiltShapes.box(st, Vector3(SHRINE_AT.x, step_y, z), Vector3(1.5, 0.26, 0.36),
+			GiltPalette.STONE_COLD * 0.44)
+	# Фонарный столб у ступеней — точка, по которой храм находят ночью.
+	props.begin()
+	var lamp_y := main.coast.ground_height(SHRINE_AT.x - 1.1, SHRINE_AT.y + 2.1)
+	props.lamp_post(Vector3(SHRINE_AT.x - 1.1, lamp_y, SHRINE_AT.y + 2.1), 2.8, true)
+	props.commit(self)
+	var mesh := MeshInstance3D.new()
+	mesh.name = "ShrinePlinth"
+	mesh.mesh = st.commit()
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.9
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh.material_override = mat
+	add_child(mesh)
+
+
 # --- Дороги и площадь ------------------------------------------------------
 
 func _build_roads() -> void:

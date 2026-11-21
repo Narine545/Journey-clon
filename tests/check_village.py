@@ -67,4 +67,14 @@ for shot in ('light_22_village_day', 'light_23_village_night', 'light_24_village
              'light_25_village_dusk', 'light_26_shrine_night', 'light_27_shrine_day'):
     assert shot in shots, shot
 assert 'HABS MA-857' in Path('docs/world/harbor_village.md').read_text()
+# --- Ни одна вызванная локальная функция не должна «исчезнуть» ----------
+# Ровно это уронило импорт в CI: _build_shrine() вызывался, а функции не было,
+# и Godot валил компиляцию всей цепочки скриптов.
+import re as _re
+for name, source in (('island_village', village), ('cottage', cottage),
+                     ('chapel', chapel), ('shrine', shrine)):
+    defined = set(_re.findall(r'^(?:static )?func (\w+)\(', source, _re.M))
+    called = set(_re.findall(r'(?<![\w.])(_\w+)\(', source))
+    missing = sorted(called - defined)
+    assert not missing, f'{name}: вызываются, но не определены: {missing}'
 print('check_village: ok')
