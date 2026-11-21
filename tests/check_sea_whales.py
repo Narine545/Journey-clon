@@ -32,7 +32,7 @@ assert 'float back = smoothstep(-0.45, 0.55, upw);' in shader       # контр
 assert 'float speck = step(0.87, hash12(' in shader                 # крап
 assert 'if (u_underwater < 0.5) {\n                skin *= 1.0 - 0.13' in shader  # борозды только у рыб
 assert 'out_emission = lamp * u_glow' in shader                     # биолюминесценция
-assert 'vec3 lamp = mix(albedo, vec3(0.38, 0.78, 0.98), 0.55);' in shader  # холодный свет
+assert 'vec3 lamp = mix(albedo, vec3(0.18, 0.72, 1.0), 0.80);' in shader  # холодный свет
 assert 'float hump = (1.0 - smoothstep(0.70, 1.20, hump_e))' in shader  # тёмный горб под водой
 assert 'vec3 up = normalize(cross(side, dir));' in shader            # тангаж
 assert 'fish_sdf(p, C, s, u_fish_state[i].w, u_fish_pitch[i],' in shader

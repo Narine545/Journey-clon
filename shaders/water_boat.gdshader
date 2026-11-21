@@ -387,10 +387,10 @@ void fragment() {
 			vec2 off = wp - mix(a.xy, b.xy, h);
 			float d = length(off);
 			float life = (1.0 - smoothstep(2.8, 5.0, mix(age, u_time - b.z, h))) * mix(a.w, b.w, h);
-			float wash = exp(-pow(d / (0.45 + age * 0.14), 2.0));
-			float front = 0.6 + age * 0.8;
+			float wash = exp(-pow(d / (0.38 + age * 0.09), 2.0));
+			float front = 0.6 + age * 0.65;
 			float wave = exp(-pow((d - front) / (0.35 + age * 0.08), 2.0));
-			whale_foam = max(whale_foam, life * (wash * 1.1 + wave * 0.85) * mix(0.45, 1.0, smoothstep(0.20, 0.72, turb_noise * 0.6 + fine_noise * 0.4)));
+			whale_foam = max(whale_foam, life * (wash * 0.80 + wave * 0.50) * mix(0.45, 1.0, smoothstep(0.20, 0.72, turb_noise * 0.6 + fine_noise * 0.4)));
 			if (d > 0.001) {
 				float slope = sin((d - front) * 4.0) * wave * life * 0.30;
 				N = normalize(N - vec3(off.x / d * slope, 0.0, off.y / d * slope));
@@ -526,7 +526,7 @@ void fragment() {
 	// Слабый floor сохраняет цвет и детали моря без повышения ambient
 	// всей сцены. Прожектор продолжает добавлять своё реальное освещение.
 	EMISSION = base * night_surface_fill;
-	EMISSION += foam_col * whale_foam * 0.65;
+	EMISSION += foam_col * whale_foam * 0.30;
 
 	// Прямое освещение равномерно: периодическая нормаль спектра раньше
 	// давала «сканлайны» даже при малом весе. Полная N остаётся в
