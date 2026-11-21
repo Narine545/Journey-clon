@@ -73,6 +73,10 @@ uniform float u_veil_dark = 0.12;
 uniform float u_fish_pitch[7];
 // Биолюминесценция кожи (ночью существа светятся сами, как в модуле рыбалки).
 uniform float u_glow = 0.0;
+// 0 — как в модуле рыбалки: под водой тела нет (луч обрывается на плоскости
+// моря). 1 — киты: тело рисуется сквозь поверхность, холоднее и глуше с
+// глубиной, чтобы животное было видно и под водой, без квадов-заглушек.
+uniform float u_underwater = 0.0;
 
 // КИТ ПЕСЧАНЫХ РЫБ (godot_fish): 3 слота × 12 костей, семь видов.
 const int FK_FISH = 3;
@@ -195,8 +199,10 @@ vec4 fish_sdf(vec3 p, vec3 C, float s, float heading, float pitch, float phase,
         float skin = mix(1.05, 0.50, back);             // тёмная спина, светлое брюхо
         float speck = step(0.87, hash12(floor(vec2(along, latn) * 6.0)));
         skin += speck * 0.34 * back;                    // крап ближе к спине
-        // Продольные борозды на горле/брюхе — есть у всех полосатиков.
-        skin *= 1.0 - 0.13 * (0.5 + 0.5 * sin(along * 22.0)) * (1.0 - back);
+        // На китах не рисуем регулярные полосы; исходный узор рыб сохраняем.
+        if (u_underwater < 0.5) {
+                skin *= 1.0 - 0.13 * (0.5 + 0.5 * sin(along * 22.0)) * (1.0 - back);
+        }
         acc.rgb *= skin;
 
         return acc;
@@ -323,7 +329,11 @@ void fragment() {
                         water_surface_t = candidate_t;
                         water_surface_pos = cam_pos + rd * candidate_t;
                         water_surface_visible = true;
-                        max_dist = min(max_dist, candidate_t);
+                        // Киту под водой нужен весь путь луча: тело рисует
+                        // сам raymarcher, а не плоская тень на поверхности.
+                        if (u_underwater < 0.5) {
+                                max_dist = min(max_dist, candidate_t);
+                        }
                 }
         }
 
@@ -406,7 +416,7 @@ void fragment() {
                                 // к силуэту — тело читается и в полной темноте.
                                 vec3 lamp = mix(albedo, vec3(0.38, 0.78, 0.98), 0.55);
                                 col += lamp * u_glow
-                                        * (0.22 + 0.78 * pow(1.0 - ndv, 2.4));
+                                        * (0.55 + 1.15 * pow(1.0 - ndv, 2.0));
 
                                 // глиттер «мокрого песка»: редкие вспышки на теле
                                 vec2 gp = floor(p.xz * 5.0);
@@ -419,6 +429,15 @@ void fragment() {
                                 float glit = pow(clamp(dot(n, Hg), 0.0, 1.0), 50.0) * gsel
                                         * (0.5 + 0.5 * sin(u_time * 6.0 + gid * 71.0));
                                 col += vec3(1.0, 0.92, 0.70) * glit * 1.2 * exp(-shade_t * 0.004);
+
+                                // Киты под водой: тело видно сквозь поверхность —
+                                // холоднее, гуще и глуше с глубиной.
+                                if (u_underwater > 0.5 && p.y < u_water_level) {
+                                        float below = u_water_level - p.y;
+                                        float k = 1.0 - exp(-below * 0.55);
+                                        vec3 under = mix(horizon_col, sky_col, 0.55) * 0.55;
+                                        col = mix(col, under, clamp(0.30 + 0.55 * k, 0.0, 0.90));
+                                }
 
                                 // дымка — та же формула, что у моря
                                 float fog = 1.0 - exp(-pow(shade_t / fog_distance, 2.1));
@@ -433,7 +452,8 @@ void fragment() {
                                 // ---- Тонкий след по поверхности моря ----
                                 // Поверхность выбирается ray/plane пересечением, поскольку
                                 // прозрачная вода не всегда попадает в depth-текстуру.
-                                if (water_surface_visible && cam_pos.y > u_water_level + 0.05
+                                if (u_underwater < 0.5 && water_surface_visible
+                                                && cam_pos.y > u_water_level + 0.05
                                                 && rd.y < -0.02) {
                                         float fz = 1.0 - exp(-pow(water_surface_t / fog_distance, 2.1));
                                         if (fz < 0.97) {

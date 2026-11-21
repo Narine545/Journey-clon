@@ -567,10 +567,12 @@ func _check_sea_whales() -> void:
 			has_pitch = renderer.mat.shader.code.contains("u_fish_pitch")
 		_check(has_pitch, "тангаж уходит в шейдер: нырок носом вниз, всплытие носом вверх")
 	_check(whales.whales.size() == SeaWhales.WHALE_COUNT, "в море пара китов")
-	_check(whales._halos.size() == SeaWhales.WHALE_COUNT,
-		"у каждого кита своя аура свечения (ночью включается, днём гаснет)")
-	_check(whales._shadows.size() == SeaWhales.WHALE_COUNT,
-		"под водой кит читается тенью на поверхности")
+	var underwater_ok := false
+	if sdf is SandFish:
+		var renderer2: SandFish = sdf
+		underwater_ok = renderer2.mat != null and renderer2.mat.shader != null \
+			and renderer2.mat.shader.code.contains("u_underwater")
+	_check(underwater_ok, "тело под водой рисует сам raymarcher (без квадов-заглушек)")
 	# 900 шагов по 1/30 с: ни телепортов, ни утопления, ни прохода сквозь судно.
 	var max_step := 0.0
 	var min_gap := INF

@@ -54,7 +54,7 @@ const BODY_SIZE := BODY_LEN / SDF_LEN ## s для шейдера
 const WHALE_COUNT := 2
 ## Кожа: тёмная спина, брюхо вытягивает шейдерный контражур.
 const TINT := Color(0.32, 0.44, 0.58)
-const GLOW_MAX := 0.95 ## биолюминесценция в полную ночь
+const GLOW_MAX := 1.15 ## биолюминесценция в полную ночь (тело уходит в bloom)
 
 const TURN_RATE := 0.30 ## рад/с: кит разворачивается тяжело
 const CRUISE_MIN := 1.5
@@ -92,12 +92,6 @@ var _glow := -1.0
 var _markers: MeshInstance3D
 var _marker_mesh: ImmediateMesh
 var _labels: Array[Label3D] = []
-var _halos: Array[MeshInstance3D] = []
-var _halo_mats: Array[ShaderMaterial] = []
-var _halo_amounts: Array[float] = []
-var _shadows: Array[MeshInstance3D] = []
-var _shadow_mats: Array[ShaderMaterial] = []
-var _shadow_amounts: Array[float] = []
 var _panel: Label
 var _marker_mat: StandardMaterial3D
 
@@ -127,8 +121,6 @@ func advance(delta: float, night01: float) -> void:
 	# Полноэкранный raymarch нужен, только если кит реально в кадре: за
 	# пределами обзора проход выключаем совсем (на этом экономится кадр).
 	_fish.set_sdf_enabled(_any_in_view())
-	_update_halos(night01)
-	_update_shadows()
 	if debug_on:
 		_update_debug()
 
@@ -160,109 +152,6 @@ func place_near(at: Vector3, forward: Vector3) -> void:
 		_push(w)
 
 
-## Ближайший кит к мировой точке (-1 — никого).
-## Аура свечения: по одному мягкому аддитивному кваду на кита.
-func _build_halos() -> void:
-	for i in range(WHALE_COUNT):
-		var mat := ShaderMaterial.new()
-		mat.shader = load("res://shaders/whale_glow.gdshader")
-		var quad := QuadMesh.new()
-		quad.size = Vector2(BODY_LEN * 2.6, BODY_LEN * 1.2)
-		var halo := MeshInstance3D.new()
-		halo.name = "WhaleHalo%d" % i
-		halo.mesh = quad
-		halo.material_override = mat
-		halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		halo.extra_cull_margin = 32.0
-		halo.visible = false
-		add_child(halo)
-		_halos.append(halo)
-		_halo_mats.append(mat)
-		_halo_amounts.append(-1.0)
-
-
-## Аура живёт только ночью и только в кадре; под водой она глуше — по ней и
-## видно, что кит идёт под поверхностью, а не парит над ней.
-func _update_halos(night01: float) -> void:
-	if _halos.is_empty():
-		return
-	var cam := main.camera if main != null else null
-	var dark := clampf(night01, 0.0, 1.0)
-	for i in range(_halos.size()):
-		var halo: MeshInstance3D = _halos[i]
-		if i >= whales.size() or cam == null:
-			halo.visible = false
-			continue
-		var w: Whale = whales[i]
-		var surf := main.water.surface_height(w.pos.x, w.pos.z)
-		var depth := surf - w.y
-		var lit := clampf(1.0 - (depth - 0.2) / 4.0, 0.0, 1.0)
-		var amount := dark * lit * 0.42
-		var center := Vector3(w.pos.x, w.y, w.pos.z)
-		if amount < 0.02 or not cam.is_position_in_frustum(center):
-			halo.visible = false
-			continue
-		halo.visible = true
-		# Под водой аура сама оказывается за поверхностью и гаснет — поднимаем
-		# её к самой воде, чтобы свечение читалось и сквозь поверхность.
-		var lift := w.y + 0.9
-		if depth > 0.4:
-			lift = surf + 0.35
-		halo.global_position = Vector3(w.pos.x, lift, w.pos.z)
-		halo.look_at(cam.global_position, Vector3.UP)
-		if absf(amount - float(_halo_amounts[i])) > 0.02:
-			_halo_amounts[i] = amount
-			var mat: ShaderMaterial = _halo_mats[i]
-			mat.set_shader_parameter("strength", amount)
-
-
-## Тень под водой: плоский тёмный силуэт на поверхности над телом.
-## Чем глубже кит, тем бледнее тень; у поверхности её нет — там само тело.
-func _build_shadows() -> void:
-	for i in range(WHALE_COUNT):
-		var mat := ShaderMaterial.new()
-		mat.shader = load("res://shaders/whale_shadow.gdshader")
-		var quad := QuadMesh.new()
-		quad.size = Vector2(BODY_LEN * 1.9, BODY_LEN * 1.15)
-		var shadow := MeshInstance3D.new()
-		shadow.name = "WhaleShadow%d" % i
-		shadow.mesh = quad
-		shadow.material_override = mat
-		shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		shadow.extra_cull_margin = 24.0
-		shadow.visible = false
-		add_child(shadow)
-		_shadows.append(shadow)
-		_shadow_mats.append(mat)
-		_shadow_amounts.append(-1.0)
-
-
-func _update_shadows() -> void:
-	if _shadows.is_empty() or main == null or main.water == null:
-		return
-	for i in range(_shadows.size()):
-		var shadow: MeshInstance3D = _shadows[i]
-		if i >= whales.size():
-			shadow.visible = false
-			continue
-		var w: Whale = whales[i]
-		var surf := main.water.surface_height(w.pos.x, w.pos.z)
-		var depth := surf - w.y
-		if depth < 0.35 or depth > 9.0:
-			shadow.visible = false
-			continue
-		shadow.visible = true
-		# Чуть выше волны: иначе тень ныряет под гребень и пропадает.
-		shadow.global_position = Vector3(w.pos.x, surf + 0.25, w.pos.z)
-		shadow.rotation = Vector3(-PI * 0.5, -w.heading, 0.0)
-		# На самой поверхности тело видно само, тень нужна только под водой.
-		var amount := 0.46 * exp(-depth / 3.2) * clampf(depth / 0.8, 0.0, 1.0)
-		if absf(amount - float(_shadow_amounts[i])) > 0.02:
-			_shadow_amounts[i] = amount
-			var mat: ShaderMaterial = _shadow_mats[i]
-			mat.set_shader_parameter("strength", amount)
-
-
 ## Есть ли тело в кадре (с запасом на габарит: 4 м в сторону камеры).
 func _any_in_view() -> bool:
 	if main == null or main.camera == null:
@@ -276,6 +165,7 @@ func _any_in_view() -> bool:
 	return false
 
 
+## Ближайший кит к мировой точке (-1 — никого).
 func nearest_to(at: Vector3) -> int:
 	var best := -1
 	var best_d := INF
@@ -313,7 +203,7 @@ func _debug_line() -> String:
 	for i in range(whales.size()):
 		var w: Whale = whales[i]
 		var surf := main.water.surface_height(w.pos.x, w.pos.z) if main != null and main.water != null else 0.0
-		parts.append("%d: %s %.1fм ≤%.1fм/с" % [i, STATE_NAMES[w.state],
+		parts.append("%d: %s %.1fм %.1fм/с" % [i, STATE_NAMES[w.state],
 			surf - w.y, w.speed])
 	return " · ".join(parts)
 
@@ -565,12 +455,10 @@ func _ensure() -> void:
 	if _fish.mat != null:
 		_fish.mat.set_shader_parameter("max_steps", SDF_STEPS)
 		_fish.mat.set_shader_parameter("epsilon", SDF_EPSILON)
-	# Под водой тело должно читаться тёмным силуэтом, а не исчезать.
-	_fish.push_veil(2.6, 0.45)
+	# Тело под водой рисует сам шейдер (сквозь поверхность), без квадов-заглушек.
+	_fish.push_underwater(1.0)
 	_fish.push_glow(0.0)
 	_glow = 0.0
-	_build_halos()
-	_build_shadows()
 	_spawn_all()
 
 
