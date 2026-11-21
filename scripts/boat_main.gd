@@ -20,6 +20,7 @@ var game: GameState
 var world: GameWorld
 var shoals: ShoalMarkers
 var harbor: IslandHarbor
+var village: IslandVillage
 var coast: Coast
 var sand: SandField
 var sea_look_trial: SeaLookTrial
@@ -141,6 +142,9 @@ func _ready() -> void:
 	harbor = IslandHarbor.new()
 	add_child(harbor)
 	harbor.setup(self)
+	village = IslandVillage.new()
+	add_child(village)
+	village.setup(self)
 	_build_beacons()
 	_build_reefs()
 	_build_resources()

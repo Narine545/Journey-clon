@@ -24,6 +24,7 @@ func _run() -> void:
 		main.sea_look_trial.offset = Vector2(-4000.0, 0.0)
 	main._start_in_harbor()
 	await _shooter.wait_frames_count(20)
+	await _village_shots()
 
 	await _shot("light_01_day_harbor", 12.0, 0.0)
 	await _shot("light_02_dusk_harbor", 19.75, 0.0)
@@ -173,6 +174,22 @@ func _go_to_sea() -> void:
 	main._camera_focus = boat.global_position + Vector3.UP * 0.8
 	main.camera.global_position = main._camera_focus + Vector3(21.0, 26.2, 30.0)
 	main.camera.look_at(main._camera_focus, Vector3.UP)
+
+
+## Посёлок из свободной камеры: сравниваем дневную геометрию и ночные окна.
+func _village_shots() -> void:
+	main.inspector.set_free_camera(true)
+	main.inspector.visible = false
+	main.inspector._focus = Vector3(194.0, 5.0, -30.0)
+	main.inspector._yaw = -0.7
+	main.inspector._pitch = 0.75
+	main.camera.size = 55.0
+	main.inspector.update_camera(0.0)
+	await _shot("light_22_village_day", 12.0, 0.0)
+	await _shot("light_23_village_night", 23.0, 0.0)
+	main.inspector.set_free_camera(false)
+	main.inspector.visible = true
+	main._start_in_harbor()
 
 
 ## Ночная атмосфера без тумана: нужна для кадров со сферой.

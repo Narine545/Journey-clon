@@ -49,6 +49,7 @@ func _physics_process(_delta: float) -> void:
 				safe_buoys = false
 		_check(safe_buoys, "каждый причальный буй на глубине не менее 4.5 м")
 		_check_island_harbor()
+		_check_village()
 		_check_shoal_navigation()
 		_check_resource_zones()
 		_check_buoy_dynamics()
@@ -757,6 +758,30 @@ func _check_island_harbor() -> void:
 		main.boat.set_trailer_enabled(true)
 	main.boat._reset_trail(Vector2(saved.x, saved.z))
 	main.boat.reset_physics_interpolation()
+
+
+func _check_village() -> void:
+	var village: IslandVillage = main.village
+	_check(village != null and village.cottages.size() == IslandVillage.HOUSE_SITES.size(),
+		"посёлок: пять отдельных заменяемых домов")
+	if village == null:
+		return
+	_check(village.get_node_or_null("GroundedUnpavedLane") is MeshInstance3D,
+		"дорога и дорожки лежат на рельефе за причалом")
+	for house in village.cottages:
+		var p := house.global_position
+		_check(main.coast.ground_height(p.x, p.z) > 0.5,
+			"дом находится на суше")
+		_check(house.get_node_or_null("BuildingCollision") is StaticBody3D,
+			"у каждого дома своя коллизия")
+		_check(p.y >= main.coast.ground_height(p.x, p.z), "фундамент не погружён в центр рельефа")
+	village.set_night(0.0)
+	_check(village.cottages[0].window_material.emission_energy_multiplier == 0.0,
+		"окна посёлка не горят днём")
+	village.set_night(0.88)
+	_check(village.cottages[0].window_material.emission_energy_multiplier > 0.5,
+		"окна посёлка загораются ночью")
+	village.set_night(main.night01)
 
 
 func _check_shoal_navigation() -> void:
