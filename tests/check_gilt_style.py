@@ -59,6 +59,10 @@ for piece in ('gate', 'lamp_post', 'fountain', 'stall', 'fence', 'barrel',
     assert f'func {piece}(' in props, piece
 assert 'gilt_neon_water.gdshader' in props
 # Стекло будки-склада не «ночь навсегда»: днём ланцет не горит бирюзой.
+# Стекло props должно загораться со всем посёлком: сеток несколько,
+# поэтому set_night помнит их все, а не одну.
+assert '_glow.append(glass)' in props
+assert 'for node in _glow:' in props
 hut = props.split('func store_hut(', 1)[1].split('\nfunc ', 1)[0]
 assert 'GiltPalette.LEAD, _night,' in hut, 'store_hut: стекло по текущему вечеру'
 assert ', 1.0, 0.05' not in hut, 'store_hut: night01 не должен быть константой'

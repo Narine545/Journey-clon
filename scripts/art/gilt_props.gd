@@ -18,6 +18,7 @@ var _wood: SurfaceTool
 var _glass: SurfaceTool
 var _dark: SurfaceTool
 var _lights: Array[Dictionary] = []
+var _glow: Array[MeshInstance3D] = []
 var _time := 0.0
 
 
@@ -45,15 +46,20 @@ func commit(parent: Node3D) -> void:
 	_bake(parent, "PropsStone", _stone, _material(0.88, 0.02))
 	_bake(parent, "PropsGilt", _gilt, _material(0.30, 0.70))
 	_bake(parent, "PropsWood", _wood, _material(0.92, 0.0))
-	_bake(parent, "PropsGlass", _glass, _glass_material())
+	# Стекло фонарей и склада живёт в нескольких сетках (commit() зовётся
+	# по разу на рынок, площадь и детали), поэтому помним ВСЕ такие сетки:
+	# иначе ночью загоралась бы только последняя.
+	var glass := _bake(parent, "PropsGlass", _glass, _glass_material())
+	if glass != null:
+		_glow.append(glass)
 	_bake(parent, "PropsIron", _dark, _material(0.55, 0.55))
 
 
 func _bake(parent: Node3D, node_name: String, surface: SurfaceTool,
-		material: Material) -> void:
+		material: Material) -> MeshInstance3D:
 	var mesh := surface.commit()
 	if mesh == null or mesh.get_surface_count() == 0:
-		return
+		return null
 	var visual := MeshInstance3D.new()
 	# Имена уникальны внутри узла-хозяина: commit() вызывается несколько раз
 	# (рынок, площадь, детали), и дубли имён Godot правил бы сам — но тогда
@@ -63,6 +69,7 @@ func _bake(parent: Node3D, node_name: String, surface: SurfaceTool,
 	visual.mesh = mesh
 	visual.material_override = material
 	parent.add_child(visual)
+	return visual
 
 
 func _material(roughness: float, metallic: float) -> StandardMaterial3D:
@@ -403,7 +410,14 @@ func set_night(amount: float) -> void:
 		var mat := _orb.material_override as StandardMaterial3D
 		if mat != null:
 			mat.emission_energy_multiplier = maxf(0.0, night - 0.12) * 3.4
-	# Мигающая «дыхание» ночного неона — раз в несколько секунд, едва.
+	# Окна фонарей, будки и склада: та же эмиссия, что у домов, иначе
+	# посёлок светится, а фонари на нём — нет.
+	for node in _glow:
+		if not is_instance_valid(node):
+			continue
+		var mat := node.material_override as StandardMaterial3D
+		if mat != null and mat.emission_enabled:
+			mat.emission_energy_multiplier = maxf(0.0, night - 0.20) * 2.0
 	_night = night
 
 
