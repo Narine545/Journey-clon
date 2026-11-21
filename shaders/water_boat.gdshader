@@ -398,30 +398,6 @@ void fragment() {
 		}
 	}
 
-	// Дневная тень на воде: проекция хребта вдоль солнечного луча.
-	// Свет кита рисует только сам SDF, без отдельного пятна на воде.
-	float whale_shadow = 0.0;
-	for (int wi = 0; wi < 2; wi++) {
-		vec4 body = u_whale_bodies[wi];
-		vec4 state = u_whale_states[wi];
-		if (state.w < 0.5) { continue; }
-		vec2 direction = vec2(cos(body.z), sin(body.z));
-		vec2 side = vec2(-direction.y, direction.x);
-		for (int k = 0; k < 6; k++) {
-			float t = float(k) / 5.0;
-			float bend = sin(state.z - t * 4.2) * 2.5 * (0.05 + 0.38 * t);
-			vec2 center = body.xy + direction * ((0.5 - t) * 6.0) + side * bend;
-			float height = -body.w + sin(state.z - t * 3.1 + 1.3) * 0.25 * t + (0.5 - t) * 6.0 * sin(state.y);
-			float radius = 2.5 * (0.40 - 0.18 * t);
-			if (height + radius > 0.0 && L.y > 0.08) {
-				vec2 projected = center - L.xz / max(L.y, 0.25) * max(height, 0.0);
-				float edge = length(wp - projected);
-				float shadow = 1.0 - smoothstep(radius * 0.75, radius * 1.25, edge);
-				whale_shadow = max(whale_shadow, shadow * smoothstep(0.0, radius * 0.6, height + radius));
-			}
-		}
-	}
-	whale_shadow *= smoothstep(0.08, 0.30, L.y);
 
 	float ship_wake_foam = clamp(hull_collar * (0.65 + 0.45 * spd01) + trail_foam + trailer_foam * 0.70, 0.0, 1.0);
 
@@ -515,7 +491,7 @@ void fragment() {
 	base = mix(base, foam_col * (0.82 + 0.18 * ndl), foam * 0.92);
 
 	// Освещённая вода чуть светлее, чтобы тени не затемняли кадр в среднем.
-	base *= (1.0 + cloud_shadow * 0.07 - 0.42 * cloud_shade(wp)) * (1.0 - 0.42 * whale_shadow);
+	base *= 1.0 + cloud_shadow * 0.07 - 0.42 * cloud_shade(wp);
 
 	// ---------- дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
@@ -555,7 +531,29 @@ void fragment() {
 	float scene_z = -vp.z;
 	float water_z = -VERTEX.z;
 	float obj_a = smoothstep(0.0, shore_fade, scene_z - water_z);
+	// Прозрачность только там, где depth-буфер видит реальную геометрию
+	// за поверхностью возле кита. Меш кита уже освещён и нарисован в opaque
+	// pass; вода смешивается поверх него, а не рисует фиктивный силуэт.
+	vec3 scene_world = (INV_VIEW_MATRIX * vec4(vp.xyz, 1.0)).xyz;
+	float whale_transmission = 0.0;
+	if (sd > 0.0001 && scene_z > water_z && scene_world.y < w_pos.y) {
+		for (int wi = 0; wi < 2; wi++) {
+			vec4 body = u_whale_bodies[wi];
+			if (u_whale_states[wi].w < 0.5) { continue; }
+			vec2 dir = vec2(cos(body.z), sin(body.z));
+			vec2 offset = scene_world.xz - body.xy;
+			float along = dot(offset, dir);
+			float across = dot(offset, vec2(-dir.y, dir.x));
+			float center_y = w_pos.y - body.w;
+			if (along > -4.1 && along < 3.4 && abs(across) < 2.1
+					&& abs(scene_world.y - center_y) < 1.8) {
+				float depth_below = max(w_pos.y - scene_world.y, 0.0);
+				whale_transmission = max(whale_transmission, 0.58 * exp(-depth_below * 0.55));
+			}
+		}
+	}
 	ALPHA = clamp(min(a, obj_a), 0.0, 1.0);
+	ALPHA *= 1.0 - whale_transmission;
 }
 
 // Адаптация формул Proxima Diffuse + Schlick-GGX для A/B-теста воды.

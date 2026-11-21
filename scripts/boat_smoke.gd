@@ -557,22 +557,23 @@ func _check_sea_whales() -> void:
 	main.add_child(whales)
 	whales.advance(0.0, 0.88)
 	var sdf: Node = whales.get_node_or_null("WhaleSdf")
-	_check(sdf is SandFish, "ночью киты живут тем же рендером существ, что рыбы модуля рыбалки")
+	var splash_only := false
 	if sdf is SandFish:
 		var renderer: SandFish = sdf
-		_check(renderer.external and renderer.fish_count == SeaWhales.WHALE_COUNT,
-			"модуль только рисует: движением китов управляет SeaWhales")
-		var has_pitch := false
-		if renderer.mat != null and renderer.mat.shader != null:
-			has_pitch = renderer.mat.shader.code.contains("u_fish_pitch")
-		_check(has_pitch, "тангаж уходит в шейдер: нырок носом вниз, всплытие носом вверх")
+		splash_only = renderer.fish_count == 0
+	_check(splash_only, "SDF-слой используется только для брызг, а не для тел китов")
 	_check(whales.whales.size() == SeaWhales.WHALE_COUNT, "в море пара китов")
-	var underwater_ok := false
-	if sdf is SandFish:
-		var renderer2: SandFish = sdf
-		underwater_ok = renderer2.mat != null and renderer2.mat.shader != null \
-			and renderer2.mat.shader.code.contains("u_underwater")
-	_check(underwater_ok, "тело под водой рисует сам raymarcher (без квадов-заглушек)")
+	_check(whales._bodies.size() == SeaWhales.WHALE_COUNT,
+		"каждый кит имеет настоящую освещаемую геометрию")
+	if whales._bodies.size() == SeaWhales.WHALE_COUNT:
+		var body: MeshInstance3D = whales._bodies[0]
+		var material: ShaderMaterial = whales._body_mats[0]
+		_check(body.mesh != null and body.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON,
+			"тело кита отбрасывает тени")
+		_check(material.shader != null and material.shader.code.contains("EMISSION = glow_color"),
+			"свет исходит от материала тела")
+		_check(float(material.get_shader_parameter("glow_strength")) > 0.0,
+			"ночью эмиссия кожи включена")
 	if whales.whales.size() == SeaWhales.WHALE_COUNT:
 		var test_whale: SeaWhales.Whale = whales.whales[0]
 		whales._reset_trail(test_whale)

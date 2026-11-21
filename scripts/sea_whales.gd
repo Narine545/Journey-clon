@@ -57,13 +57,13 @@ const BODY_SIZE := BODY_LEN / SDF_LEN ## s для шейдера
 const WHALE_COUNT := 2
 ## Кожа: тёмная спина, брюхо вытягивает шейдерный контражур.
 const TINT := Color(0.32, 0.44, 0.58)
-const GLOW_MAX := 1.15 ## биолюминесценция в полную ночь (тело уходит в bloom)
+const GLOW_MAX := 3.0 ## HDR-эмиссия кожи в полную ночь
 
 const TURN_RATE := 0.30 ## рад/с: кит разворачивается тяжело
 const CRUISE_MIN := 1.5
 const CRUISE_MAX := 2.7
 const SPRING := 1.7 ## жёсткость вертикальной пружины, 1/с²
-const SURFACE_DEPTH := -0.35 ## спина и гребень на виду
+const SURFACE_DEPTH := 0.32 ## центр под водой: над волной остаётся спина
 const SHALLOW_DEPTH := 1.4 ## тело под поверхностью: спина у самой воды
 const DEEP_DEPTH := 6.5
 
@@ -92,7 +92,9 @@ var main: BoatMain
 var whales: Array[Whale] = []
 var debug_on := false
 
-var _fish: SandFish
+var _fish: SandFish # только капли брызг, без тел
+var _bodies: Array[MeshInstance3D] = []
+var _body_mats: Array[ShaderMaterial] = []
 var _glow := -1.0
 var _markers: MeshInstance3D
 var _marker_mesh: ImmediateMesh
@@ -119,7 +121,8 @@ func advance(delta: float, night01: float) -> void:
 	var want_glow := GLOW_MAX * clampf(night01, 0.0, 1.0)
 	if absf(want_glow - _glow) > 0.01:
 		_glow = want_glow
-		_fish.push_glow(want_glow)
+		for material in _body_mats:
+			material.set_shader_parameter("glow_strength", want_glow)
 	var step := minf(delta, 0.1) # после паузы меню не телепортируем животных
 	for w in whales:
 		_step(w, step)
@@ -368,8 +371,12 @@ func _sync_water_effects() -> void:
 func _push(w: Whale) -> void:
 	if _fish == null:
 		return
-	_fish.push_creature(w.slot, Vector3(w.pos.x, w.y, w.pos.z), w.heading,
-		BODY_SIZE, w.beat, TINT, w.pitch)
+	if w.slot >= _bodies.size():
+		return
+	var body := _bodies[w.slot]
+	body.global_position = Vector3(w.pos.x, w.y, w.pos.z)
+	body.global_basis = Basis(Vector3.UP, -w.heading) * Basis(Vector3.BACK, w.pitch)
+	_body_mats[w.slot].set_shader_parameter("swim_phase", w.beat)
 
 
 # ---------------------------------------------------------------------------
@@ -506,7 +513,7 @@ func _ensure() -> void:
 		return
 	_fish = SandFish.new()
 	_fish.name = "WhaleSdf"
-	_fish.fish_count = WHALE_COUNT
+	_fish.fish_count = 0 # только брызги; тело теперь настоящий освещаемый меш
 	_fish.bounds_radius = BOUNDS_RADIUS
 	_fish.setup(main.game, main.water.level_y, main.water.field, null)
 	add_child(_fish)
@@ -514,11 +521,27 @@ func _ensure() -> void:
 	if _fish.mat != null:
 		_fish.mat.set_shader_parameter("max_steps", SDF_STEPS)
 		_fish.mat.set_shader_parameter("epsilon", SDF_EPSILON)
-	# Тело под водой рисует сам шейдер (сквозь поверхность), без квадов-заглушек.
-	_fish.push_underwater(1.0)
-	_fish.push_glow(0.0)
-	_glow = 0.0
+	# Настоящая геометрия получает солнце и фонари и отбрасывает тени.
+	_build_bodies()
+	_glow = -1.0
 	_spawn_all()
+
+
+func _build_bodies() -> void:
+	var whale_mesh: Mesh = load("res://assets/creatures/whale.obj")
+	var body_shader: Shader = load("res://shaders/whale_body.gdshader")
+	for i in range(WHALE_COUNT):
+		var body := MeshInstance3D.new()
+		body.name = "WhaleBody%d" % i
+		body.mesh = whale_mesh
+		body.extra_cull_margin = 1.0
+		body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		var material := ShaderMaterial.new()
+		material.shader = body_shader
+		body.material_override = material
+		add_child(body)
+		_bodies.append(body)
+		_body_mats.append(material)
 
 
 func _spawn_all() -> void:

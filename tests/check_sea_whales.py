@@ -15,29 +15,19 @@ smoke = Path('scripts/boat_smoke.gd').read_text()
 shader = Path('shaders/sand_sea_sdf.gdshader').read_text()
 
 assert 'class_name SeaWhales' in whales
-# --- тело рисует модуль рыбалки, а не собственные примитивы
-assert 'SandFish.new()' in whales
-assert '_fish.set_external(true)' in whales
-assert 'res://shaders/sand_sea_sdf.gdshader' in fish
-for banned in ('SphereMesh', 'BoxMesh', 'CapsuleMesh', 'CylinderMesh'):
-    assert banned not in whales, banned
-assert 'const BODY_LEN := 6.0' in whales
-assert 'const BODY_SIZE := BODY_LEN / SDF_LEN' in whales
-
-# --- кожа и свечение считаются в шейдере, в системе тела
-assert 'uniform float u_fish_pitch[7];' in shader
-assert 'uniform float u_glow = 0.0;' in shader
-assert 'uniform float u_veil_dark = 0.12;' in shader
-assert 'float back = smoothstep(-0.45, 0.55, upw);' in shader       # контражур
-assert 'float speck = step(0.87, hash12(' in shader                 # крап
-assert 'if (u_underwater < 0.5) {\n                skin *= 1.0 - 0.13' in shader  # борозды только у рыб
-assert 'out_emission = lamp * u_glow' in shader                     # биолюминесценция
-assert 'vec3 lamp = mix(albedo, vec3(0.18, 0.72, 1.0), 0.80);' in shader  # холодный свет
-assert 'float hump = (1.0 - smoothstep(0.70, 1.20, hump_e))' in shader  # тёмный горб под водой
-assert 'vec3 up = normalize(cross(side, dir));' in shader            # тангаж
-assert 'fish_sdf(p, C, s, u_fish_state[i].w, u_fish_pitch[i],' in shader
-assert 'out_col = scene_col * (1.0 - u_veil_dark * m)' in shader     # тень под водой
-assert 'float veil_cap = mix(0.10, 0.55,' in shader                  # горб виден
+# Тело — единый меш и обычный освещаемый PBR-материал.
+assert 'res://assets/creatures/whale.obj' in whales
+assert 'res://shaders/whale_body.gdshader' in whales
+assert 'body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON' in whales
+assert '_fish.fish_count = 0' in whales  # SDF используется только для брызг
+assert '_fish.push_creature(w.slot' not in whales
+assert 'const SURFACE_DEPTH := 0.32' in whales
+assert 'body.global_basis = Basis(Vector3.UP, -w.heading) * Basis(Vector3.BACK, w.pitch)' in whales
+body_shader = Path('shaders/whale_body.gdshader').read_text()
+assert 'unshaded' not in body_shader
+assert 'EMISSION = glow_color.rgb * glow_strength' in body_shader
+assert 'VERTEX.y += sin(swim_phase' in body_shader
+assert Path('assets/creatures/whale.obj').stat().st_size > 1000
 
 # --- движение: пружина глубины, тангаж из вертикальной скорости, гребок с глайдом
 assert 'const SPRING := 1.7' in whales
@@ -53,22 +43,11 @@ assert 'const TURN_RATE := 0.30' in whales
 assert 'main.water.field.wake(Vector2(w.pos.x, w.pos.z), strength)' in whales
 assert '_fish.splash_burst(' in whales
 assert 'func _blow(w: Whale) -> void:' in whales
-# Под водой тело рисует сам raymarcher (сквозь поверхность): никаких квадов,
-# никаких «теней-овалов» и «аур-дисков» вместо животного.
+# Вода смешивается с реальным телом по depth, а не рисует плоский силуэт.
 for banned in ('whale_glow.gdshader', 'whale_shadow.gdshader', 'QuadMesh'):
     assert banned not in whales, banned
-assert 'uniform float u_underwater = 0.0;' in shader
-assert 'if (u_underwater < 0.5) {' in shader          # рыбалка: луч стопорится на море
-assert 'if (u_underwater > 0.5 && p.y < u_water_level) {' in shader  # кит: тело тонируется под водой
-assert '_fish.push_underwater(1.0)' in whales
-assert 'func push_underwater(value: float) -> void:' in fish
-# Свечение — эмиссия самой кожи, тело само уходит в bloom мира.
-assert 'const GLOW_MAX := 1.15' in whales
-assert 'var want_glow := GLOW_MAX * clampf(night01, 0.0, 1.0)' in whales
-assert '_fish.push_glow(want_glow)' in whales
-# Вне кадра полноэкранный проход не считается вообще.
-assert '_fish.set_sdf_enabled(_any_in_view())' in whales
 assert 'main.camera.is_position_in_frustum(probe)' in whales
+assert 'material.set_shader_parameter("glow_strength", want_glow)' in whales
 
 # --- объезд судна по упреждению и мелководье
 assert 'const BOAT_LOOKAHEAD := 6.0' in whales
@@ -96,7 +75,7 @@ assert 'sea_whales.advance(delta, night01)' in boat
 assert 'main.sea_whales.place_near(main._camera_focus, fwd.normalized())' in shots
 assert '_check_sea_whales()' in smoke
 assert 'кит не телепортируется' in smoke
-assert 'тело под водой рисует сам raymarcher' in smoke
+assert 'каждый кит имеет настоящую освещаемую геометрию' in smoke
 assert 'кит не лезет под корпус' in smoke
 print('check_sea_whales: ok')
 
@@ -110,9 +89,10 @@ assert 'uniform vec4 u_whale_trails[24]' in water_shader
 assert 'a.z - b.z > 0.65' in water_shader  # не соединять след через нырок
 assert 'u_whale_trails[wi * 12 + j]' in water_shader
 assert 'whale_light' not in water_shader
-assert 'ALBEDO = out_col + out_emission;' in shader
+assert 'scene_world = (INV_VIEW_MATRIX * vec4(vp.xyz, 1.0)).xyz' in water_shader
+assert 'whale_transmission' in water_shader
 assert 'EMISSION += foam_col * whale_foam' in water_shader
-assert 'whale_shadow *= smoothstep' in water_shader
+assert 'whale_shadow' not in water_shader
 assert 'main.water.set_param("u_whale_trails", trails)' in whales
 assert 'func _reset_trail(w: Whale)' in whales
 assert 'elif w.surface_contact and depth_now > 0.7:' in whales
