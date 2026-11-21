@@ -211,6 +211,10 @@ func _whale_shot(file_name: String, hour: float, fog: float) -> void:
 	if fwd.length() < 0.01:
 		fwd = Vector3.FORWARD
 	main.sea_whales.place_near(main._camera_focus, fwd.normalized())
+	# История следа не возникает мгновенно: дать киту проплыть несколько
+	# секунд до снимка, иначе кадр проверяет лишь пустую точку старта.
+	if file_name == "light_21_whales_00" or file_name == "light_21_whales_05":
+		await _shooter.wait_frames_count(90)
 	await _shot(file_name, hour, fog)
 	# В лог прогона: где кит и в каком он состоянии — по кадру это не всегда видно.
 	print("[WHALES] %s · в кадре: %s" % [main.sea_whales._debug_line(),

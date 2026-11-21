@@ -91,7 +91,6 @@ uniform vec4 u_wake_trail[20]; // xy = world_xz, z = birth_time, w = speed_at_bi
 uniform vec4 u_whale_bodies[2]; // xz, heading, depth
 uniform vec4 u_whale_states[2]; // speed, pitch, beat, active
 uniform vec4 u_whale_trails[24]; // 2 × 12 точек: xz, время, контакт
-uniform float u_whale_night = 0.0;
 // Насколько вода «чувствует» корпус: 1 — судно на воде, 0 — судно поднято на
 // ногах. Гасит бурун у бортов, кильватер, волны Кельвина и вытеснение под
 // днищем, не трогая глиттер, лампы и глубину.
@@ -391,7 +390,7 @@ void fragment() {
 			float wash = exp(-pow(d / (0.45 + age * 0.14), 2.0));
 			float front = 0.6 + age * 0.8;
 			float wave = exp(-pow((d - front) / (0.35 + age * 0.08), 2.0));
-			whale_foam = max(whale_foam, life * (wash * 0.68 + wave * 0.52) * smoothstep(0.20, 0.72, turb_noise * 0.6 + fine_noise * 0.4));
+			whale_foam = max(whale_foam, life * (wash * 1.1 + wave * 0.85) * mix(0.45, 1.0, smoothstep(0.20, 0.72, turb_noise * 0.6 + fine_noise * 0.4)));
 			if (d > 0.001) {
 				float slope = sin((d - front) * 4.0) * wave * life * 0.30;
 				N = normalize(N - vec3(off.x / d * slope, 0.0, off.y / d * slope));
@@ -399,10 +398,8 @@ void fragment() {
 		}
 	}
 
-	// Свет воды и тень на воде рассчитываются по набору сфер хребта SDF,
-	// а не отдельным мешем/закреплённым овалом. Рассеяние ослабляется
-	// глубиной и волнами; дневная тень — проекция вдоль солнечного луча.
-	float whale_light = 0.0;
+	// Дневная тень на воде: проекция хребта вдоль солнечного луча.
+	// Свет кита рисует только сам SDF, без отдельного пятна на воде.
 	float whale_shadow = 0.0;
 	for (int wi = 0; wi < 2; wi++) {
 		vec4 body = u_whale_bodies[wi];
@@ -416,11 +413,6 @@ void fragment() {
 			vec2 center = body.xy + direction * ((0.5 - t) * 6.0) + side * bend;
 			float height = -body.w + sin(state.z - t * 3.1 + 1.3) * 0.25 * t + (0.5 - t) * 6.0 * sin(state.y);
 			float radius = 2.5 * (0.40 - 0.18 * t);
-			float submerged = clamp(radius - height, 0.0, radius * 2.0);
-			float reach = 0.65 + min(max(-height, 0.0), 4.0) * 0.32;
-			float d = length(wp - center);
-			float light = exp(-d * d / (reach * reach)) * exp(-max(-height, 0.0) * 0.36) * smoothstep(0.0, radius, submerged);
-			whale_light = max(whale_light, light);
 			if (height + radius > 0.0 && L.y > 0.08) {
 				vec2 projected = center - L.xz / max(L.y, 0.25) * max(height, 0.0);
 				float edge = length(wp - projected);
@@ -429,7 +421,6 @@ void fragment() {
 			}
 		}
 	}
-	whale_light *= u_whale_night * mix(0.55, 1.0, turb_noise);
 	whale_shadow *= smoothstep(0.08, 0.30, L.y);
 
 	float ship_wake_foam = clamp(hull_collar * (0.65 + 0.45 * spd01) + trail_foam + trailer_foam * 0.70, 0.0, 1.0);
@@ -535,7 +526,7 @@ void fragment() {
 	// Слабый floor сохраняет цвет и детали моря без повышения ambient
 	// всей сцены. Прожектор продолжает добавлять своё реальное освещение.
 	EMISSION = base * night_surface_fill;
-	EMISSION += vec3(0.12, 0.65, 0.95) * whale_light * 1.8 * (1.0 - 0.35 * foam);
+	EMISSION += foam_col * whale_foam * 0.65;
 
 	// Прямое освещение равномерно: периодическая нормаль спектра раньше
 	// давала «сканлайны» даже при малом весе. Полная N остаётся в

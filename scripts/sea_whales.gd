@@ -123,7 +123,7 @@ func advance(delta: float, night01: float) -> void:
 	var step := minf(delta, 0.1) # после паузы меню не телепортируем животных
 	for w in whales:
 		_step(w, step)
-	_sync_water_effects(night01)
+	_sync_water_effects()
 	# Полноэкранный raymarch нужен, только если кит реально в кадре: за
 	# пределами обзора проход выключаем совсем (на этом экономится кадр).
 	_fish.set_sdf_enabled(_any_in_view())
@@ -341,11 +341,12 @@ func _record_trail(w: Whale, delta: float, depth: float) -> void:
 	for i in range(TRAIL_POINTS - 1, 0, -1):
 		w.trail[i] = w.trail[i - 1]
 	var contact := clampf((1.6 - depth) / 1.6, 0.0, 1.0)
-	w.trail[0] = Vector4(w.pos.x, w.pos.z, main.water.field.t, contact * clampf(w.speed / 1.8, 0.0, 1.0))
+	var stern := Vector2(w.pos.x, w.pos.z) - Vector2(cos(w.heading), sin(w.heading)) * (BODY_LEN * 0.38)
+	w.trail[0] = Vector4(stern.x, stern.y, main.water.field.t, contact * clampf(w.speed / 1.8, 0.0, 1.0))
 
 
-## Параметры на самом материале моря: свет сквозь воду, тень и след.
-func _sync_water_effects(night01: float) -> void:
+## Параметры на самом материале моря: тень и след.
+func _sync_water_effects() -> void:
 	var bodies := PackedVector4Array()
 	var states := PackedVector4Array()
 	var trails := PackedVector4Array()
@@ -362,7 +363,6 @@ func _sync_water_effects(night01: float) -> void:
 	main.water.set_param("u_whale_bodies", bodies)
 	main.water.set_param("u_whale_states", states)
 	main.water.set_param("u_whale_trails", trails)
-	main.water.set_param("u_whale_night", clampf(night01, 0.0, 1.0))
 
 
 func _push(w: Whale) -> void:

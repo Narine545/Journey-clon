@@ -339,6 +339,7 @@ void fragment() {
 
         float alpha = 0.0;
         vec3 out_col = vec3(0.0);
+        vec3 out_emission = vec3(0.0);
         float out_depth = depth_raw;
 
         // Сфера обитания: вне её делать нечего (и дёшево, и без артефактов).
@@ -415,8 +416,14 @@ void fragment() {
                                 // Биолюминесценция: холодное свечение кожи, ярче
                                 // к силуэту — тело читается и в полной темноте.
                                 vec3 lamp = mix(albedo, vec3(0.38, 0.78, 0.98), 0.55);
-                                col += lamp * u_glow
-                                        * (0.55 + 1.15 * pow(1.0 - ndv, 2.0));
+                                // Эмиссия вычисляется в точке попадания луча в
+                                // тот же SDF, что и тело: bloom следует силуэту,
+                                // без отдельного пятна/оболочки в мировых координатах.
+                                float glow_depth = u_underwater > 0.5
+                                        ? max(u_water_level - p.y, 0.0) : 0.0;
+                                out_emission = lamp * u_glow * 2.8
+                                        * (0.65 + 0.35 * pow(1.0 - ndv, 2.0))
+                                        * exp(-glow_depth * 0.20);
 
                                 // глиттер «мокрого песка»: редкие вспышки на теле
                                 vec2 gp = floor(p.xz * 5.0);
@@ -515,6 +522,7 @@ void fragment() {
         }
 
         ALBEDO = out_col;
+        EMISSION = out_emission;
         ALPHA = alpha;
         DEPTH = out_depth;
 }

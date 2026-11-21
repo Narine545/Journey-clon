@@ -31,7 +31,7 @@ assert 'uniform float u_veil_dark = 0.12;' in shader
 assert 'float back = smoothstep(-0.45, 0.55, upw);' in shader       # контражур
 assert 'float speck = step(0.87, hash12(' in shader                 # крап
 assert 'if (u_underwater < 0.5) {\n                skin *= 1.0 - 0.13' in shader  # борозды только у рыб
-assert 'col += lamp * u_glow' in shader                              # биолюминесценция
+assert 'out_emission = lamp * u_glow' in shader                     # биолюминесценция
 assert 'vec3 lamp = mix(albedo, vec3(0.38, 0.78, 0.98), 0.55);' in shader  # холодный свет
 assert 'float hump = (1.0 - smoothstep(0.70, 1.20, hump_e))' in shader  # тёмный горб под водой
 assert 'vec3 up = normalize(cross(side, dir));' in shader            # тангаж
@@ -109,8 +109,9 @@ water_shader = Path('shaders/water_boat.gdshader').read_text()
 assert 'uniform vec4 u_whale_trails[24]' in water_shader
 assert 'a.z - b.z > 0.65' in water_shader  # не соединять след через нырок
 assert 'u_whale_trails[wi * 12 + j]' in water_shader
-assert 'whale_light *= u_whale_night' in water_shader
-assert 'EMISSION += vec3(0.12, 0.65, 0.95) * whale_light' in water_shader
+assert 'whale_light' not in water_shader
+assert 'EMISSION = out_emission;' in shader
+assert 'EMISSION += foam_col * whale_foam' in water_shader
 assert 'whale_shadow *= smoothstep' in water_shader
 assert 'main.water.set_param("u_whale_trails", trails)' in whales
 assert 'func _reset_trail(w: Whale)' in whales
