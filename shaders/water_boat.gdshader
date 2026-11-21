@@ -87,6 +87,11 @@ uniform vec4 u_rings[24];
 uniform vec4 u_vessel_state = vec4(0.0, 0.0, 0.0, 0.0);
 uniform vec4 u_trailer_state = vec4(0.0, 0.0, 0.0, 0.0);
 uniform vec4 u_wake_trail[20]; // xy = world_xz, z = birth_time, w = speed_at_birth
+// Киты: отдельная история каждого животного, глубина относительно волны.
+uniform vec4 u_whale_bodies[2]; // xz, heading, depth
+uniform vec4 u_whale_states[2]; // speed, pitch, beat, active
+uniform vec4 u_whale_trails[24]; // 2 × 12 точек: xz, время, контакт
+uniform float u_whale_night = 0.0;
 // Насколько вода «чувствует» корпус: 1 — судно на воде, 0 — судно поднято на
 // ногах. Гасит бурун у бортов, кильватер, волны Кельвина и вытеснение под
 // днищем, не трогая глиттер, лампы и глубину.
@@ -369,6 +374,64 @@ void fragment() {
 		trailer_foam = exp(-pow((d_tr - 0.10) / 0.20, 2.0)) * step(-0.05, d_tr) * smoothstep(0.25, 0.75, turb_noise);
 	}
 
+	// Кильватер китов остаётся в мировых координатах после нырка.
+	// Не соединяем точки через длинную паузу или телепортацию.
+	float whale_foam = 0.0;
+	for (int wi = 0; wi < 2; wi++) {
+		for (int j = 0; j < 11; j++) {
+			vec4 a = u_whale_trails[wi * 12 + j];
+			vec4 b = u_whale_trails[wi * 12 + j + 1];
+			float age = u_time - a.z;
+			if (a.w <= 0.0 || b.w <= 0.0 || age < 0.0 || age > 5.0 || a.z - b.z > 0.65 || distance(a.xy, b.xy) > 3.0) { continue; }
+			vec2 seg = b.xy - a.xy;
+			float h = clamp(dot(wp - a.xy, seg) / max(dot(seg, seg), 0.0001), 0.0, 1.0);
+			vec2 off = wp - mix(a.xy, b.xy, h);
+			float d = length(off);
+			float life = (1.0 - smoothstep(2.8, 5.0, mix(age, u_time - b.z, h))) * mix(a.w, b.w, h);
+			float wash = exp(-pow(d / (0.45 + age * 0.14), 2.0));
+			float front = 0.6 + age * 0.8;
+			float wave = exp(-pow((d - front) / (0.35 + age * 0.08), 2.0));
+			whale_foam = max(whale_foam, life * (wash * 0.68 + wave * 0.52) * smoothstep(0.20, 0.72, turb_noise * 0.6 + fine_noise * 0.4));
+			if (d > 0.001) {
+				float slope = sin((d - front) * 4.0) * wave * life * 0.30;
+				N = normalize(N - vec3(off.x / d * slope, 0.0, off.y / d * slope));
+			}
+		}
+	}
+
+	// Свет воды и тень на воде рассчитываются по набору сфер хребта SDF,
+	// а не отдельным мешем/закреплённым овалом. Рассеяние ослабляется
+	// глубиной и волнами; дневная тень — проекция вдоль солнечного луча.
+	float whale_light = 0.0;
+	float whale_shadow = 0.0;
+	for (int wi = 0; wi < 2; wi++) {
+		vec4 body = u_whale_bodies[wi];
+		vec4 state = u_whale_states[wi];
+		if (state.w < 0.5) { continue; }
+		vec2 direction = vec2(cos(body.z), sin(body.z));
+		vec2 side = vec2(-direction.y, direction.x);
+		for (int k = 0; k < 6; k++) {
+			float t = float(k) / 5.0;
+			float bend = sin(state.z - t * 4.2) * 2.5 * (0.05 + 0.38 * t);
+			vec2 center = body.xy + direction * ((0.5 - t) * 6.0) + side * bend;
+			float height = -body.w + sin(state.z - t * 3.1 + 1.3) * 0.25 * t + (0.5 - t) * 6.0 * sin(state.y);
+			float radius = 2.5 * (0.40 - 0.18 * t);
+			float submerged = clamp(radius - height, 0.0, radius * 2.0);
+			float reach = 0.65 + min(max(-height, 0.0), 4.0) * 0.32;
+			float d = length(wp - center);
+			float light = exp(-d * d / (reach * reach)) * exp(-max(-height, 0.0) * 0.36) * smoothstep(0.0, radius, submerged);
+			whale_light = max(whale_light, light);
+			if (height + radius > 0.0 && L.y > 0.08) {
+				vec2 projected = center - L.xz / max(L.y, 0.25) * max(height, 0.0);
+				float edge = length(wp - projected);
+				float shadow = 1.0 - smoothstep(radius * 0.75, radius * 1.25, edge);
+				whale_shadow = max(whale_shadow, shadow * smoothstep(0.0, radius * 0.6, height + radius));
+			}
+		}
+	}
+	whale_light *= u_whale_night * mix(0.55, 1.0, turb_noise);
+	whale_shadow *= smoothstep(0.08, 0.30, L.y);
+
 	float ship_wake_foam = clamp(hull_collar * (0.65 + 0.45 * spd01) + trail_foam + trailer_foam * 0.70, 0.0, 1.0);
 
 	// ---------- цвет воды ----------
@@ -449,7 +512,7 @@ void fragment() {
 	float foam = edge * smoothstep(0.02, 0.40, fn) * (0.72 + 0.28 * fn2);
 	foam += edge2 * smoothstep(0.45, 0.85, fn2) * 0.55;
 	event_foam *= (1.0 - near_shore);
-	foam = clamp(max(max(foam, ship_wake_foam), event_foam), 0.0, 1.0);
+	foam = clamp(max(max(max(foam, ship_wake_foam), event_foam), whale_foam), 0.0, 1.0);
 	// Те же выбранные мировые ячейки, что у исходного глиттера.
 	// Включённость ячейки не зависит от движущейся волны или луча.
 	// Для наклона берём независимые hash-компоненты, иначе выбор cellid
@@ -461,7 +524,7 @@ void fragment() {
 	base = mix(base, foam_col * (0.82 + 0.18 * ndl), foam * 0.92);
 
 	// Освещённая вода чуть светлее, чтобы тени не затемняли кадр в среднем.
-	base *= 1.0 + cloud_shadow * 0.07 - 0.42 * cloud_shade(wp);
+	base *= (1.0 + cloud_shadow * 0.07 - 0.42 * cloud_shade(wp)) * (1.0 - 0.42 * whale_shadow);
 
 	// ---------- дымка к горизонту ----------
 	float fog = 1.0 - exp(-pow(dist / fog_distance, 2.1));
@@ -472,6 +535,7 @@ void fragment() {
 	// Слабый floor сохраняет цвет и детали моря без повышения ambient
 	// всей сцены. Прожектор продолжает добавлять своё реальное освещение.
 	EMISSION = base * night_surface_fill;
+	EMISSION += vec3(0.12, 0.65, 0.95) * whale_light * 1.8 * (1.0 - 0.35 * foam);
 
 	// Прямое освещение равномерно: периодическая нормаль спектра раньше
 	// давала «сканлайны» даже при малом весе. Полная N остаётся в

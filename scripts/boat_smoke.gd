@@ -573,6 +573,17 @@ func _check_sea_whales() -> void:
 		underwater_ok = renderer2.mat != null and renderer2.mat.shader != null \
 			and renderer2.mat.shader.code.contains("u_underwater")
 	_check(underwater_ok, "тело под водой рисует сам raymarcher (без квадов-заглушек)")
+	if whales.whales.size() == SeaWhales.WHALE_COUNT:
+		var test_whale: SeaWhales.Whale = whales.whales[0]
+		whales._reset_trail(test_whale)
+		whales._record_trail(test_whale, 0.1, 0.0)
+		_check(test_whale.trail[0].w > 0.0 and test_whale.trail[1].w == 0.0,
+			"контакт кита создаёт собственную точку следа на поверхности")
+		var old_point: Vector4 = test_whale.trail[0]
+		whales._record_trail(test_whale, 1.0, 5.0)
+		_check(test_whale.trail[0] == old_point, "глубоко под водой новый след не создаётся")
+		whales._reset_trail(test_whale)
+		_check(test_whale.trail[0].w == 0.0, "перенос кита очищает старый след")
 	# 900 шагов по 1/30 с: ни телепортов, ни утопления, ни прохода сквозь судно.
 	var max_step := 0.0
 	var min_gap := INF

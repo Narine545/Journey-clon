@@ -103,3 +103,15 @@ print('check_sea_whales: ok')
 # Параметры не затеняют встроенное свойство Node.owner.
 assert 'func set_catch_visual(owner:' not in fish
 assert 'func clear_catch_visual(owner:' not in fish
+
+# Отдельный след на материале моря и подповерхностный свет от тела.
+water_shader = Path('shaders/water_boat.gdshader').read_text()
+assert 'uniform vec4 u_whale_trails[24]' in water_shader
+assert 'a.z - b.z > 0.65' in water_shader  # не соединять след через нырок
+assert 'u_whale_trails[wi * 12 + j]' in water_shader
+assert 'whale_light *= u_whale_night' in water_shader
+assert 'EMISSION += vec3(0.12, 0.65, 0.95) * whale_light' in water_shader
+assert 'whale_shadow *= smoothstep' in water_shader
+assert 'main.water.set_param("u_whale_trails", trails)' in whales
+assert 'func _reset_trail(w: Whale)' in whales
+assert 'elif w.surface_contact and depth_now > 0.7:' in whales

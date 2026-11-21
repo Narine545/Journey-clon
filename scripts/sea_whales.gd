@@ -46,6 +46,9 @@ class Whale:
 	var ignore := 0.0 ## с: сколько ещё судно безразлично
 	var wake_t := 0.0
 	var prev_depth := 9.0 ## для всплеска на пересечении поверхности
+	var surface_contact := false
+	var trail := PackedVector4Array()
+	var trail_clock := 0.0
 
 
 const SDF_LEN := 2.4 ## в шейдере длина тела L = 2.4 * s
@@ -72,6 +75,8 @@ const BOAT_LOOKAHEAD := 6.0 ## с: горизонт упреждения
 const INTEREST_RANGE := 55.0 ## м: с какого расстояния судно любопытно
 const INTEREST_SIDE := 15.0 ## м: кит идёт параллельным курсом в стороне
 
+const TRAIL_POINTS := 12
+const TRAIL_SAMPLE := 0.4
 const WAKE_INTERVAL := 0.12 ## с: след в воде (как у судна)
 const SDF_STEPS := 48
 const SDF_EPSILON := 0.03
@@ -118,6 +123,7 @@ func advance(delta: float, night01: float) -> void:
 	var step := minf(delta, 0.1) # после паузы меню не телепортируем животных
 	for w in whales:
 		_step(w, step)
+	_sync_water_effects(night01)
 	# Полноэкранный raymarch нужен, только если кит реально в кадре: за
 	# пределами обзора проход выключаем совсем (на этом экономится кадр).
 	_fish.set_sdf_enabled(_any_in_view())
@@ -149,6 +155,10 @@ func place_near(at: Vector3, forward: Vector3) -> void:
 		w.vy = 0.0
 		w.pitch = 0.0
 		w.y = main.water.surface_height(w.pos.x, w.pos.z) - w.depth_target
+		w.pos.y = w.y
+		w.prev_depth = w.depth_target
+		w.surface_contact = w.depth_target < 0.2
+		_reset_trail(w)
 		_push(w)
 
 
@@ -292,8 +302,16 @@ func _water_reaction(w: Whale, delta: float, surf: float) -> void:
 	var depth_now := surf - w.y
 	var was := w.prev_depth
 	w.prev_depth = depth_now
-	if (depth_now < 0.2) != (was < 0.2) and _fish != null:
-		_fish.splash_burst(Vector3(w.pos.x, surf, w.pos.z), 1.35)
+	# Гистерезис: небольшие волны не создают непрерывные ложные всплески.
+	if not w.surface_contact and depth_now < 0.0:
+		w.surface_contact = true
+		if _fish != null and was > 0.0:
+			_fish.splash_burst(Vector3(w.pos.x, surf, w.pos.z), 1.35)
+	elif w.surface_contact and depth_now > 0.7:
+		w.surface_contact = false
+		if _fish != null:
+			_fish.splash_burst(Vector3(w.pos.x, surf, w.pos.z), 1.0)
+	_record_trail(w, delta, depth_now)
 	if depth_now > 1.6:
 		return
 	w.wake_t -= delta
@@ -304,6 +322,47 @@ func _water_reaction(w: Whale, delta: float, surf: float) -> void:
 		var strength := clampf(0.22 + 0.18 * w.speed + 0.25 * clampf(1.4 - depth_now, 0.0, 1.4),
 			0.18, 0.85)
 		main.water.field.wake(Vector2(w.pos.x, w.pos.z), strength)
+
+
+## Независимая мировая история каждого кита; прошлые волны не приклеены к телу.
+func _reset_trail(w: Whale) -> void:
+	w.trail.resize(TRAIL_POINTS)
+	w.trail.fill(Vector4(0.0, 0.0, -1000.0, 0.0))
+	w.trail_clock = 0.0
+
+
+func _record_trail(w: Whale, delta: float, depth: float) -> void:
+	if w.trail.size() != TRAIL_POINTS:
+		_reset_trail(w)
+	w.trail_clock -= delta
+	if w.trail_clock > 0.0 or depth > 1.6:
+		return
+	w.trail_clock = TRAIL_SAMPLE
+	for i in range(TRAIL_POINTS - 1, 0, -1):
+		w.trail[i] = w.trail[i - 1]
+	var contact := clampf((1.6 - depth) / 1.6, 0.0, 1.0)
+	w.trail[0] = Vector4(w.pos.x, w.pos.z, main.water.field.t, contact * clampf(w.speed / 1.8, 0.0, 1.0))
+
+
+## Параметры на самом материале моря: свет сквозь воду, тень и след.
+func _sync_water_effects(night01: float) -> void:
+	var bodies := PackedVector4Array()
+	var states := PackedVector4Array()
+	var trails := PackedVector4Array()
+	bodies.resize(WHALE_COUNT)
+	states.resize(WHALE_COUNT)
+	trails.resize(WHALE_COUNT * TRAIL_POINTS)
+	trails.fill(Vector4(0.0, 0.0, -1000.0, 0.0))
+	for w in whales:
+		var surface := main.water.surface_height(w.pos.x, w.pos.z)
+		bodies[w.slot] = Vector4(w.pos.x, w.pos.z, w.heading, surface - w.y)
+		states[w.slot] = Vector4(w.speed, w.pitch, w.beat, 1.0)
+		for i in range(w.trail.size()):
+			trails[w.slot * TRAIL_POINTS + i] = w.trail[i]
+	main.water.set_param("u_whale_bodies", bodies)
+	main.water.set_param("u_whale_states", states)
+	main.water.set_param("u_whale_trails", trails)
+	main.water.set_param("u_whale_night", clampf(night01, 0.0, 1.0))
 
 
 func _push(w: Whale) -> void:
@@ -467,6 +526,7 @@ func _spawn_all() -> void:
 	for i in range(WHALE_COUNT):
 		var w := Whale.new()
 		w.slot = i
+		_reset_trail(w)
 		w.state = ST_SURFACE if i == 0 else ST_DIVE
 		w.timer = randf_range(2.0, 6.0)
 		w.interest = 0.0
