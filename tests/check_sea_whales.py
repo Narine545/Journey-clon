@@ -110,7 +110,7 @@ assert 'uniform vec4 u_whale_trails[24]' in water_shader
 assert 'a.z - b.z > 0.65' in water_shader  # не соединять след через нырок
 assert 'u_whale_trails[wi * 12 + j]' in water_shader
 assert 'whale_light' not in water_shader
-assert 'EMISSION = out_emission;' in shader
+assert 'ALBEDO = out_col + out_emission;' in shader
 assert 'EMISSION += foam_col * whale_foam' in water_shader
 assert 'whale_shadow *= smoothstep' in water_shader
 assert 'main.water.set_param("u_whale_trails", trails)' in whales

@@ -521,8 +521,9 @@ void fragment() {
         }
         }
 
-        ALBEDO = out_col;
-        EMISSION = out_emission;
+        // Unshaded: свет выводится через HDR ALBEDO. Отдельный EMISSION в
+        // этом проходе не виден; добавляем его только в пикселях тела SDF.
+        ALBEDO = out_col + out_emission;
         ALPHA = alpha;
         DEPTH = out_depth;
 }
