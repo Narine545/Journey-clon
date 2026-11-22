@@ -245,6 +245,16 @@ func _village_audit() -> void:
 	await _shooter.wait_frames_count(8)
 	await _shooter.capture("village_audit_dialog")
 	main.village_interaction._close()
+	for i in range(main.village_interaction._targets.size()):
+		if String(main.village_interaction._targets[i]["person_id"]) == "tavern":
+			main.village_interaction._open(i)
+			await _shooter.wait_frames_count(8)
+			await _shooter.capture("village_audit_timbi")
+			main.village_interaction._on_talk()
+			await _shooter.wait_frames_count(8)
+			await _shooter.capture("village_audit_mimo")
+			main.village_interaction._close()
+			break
 
 
 ## Посёлок из свободной камеры: сравниваем дневную геометрию и ночные окна.

@@ -1,7 +1,7 @@
 class_name VillageInteraction
 extends CanvasLayer
 ## Дом выбирается мышью только у пришвартованной лодки.
-## Диалог текстовый: будущие изображения жителей пока не подключены.
+## У таверны доступен пробный разговор Мимо и Тимби; остальные жители текстовые.
 var main: BoatMain
 var panel_open := false
 var hovered := -1
@@ -17,6 +17,12 @@ var _role: Label
 var _line: Label
 var _hint: Label
 var _next: TideButton
+var _close_button: TideButton
+var _guest_button: TideButton
+var _divider: Polygon2D
+var _mimo: TextureRect
+var _timbi: TextureRect
+var _timbi_mode := false
 
 
 func setup(owner_main: BoatMain) -> void:
@@ -59,12 +65,15 @@ func _build_ui() -> void:
 	var sheet := TideKit.panel(_page, Rect2(0, 0, 1420, 840), TideTokens.FOAM,
 		TideTokens.FLARE, true)
 	sheet.hatch_color = TideTokens.deep_alpha(0.10)
+	# Изображения — настоящие авторские спрайты, за текстом и кнопками.
+	_mimo = _make_actor(Rect2(15, 100, 350, 530))
+	_timbi = _make_actor(Rect2(1055, 100, 350, 530))
 	TideKit.text(_page, "ТИХАЯ БУХТА · РАЗГОВОР", Vector2(65, 35), 1, 20,
 		TideTokens.flare_alpha(0.9), 1000)
 	_title = TideKit.text(_page, "", Vector2(85, 145), 2, 54, TideTokens.FLARE, 1200)
 	_role = TideKit.text(_page, "", Vector2(85, 210), 1, 20,
 		TideTokens.ink_alpha(0.70), 1200)
-	TideKit.poly(_page, PackedVector2Array([Vector2(85, 260), Vector2(1330, 260),
+	_divider = TideKit.poly(_page, PackedVector2Array([Vector2(85, 260), Vector2(1330, 260),
 		Vector2(1324, 264), Vector2(85, 264)]), TideTokens.ink_alpha(0.24))
 	_line = Label.new()
 	_line.position = Vector2(85, 300)
@@ -76,13 +85,62 @@ func _build_ui() -> void:
 	_next = TideKit.button(_page, "ДАЛЬШЕ", Rect2(85, 665, 360, 92),
 		TideButton.Shape.SOLID, TideTokens.SONAR, 0, 30, TideTokens.INK, -1.0)
 	_next.pressed.connect(_on_talk)
-	var close := TideKit.button(_page, "УЙТИ", Rect2(480, 665, 300, 92),
+	_close_button = TideKit.button(_page, "УЙТИ", Rect2(480, 665, 300, 92),
 		TideButton.Shape.GHOST, TideTokens.INK, 0, 30, TideTokens.INK, 1.0)
-	close.pressed.connect(_close)
+	_close_button.pressed.connect(_close)
+	_guest_button = TideKit.button(_page, "ТИМБИ", Rect2(820, 665, 340, 92),
+		TideButton.Shape.GHOST, TideTokens.INK, 0, 26, TideTokens.INK)
+	_guest_button.pressed.connect(_switch_tavern_guest)
+	_guest_button.visible = false
 	TideKit.text(_page, "ESC · ЗАКРЫТЬ", Vector2(1130, 780), 1, 15,
 		TideTokens.ink_alpha(0.55), 240)
 	_root.resized.connect(_layout_page)
 	_layout_page()
+
+
+func _make_actor(rect: Rect2) -> TextureRect:
+	var actor := TextureRect.new()
+	actor.position = rect.position
+	actor.size = rect.size
+	actor.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	actor.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	actor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	actor.visible = false
+	_page.add_child(actor)
+	return actor
+
+
+func _set_dialog_mode(timbi: bool) -> void:
+	_timbi_mode = timbi
+	_mimo.visible = timbi
+	_timbi.visible = timbi
+	_divider.visible = not timbi
+	_title.position = Vector2(390, 145) if timbi else Vector2(85, 145)
+	_title.size.x = 650 if timbi else 1200
+	_role.position = Vector2(390, 210) if timbi else Vector2(85, 210)
+	_role.size.x = 650 if timbi else 1200
+	_line.position = Vector2(390, 300) if timbi else Vector2(85, 300)
+	_line.size = Vector2(640, 260) if timbi else Vector2(1230, 260)
+	_next.position = Vector2(375, 665) if timbi else Vector2(85, 665)
+	_next.size = Vector2(250, 92) if timbi else Vector2(360, 92)
+	_close_button.position = Vector2(645, 665) if timbi else Vector2(480, 665)
+	_close_button.size = Vector2(170, 92) if timbi else Vector2(300, 92)
+	_guest_button.position = Vector2(835, 665) if timbi else Vector2(820, 665)
+	_guest_button.size = Vector2(210, 92) if timbi else Vector2(340, 92)
+	_guest_button.set_caption("ХЕЛЬГА" if timbi else "ТИМБИ")
+	_next.set_caption("ДАЛЬШЕ")
+	if not timbi:
+		_mimo.texture = null
+		_timbi.texture = null
+
+
+func _switch_tavern_guest() -> void:
+	if _current < 0 or String(_targets[_current]["person_id"]) != "tavern":
+		return
+	_set_dialog_mode(not _timbi_mode)
+	_steps["tavern"] = 0
+	_refresh()
+	_next.grab_focus()
 
 
 func _layout_page() -> void:
@@ -182,6 +240,8 @@ func _open(index: int) -> void:
 		_current = -1
 		return
 	_steps[id] = 0
+	_set_dialog_mode(id == "tavern")
+	_guest_button.visible = id == "tavern"
 	_title.text = String(person.get("name", "ЖИТЕЛЬ"))
 	_role.text = String(person.get("role", ""))
 	panel_open = true
@@ -197,6 +257,22 @@ func _refresh() -> void:
 	if _current < 0:
 		return
 	var id := String(_targets[_current]["person_id"])
+	if _timbi_mode:
+		var step := clampi(int(_steps.get(id, 0)), 0, VillagePeople.TIMBI_SCENE.size() - 1)
+		var beat: Dictionary = VillagePeople.TIMBI_SCENE[step]
+		var who := String(beat["who"])
+		_title.text = "ТИМБИ" if who == "timbi" else TideStory.HEROINE
+		_role.text = "ДОЧЬ ХОЗЯЙКИ ТАВЕРНЫ" if who == "timbi" else "ПОДРУГА ТИМБИ"
+		_line.text = String(beat["line"])
+		_mimo.texture = TideStory.portrait(String(beat["mimo"]))
+		_timbi.texture = TideStory.picture(String(beat["pose"]))
+		_mimo.modulate = Color.WHITE if who == "mimo" else Color(0.52, 0.52, 0.52)
+		_timbi.modulate = Color.WHITE if who == "timbi" else Color(0.52, 0.52, 0.52)
+		_next.set_caption("ЗАВЕРШИТЬ" if step == VillagePeople.TIMBI_SCENE.size() - 1 else "ДАЛЬШЕ")
+		return
+	var person := VillagePeople.get_person(id)
+	_title.text = String(person.get("name", "ЖИТЕЛЬ"))
+	_role.text = String(person.get("role", ""))
 	_line.text = VillagePeople.line_for(id, main.clock_hours, int(_steps.get(id, 0)))
 
 
@@ -204,6 +280,9 @@ func _on_talk() -> void:
 	if _current < 0:
 		return
 	var id := String(_targets[_current]["person_id"])
+	if _timbi_mode and int(_steps.get(id, 0)) >= VillagePeople.TIMBI_SCENE.size() - 1:
+		_close()
+		return
 	_steps[id] = int(_steps.get(id, 0)) + 1
 	_refresh()
 
@@ -211,6 +290,8 @@ func _on_talk() -> void:
 func _close() -> void:
 	panel_open = false
 	_current = -1
+	_set_dialog_mode(false)
+	_guest_button.visible = false
 	_dialog.visible = false
 	if main != null:
 		main.village_panel_open = false

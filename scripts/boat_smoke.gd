@@ -829,6 +829,27 @@ func _check_village() -> void:
 			_check(int(dialog._steps.get(String(dialog._targets[0]["person_id"]), -1)) == previous_step + 1,
 				"кнопка разговора переключает реплику")
 		dialog._close()
+		var tavern_index := -1
+		for i in range(dialog._targets.size()):
+			if String(dialog._targets[i]["person_id"]) == "tavern":
+				tavern_index = i
+		_check(tavern_index >= 0, "таверна доступна для разговора")
+		if tavern_index >= 0:
+			dialog._open(tavern_index)
+			_check(dialog._timbi_mode and dialog._mimo.texture != null and dialog._timbi.texture != null,
+				"в разговоре Тимби видны оба спрайта")
+			_check(dialog._timbi.modulate == Color.WHITE and dialog._mimo.modulate != Color.WHITE,
+				"говорящая Тимби выделена")
+			dialog._on_talk()
+			_check(dialog._mimo.modulate == Color.WHITE and dialog._timbi.modulate != Color.WHITE,
+				"при смене реплики выделяется Мимо")
+			dialog._switch_tavern_guest()
+			_check(not dialog._timbi_mode and dialog._title.text == "ХЕЛЬГА",
+				"в таверне можно поговорить с Хельгой")
+			dialog._switch_tavern_guest()
+			for i in range(VillagePeople.TIMBI_SCENE.size()):
+				dialog._on_talk()
+			_check(not dialog.panel_open, "пробный разговор заканчивается")
 		_check(not main.village_panel_open, "закрытие разговора возвращает управление")
 		main.harbor.moored = old_moored
 		main.menu_open = old_menu
