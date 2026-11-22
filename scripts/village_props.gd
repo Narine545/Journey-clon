@@ -384,7 +384,7 @@ func well(at: Vector3) -> void:
 		GiltPalette.WOOD_WARM.darkened(0.15), 8)
 	GiltShapes.beam(_wood, at + Vector3(-0.34, 1.30, 0.0), at + Vector3(0.34, 1.20, 0.0),
 		0.04, GiltPalette.IRON)
-	GiltShapes.pent_roof(_roof, at + Vector3(0.0, 2.36, 0.0), 1.85, 1.55, 0.04, 0.42,
+	GiltShapes.pent_roof(_stone, at + Vector3(0.0, 2.36, 0.0), 1.85, 1.55, 0.04, 0.42,
 		Color("3e4a44"), GiltPalette.LEAD)
 	GiltShapes.spire(_gilt, at + Vector3(0.0, 2.82, 0.0), 0.10, 0.30,
 		GiltPalette.GILT * 0.8, 4, PI * 0.25)
@@ -464,7 +464,7 @@ func laundry(a: Vector3, b: Vector3) -> void:
 	GiltShapes.beam(_dark, a + Vector3(0.0, 2.04, 0.0), b + Vector3(0.0, 2.04, 0.0),
 		0.018, GiltPalette.ROPE)
 	var side := Vector3(b.z - a.z, 0.0, a.x - b.x).normalized() * 0.18
-	var colors := [Color("cfc4b4"), Color("7e4a63"), Color("2b7f83"), Color("d9b06a")]
+	var colors: Array[Color] = [Color("cfc4b4"), Color("7e4a63"), Color("2b7f83"), Color("d9b06a")]
 	var count := int(length / 0.72)
 	for i in range(count):
 		var t := (float(i) + 0.5) / float(count)
@@ -557,7 +557,7 @@ func notice_board(at: Vector3, yaw := 0.0) -> void:
 		var col := Color("cfc4b4") if i % 2 == 0 else Color("b9ae95")
 		GiltShapes.box(_wood, at + bx * Vector3(-0.62 + float(i % 3) * 0.62,
 			1.68 - float(i / 3) * 0.42, 0.07), Vector3(0.42, 0.34, 0.012), col)
-	GiltShapes.pent_roof(_roof, at + bx * Vector3(0.0, 2.42, 0.0), 2.30, 0.85, 0.0, 0.30,
+	GiltShapes.pent_roof(_stone, at + bx * Vector3(0.0, 2.42, 0.0), 2.30, 0.85, 0.0, 0.30,
 		Color("2b2a2e"), GiltPalette.LEAD)
 	GiltShapes.spire(_gilt, at + bx * Vector3(0.0, 2.72, 0.0), 0.08, 0.24,
 		GiltPalette.GILT * 0.8, 4, PI * 0.25)
