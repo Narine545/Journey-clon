@@ -2,12 +2,12 @@ Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
 
 [BOOT] старт · 70 МБ
 WORLD: Vulkan недоступен — Compatibility-фолбэк, волюметрический туман заменён плотной дымкой
-[BOOT] мир собран · 153 МБ
-[BOOT] HUD рейда · 154 МБ
-[BOOT] звук моря · 347 МБ
+[BOOT] мир собран · 154 МБ
+[BOOT] HUD рейда · 155 МБ
+[BOOT] звук моря · 348 МБ
 [BOOT] меню · 348 МБ
 [BOOT] постобработка · 348 МБ
-[BOOT] готово · 348 МБ
+[BOOT] готово · 349 МБ
 [BOAT SMOKE] PASS волны CPU + шейдерное море
 [BOAT SMOKE] PASS лодка спущена на глубокую воду
 [BOAT SMOKE] PASS SDF-пятна распределены вокруг лодки
@@ -96,6 +96,15 @@ WORLD: Vulkan недоступен — Compatibility-фолбэк, волюме�
 [BOAT SMOKE] PASS дома не повторяют один силуэт
 [BOAT SMOKE] PASS у каждого дома свой план
 [BOAT SMOKE] PASS каждый дом доступен для разговора с жителем
+[BOAT SMOKE] PASS дальний дом использует две более простые сетки
+[BOAT SMOKE] PASS вдали упрощается геометрия и отключается дым
+[BOAT SMOKE] PASS упрощение не мешает выбрать жителя
+ERROR: [BOAT SMOKE] FAIL приближение возвращает полную модель
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _check (res://scripts/boat_smoke.gd:444)
+       [1] _check_village (res://scripts/boat_smoke.gd:845)
+       [2] _physics_process (res://scripts/boat_smoke.gd:52)
 [BOAT SMOKE] PASS диалог жителя открывается в стиле TIDECUT и останавливает управление
 [BOAT SMOKE] PASS лист диалога помещается в окно
 [BOAT SMOKE] PASS кнопка разговора переключает реплику
@@ -439,10 +448,10 @@ RETRO DEBUG: visible=false rect=(64.0, 64.0) viewport=(64.0, 64.0)
 [BOAT SMOKE] PASS кит не телепортируется: за кадр не больше 0.09 м
 [BOAT SMOKE] PASS глубина держится в разумных пределах: не тонет и не вылетает
 [BOAT SMOKE] PASS гребок хвоста плавный на каждом шаге
-[BOAT SMOKE] PASS кит не лезет под корпус (минимальный зазор 155.2 м)
-[WHALES] отладка: вкл · 0: глубина 6.9м 2.1м/с · 1: всплытие 2.4м 2.7м/с
+[BOAT SMOKE] PASS кит не лезет под корпус (минимальный зазор 181.6 м)
+[WHALES] отладка: вкл · 0: глубина 5.7м 1.6м/с · 1: всплытие 1.0м 2.7м/с
 [BOAT SMOKE] PASS отладка китов включается и печатает состояние стаи
-[WHALES] отладка: выкл · 0: глубина 6.9м 2.1м/с · 1: всплытие 2.4м 2.7м/с
+[WHALES] отладка: выкл · 0: глубина 5.7м 1.6м/с · 1: всплытие 1.0м 2.7м/с
 [BOAT SMOKE] PASS карта использует мировые X/Z и правильные конечные границы рельефа
 [BOAT SMOKE] PASS свободная камера включает отдельное управление, не телепортируя судно
 [BOAT SMOKE] PASS щелчок по морю даёт координату уровня воды, а не удалённого дна
@@ -450,4 +459,4 @@ RETRO DEBUG: visible=false rect=(64.0, 64.0) viewport=(64.0, 64.0)
 [BOAT SMOKE] PASS отчёт содержит метку, камеру, погоду и границы рендерных областей
 [BOAT SMOKE] PASS общий вид показывает всю карту без дымки, не подменяя игровую погоду
 [BOAT SMOKE] PASS выход возвращает обычную камеру и прежние флаги атмосферы
-[BOAT SMOKE] итог: ВСЁ ПРОШЛО
+[BOAT SMOKE] итог: 1 ОШИБОК
