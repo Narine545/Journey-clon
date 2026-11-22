@@ -19,8 +19,8 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
 [BOOT] мир собран · 124 МБ
 [BOOT] HUD рейда · 126 МБ
 [BOOT] звук моря · 288 МБ
-[BOOT] меню · 290 МБ
-[BOOT] постобработка · 290 МБ
+[BOOT] меню · 289 МБ
+[BOOT] постобработка · 289 МБ
 RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
 [BOOT] готово · 289 МБ
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_overview.png 1280x720
@@ -29,7 +29,6 @@ RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_street.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_backyards.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_trail.png 1280x720
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_lighthouse.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_north_wall.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_south_wall.png 1280x720
 [VILLAGE AUDIT] viewport=(1280.0, 720.0) texture=(1280.0, 720.0) page=(-70.0, -60.0) scale=(0.666667, 0.666667)
