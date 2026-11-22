@@ -768,6 +768,10 @@ func _check_village() -> void:
 		return
 	_check(village.get_node_or_null("GroundedUnpavedLane") is MeshInstance3D,
 		"дорога и дорожки лежат на рельефе за причалом")
+	_check(village.get_node_or_null("PropsStone") is MeshInstance3D,
+		"каменная набережная с кордоном и трапами стоит на воде")
+	_check(village.resident_nodes.size() >= 10,
+		"в домах и у храмов живут люди")
 	for house in village.cottages:
 		var p := house.global_position
 		_check(main.coast.ground_height(p.x, p.z) > 0.5,
@@ -793,6 +797,13 @@ func _check_village() -> void:
 	for house in village.cottages:
 		styles[house.style] = true
 	_check(styles.size() >= 4, "дома не повторяют один силуэт")
+	# Каждый дом — своя планировка, а не один план с разной краской.
+	var plans := {}
+	for house in village.cottages:
+		plans[house.plan_name] = true
+	_check(plans.size() == IslandVillage.HOUSE_SITES.size(), "у каждого дома свой план")
+	_check(main.village_interaction != null and main.village_interaction._targets.size() >= 10,
+		"дома и храмы доступны для клика, пока лодка пришвартована")
 	village.set_night(0.0)
 	_check(village.cottages[0].window_material.emission_energy_multiplier == 0.0,
 		"окна посёлка не горят днём")

@@ -21,6 +21,7 @@ var world: GameWorld
 var shoals: ShoalMarkers
 var harbor: IslandHarbor
 var village: IslandVillage
+var village_interaction: VillageInteraction
 var coast: Coast
 var sand: SandField
 var sea_look_trial: SeaLookTrial
@@ -32,6 +33,7 @@ var hud: BoatHud
 var menu: TideMainMenu
 var menu_layer: CanvasLayer
 var menu_open := false
+var village_panel_open := false
 var prologue: TidePrologue
 var prologue_seen := false
 var inspector: WorldInspector
@@ -43,6 +45,14 @@ var raid_gate: RaidGate
 var sound: BoatSound
 var camera_height := 26.2
 var camera_framing := BoatCameraFraming.new()
+## Порт-вид: на стоянке камера показывает посёлок целиком, иначе дома
+## остаются за кадром и кликать не по чему.
+const PORT_VIEW_FOCUS := Vector3(164.0, 4.2, -30.6)
+const PORT_VIEW_SIZE := 64.0
+var _port_view := false
+var _size_before_port := 32.0
+var _port_restore := 0.0
+var _port_zoom := 0.0
 var slicks: Array[ResourceSlick] = []
 var resource_zones := ResourceZones.new()
 var buoy_dynamics := BuoyDynamics.new()
@@ -151,6 +161,9 @@ func _ready() -> void:
 	village = IslandVillage.new()
 	add_child(village)
 	village.setup(self)
+	village_interaction = VillageInteraction.new()
+	add_child(village_interaction)
+	village_interaction.setup(self)
 	_build_beacons()
 	_build_reefs()
 	_build_resources()
@@ -930,7 +943,7 @@ func _start_voyage() -> void:
 	_close_menu()
 	if harbor != null and harbor.moored:
 		# Рейс начинается у причала: отдать швартовы и выйти на глубокую воду.
-		announce("ТИХАЯ БУХТА. [E] — ОТДАТЬ ШВАРТОВЫ, ЗАТЕМ ВЫХОДИТЕ НА ГЛУБОКУЮ ВОДУ.")
+		announce("ТИХАЯ БУХТА. КЛИКНИТЕ ПО ДОМУ — ТАМ ЖИВУТ. [E] — ОТДАТЬ ШВАРТОВЫ.")
 		return
 	if raid != null and not raid.engaged():
 		# Рейд больше не начинается из афиши: вход — сфера в открытом океане.
@@ -1480,8 +1493,32 @@ func _process(delta: float) -> void:
 	else:
 		# Рендерная камера должна следовать рендерной, а не последней тиковой
 		# позиции лодки. Иначе при 60 Гц физики и другом FPS видны ступеньки.
-		var target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
-		_camera_focus = _camera_focus.lerp(target, 1.0 - exp(-4.0 * delta))
+		var port := harbor != null and harbor.moored \
+			and OS.get_environment("JOURNEY_BOAT_SMOKE") != "1"
+		if port and not _port_view:
+			_size_before_port = camera.size
+			_port_view = true
+			_port_restore = 0.0
+			_port_zoom = 0.0
+		elif not port and _port_view:
+			_port_view = false
+			# Если игрок не приближал кадр в порту, вернём прежнее отдаление.
+			_port_restore = 0.9 if absf(camera.size - PORT_VIEW_SIZE) < 1.0 else 0.0
+		var focus_target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
+		if _port_view:
+			# В порту камера смотрит на посёлок, оставляя лодку у левого края:
+			# так все дома в кадре и по ним можно кликать. Отдаление
+			# подводим только на входе, дальше игрок может приблизить сам.
+			focus_target = PORT_VIEW_FOCUS
+			if _port_zoom < 1.2:
+				_port_zoom += delta
+				camera.size = lerpf(camera.size, PORT_VIEW_SIZE, 1.0 - exp(-3.2 * delta))
+		elif _port_restore > 0.0:
+			# Возврат к прежнему отдалению коротким окном; ручной зум игрока
+			# после него не перехватывается.
+			_port_restore = maxf(0.0, _port_restore - delta)
+			camera.size = lerpf(camera.size, _size_before_port, 1.0 - exp(-4.5 * delta))
+		_camera_focus = _camera_focus.lerp(focus_target, 1.0 - exp(-(2.4 if _port_view else 4.0) * delta))
 		var offset := camera_framing.fit_offset(_camera_focus, Vector3(21.0, camera_height, 30.0), camera, get_viewport().get_visible_rect().size)
 		var desired := _camera_focus + offset
 		# Один фильтр для focus; второй лаг позиции менял угол взгляда камеры
@@ -1493,7 +1530,8 @@ func _process(delta: float) -> void:
 	if not inspection_active() and not gameplay_paused():
 		resource_zones.update(delta)
 	hud.visible = (
-		not menu_open and not inspection_active() and not (raid != null and raid.engaged())
+		not menu_open and not village_panel_open and not inspection_active()
+		and not (raid != null and raid.engaged())
 		and not (rest != null and rest.visible)
 	)
 	hud.queue_redraw()

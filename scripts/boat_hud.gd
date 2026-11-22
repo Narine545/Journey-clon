@@ -209,7 +209,7 @@ func _action(next_b: Dictionary, boat_xz: Vector2) -> Array:
 	var resource_name := main.boat.target_name()
 	var trailer_resource := main.boat.trailer_target_name()
 	if main.harbor != null and main.harbor.moored:
-		return ["E", "ОТДАТЬ ШВАРТОВЫ   ·   Z — ОТДОХНУТЬ", 1]
+		return ["E", "ЛКМ ПО ДОМУ   ·   E — ШВАРТОВЫ   ·   Z — ОТДЫХ", 1]
 	if main.harbor != null and main.harbor.near_berth():
 		return ["E", "ШВАРТОВКА · ХОД ДО 1.2 М/С", 1]
 	if main.raid_gate != null and main.raid_gate.in_range():

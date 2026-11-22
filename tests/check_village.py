@@ -17,7 +17,7 @@ smoke = Path('scripts/boat_smoke.gd').read_text()
 
 # --- Расстановка ---------------------------------------------------------
 assert 'village.setup(self)' in main
-assert village.count('"at": Vector2(') == 7, 'семь домов: набережная и Верхняя улица'
+assert village.count('"at": Vector2(') == 8, 'восемь домов: две линии улицы и дом пастора'
 assert 'main.coast.ground_height(p.x, p.z)' in village
 assert 'GroundedUnpavedLane' in village and '_road_strip(surface, QUAY_LANE, 3.2, true)' in village
 assert 'UPPER_LANE' in village and 'CHAPEL_WALK' in village
@@ -26,6 +26,32 @@ assert village.count('Vector2(') > 40
 assert 'PlazaPaving' in village and 'Plaza' in village
 # Съезд с пирса: посёлок связан с причалом, а не висит на скале.
 assert 'PierBridge' in village and '_build_bridge()' in village
+assert 'props.quay()' in village and 'VillageProps.QUAY_Y' in village
+assert 'VillageResident.new()' in village and 'resident_nodes' in village
+
+# --- Новые дома, жители и клик -------------------------------------------
+house = Path('scripts/village_house.gd').read_text()
+people = Path('scripts/village_people.gd').read_text()
+props = Path('scripts/village_props.gd').read_text()
+resident = Path('scripts/village_resident.gd').read_text()
+portrait = Path('scripts/village_portrait.gd').read_text()
+interaction = Path('scripts/village_interaction.gd').read_text()
+assert 'class_name GiltHouse' in house and house.count('"width":') >= 8
+assert 'func build_site(' in house and 'func resident_spot(' in house and 'func ray_distance(' in house
+assert 'class_name VillagePeople' in people and people.count('"house":') >= 10
+assert 'func line_for(' in people and 'func scene_for(' in people
+assert 'class_name VillageProps' in props and 'func quay(' in props and 'func hjell(' in props
+assert 'func rowboat(' in props and 'func boat_node(' in props
+assert 'class_name VillageResident' in resident and 'AnimationLibrary_Godot_Standard.glb' in resident
+assert 'class_name VillagePortrait' in portrait and 'func set_person(' in portrait
+assert 'class_name VillageInteraction' in interaction and 'person_id' in interaction
+for kind in ('raw', 'refined', 'hull', 'sonar', 'chart', 'blessing'):
+    assert f'"{kind}"' in interaction, kind
+assert 'main.harbor.moored' in interaction and 'village_panel_open' in interaction
+assert 'village_interaction = VillageInteraction.new()' in main and 'village_panel_open' in main
+assert 'PORT_VIEW_FOCUS' in main and 'PORT_VIEW_SIZE' in main
+assert 'RAMP_WELL' in props and '_deck_quad' in props and 'BRIDGE_FINISH' in village
+assert 'ЛКМ ПО ДОМУ' in Path('scripts/boat_hud.gd').read_text()
 
 # --- Разные дома, а не один крашеный ------------------------------------
 assert 'func _palette_for' in cottage and 'palette["glass"]' in cottage
@@ -78,7 +104,10 @@ assert 'HABS MA-857' in Path('docs/world/harbor_village.md').read_text()
 # и Godot валил компиляцию всей цепочки скриптов.
 import re as _re
 for name, source in (('island_village', village), ('cottage', cottage),
-                     ('chapel', chapel), ('shrine', shrine)):
+                     ('chapel', chapel), ('shrine', shrine), ('house', house),
+                     ('props', props), ('resident', resident), ('portrait', portrait),
+                     ('interaction', interaction)):
+    source = '\n'.join(line for line in source.splitlines() if not line.strip().startswith('#'))
     defined = set(_re.findall(r'^(?:static )?func (\w+)\(', source, _re.M))
     called = set(_re.findall(r'(?<![\w.])(_\w+)\(', source))
     missing = sorted(called - defined)
