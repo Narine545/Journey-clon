@@ -28,6 +28,11 @@ func _run() -> void:
 	# сфера, ноги). Под софтверным Vulkan кадр стоит около минуты, и любая
 	# половина серии уже вылетала по таймауту шага CI.
 	var lane := OS.get_environment("TIDE_LIGHT_SET")
+	if lane == "village_audit":
+		await _village_audit()
+		print("[VILLAGE AUDIT] готово")
+		get_tree().quit(0)
+		return
 	var all := lane == ""
 	if all or lane == "village":
 		await _village_shots()
@@ -197,6 +202,29 @@ func _go_to_sea() -> void:
 	main.camera.look_at(main._camera_focus, Vector3.UP)
 
 
+## Быстрые диагностические кадры: общий вид, подход к пирсу, диалог.
+func _village_audit() -> void:
+	main._close_menu()
+	main.clock_hours = 12.0
+	main.weather.fog_amount = 0.0
+	main._apply_atmosphere(BoatMain.night_for_hour(12.0))
+	main.inspector.set_free_camera(true)
+	main.inspector.visible = false
+	_village_frame(Vector3(183.0, 4.0, -29.0), -0.90, 0.66, 63.0)
+	await _shooter.wait_frames_count(10)
+	await _shooter.capture("village_audit_overview")
+	_village_frame(Vector3(165.0, 3.2, -30.0), -1.12, 0.40, 26.0)
+	await _shooter.wait_frames_count(10)
+	await _shooter.capture("village_audit_entry")
+	main.inspector.set_free_camera(false)
+	main.inspector.visible = true
+	main._start_in_harbor()
+	main.village_interaction._open(0)
+	await _shooter.wait_frames_count(8)
+	await _shooter.capture("village_audit_dialog")
+	main.village_interaction._close()
+
+
 ## Посёлок из свободной камеры: сравниваем дневную геометрию и ночные окна.
 func _village_shots() -> void:
 	main.inspector.set_free_camera(true)
@@ -213,14 +241,11 @@ func _village_shots() -> void:
 	await _shot("light_24_village_street", 12.0, 0.0)
 	_village_frame(Vector3(190.0, 5.0, -29.0), -0.92, 0.52, 54.0)
 	await _shot("light_25_village_dusk", 19.4, 0.0)
-	# Прибрежный храм-фонарь: точка входа с воды, видна с лодки.
-	_village_frame(Vector3(164.0, 4.2, -12.0), -2.05, 0.34, 26.0)
-	await _shot("light_26_shrine_night", 22.4, 0.0)
-	_village_frame(Vector3(164.0, 4.2, -12.0), -2.05, 0.34, 26.0)
-	await _shot("light_27_shrine_day", 11.0, 0.0)
-	# Крупный план места крепления мачты и прилегающей мостовой.
-	_village_frame(Vector3(166.7, 5.0, -18.4), -1.12, 0.46, 18.0)
-	await _shot("light_28_flagpole", 12.0, 0.0)
+	# Съезд и фасады с уровня гавани: здесь хорошо заметны пересечения.
+	_village_frame(Vector3(165.0, 3.5, -30.0), -1.12, 0.42, 30.0)
+	await _shot("light_26_village_entry", 12.0, 0.0)
+	_village_frame(Vector3(176.5, 4.5, -25.0), -0.92, 0.45, 31.0)
+	await _shot("light_27_village_lane", 11.0, 0.0)
 	main.inspector.set_free_camera(false)
 	main.inspector.visible = true
 	main._start_in_harbor()

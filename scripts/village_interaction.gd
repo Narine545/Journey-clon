@@ -1,7 +1,7 @@
 class_name VillageInteraction
 extends CanvasLayer
-## Дом выбирается мышью только у пришвартованной лодки. Данные жителя и
-## портрет отделены от диалога; portrait_path можно добавить в VillagePeople.
+## Дом выбирается мышью только у пришвартованной лодки.
+## Диалог текстовый: будущие изображения жителей пока не подключены.
 var main: BoatMain
 var panel_open := false
 var hovered := -1
@@ -12,7 +12,6 @@ var _root: Control
 var _dialog: Control
 var _page: Control
 var _shade: ColorRect
-var _portrait: VillagePortrait
 var _title: Label
 var _role: Label
 var _line: Label
@@ -27,11 +26,6 @@ func setup(owner_main: BoatMain) -> void:
 	for house in main.village.cottages:
 		if not house.person_id.is_empty():
 			_targets.append({"house": house, "person_id": house.person_id})
-	# Эти жители находятся не в жилых домах, но также доступны для разговора.
-	for entry in [{"node": main.village.chapel, "person_id": "bellringer", "height": 7.0},
-			{"node": main.village.shrine, "person_id": "lanternkeeper", "height": 3.6}]:
-		if entry.node != null:
-			_targets.append(entry)
 	_build_ui()
 
 
@@ -67,28 +61,22 @@ func _build_ui() -> void:
 	sheet.hatch_color = TideTokens.deep_alpha(0.10)
 	TideKit.text(_page, "ТИХАЯ БУХТА · РАЗГОВОР", Vector2(65, 35), 1, 20,
 		TideTokens.flare_alpha(0.9), 1000)
-	_portrait = VillagePortrait.new()
-	_portrait.position = Vector2(65, 160)
-	_portrait.size = Vector2(310, 410)
-	_page.add_child(_portrait)
-	TideKit.text(_page, "ЖИТЕЛЬ ДОМА", Vector2(65, 590), 1, 16,
-		TideTokens.ink_alpha(0.58), 310)
-	_title = TideKit.text(_page, "", Vector2(420, 145), 2, 54, TideTokens.FLARE, 900)
-	_role = TideKit.text(_page, "", Vector2(420, 210), 1, 20,
-		TideTokens.ink_alpha(0.70), 900)
-	TideKit.poly(_page, PackedVector2Array([Vector2(420, 260), Vector2(1330, 260),
-		Vector2(1324, 264), Vector2(420, 264)]), TideTokens.ink_alpha(0.24))
+	_title = TideKit.text(_page, "", Vector2(85, 145), 2, 54, TideTokens.FLARE, 1200)
+	_role = TideKit.text(_page, "", Vector2(85, 210), 1, 20,
+		TideTokens.ink_alpha(0.70), 1200)
+	TideKit.poly(_page, PackedVector2Array([Vector2(85, 260), Vector2(1330, 260),
+		Vector2(1324, 264), Vector2(85, 264)]), TideTokens.ink_alpha(0.24))
 	_line = Label.new()
-	_line.position = Vector2(420, 300)
-	_line.size = Vector2(900, 260)
+	_line.position = Vector2(85, 300)
+	_line.size = Vector2(1230, 260)
 	_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	TideTokens.style_body(_line, 34, TideTokens.INK)
 	_page.add_child(_line)
-	_next = TideKit.button(_page, "ДАЛЬШЕ", Rect2(420, 665, 360, 92),
+	_next = TideKit.button(_page, "ДАЛЬШЕ", Rect2(85, 665, 360, 92),
 		TideButton.Shape.SOLID, TideTokens.SONAR, 0, 30, TideTokens.INK, -1.0)
 	_next.pressed.connect(_on_talk)
-	var close := TideKit.button(_page, "УЙТИ", Rect2(810, 665, 300, 92),
+	var close := TideKit.button(_page, "УЙТИ", Rect2(480, 665, 300, 92),
 		TideButton.Shape.GHOST, TideTokens.INK, 0, 30, TideTokens.INK, 1.0)
 	close.pressed.connect(_close)
 	TideKit.text(_page, "ESC · ЗАКРЫТЬ", Vector2(1130, 780), 1, 15,
@@ -147,18 +135,7 @@ func _pick(mouse: Vector2) -> int:
 			if distance > 0.0 and distance < best:
 				best = distance
 				result = i
-		else:
-			var node: Node3D = target["node"]
-			var local_origin := node.to_local(origin)
-			var local_direction := node.global_transform.basis.inverse() * direction
-			var bounds := AABB(Vector3(-2.8, 0.0, -2.8), Vector3(5.6, float(target["height"]), 5.6))
-			var hit: Variant = bounds.intersects_ray(local_origin, local_direction)
-			if hit != null:
-				var point: Vector3 = hit
-				var distance := origin.distance_to(node.to_global(point))
-				if distance < best:
-					best = distance
-					result = i
+
 	return result
 
 
@@ -204,7 +181,6 @@ func _open(index: int) -> void:
 	_steps[id] = 0
 	_title.text = String(person.get("name", "ЖИТЕЛЬ"))
 	_role.text = String(person.get("role", ""))
-	_portrait.set_person(person)
 	panel_open = true
 	main.village_panel_open = true
 	_dialog.visible = true

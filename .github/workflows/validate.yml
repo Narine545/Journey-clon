@@ -260,7 +260,7 @@ jobs:
             exit 1
           fi
           grep -F "[LIGHT SHOTS] готово" light-village.log || (echo "::error::серия «посёлок и храм» не дошла до конца" && exit 1)
-          test -f shots/light_27_shrine_day.png || (echo "::error::кадры храма не снялись" && exit 1)
+          test -f shots/light_27_village_lane.png || (echo "::error::кадры улицы не снялись" && exit 1)
       - name: World lighting shots — гавань
         run: |
           TIDE_LIGHT_SET=harbor TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
@@ -453,3 +453,55 @@ jobs:
             fi
             sleep 5
           done
+
+  village-audit:
+    # Быстрые отдельные кадры посёлка не ждут длинного рендера моря и рейда.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        id: godot_cache
+        with:
+          path: godot_bin
+          key: godot-4.7.2-stable-linux-x86_64
+      - name: Download Godot
+        if: steps.godot_cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sL -o godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          mkdir -p godot_bin
+          mv Godot_v4.7.2-stable_linux.x86_64 godot_bin/godot
+          chmod +x godot_bin/godot
+      - name: Render village
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mesa-vulkan-drivers > /dev/null
+          godot_bin/godot --headless --path . --import > /tmp/village-import.log 2>&1
+          mkdir -p shots
+          TIDE_LIGHT_SET=village_audit TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
+            timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" \
+            godot_bin/godot --path . res://scenes/boat_main.tscn \
+            --rendering-method forward_plus --resolution 1280x720 \
+            --fixed-fps 30 --quit-after 500 > /tmp/village-audit.log 2>&1
+          cat /tmp/village-audit.log
+          ! grep -qiE 'SCRIPT ERROR|SHADER ERROR|Parse Error|Invalid polygon data|triangulation failed' /tmp/village-audit.log
+          grep -F '[VILLAGE AUDIT] готово' /tmp/village-audit.log
+          for name in overview entry dialog; do test -s "shots/village_audit_${name}.png"; done
+      - name: Publish village frames
+        run: |
+          mkdir -p /tmp/village-frames
+          cp shots/village_audit_*.png /tmp/village-frames/
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch -q origin "${GITHUB_REF#refs/heads/}"
+            git reset -q --hard FETCH_HEAD
+            cp /tmp/village-frames/*.png shots/
+            git add shots/village_audit_*.png
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -q -m "ci: посёлок ${GITHUB_SHA::7} [skip ci]"
+            if git push -q origin HEAD:"${GITHUB_REF#refs/heads/}"; then exit 0; fi
+            sleep 5
+          done
+          exit 1

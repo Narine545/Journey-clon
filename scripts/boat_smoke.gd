@@ -786,15 +786,9 @@ func _check_village() -> void:
 			"дом собран из камня, кровли и стекла отдельными сетками")
 	_check(village.get_node_or_null("PierBridge") is MeshInstance3D,
 		"съезд с причала доводит дорогу до ворот посёлка")
-	_check(village.chapel != null and village.chapel.get_node_or_null("Glass") is MeshInstance3D,
-		"часовня со витражами построена")
-	for triangle in VillagePortrait.collar_triangles(Vector2(310.0, 410.0)):
-		_check(Geometry2D.triangulate_polygon(triangle).size() == 3,
-			"фрагмент воротника портрета корректно триангулируется")
-	_check(village.shrine != null and village.shrine.get_node_or_null("ShrineGlass") is MeshInstance3D,
-		"прибрежный храм-фонарь построен")
-	_check(village.plaza != null and village.plaza.get_node_or_null("PlazaPaving") is MeshInstance3D,
-		"площадь вымощена")
+	_check(village.get_node_or_null("Chapel") == null
+		and village.get_node_or_null("ShoreShrine") == null,
+		"в квартале нет готических храмов")
 	var styles := {}
 	for house in village.cottages:
 		styles[house.style] = true
@@ -804,8 +798,8 @@ func _check_village() -> void:
 	for house in village.cottages:
 		plans[house.plan_name] = true
 	_check(plans.size() == IslandVillage.HOUSE_SITES.size(), "у каждого дома свой план")
-	_check(main.village_interaction != null and main.village_interaction._targets.size() >= 10,
-		"дома и храмы доступны для клика, пока лодка пришвартована")
+	_check(main.village_interaction != null and main.village_interaction._targets.size() == village.cottages.size(),
+		"каждый дом доступен для разговора с жителем")
 	if main.village_interaction != null:
 		var old_moored := main.harbor.moored
 		var old_menu := main.menu_open

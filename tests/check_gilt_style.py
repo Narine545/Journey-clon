@@ -11,7 +11,6 @@ style = Path('scripts/gilt_style.gd').read_text()
 shader = Path('shaders/gilt_style.gdshader').read_text()
 palette = Path('scripts/art/palette.gd').read_text()
 cot = Path('scripts/village_cottage.gd').read_text()
-cha = Path('scripts/village_chapel.gd').read_text()
 
 # --- Подключение ---------------------------------------------------------
 assert 'var style_layer: GiltStyle' in main
@@ -39,7 +38,6 @@ for token in ('BASALT', 'SLATE', 'GILT', 'ENAMEL', 'LAMP_NEON',
     assert f'const {token}' in palette, token
 assert 'class_name GiltPalette' in palette
 assert 'GiltPalette.LAMP_MAGENTA' in cot and 'GiltPalette.LAMP_NEON' in cot
-assert 'GiltPalette.LAMP_NEON' in cha
 # Пять домов — пять красок стекла: посёлок не должен снова стать однотонным.
 for tint in ('LAMP_MAGENTA', 'LAMP_NEON', 'LAMP_VIOLET', 'ff9bb0', 'b8ffe8'):
     assert tint in cot, tint
