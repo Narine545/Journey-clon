@@ -608,7 +608,7 @@ SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
           at: GDScript::reload (res://scripts/island_village.gd:616)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
           at: GDScript::reload (res://scripts/island_village.gd:616)
-SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
+SCRIPT ERROR: Parse Error: Invalid operands to operator -, Nil and float.
           at: GDScript::reload (res://scripts/island_village.gd:617)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
           at: GDScript::reload (res://scripts/island_village.gd:617)
