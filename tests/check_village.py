@@ -18,6 +18,9 @@ assert 'portal_bulb' not in props and 'portal_x' not in props
 assert '_build_chapel()' not in village and '_build_shrine()' not in village
 assert 'GiltShapes.pointed_arch' not in house and 'GiltShapes.spire' not in house
 assert '_match_feature(' not in house and '_yard(' not in house
+assert 'func update_lod(camera: Camera3D)' in house
+assert 'FarHouse' in house and 'FarWindows' in house and 'smoke.emitting = active' in house
+assert 'house.update_lod(main.camera)' in village
 assert '_simple_window(' in house
 assert 'var crossbar :=' in house and 'var sill :=' in house
 lighthouse = Path('scripts/coastal_lighthouse.gd').read_text()

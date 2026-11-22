@@ -813,6 +813,38 @@ func _check_village() -> void:
 	_check(plans.size() == IslandVillage.HOUSE_SITES.size(), "у каждого дома свой план")
 	_check(main.village_interaction != null and main.village_interaction._targets.size() == village.cottages.size(),
 		"каждый дом доступен для разговора с жителем")
+	# Проверяем реальное переключение, число вершин и дым, а не только имя LOD.
+	var test_house: GiltHouse = village.cottages[0]
+	var near_vertices := 0
+	var far_vertices := 0
+	for mesh in test_house._lod_near:
+		near_vertices += mesh.mesh.surface_get_array_len(0)
+	for mesh in test_house._lod_far:
+		far_vertices += mesh.mesh.surface_get_array_len(0)
+	_check(test_house._lod_far.size() == 2 and far_vertices < near_vertices,
+		"дальний дом использует две более простые сетки")
+	var lod_camera := Camera3D.new()
+	main.add_child(lod_camera)
+	lod_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	lod_camera.size = 32.0
+	lod_camera.global_position = test_house.global_position + Vector3(0, 20, 250)
+	lod_camera.look_at(test_house.global_position + Vector3.UP * 2.0)
+	test_house.update_lod(lod_camera)
+	var smoke_stopped := true
+	for particle in test_house._lod_smoke:
+		smoke_stopped = smoke_stopped and not particle.emitting
+	_check(test_house.lod_simplified and not test_house._lod_near[0].visible and
+		test_house._lod_far[0].visible and smoke_stopped,
+		"вдали упрощается геометрия и отключается дым")
+	var origin_lod := test_house.global_position + Vector3(0, 2, 20)
+	_check(test_house.ray_distance(origin_lod, Vector3(0, 0, -1)) > 0.0,
+		"упрощение не мешает выбрать жителя")
+	lod_camera.global_position = test_house.global_position + Vector3(0, 18, 22)
+	lod_camera.look_at(test_house.global_position + Vector3.UP * 2.0)
+	test_house.update_lod(lod_camera)
+	_check(not test_house.lod_simplified and test_house._lod_near[0].visible and
+		not test_house._lod_far[0].visible, "приближение возвращает полную модель")
+	lod_camera.queue_free()
 	if main.village_interaction != null:
 		var old_moored := main.harbor.moored
 		var old_menu := main.menu_open

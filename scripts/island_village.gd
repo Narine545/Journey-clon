@@ -41,6 +41,7 @@ var props: VillageProps
 var _day_night := -1.0
 var _gulls: Array[Dictionary] = []
 var _time := 0.0
+var _lod_timer := 0.0
 
 
 func setup(owner_main: BoatMain) -> void:
@@ -407,6 +408,11 @@ func _process(delta: float) -> void:
 	_time += delta
 	if main == null:
 		return
+	_lod_timer -= delta
+	if _lod_timer <= 0.0:
+		_lod_timer = 0.25
+		for house in cottages:
+			house.update_lod(main.camera)
 	if absf(main.night01 - _day_night) > 0.015:
 		set_night(main.night01)
 	# Чайки не «ездят по кругу»: птица смотрит по касательной, кренится

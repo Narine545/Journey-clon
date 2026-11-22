@@ -82,6 +82,10 @@ var _highlight: MeshInstance3D
 var _highlight_mat: StandardMaterial3D
 var _nameplate: Label3D
 var _smoke_points: Array[Vector3] = []
+var _lod_near: Array[MeshInstance3D] = []
+var _lod_far: Array[MeshInstance3D] = []
+var _lod_smoke: Array[GPUParticles3D] = []
+var lod_simplified := false
 
 
 ## Основная точка входа. data — запись из IslandVillage.HOUSE_SITES:
@@ -119,6 +123,7 @@ func build_site(data: Dictionary, foundation_bottom: float) -> void:
 	_workshop_details()
 	_add_nameplate()
 	_commit()
+	_build_far_lod()
 	set_night(night01)
 	_add_highlight()
 
@@ -497,6 +502,92 @@ func _commit() -> void:
 		_smoke(point)
 
 
+## Дальняя модель: одна непрозрачная сетка и одна сетка окон вместо
+## нескольких слоёв досок, фурнитуры и теней. Коллизия и выбор не меняются.
+func _build_far_lod() -> void:
+	var st := GiltShapes.begin()
+	var glass := GiltShapes.begin()
+	var plinth_depth := maxf(0.40, -_foundation_bottom + 0.18)
+	GiltShapes.box(st, Vector3(0, -plinth_depth * 0.5 + 0.06, 0),
+		Vector3(width + 0.18, plinth_depth, depth + 0.18), palette["stone"])
+	GiltShapes.box(st, Vector3(0, 0.46, 0), Vector3(width - 0.12, 0.72, depth - 0.12), palette["stone"])
+	GiltShapes.box(st, Vector3(0, (eaves + 0.82) * 0.5, 0),
+		Vector3(width - 0.24, eaves - 0.72, depth - 0.24), palette["wall"])
+	var roof_shift := depth * 0.18 if plan_name == "pilot" else 0.0
+	GiltShapes.gable_roof(st, Vector3.ZERO, width, depth, eaves, ridge - eaves,
+		palette["roof"], palette["roof"].lightened(0.18), palette["wall"], 0.46, roof_shift)
+	if plan_name in ["keeper", "pilot"]:
+		# Пристройка сохраняется и в дальнем силуэте.
+		var annex_z := -depth * 0.5 - 0.505
+		GiltShapes.box(st, Vector3(0, 1.42, annex_z), Vector3(width * 0.68, 2.84, 1.25), palette["wall"])
+		GiltShapes.pent_roof(st, Vector3(0, 2.84, annex_z), width * 0.70, 1.32,
+			0.05, 0.20, palette["roof"], palette["trim"])
+	for point in _smoke_points:
+		GiltShapes.box(st, point - Vector3(0, 0.5, 0), Vector3(0.50, 1.0, 0.50), palette["stone"])
+	var front := depth * 0.5
+	var door_width := 1.85 if plan_name in ["salthouse", "netloft"] else 0.93
+	GiltShapes.box(st, Vector3(0, 1.08, front + 0.10), Vector3(door_width, 1.98, 0.05), palette["door"])
+	for side in [-1.0, 1.0]:
+		var x := float(side) * width * 0.30
+		GiltShapes.box(glass, Vector3(x, 1.45, front + 0.05), Vector3(0.66, 0.86, 0.12), palette["glass"])
+		GiltShapes.box(glass, Vector3(float(side) * (width * 0.5 + 0.03), 1.45, 0),
+			Vector3(0.12, 0.86, 0.66), palette["glass"])
+	if int(plan["storeys"]) > 1:
+		for side in [-1.0, 1.0]:
+			GiltShapes.box(glass, Vector3(float(side) * width * 0.26, eaves - 0.66, front + 0.05),
+				Vector3(0.66, 0.86, 0.12), palette["glass"])
+	_add_lod_mesh("FarHouse", st, _material(0.90, 0.02))
+	_add_lod_mesh("FarWindows", glass, window_material)
+
+
+func _add_lod_mesh(node_name: String, surface: SurfaceTool, material: Material) -> void:
+	var visual := MeshInstance3D.new()
+	visual.name = node_name
+	visual.mesh = surface.commit()
+	visual.material_override = material
+	visual.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if node_name == "FarWindows" else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	visual.visible = false
+	add_child(visual)
+	_lod_far.append(visual)
+
+
+## Никакой зависимости выбора дома от визуала. При замене моделью Blender
+## автоматический LOD не применяется, пока художник не подготовит его отдельно.
+func update_lod(camera: Camera3D) -> void:
+	if camera == null or _lod_far.is_empty():
+		return
+	var focus := global_position + Vector3.UP * (ridge * 0.5)
+	var distance := camera.global_position.distance_to(focus)
+	var viewport := Vector2(camera.get_viewport().get_visible_rect().size)
+	var pixels := 0.0
+	if camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
+		pixels = maxf(width, depth) * viewport.y / maxf(camera.size, 0.01)
+	else:
+		pixels = maxf(width, depth) * viewport.y / maxf(2.0 * distance * tan(deg_to_rad(camera.fov * 0.5)), 0.01)
+	# Гистерезис исключает мигание на границе. Удаление и zoom учитываются
+	# отдельно: в ортографической камере расстояние не меняет размер на экране.
+	var far := distance > (135.0 if lod_simplified else 165.0) or pixels < (85.0 if lod_simplified else 65.0)
+	_set_lod(far)
+	var screen := camera.unproject_position(focus)
+	var on_screen := not camera.is_position_behind(focus) and screen.x > -160 and screen.y > -160 \
+		and screen.x < viewport.x + 160 and screen.y < viewport.y + 160
+	for smoke in _lod_smoke:
+		var active := not lod_simplified and on_screen
+		smoke.visible = active
+		if smoke.emitting != active:
+			smoke.emitting = active
+
+
+func _set_lod(far: bool) -> void:
+	if _lod_far.is_empty() or lod_simplified == far:
+		return
+	lod_simplified = far
+	for mesh in _lod_near:
+		mesh.visible = not far
+	for mesh in _lod_far:
+		mesh.visible = far
+
+
 func _glass_material() -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color.WHITE
@@ -529,8 +620,11 @@ func _bake(node_name: String, surface: SurfaceTool, material: Material) -> void:
 	visual.mesh = mesh
 	visual.material_override = material
 	# Тени домов дают посёлку объём: без них крыши «наклеены» на землю.
-	visual.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	# Мелкая фурнитура и стекло не дают отдельной тени: силуэт от
+	# стен, кровли и цоколя остаётся, но shadow-pass становится дешевле.
+	visual.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if node_name in ["Glass", "Iron", "Gilt"] else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	add_child(visual)
+	_lod_near.append(visual)
 
 
 func _smoke(at: Vector3) -> void:
@@ -566,7 +660,9 @@ func _smoke(at: Vector3) -> void:
 	mat.disable_receive_shadows = true
 	quad.material = mat
 	particles.draw_pass_1 = quad
+	particles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(particles)
+	_lod_smoke.append(particles)
 
 
 func _smoke_curve() -> Curve:
