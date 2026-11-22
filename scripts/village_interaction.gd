@@ -88,7 +88,7 @@ func _build_ui() -> void:
 func _layout_page() -> void:
 	if _page == null:
 		return
-	var viewport_size := get_viewport().get_visible_rect().size
+	var viewport_size := Vector2(get_viewport().get_texture().get_size())
 	var factor := minf(viewport_size.x / 1920.0, viewport_size.y / 1080.0)
 	_page.scale = Vector2.ONE * factor
 	_page.position = (viewport_size - Vector2(1420, 840) * factor) * 0.5
@@ -172,6 +172,7 @@ func _input(event: InputEvent) -> void:
 func _open(index: int) -> void:
 	if index < 0 or index >= _targets.size() or not _can_interact():
 		return
+	_layout_page()
 	_current = index
 	var id := String(_targets[index]["person_id"])
 	var person := VillagePeople.get_person(id)

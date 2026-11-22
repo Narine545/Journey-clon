@@ -220,6 +220,10 @@ func _village_audit() -> void:
 	main.inspector.visible = true
 	main._start_in_harbor()
 	main.village_interaction._open(0)
+	print("[VILLAGE AUDIT] viewport=", get_viewport().get_visible_rect().size,
+		" texture=", get_viewport().get_texture().get_size(),
+		" page=", main.village_interaction._page.position,
+		" scale=", main.village_interaction._page.scale)
 	await _shooter.wait_frames_count(8)
 	await _shooter.capture("village_audit_dialog")
 	main.village_interaction._close()

@@ -786,6 +786,11 @@ func _check_village() -> void:
 			"дом собран из камня, кровли и стекла отдельными сетками")
 	_check(village.get_node_or_null("PierBridge") is MeshInstance3D,
 		"съезд с причала доводит дорогу до ворот посёлка")
+	for x in [163.0, 165.0, 167.0]:
+		var deck := lerpf(IslandVillage.BRIDGE_START.y, IslandVillage.BRIDGE_FINISH.y,
+			(x - IslandVillage.BRIDGE_START.x) / (IslandVillage.BRIDGE_FINISH.x - IslandVillage.BRIDGE_START.x))
+		_check(main.coast.ground_height(x, -30.0) < deck - 0.10,
+			"рельеф не проступает через настил съезда")
 	_check(village.get_node_or_null("Chapel") == null
 		and village.get_node_or_null("ShoreShrine") == null,
 		"в квартале нет готических храмов")

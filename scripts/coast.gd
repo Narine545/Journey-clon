@@ -63,7 +63,8 @@ func spawn_point() -> Vector2:
 
 ## Island terrain (before SandField displacement) in world space.
 func height_at(x: float, z: float) -> float:
-	return IslandLayout.height_at(Vector2(x, z))
+	var point := Vector2(x, z)
+	return IslandLayout.harbor_ramp_clearance(point, IslandLayout.height_at(point))
 
 
 ## Material blend from actual elevation: beach hollows to upland crests.

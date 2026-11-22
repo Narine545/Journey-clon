@@ -67,6 +67,19 @@ static func _hill(p: Vector2, center: Vector2, axes: Vector2, height: float) -> 
 	return height * exp(-q.length_squared())
 
 
+## Небольшая выемка под наклонным настилом у пристани. Используется в
+## сетке рельефа, физике и карте высот воды одновременно; вокруг края мягкие.
+static func harbor_ramp_clearance(p: Vector2, height: float) -> float:
+	if p.x < 158.0 or p.x > 170.0 or absf(p.y + 30.0) > 4.0:
+		return height
+	var along := clampf((p.x - 159.8) / 8.6, 0.0, 1.0)
+	var deck := lerpf(1.42, 4.06, along)
+	var side_mask := 1.0 - _smooth(absf(p.y + 30.0), 2.2, 4.0)
+	var start_mask := _smooth(p.x, 158.0, 159.8)
+	var end_mask := 1.0 - _smooth(p.x, 168.4, 170.0)
+	return lerpf(height, minf(height, deck - 0.50), side_mask * start_mask * end_mask)
+
+
 static func height_at(p: Vector2) -> float:
 	var d := inland_distance(p)
 	if d <= 0.0:

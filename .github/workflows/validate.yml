@@ -492,13 +492,16 @@ jobs:
         run: |
           mkdir -p /tmp/village-frames
           cp shots/village_audit_*.png /tmp/village-frames/
+          cp /tmp/village-audit.log /tmp/village-frames/village-audit.log
           git config user.name "ci-bot"
           git config user.email "ci-bot@users.noreply.github.com"
           for attempt in 1 2 3 4 5; do
             git fetch -q origin "${GITHUB_REF#refs/heads/}"
             git reset -q --hard FETCH_HEAD
             cp /tmp/village-frames/*.png shots/
-            git add shots/village_audit_*.png
+            mkdir -p .ci-logs
+            cp /tmp/village-frames/village-audit.log .ci-logs/village-audit.log
+            git add shots/village_audit_*.png .ci-logs/village-audit.log
             if git diff --cached --quiet; then exit 0; fi
             git commit -q -m "ci: посёлок ${GITHUB_SHA::7} [skip ci]"
             if git push -q origin HEAD:"${GITHUB_REF#refs/heads/}"; then exit 0; fi

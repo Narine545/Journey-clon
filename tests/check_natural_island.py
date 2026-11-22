@@ -68,7 +68,8 @@ layout = Path('scripts/island_layout.gd').read_text()
 harbor = Path('scripts/island_harbor.gd').read_text()
 vessel = Path('scripts/boat_vessel.gd').read_text()
 shader = Path('shaders/sand.gdshader').read_text()
-assert 'return IslandLayout.height_at(Vector2(x, z))' in coast
+assert 'IslandLayout.harbor_ramp_clearance(point, IslandLayout.height_at(point))' in coast
+assert 'func harbor_ramp_clearance' in layout
 assert 'BACK_DUNE' not in coast and 'shore_lut' not in shader
 assert 'IslandLayout.BOAT_START.x' in main and 'coast.shore_x' not in main
 assert main.count('"bearing":') == 4 and 'coast.ground_height(land.x, land.y)' in main

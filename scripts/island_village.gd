@@ -266,6 +266,12 @@ func _build_details() -> void:
 	props.begin()
 	for p in [Vector2(157.0, -38.0), Vector2(157.0, -22.5), Vector2(157.0, -10.0)]:
 		props.simple_lamp(Vector3(p.x, QUAY_Y - 0.02, p.y))
+	# Отдельные рабочие места, с запасом от съезда, домов и фонарей.
+	props.hjell(Vector3(160.5, QUAY_Y, -37.5), 0.0, 3.0)
+	props.hjell(Vector3(160.5, QUAY_Y, -13.0), 0.0, 3.0)
+	props.rowboat(Vector3(161.6, QUAY_Y + 0.42, -22.5), PI * 0.5, Color("8c4a3b"))
+	props.barrel(Vector3(165.0, QUAY_Y, -39.5), 0.8, 0.30)
+	props.barrel(Vector3(165.0, QUAY_Y, -19.5), 0.8, 0.30)
 	props.commit(details)
 
 
