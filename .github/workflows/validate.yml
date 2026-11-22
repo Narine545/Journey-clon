@@ -448,11 +448,11 @@ jobs:
             timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" \
             godot_bin/godot --path . res://scenes/boat_main.tscn \
             --rendering-method forward_plus --resolution 1280x720 \
-            --fixed-fps 30 --quit-after 500 > /tmp/village-audit.log 2>&1
+            --fixed-fps 30 --quit-after 700 > /tmp/village-audit.log 2>&1
           cat /tmp/village-audit.log
           ! grep -qiE 'SCRIPT ERROR|SHADER ERROR|Parse Error|Invalid polygon data|triangulation failed' /tmp/village-audit.log
           grep -F '[VILLAGE AUDIT] готово' /tmp/village-audit.log
-          for name in overview entry lane north_wall south_wall street trail backyards dialog timbi mimo lighthouse; do test -s "shots/village_audit_${name}.png"; done
+          for name in overview entry lane north_wall south_wall street trail backyards dialog timbi mimo lighthouse port_village port_pier; do test -s "shots/village_audit_${name}.png"; done
       - name: Upload village frames
         if: always()
         uses: actions/upload-artifact@v4

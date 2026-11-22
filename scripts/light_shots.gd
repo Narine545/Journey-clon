@@ -262,6 +262,12 @@ func _village_audit() -> void:
 			await _shooter.capture("village_audit_mimo")
 			main.village_interaction._close()
 			break
+	# Два вида живой камеры порта, вместе с подсказкой переключения.
+	await _shooter.wait_frames_count(60)
+	await _shooter.capture("village_audit_port_village")
+	main.toggle_port_camera()
+	await _shooter.wait_frames_count(60)
+	await _shooter.capture("village_audit_port_pier")
 
 
 ## Посёлок из свободной камеры: сравниваем дневную геометрию и ночные окна.
