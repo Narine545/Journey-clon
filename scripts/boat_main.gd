@@ -366,8 +366,6 @@ func _build_beacons() -> void:
 		{"name": "Южный Створ", "bearing": 100.0,
 			"cost": PackedInt32Array([1, 1, 1, 1]), "color": Color("a6cfff")},
 	]
-	var stone_mat := _mat(Color("3b4247"), 0.15, 0.0, 0.82)
-	var tower_mat := _mat(Color("c9c2b4"), 0.08, 0.0, 0.68)
 	var band_mat := _mat(Color("8f4636"), 0.18, 0.0, 0.62)
 	var iron_mat := _mat(Color("1a2228"), 0.55, 0.0, 0.48)
 
@@ -390,19 +388,21 @@ func _build_beacons() -> void:
 		root.name = "CoastalBeacon%d" % i
 		add_child(root)
 
-		# Каменная башня маяка на берегу
+		# Деревянная сужающаяся башня с обслуживаемой галереей.
 		var tower := Node3D.new()
 		tower.position = tower_pos
 		root.add_child(tower)
-		_add_cyl(tower, Vector3(0.0, 1.4, 0.0), 2.3, 2.8, 3.2, stone_mat)
-		_add_cyl(tower, Vector3(0.0, 5.2, 0.0), 1.45, 2.1, 4.6, tower_mat)
-		_add_cyl(tower, Vector3(0.0, 8.2, 0.0), 1.25, 1.45, 1.8, band_mat)
-		_add_cyl(tower, Vector3(0.0, 9.4, 0.0), 1.65, 1.55, 0.6, iron_mat)
+		CoastalLighthouse.build(tower, outward)
 
-		# Фонарная камера маяка (гаснет/зажигается)
+		# Фонарная камера остаётся отдельным материалом для игровой активации.
 		var lantern_mat := _mat(Color("26343b"), 0.2, 0.0, 0.25)
-		var lantern_mesh := _add_cyl(tower, Vector3(0.0, 10.3, 0.0), 1.15, 1.15, 1.4, lantern_mat)
-		_add_cyl(tower, Vector3(0.0, 11.4, 0.0), 0.1, 1.45, 1.0, iron_mat)
+		var lantern_mesh := MeshInstance3D.new()
+		var lantern_box := BoxMesh.new()
+		lantern_box.size = Vector3(2.05, 1.48, 2.05)
+		lantern_mesh.mesh = lantern_box
+		lantern_mesh.position = Vector3(0.0, 10.3, 0.0)
+		lantern_mesh.material_override = lantern_mat
+		tower.add_child(lantern_mesh)
 
 		var top_light := OmniLight3D.new()
 		top_light.light_color = s["color"]

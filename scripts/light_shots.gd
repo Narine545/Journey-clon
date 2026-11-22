@@ -228,6 +228,11 @@ func _village_audit() -> void:
 	_village_frame(Vector3(214.0, 4.0, -30.0), 0.9, 0.65, 45.0)
 	await _shooter.wait_frames_count(10)
 	await _shooter.capture("village_audit_trail")
+	var beacon_at: Vector3 = main.beacons[0]["tower_pos"]
+	_village_frame(beacon_at + Vector3(0, 5.5, 0), -0.9, 0.35, 24.0)
+	await _shooter.wait_frames_count(10)
+	await _shooter.capture("village_audit_lighthouse")
+
 	_village_frame(Vector3(162.0, 3.0, -40.5), -2.45, 0.48, 34.0)
 	await _shooter.wait_frames_count(10)
 	await _shooter.capture("village_audit_north_wall")

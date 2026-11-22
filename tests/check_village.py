@@ -19,6 +19,13 @@ assert '_build_chapel()' not in village and '_build_shrine()' not in village
 assert 'GiltShapes.pointed_arch' not in house and 'GiltShapes.spire' not in house
 assert '_match_feature(' not in house and '_yard(' not in house
 assert '_simple_window(' in house
+assert 'var crossbar :=' in house and 'var sill :=' in house
+lighthouse = Path('scripts/coastal_lighthouse.gd').read_text()
+boat = Path('scripts/boat_main.gd').read_text()
+assert 'CoastalLighthouse.build(tower, outward)' in boat
+assert 'TimberTowerAndGallery' in lighthouse and 'GiltShapes.out_quad' in lighthouse
+assert 'lantern_mat' in boat and 'beam_pivot.position = Vector3(0.0, 10.3, 0.0)' in boat
+assert 'village_audit_lighthouse' in shots
 assert 'var roof_shift := depth * 0.18 if plan_name == "pilot" else 0.0' in house
 assert 'ridge_offset := 0.0' in Path('scripts/art/gilt_shapes.gd').read_text()
 assert 'if plan_name == "netloft":' in house

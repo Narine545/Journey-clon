@@ -334,6 +334,15 @@ func _simple_window(at: Vector3, side_wall: bool) -> void:
 	var glass_size := Vector3(0.12, 0.86, 0.66) if side_wall else Vector3(0.66, 0.86, 0.12)
 	GiltShapes.box(_wood, at, frame_size, palette["trim"] * 0.80)
 	GiltShapes.box(_glass, at, glass_size, palette["glass"])
+	# Переплёт и подоконник снаружи стекла: масштаб окна виден и сбоку.
+	var front := 0.095
+	var xbar := Vector3(0.04, 0.82, 0.04)
+	var crossbar := Vector3(0.64, 0.045, 0.04) if not side_wall else Vector3(0.04, 0.045, 0.64)
+	var offset := Vector3(signf(at.x) * front, 0, 0) if side_wall else Vector3(0, 0, signf(at.z) * front)
+	GiltShapes.box(_wood, at + offset, xbar, palette["trim"])
+	GiltShapes.box(_wood, at + offset, crossbar, palette["trim"])
+	var sill := Vector3(0.22, 0.09, 0.98) if side_wall else Vector3(0.98, 0.09, 0.22)
+	GiltShapes.box(_wood, at + offset + Vector3(0, -0.55, 0), sill, palette["trim"] * 0.85)
 
 
 ## Отличительные рабочие детали каждого дома. Все крепятся к стене или
@@ -402,8 +411,6 @@ func _workshop_details() -> void:
 		for offset in [-0.59, 0.59]:
 			GiltShapes.box(_wood, Vector3(x + float(offset), 1.45, front + 0.10),
 				Vector3(0.21, 1.06, 0.08), palette["door"].darkened(0.10))
-		GiltShapes.box(_wood, Vector3(x, 1.45, front + 0.12),
-			Vector3(0.65, 0.045, 0.04), palette["trim"])
 
 
 ## Низкая хозяйственная пристройка (linney): опирается на площадку и
