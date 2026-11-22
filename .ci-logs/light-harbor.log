@@ -16,13 +16,13 @@ WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
 [BOOT] старт · 86 МБ
-[BOOT] мир собран · 116 МБ
-[BOOT] HUD рейда · 118 МБ
-[BOOT] звук моря · 284 МБ
-[BOOT] меню · 284 МБ
-[BOOT] постобработка · 284 МБ
+[BOOT] мир собран · 117 МБ
+[BOOT] HUD рейда · 119 МБ
+[BOOT] звук моря · 285 МБ
+[BOOT] меню · 285 МБ
+[BOOT] постобработка · 285 МБ
 RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
-[BOOT] готово · 284 МБ
+[BOOT] готово · 285 МБ
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_01_day_harbor.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_02_dusk_harbor.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/light_03_night_harbor.png 1280x720
