@@ -10,7 +10,9 @@ extends RefCounted
 
 const WATER_SHADER := "res://shaders/gilt_neon_water.gdshader"
 
-var main: BoatMain
+## main не типизирован намеренно: GiltProps — база VillageProps, а BoatMain
+## ссылается на IslandVillage. Жёсткий тип замкнул бы классы в цикл.
+var main
 var host: Node3D
 var _stone: SurfaceTool
 var _gilt: SurfaceTool
@@ -24,7 +26,7 @@ var _time := 0.0
 
 ## host — узел посёлка: сюда вешаются источники света (они не геометрия
 ## и не могут жить в SurfaceTool).
-func setup(owner_main: BoatMain, owner_host: Node3D) -> void:
+func setup(owner_main, owner_host: Node3D) -> void:
 	main = owner_main
 	host = owner_host
 
