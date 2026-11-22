@@ -18,6 +18,7 @@ const BUTTONS := [
 	Rect2(104, 548, 540, 108),
 	Rect2(150, 684, 450, 86),
 	Rect2(196, 798, 340, 74),
+	Rect2(180, 888, 390, 68),
 ]
 
 var _poster: TidePanelTorn
@@ -27,6 +28,13 @@ var _ticket: Control
 var _voyage: TideButton
 var _continue: TideButton
 var _quit: TideButton
+var _settings_button: TideButton
+var graphics_settings: GameGraphicsSettings
+var settings_open := false
+var _settings_panel: Control
+var _scale_value: Label
+var _msaa_value: Label
+var _settings_notice: Label
 var _stamp: TideStamp
 var _footer: Label
 
@@ -83,7 +91,11 @@ func _build() -> void:
 		TideTokens.FOAM, -1.4
 	)
 	_quit.pressed.connect(func() -> void: quit_requested.emit())
-	for button in [_voyage, _continue, _quit]:
+	_settings_button = TideKit.button(self, "ГРАФИКА", BUTTONS[3], TideButton.Shape.PENNANT,
+		TideTokens.FOAM, 0, 24, TideTokens.INK, -1.0)
+	_settings_button.visible = graphics_settings != null
+	_settings_button.pressed.connect(open_settings)
+	for button in [_voyage, _continue, _quit, _settings_button]:
 		button.mouse_entered.connect(_splash_at.bind(button))
 		button.focus_entered.connect(_splash_at.bind(button))
 
@@ -101,10 +113,83 @@ func _build() -> void:
 	)
 	_footer.rotation = deg_to_rad(-1.0)
 
+	_build_settings()
 	var bob_poster := TideFx.bob(_poster, POSTER_DEG, 0.5, 3.2, 0.0)
 	add_child(bob_poster)
 	add_child(TideFx.bob(_head, HEAD_DEG, 0.8, 2.6, 1.7))
 	add_child(TideFx.bob(_ticket, TICKET_DEG, 1.1, 2.9, 3.3))
+
+
+func _build_settings() -> void:
+	_settings_panel = Control.new()
+	_settings_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	TideKit.place(_settings_panel, Rect2(Vector2.ZERO, TideTokens.BASE))
+	add_child(_settings_panel)
+	var shade := ColorRect.new()
+	shade.color = TideTokens.ink_alpha(0.78)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	TideKit.place(shade, Rect2(Vector2.ZERO, TideTokens.BASE))
+	_settings_panel.add_child(shade)
+	var page := TideKit.group(_settings_panel, Rect2(520, 200, 880, 660), -1.0)
+	var sheet := TideKit.panel(page, Rect2(0, 0, 880, 660), TideTokens.FOAM, TideTokens.FLARE, true)
+	sheet.hatch_color = TideTokens.ink_alpha(0.05)
+	TideKit.text(page, "НАСТРОЙКИ · ИЗОБРАЖЕНИЕ", Vector2(60, 42), 1, 20, TideTokens.FLARE, 750)
+	TideKit.headline(page, "ГРАФИКА", Vector2(54, 80), 740, 68, TideTokens.INK, 4, -4.0)
+	TideKit.text(page, "МАСШТАБ 3D", Vector2(60, 212), 2, 30, TideTokens.INK, 420)
+	TideKit.text(page, "Меньше — выше FPS; интерфейс остаётся чётким", Vector2(60, 255), 1, 17, TideTokens.ink_alpha(0.75), 700)
+	_scale_value = TideKit.text(page, "", Vector2(546, 211), 1, 28, TideTokens.INK, 130, HORIZONTAL_ALIGNMENT_CENTER)
+	var scale_minus := TideKit.button(page, "−", Rect2(474, 207, 62, 56), TideButton.Shape.GHOST, TideTokens.INK, 0, 30, TideTokens.INK)
+	var scale_plus := TideKit.button(page, "+", Rect2(690, 207, 62, 56), TideButton.Shape.GHOST, TideTokens.INK, 0, 30, TideTokens.INK)
+	scale_minus.pressed.connect(_change_scale.bind(-1))
+	scale_plus.pressed.connect(_change_scale.bind(1))
+	TideKit.text(page, "СГЛАЖИВАНИЕ MSAA", Vector2(60, 335), 2, 30, TideTokens.INK, 420)
+	TideKit.text(page, "Сглаживает края, но увеличивает нагрузку", Vector2(60, 378), 1, 17, TideTokens.ink_alpha(0.75), 700)
+	_msaa_value = TideKit.text(page, "", Vector2(546, 334), 1, 25, TideTokens.INK, 130, HORIZONTAL_ALIGNMENT_CENTER)
+	var msaa_minus := TideKit.button(page, "−", Rect2(474, 330, 62, 56), TideButton.Shape.GHOST, TideTokens.INK, 0, 30, TideTokens.INK)
+	var msaa_plus := TideKit.button(page, "+", Rect2(690, 330, 62, 56), TideButton.Shape.GHOST, TideTokens.INK, 0, 30, TideTokens.INK)
+	msaa_minus.pressed.connect(_change_msaa.bind(-1))
+	msaa_plus.pressed.connect(_change_msaa.bind(1))
+	_settings_notice = TideKit.text(page, "", Vector2(60, 456), 1, 17, TideTokens.ink_alpha(0.75), 760)
+	var back := TideKit.button(page, "НАЗАД", Rect2(60, 528, 300, 76), TideButton.Shape.SOLID, TideTokens.SONAR, 0, 28, TideTokens.INK)
+	back.pressed.connect(close_settings)
+	_settings_panel.hide()
+
+
+func open_settings() -> void:
+	if graphics_settings == null:
+		return
+	settings_open = true
+	_refresh_settings()
+	_settings_panel.show()
+	_settings_panel.modulate.a = 0.0
+	create_tween().tween_property(_settings_panel, "modulate:a", 1.0, 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+func close_settings() -> void:
+	settings_open = false
+	if _settings_panel != null:
+		_settings_panel.hide()
+
+
+func _change_scale(direction: int) -> void:
+	var values := GameGraphicsSettings.SCALES
+	var index := clampi(values.find(graphics_settings.scale_percent) + direction, 0, values.size() - 1)
+	graphics_settings.set_scale(values[index])
+	_refresh_settings()
+
+
+func _change_msaa(direction: int) -> void:
+	var values := GameGraphicsSettings.MSAA_VALUES
+	var index := clampi(values.find(graphics_settings.msaa) + direction, 0, values.size() - 1)
+	graphics_settings.set_msaa(values[index])
+	_refresh_settings()
+
+
+func _refresh_settings() -> void:
+	_scale_value.text = "%d%%" % graphics_settings.scale_percent
+	var names := ["ВЫКЛ", "2×", "4×", "8×"]
+	_msaa_value.text = names[GameGraphicsSettings.MSAA_VALUES.find(graphics_settings.msaa)]
+	_settings_notice.text = "СОХРАНЕНО · ИЗМЕНЕНИЯ ПРИМЕНЯЮТСЯ СРАЗУ" if graphics_settings.save_error == OK else "НЕ УДАЛОСЬ СОХРАНИТЬ НАСТРОЙКИ"
 
 
 ## Наведение: брызги из-под вымпела.
@@ -131,7 +216,8 @@ func open() -> void:
 	var footer_tween := create_tween()
 	footer_tween.tween_interval(0.3)
 	footer_tween.tween_property(_footer, "modulate:a", 1.0, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	var buttons := [_voyage, _continue, _quit]
+	close_settings()
+	var buttons := [_voyage, _continue, _quit, _settings_button]
 	for index in range(buttons.size()):
 		var button: TideButton = buttons[index]
 		button.position = BUTTONS[index].position
@@ -161,5 +247,6 @@ func _stagger(node: Control, delay: float, from_scale: float, from_deg: float) -
 
 
 func close() -> void:
+	close_settings()
 	hide()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -30,6 +30,7 @@ var boat: BoatVessel
 var camera: Camera3D
 var hud: BoatHud
 var fps_counter: GameFpsCounter
+var graphics_settings: GameGraphicsSettings
 ## Главное меню — афиша пароходства в стиле TIDECUT (только для человека).
 var menu: TideMainMenu
 var menu_layer: CanvasLayer
@@ -121,6 +122,9 @@ func _boot_mark(step: String) -> void:
 
 func _ready() -> void:
 	_boot_mark("старт")
+	graphics_settings = GameGraphicsSettings.new()
+	graphics_settings.load_from_disk()
+	graphics_settings.apply(get_viewport())
 	game = get_node("/root/Game") as GameState
 	world = GameWorld.new()
 	add_child(world)
@@ -195,6 +199,7 @@ func _ready() -> void:
 	fps_counter = GameFpsCounter.new()
 	fps_counter.name = "FpsCounter"
 	add_child(fps_counter)
+	graphics_settings.changed.connect(_on_graphics_changed)
 	var harbor_controls := HarborViewControls.new()
 	harbor_controls.main = self
 	layer.add_child(harbor_controls)
@@ -892,6 +897,7 @@ func _build_tide_menu() -> void:
 	var stage := TideStage.new()
 	host.add_child(stage)
 	menu = TideMainMenu.new()
+	menu.graphics_settings = graphics_settings
 	stage.canvas.add_child(menu)
 	prologue = TidePrologue.new()
 	stage.canvas.add_child(prologue)
@@ -905,6 +911,13 @@ func _build_tide_menu() -> void:
 	_start_in_harbor()
 	_open_menu()
 	_boot_mark("афиша открыта")
+
+
+func _on_graphics_changed() -> void:
+	# Постоянный выбор отменяет временный эксперимент F4.
+	graphics_settings.apply(get_viewport())
+	if fps_counter != null:
+		fps_counter.set_base_settings(get_viewport().scaling_3d_scale, get_viewport().msaa_3d)
 
 
 func _open_menu() -> void:
@@ -1337,7 +1350,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if event is InputEventKey and event.pressed and not event.echo:
 			if event.physical_keycode == KEY_ESCAPE:
-				_close_menu()
+				if menu != null and menu.settings_open:
+					menu.close_settings()
+				else:
+					_close_menu()
 				get_viewport().set_input_as_handled()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:

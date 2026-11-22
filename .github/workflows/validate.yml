@@ -214,6 +214,7 @@ jobs:
             exit 1
           fi
           test -f shots/tide_01_upgrade.png || (echo "::error::Скриншоты витрины не сохранились" && exit 1)
+          test -f shots/tide_15_graphics.png || (echo "::error::Не сняты настройки графики" && exit 1)
           if [ "$(ls -1 shots/*.png | wc -l)" -lt 6 ]; then
             echo "::error::Снято меньше шести экранов витрины"
             exit 1

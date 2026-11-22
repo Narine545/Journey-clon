@@ -47,6 +47,7 @@ func _ready() -> void:
 	report = TideGameOverReport.new()
 	canvas.add_child(report)
 	menu = TideMainMenu.new()
+	menu.graphics_settings = GameGraphicsSettings.new()
 	canvas.add_child(menu)
 	menu.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	prologue = TidePrologue.new()
@@ -272,6 +273,9 @@ func _run_sequence() -> void:
 	menu.open()
 	await _wait(44)
 	await shot.capture("tide_06_menu")
+	menu.open_settings()
+	await _wait(24)
+	await shot.capture("tide_15_graphics")
 	menu.close()
 
 	prologue.open()

@@ -45,6 +45,8 @@ func _physics_process(_delta: float) -> void:
 		main.fps_counter.set_test_mode(0)
 		_check(is_equal_approx(get_viewport().scaling_3d_scale, baseline_scale)
 			and get_viewport().msaa_3d == baseline_msaa, "обычное качество восстанавливается")
+		_check_graphics_settings()
+
 		_check(is_zero_approx(main.boat._window_light.light_energy) and
 			is_zero_approx(main.boat._window_glass_mat.emission_energy_multiplier) and
 			main.boat._window_glass_mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA,
@@ -744,6 +746,44 @@ func _check_world_inspector() -> void:
 	main.camera.global_transform = old_transform
 	tool.markers = old_markers
 	tool.selected = old_selected
+
+
+func _check_graphics_settings() -> void:
+	# Отдельный файл теста никогда не перезаписывает выбор игрока.
+	var test_path := "user://graphics_smoke_test.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
+	var config := GameGraphicsSettings.new()
+	config.load_from_disk(test_path)
+	config.set_scale(70)
+	config.set_msaa(Viewport.MSAA_2X)
+	var reloaded := GameGraphicsSettings.new()
+	reloaded.load_from_disk(test_path)
+	_check(reloaded.scale_percent == 70 and reloaded.msaa == Viewport.MSAA_2X,
+		"графические настройки сохраняются между запусками")
+	var screen := TideMainMenu.new()
+	screen.graphics_settings = config
+	add_child(screen)
+	screen.open_settings()
+	_check(screen.settings_open and screen._scale_value.text == "70%" and screen._msaa_value.text == "2×",
+		"меню показывает выбранные настройки")
+	screen._change_scale(1)
+	_check(config.scale_percent == 80 and screen._scale_value.text == "80%", "кнопки меняют настройки")
+	screen.close_settings()
+	_check(not screen.settings_open, "возврат закрывает только графические настройки")
+	screen.queue_free()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
+	# Переход к постоянному выбору сбрасывает временный F4 и сохраняет его
+	# как базу сравнения вместо устаревших значений запуска.
+	var original_scale := main.fps_counter._original_scale
+	var original_msaa := main.fps_counter._original_msaa
+	main.fps_counter.set_test_mode(1)
+	main.fps_counter.set_base_settings(0.8, Viewport.MSAA_2X)
+	_check(main.fps_counter.test_mode == 0 and is_equal_approx(get_viewport().scaling_3d_scale, 0.8)
+		and get_viewport().msaa_3d == Viewport.MSAA_2X, "постоянные настройки отменяют тест F4")
+	main.fps_counter.set_test_mode(1)
+	main.fps_counter.set_test_mode(0)
+	_check(is_equal_approx(get_viewport().scaling_3d_scale, 0.8), "F4 возвращается к выбранному качеству")
+	main.fps_counter.set_base_settings(original_scale, original_msaa)
 
 
 func _check_island_harbor() -> void:

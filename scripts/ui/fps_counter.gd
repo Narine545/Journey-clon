@@ -69,10 +69,16 @@ func set_test_mode(mode: int) -> void:
 	_update_mode_label()
 
 
+func set_base_settings(scale_value: float, msaa_value: Viewport.MSAA) -> void:
+	_original_scale = scale_value
+	_original_msaa = msaa_value
+	set_test_mode(0)
+
+
 func _update_mode_label() -> void:
 	if _mode_label == null:
 		return
-	var modes := ["ОБЫЧНОЕ", "3D 70%", "MSAA ВЫКЛ"]
+	var modes := ["ВЫБРАННОЕ", "3D ×0.7", "MSAA ВЫКЛ"]
 	_mode_label.text = "F4 · %s" % modes[test_mode]
 
 
