@@ -116,6 +116,7 @@ func build_site(data: Dictionary, foundation_bottom: float) -> void:
 	_roof_cover()
 	_street_face()
 	_side_faces()
+	_workshop_details()
 	_add_nameplate()
 	_commit()
 	set_night(night01)
@@ -300,6 +301,59 @@ func _simple_window(at: Vector3, side_wall: bool) -> void:
 	var glass_size := Vector3(0.12, 0.86, 0.66) if side_wall else Vector3(0.66, 0.86, 0.12)
 	GiltShapes.box(_wood, at, frame_size, palette["trim"] * 0.80)
 	GiltShapes.box(_glass, at, glass_size, palette["glass"])
+
+
+## Отличительные рабочие детали каждого дома. Все крепятся к стене или
+## крыше: не занимают соседние участки и не загромождают улицу.
+func _workshop_details() -> void:
+	var front := depth * 0.5
+	var feature := String(plan.get("feature", ""))
+	match feature:
+		"loft":
+			# Грузовой люк и кронштейн под коньком сетевого сарая.
+			var x := width * 0.5 + 0.06
+			GiltShapes.box(_wood, Vector3(x, eaves + 0.58, 0.0),
+				Vector3(0.12, 0.90, 1.22), palette["door"].darkened(0.18))
+			GiltShapes.beam(_wood, Vector3(x, eaves + 1.12, 0.0),
+				Vector3(x + 0.75, eaves + 1.12, 0.0), 0.09, GiltPalette.WOOD_DARK)
+			GiltShapes.beam(_dark, Vector3(x + 0.70, eaves + 1.1, 0.0),
+				Vector3(x + 0.70, eaves + 0.60, 0.0), 0.025, GiltPalette.ROPE)
+		"tavern":
+			# Небольшой крытый вход, без стола посреди дороги.
+			GiltShapes.pent_roof(_roof, Vector3(0.0, 2.78, front + 0.52), 2.5, 1.10,
+				0.08, 0.20, palette["roof"], GiltPalette.LEAD)
+			for x in [-1.0, 1.0]:
+				GiltShapes.beam(_wood, Vector3(x, 2.72, front + 0.95),
+					Vector3(x, 2.32, front + 0.10), 0.07, palette["trim"])
+		"shop":
+			# Навес над витриной слева от входа.
+			GiltShapes.pent_roof(_roof, Vector3(-width * 0.30, 2.34, front + 0.35),
+				1.65, 0.72, 0.06, 0.18, palette["roof"].lightened(0.12), GiltPalette.LEAD)
+		"salting":
+			# Поперечины на широком складском входе.
+			for y in [0.48, 1.55]:
+				GiltShapes.box(_dark, Vector3(0.0, float(y), front + 0.15),
+					Vector3(0.86, 0.07, 0.04), GiltPalette.IRON)
+		"forge":
+			# Характерная широкая труба и табличка мастерской на фасаде.
+			GiltShapes.box(_stone, Vector3(width * 0.32, ridge + 0.25, 0.0),
+				Vector3(0.92, 1.40, 0.90), palette["stone"].lightened(0.12))
+		"pilot":
+			# Небольшой сигнальный кронштейн над фасадом.
+			GiltShapes.beam(_wood, Vector3(width * 0.38, eaves - 0.3, front + 0.04),
+				Vector3(width * 0.38, eaves + 0.5, front + 0.04), 0.06, GiltPalette.WOOD_DARK)
+			GiltShapes.box(_wood, Vector3(width * 0.38 + 0.25, eaves + 0.25, front + 0.05),
+				Vector3(0.48, 0.28, 0.05), Color("b4543c"))
+		_:
+			pass
+	# Ставни и оконные перемычки дают фасадам масштаб, не закрывая стёкла.
+	for side in [-1.0, 1.0]:
+		var x := float(side) * width * 0.30
+		for offset in [-0.59, 0.59]:
+			GiltShapes.box(_wood, Vector3(x + float(offset), 1.45, front + 0.10),
+				Vector3(0.21, 1.06, 0.08), palette["door"].darkened(0.10))
+		GiltShapes.box(_wood, Vector3(x, 1.45, front + 0.12),
+			Vector3(0.65, 0.045, 0.04), palette["trim"])
 
 
 func _add_nameplate() -> void:

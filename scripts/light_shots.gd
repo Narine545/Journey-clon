@@ -219,6 +219,12 @@ func _village_audit() -> void:
 	_village_frame(Vector3(198.0, 4.5, -18.0), -1.0, 0.55, 32.0)
 	await _shooter.wait_frames_count(10)
 	await _shooter.capture("village_audit_lane")
+	_village_frame(Vector3(165.0, 2.2, -40.0), 0.55, 0.25, 35.0)
+	await _shooter.wait_frames_count(10)
+	await _shooter.capture("village_audit_north_wall")
+	_village_frame(Vector3(165.0, 2.2, -7.0), -2.65, 0.25, 35.0)
+	await _shooter.wait_frames_count(10)
+	await _shooter.capture("village_audit_south_wall")
 	main.inspector.set_free_camera(false)
 	main.inspector.visible = true
 	main._start_in_harbor()

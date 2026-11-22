@@ -94,6 +94,17 @@ func quay() -> void:
 				Vector3(0.48, 0.12, z1 - z + 0.03), Color("777078"))
 		previous_edge = quay_edge_x(mid)
 		z = z1
+	# Наружные торцы набережной: передняя стена и траншея сами по себе
+	# не закрывают северную и южную стороны основания.
+	for end_z in [QUAY_MIN_Z, QUAY_MAX_Z]:
+		var end_edge := quay_edge_x(float(end_z))
+		var end_len := QUAY_BACK_X - end_edge
+		GiltShapes.box(_stone, Vector3((QUAY_BACK_X + end_edge) * 0.5,
+			(QUAY_Y + QUAY_BOTTOM) * 0.5, float(end_z)),
+			Vector3(end_len + 0.3, QUAY_Y - QUAY_BOTTOM, 0.42), Color("45424a"))
+		GiltShapes.box(_stone, Vector3((QUAY_BACK_X + end_edge) * 0.5,
+			QUAY_Y + 0.03, float(end_z)),
+			Vector3(end_len + 0.3, 0.12, 0.48), Color("777078"))
 	# Боковые стенки траншеи упираются в основание, не перекрывая съезд.
 	var mid_x := (RAMP_WELL.position.x + QUAY_BACK_X) * 0.5
 	var wall_length := QUAY_BACK_X - RAMP_WELL.position.x
