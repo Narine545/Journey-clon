@@ -46,6 +46,11 @@ jobs:
           chmod +x godot_bin/godot
           godot_bin/godot --version
 
+      - name: Parse village scripts (diagnostics)
+        run: |
+          godot_bin/godot --headless --path . --check-only --script res://scripts/village_props.gd 2>&1 | tee parse-village-props.log || true
+          godot_bin/godot --headless --path . --check-only --script res://scripts/island_village.gd 2>&1 | tee -a parse-village-props.log || true
+
       - name: Import project
         run: |
           godot_bin/godot --headless --path . --import > import.log 2>&1
@@ -128,6 +133,7 @@ jobs:
           cp -f import.log .ci-logs/ 2>/dev/null || echo "import: пропущен" > .ci-logs/import.log
           cp -f smoke.log .ci-logs/ 2>/dev/null || echo "smoke: пропущен" > .ci-logs/smoke.log
           cp -f boat-smoke.log .ci-logs/ 2>/dev/null || echo "boat-smoke: пропущен" > .ci-logs/boat-smoke.log
+          cp -f parse-village-props.log .ci-logs/ 2>/dev/null || true
           git add .ci-logs
           git commit -q -m "ci: логи headless-прогона ${GITHUB_SHA::7} [skip ci]" || true
           OURS=$(git rev-parse HEAD)
@@ -149,9 +155,10 @@ jobs:
 
   ui:
     runs-on: ubuntu-latest
-    # Витрина TIDECUT + живой запуск + серия кадров света: шаги идут подряд,
-    # и 25 минут на всё уже не хватало — задача отменялась вместе с артефактами.
-    timeout-minutes: 45
+    # Витрина TIDECUT + живой запуск + четыре полосы кадров света: под
+    # софтверным Vulkan каждый кадр стоит около минуты, и на всё вместе
+    # 45 минут уже не хватало — задача отменялась вместе с артефактами.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -235,10 +242,44 @@ jobs:
           test -f shots/tide_07_boot.png || (echo "::error::нет shots/tide_07_boot.png" && exit 1)
 
       # Свет мира: одни и те же ракурсы днём, в сумерках, ночью и на рассвете.
-      - name: World lighting shots (свет по времени суток)
+      # ТРИ шага вместо одного: под софтверным Vulkan один кадр стоит около
+      # минуты, и даже половина серии вылетала по таймауту шага CI (кадры
+      # терялись вместе с задачей). Трети укладываются с запасом.
+      - name: World lighting shots — посёлок и храм
         run: |
-          TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
-            timeout 1700 xvfb-run -a -s "-screen 0 1280x720x24" \
+          TIDE_LIGHT_SET=village TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
+            timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" \
+            godot_bin/godot --path . res://scenes/boat_main.tscn \
+            --rendering-method forward_plus --resolution 1280x720 \
+            --fixed-fps 30 --quit-after 1200 > light-village.log 2>&1 || true
+          tail -40 light-village.log
+          if grep -qiE "SCRIPT ERROR|SHADER ERROR|Parse Error" light-village.log; then
+            grep -iE "SCRIPT ERROR|SHADER ERROR|Parse Error" -A3 light-village.log | head -20 | while read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
+          grep -F "[LIGHT SHOTS] готово" light-village.log || (echo "::error::серия «посёлок и храм» не дошла до конца" && exit 1)
+          test -f shots/light_27_shrine_day.png || (echo "::error::кадры храма не снялись" && exit 1)
+      - name: World lighting shots — гавань
+        run: |
+          TIDE_LIGHT_SET=harbor TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
+            timeout 700 xvfb-run -a -s "-screen 0 1280x720x24" \
+            godot_bin/godot --path . res://scenes/boat_main.tscn \
+            --rendering-method forward_plus --resolution 1280x720 \
+            --fixed-fps 30 --quit-after 900 > light-harbor.log 2>&1 || true
+          tail -40 light-harbor.log
+          if grep -qiE "SCRIPT ERROR|SHADER ERROR|Parse Error" light-harbor.log; then
+            grep -iE "SCRIPT ERROR|SHADER ERROR|Parse Error" -A3 light-harbor.log | head -20 | while read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
+          grep -F "[LIGHT SHOTS] готово" light-harbor.log || (echo "::error::серия «гавань» не дошла до конца" && exit 1)
+      - name: World lighting shots — море и киты
+        run: |
+          TIDE_LIGHT_SET=sea TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
+            timeout 1650 xvfb-run -a -s "-screen 0 1280x720x24" \
             godot_bin/godot --path . res://scenes/boat_main.tscn \
             --rendering-method forward_plus --resolution 1280x720 \
             --fixed-fps 30 --quit-after 2400 > light-shots.log 2>&1 || true
@@ -249,8 +290,24 @@ jobs:
             done
             exit 1
           fi
-          grep -F "[LIGHT SHOTS] готово" light-shots.log || (echo "::error::серия кадров света не дошла до конца" && exit 1)
-
+          grep -F "[LIGHT SHOTS] готово" light-shots.log || (echo "::error::серия «море и киты» не дошла до конца" && exit 1)
+          test -f shots/light_10_night_beacon_wide.png || (echo "::error::кадры маяка не снялись" && exit 1)
+      - name: World lighting shots — рейд (сфера, маяк, ноги)
+        run: |
+          TIDE_LIGHT_SET=raid TIDE_LIGHT_SHOTS=1 TIDE_SHOT_DIR="$PWD/shots" \
+            timeout 1200 xvfb-run -a -s "-screen 0 1280x720x24" \
+            godot_bin/godot --path . res://scenes/boat_main.tscn \
+            --rendering-method forward_plus --resolution 1280x720 \
+            --fixed-fps 30 --quit-after 1500 > light-raid.log 2>&1 || true
+          tail -40 light-raid.log
+          if grep -qiE "SCRIPT ERROR|SHADER ERROR|Parse Error" light-raid.log; then
+            grep -iE "SCRIPT ERROR|SHADER ERROR|Parse Error" -A3 light-raid.log | head -20 | while read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
+          grep -F "[LIGHT SHOTS] готово" light-raid.log || (echo "::error::серия «рейд» не дошла до конца" && exit 1)
+          test -f shots/light_17_kick_03.png || (echo "::error::кадры пинка не снялись" && exit 1)
       - name: Publish UI shots (всегда)
         if: always()
         run: |
@@ -259,7 +316,10 @@ jobs:
           mkdir -p .ci-logs
           cp -f tide-ui.log .ci-logs/ 2>/dev/null || echo "витрина: пропущена" > .ci-logs/tide-ui.log
           cp -f boat-boot.log .ci-logs/ 2>/dev/null || true
-          cp -f light-shots.log .ci-logs/ 2>/dev/null || true
+          cp -f light-shots.log .ci-logs/light-shots.log 2>/dev/null || true
+          cp -f light-harbor.log .ci-logs/light-harbor.log 2>/dev/null || true
+          cp -f light-village.log .ci-logs/light-village.log 2>/dev/null || true
+          cp -f light-raid.log .ci-logs/light-raid.log 2>/dev/null || true
           if compgen -G "shots/*.png" > /dev/null; then
             git add shots
           fi
@@ -269,7 +329,7 @@ jobs:
           for attempt in 1 2 3 4 5; do
             git fetch -q origin "${GITHUB_REF#refs/heads/}"
             git reset -q --hard FETCH_HEAD
-            git checkout -q "$OURS" -- shots .ci-logs/light-shots.log .ci-logs/tide-ui.log .ci-logs/boat-boot.log 2>/dev/null || true
+            git checkout -q "$OURS" -- shots .ci-logs/light-shots.log .ci-logs/light-harbor.log .ci-logs/light-village.log .ci-logs/light-raid.log .ci-logs/tide-ui.log .ci-logs/boat-boot.log 2>/dev/null || true
             if git diff --cached --quiet && git diff --quiet; then
               break
             fi
@@ -282,7 +342,11 @@ jobs:
 
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Софтверный Vulkan (lavapipe) на общем раннере: один прогон уже занимал
+    # 42 минуты и проходил впритык к лимиту 45, а после появления посёлка
+    # кадры сцен перестали укладываться совсем — задача отменялась на
+    # последних кадрах, и артефакты приезжали неполными.
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
 

@@ -763,11 +763,14 @@ func _check_island_harbor() -> void:
 func _check_village() -> void:
 	var village: IslandVillage = main.village
 	_check(village != null and village.cottages.size() == IslandVillage.HOUSE_SITES.size(),
-		"посёлок: пять отдельных заменяемых домов")
+		"посёлок: отдельные дома на своих местах")
 	if village == null:
 		return
-	_check(village.get_node_or_null("GroundedUnpavedLane") is MeshInstance3D,
-		"дорога и дорожки лежат на рельефе за причалом")
+	_check(village.get_node_or_null("VillageBase") is MeshInstance3D
+		and village.get_node_or_null("VillageStreets") is MeshInstance3D,
+		"квартал стоит на каменном основании с ровными улицами")
+	_check(village.get_node_or_null("PropsStone") is MeshInstance3D,
+		"каменная набережная с кордоном и трапами стоит на воде")
 	for house in village.cottages:
 		var p := house.global_position
 		_check(main.coast.ground_height(p.x, p.z) > 0.5,
@@ -775,6 +778,31 @@ func _check_village() -> void:
 		_check(house.get_node_or_null("BuildingCollision") is StaticBody3D,
 			"у каждого дома своя коллизия")
 		_check(p.y >= main.coast.ground_height(p.x, p.z), "фундамент не погружён в центр рельефа")
+		# Новый посёлок: у дома есть запечённая геометрия по материалам,
+		# а не одна крашеная коробка. Стиль у всех разный.
+		_check(house.get_node_or_null("Stone") is MeshInstance3D
+			and house.get_node_or_null("Roof") is MeshInstance3D
+			and house.get_node_or_null("Glass") is MeshInstance3D,
+			"дом собран из камня, кровли и стекла отдельными сетками")
+	_check(village.get_node_or_null("PierBridge") is MeshInstance3D,
+		"съезд с причала доводит дорогу до ворот посёлка")
+	_check(village.chapel != null and village.chapel.get_node_or_null("Glass") is MeshInstance3D,
+		"часовня со витражами построена")
+	_check(village.shrine != null and village.shrine.get_node_or_null("ShrineGlass") is MeshInstance3D,
+		"прибрежный храм-фонарь построен")
+	_check(village.plaza != null and village.plaza.get_node_or_null("PlazaPaving") is MeshInstance3D,
+		"площадь вымощена")
+	var styles := {}
+	for house in village.cottages:
+		styles[house.style] = true
+	_check(styles.size() >= 4, "дома не повторяют один силуэт")
+	# Каждый дом — своя планировка, а не один план с разной краской.
+	var plans := {}
+	for house in village.cottages:
+		plans[house.plan_name] = true
+	_check(plans.size() == IslandVillage.HOUSE_SITES.size(), "у каждого дома свой план")
+	_check(main.village_interaction != null and main.village_interaction._targets.size() >= 10,
+		"дома и храмы доступны для клика, пока лодка пришвартована")
 	village.set_night(0.0)
 	_check(village.cottages[0].window_material.emission_energy_multiplier == 0.0,
 		"окна посёлка не горят днём")
@@ -782,6 +810,13 @@ func _check_village() -> void:
 	_check(village.cottages[0].window_material.emission_energy_multiplier > 0.5,
 		"окна посёлка загораются ночью")
 	village.set_night(main.night01)
+	# Слой стиля: включён, получает ночь и выключается целиком.
+	_check(main.style_layer != null and main.style_layer.enabled,
+		"слой стиля «Золочёный прилив» работает")
+	if main.style_layer != null:
+		main.style_layer.set_night(0.9)
+		_check(main.style_layer.night01 > 0.85, "стиль читает время суток")
+		main.style_layer.set_night(main.night01)
 
 
 func _check_shoal_navigation() -> void:

@@ -24,8 +24,25 @@ func _run() -> void:
 		main.sea_look_trial.offset = Vector2(-4000.0, 0.0)
 	main._start_in_harbor()
 	await _shooter.wait_frames_count(20)
-	await _village_shots()
+	# Серия идёт ЧЕТЫРЬМЯ прогонами: посёлок, гавань, море и рейд (маяк,
+	# сфера, ноги). Под софтверным Vulkan кадр стоит около минуты, и любая
+	# половина серии уже вылетала по таймауту шага CI.
+	var lane := OS.get_environment("TIDE_LIGHT_SET")
+	var all := lane == ""
+	if all or lane == "village":
+		await _village_shots()
+	if all or lane == "harbor":
+		await _harbor_shots()
+	if all or lane == "sea":
+		await _sea_shots()
+	if all or lane == "raid":
+		await _raid_shots()
+	print("[LIGHT SHOTS] готово")
+	get_tree().quit(0)
 
+
+## Гавань: берег и причал в разное время суток и в тумане.
+func _harbor_shots() -> void:
 	await _shot("light_01_day_harbor", 12.0, 0.0)
 	await _shot("light_02_dusk_harbor", 19.75, 0.0)
 	await _shot("light_03_night_harbor", 23.0, 0.0)
@@ -33,6 +50,9 @@ func _run() -> void:
 	# Берег в полдень, туман: тепло у песка.
 	await _shot("light_19_day_fog_harbor", 12.0, 1.0)
 
+
+## Открытое море: киты, градации тумана, маяк, сфера и ходячие ноги.
+func _sea_shots() -> void:
 	_go_to_sea()
 	await _shot("light_04_night_sea_clear", 23.0, 0.0)
 	await _shot("light_05_night_sea_fog", 23.0, 1.0)
@@ -72,6 +92,10 @@ func _run() -> void:
 	main.camera.size = 84.0
 	await _shot("light_10_night_beacon_wide", 23.0, 0.0)
 
+
+## Рейд: сфера-вход, всплески, маяк ночью и ходячие ноги с пинком.
+## Отдельный прогон: кадры идут пачками по несколько штук подряд.
+func _raid_shots() -> void:
 	# Сфера-вход: погружение перед взлётом — всплеск, кольца и свет из-под воды.
 	_night_atmosphere(0.0)
 	_camera_on_gate()
@@ -136,9 +160,6 @@ func _run() -> void:
 	await _shooter.capture("light_17_kick_03")
 	main.raid.enemies.clear()
 
-	print("[LIGHT SHOTS] готово")
-	get_tree().quit(0)
-
 
 ## Пустой враг для кадра: только то, что нужно отрисовке и движению.
 func _dummy_enemy(at: Vector2, hp: float, combat_id: int) -> Dictionary:
@@ -180,16 +201,36 @@ func _go_to_sea() -> void:
 func _village_shots() -> void:
 	main.inspector.set_free_camera(true)
 	main.inspector.visible = false
-	main.inspector._focus = Vector3(194.0, 5.0, -30.0)
-	main.inspector._yaw = -0.7
-	main.inspector._pitch = 0.75
-	main.camera.size = 55.0
+	main.inspector._focus = Vector3(187.0, 5.2, -30.0)
+	main.inspector._yaw = -0.78
+	main.inspector._pitch = 0.78
+	main.camera.size = 58.0
 	main.inspector.update_camera(0.0)
 	await _shot("light_22_village_day", 12.0, 0.0)
 	await _shot("light_23_village_night", 23.0, 0.0)
+	# Улица целиком: обе линии дорог, площадь, рынок и силуэт часовни.
+	_village_frame(Vector3(186.0, 5.0, -30.0), -1.12, 0.58, 60.0)
+	await _shot("light_24_village_street", 12.0, 0.0)
+	_village_frame(Vector3(190.0, 5.0, -29.0), -0.92, 0.52, 54.0)
+	await _shot("light_25_village_dusk", 19.4, 0.0)
+	# Прибрежный храм-фонарь: точка входа с воды, видна с лодки.
+	_village_frame(Vector3(164.0, 4.2, -12.0), -2.05, 0.34, 26.0)
+	await _shot("light_26_shrine_night", 22.4, 0.0)
+	_village_frame(Vector3(164.0, 4.2, -12.0), -2.05, 0.34, 26.0)
+	await _shot("light_27_shrine_day", 11.0, 0.0)
 	main.inspector.set_free_camera(false)
 	main.inspector.visible = true
 	main._start_in_harbor()
+
+
+## Свободная камера на заданной точке с размером кадра: кадры посёлка
+## должны сниматься одним набором правил, а не ручными offset-ами.
+func _village_frame(focus: Vector3, yaw: float, pitch: float, size: float) -> void:
+	main.inspector._focus = focus
+	main.inspector._yaw = yaw
+	main.inspector._pitch = pitch
+	main.camera.size = size
+	main.inspector.update_camera(0.0)
 
 
 ## Ночная атмосфера без тумана: нужна для кадров со сферой.

@@ -140,13 +140,22 @@ func setup(game: BoatMain) -> void:
 	_rail(Vector2(118.2, -53.7), Vector2(130.8, -53.7))
 	_rail(Vector2(118.2, -53.7), Vector2(118.2, -42.4))
 	_rail(Vector2(134.8, -47.5), Vector2(134.8, -33.0))
-	# Shore access: individual boards and side stringers rather than one slab.
-	var rise := atan2(2.65, 25.0)
-	for i in range(88):
-		var t := (float(i) + 0.5) / 88.0
-		_box("boards", Vector3(152.0 + 25.0 * t, 1.35 + 2.65 * t, -30.0), Vector3(0.27, 0.12, 3.8), _deck, Vector3(0, 0, rise))
+	# Shore access: короткий съезд из выреза каменной набережной наверх.
+	# Длина и подъём общие с IslandVillage, иначе настил проваливается под
+	# террасу или вырастает из середины улицы.
+	var start := IslandVillage.BRIDGE_START
+	var finish := IslandVillage.BRIDGE_FINISH
+	var run := finish.x - start.x
+	var rise := finish.y - start.y
+	var slope := atan2(rise, run)
+	var board_count := 44
+	for i in range(board_count):
+		var t := (float(i) + 0.5) / float(board_count)
+		_box("boards", Vector3(start.x + run * t, start.y + rise * t + 0.03, -30.0),
+			Vector3(0.27, 0.12, 3.2), _deck, Vector3(0, 0, slope))
 	for z in [-31.8, -28.2]:
-		_beam(Vector3(152, 1.02, float(z)), Vector3(177, 3.67, float(z)), 0.19, _timber)
+		_beam(Vector3(start.x, start.y - 0.36, float(z)),
+			Vector3(finish.x, finish.y - 0.36, float(z)), 0.19, _timber)
 	# Compact closed gear store with working verandah facing the berth/camera.
 	_box("timber", Vector3(124.0, 1.43, -49.0), Vector3(8.2, 0.16, 6.7), _timber)
 	_box("paint", Vector3(124.0, 3.05, -49.0), Vector3(8.0, 3.1, 6.5), _paint)

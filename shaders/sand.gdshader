@@ -30,6 +30,14 @@ uniform float wind_power = 1.0;
 uniform float glitter_amount = 0.20; // доля блестящих песчинок
 uniform float orthographic_glitter = 0.0; // только изометрическая сцена лодки
 uniform float island_biome = 0.0; // boat island only; original sand scene unchanged
+// «Золочёный прилив»: пятно посёлка на острове. Плато посёлка лежит всего
+// на 4 м, поэтому порог island_biome (3–9 м) его почти не красит и улица
+// оставалась рыжим пляжем. Здесь земля посёлка красится отдельно: тёмный
+// базальтовый гравий с золотой пылью, ограниченный радиусом вокруг площади.
+uniform vec2 gilt_center = vec2(198.5, -29.6);
+uniform float gilt_radius = 46.0;
+uniform float gilt_strength = 0.0; // 0 — выключено (береговая сцена не тронута)
+uniform vec3 gilt_tint : source_color = vec3(1.0); // время суток для земли посёлка
 uniform float night_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float shadow_star_intensity : hint_range(0.0, 2.5) = 2.5;
 uniform float shadow_star_density : hint_range(0.15, 0.98) = 0.30;
@@ -236,6 +244,26 @@ void fragment() {
 	vec3 inland = mix(scrub, rock, smoothstep(0.08, 0.28, 1.0 - N.y));
 	base = mix(base, inland * (0.62 + 0.54 * wrap) * ao, upland * 0.90);
 
+	// ---------- 2c. Земля посёлка: базальт и золотая пыль ----------
+	// Радиус вокруг площади, ограниченный по высоте: у самой воды остаётся
+	// песок, иначе посёлок «въезжает» в бухту каменной плитой.
+	float gilt_d = length(wp - gilt_center);
+	float gilt_mask = (1.0 - smoothstep(gilt_radius * 0.42, gilt_radius, gilt_d))
+		* smoothstep(0.55, 1.35, w_pos.y - sea_level) * gilt_strength;
+	if (gilt_mask > 0.001) {
+		// Гравий: две частоты шума дают и гальку, и крупные пятна земли.
+		float grit = vnoise(wp * 3.1 + vec2(17.0, 4.0));
+		float patch = vnoise(wp * 0.42 + vec2(2.0, 11.0));
+		vec3 basalt = mix(vec3(0.075, 0.082, 0.105), vec3(0.150, 0.150, 0.180),
+			patch * 0.75 + grit * 0.25);
+		// Золотая пыль: редкие зёрна, которые вспыхивают на солнце.
+		float dust = smoothstep(0.72, 0.95, vnoise(wp * 6.3 + vec2(31.0, 7.0)));
+		basalt += vec3(0.60, 0.44, 0.18) * dust * 0.35 * (0.35 + 0.65 * wrap);
+		// Утоптанная земля: дорожки и площадь ловят меньше блеска, чем газон.
+		basalt *= mix(0.82, 1.10, ao);
+		base = mix(base, basalt * gilt_tint * (0.55 + 0.72 * wrap), gilt_mask * 0.94);
+	}
+
 	// ---------- 2a. Урез: прибой ----------
 	// Высота воды в точке — ТА ЖЕ формула, что в vertex water.gdshader:
 	// море дышит, и мокрая кайма ползёт по пляжу вместе с ним.
@@ -267,8 +295,10 @@ void fragment() {
 	// синевы (синева — признак воды, она теперь у моря, а не у берега)
 	base = mix(base, base * vec3(0.62, 0.55, 0.50), wet * wet_darken);
 	base = mix(base, base * vec3(0.34, 0.40, 0.48), sub * 0.55);
-	// прибойная пена — тёплый свет, не белая краска
-	base = mix(base, vec3(0.94, 0.90, 0.84), clamp(foam * 0.55, 0.0, 0.42));
+	// прибойная пена — тёплый свет, не белая краска. На каменном плато
+	// посёлка прибоя нет: иначе мостовая на высоте 4 м белела бы пеной.
+	float foam_here = foam * (1.0 - clamp(gilt_mask * 1.6, 0.0, 1.0));
+	base = mix(base, vec3(0.94, 0.90, 0.84), clamp(foam_here * 0.55, 0.0, 0.42));
 
 	// ---------- 3. Глиттер (микрофасеты, по мотивам Zucconi) ----------
 	// «Песчинки» размером с пиксель (LOD по дистанции). ДВА лба:
@@ -305,6 +335,8 @@ void fragment() {
 	glint *= 1.0 - 0.85 * churn; // потревоженный песок почти не сверкает
 	float glit_fade = exp(-dist * 0.004); // искры живут далеко, до горизонта
 	glint *= (1.0 - 0.85 * wet) * (1.0 - 0.8 * upland); // мокрый песок не сверкает
+	// Гравий посёлка не сверкает песчинками: у него своя золотая пыль выше.
+	glint *= 1.0 - clamp(gilt_mask, 0.0, 1.0);
 	// Под лампой и маяком работает ТОТ ЖЕ дневной глиттер: те же ячейки
 	// и тот же «небесный» лоб, что днём, — редкие вспышки, а не ковёр.
 	lamp_glitter_mask = glint * sky_lobe * 2.2;

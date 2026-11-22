@@ -21,6 +21,7 @@ var world: GameWorld
 var shoals: ShoalMarkers
 var harbor: IslandHarbor
 var village: IslandVillage
+var village_interaction: VillageInteraction
 var coast: Coast
 var sand: SandField
 var sea_look_trial: SeaLookTrial
@@ -32,15 +33,26 @@ var hud: BoatHud
 var menu: TideMainMenu
 var menu_layer: CanvasLayer
 var menu_open := false
+var village_panel_open := false
 var prologue: TidePrologue
 var prologue_seen := false
 var inspector: WorldInspector
 var photo_mode: BoatPhotoMode
+## Слой стиля «Золочёный прилив»: vaporwave × gothic поверх мира, под HUD.
+var style_layer: GiltStyle
 var raid: RaidRun
 var raid_gate: RaidGate
 var sound: BoatSound
 var camera_height := 26.2
 var camera_framing := BoatCameraFraming.new()
+## Порт-вид: на стоянке камера показывает посёлок целиком, иначе дома
+## остаются за кадром и кликать не по чему.
+const PORT_VIEW_FOCUS := Vector3(164.0, 4.2, -30.6)
+const PORT_VIEW_SIZE := 64.0
+var _port_view := false
+var _size_before_port := 32.0
+var _port_restore := 0.0
+var _port_zoom := 0.0
 var slicks: Array[ResourceSlick] = []
 var resource_zones := ResourceZones.new()
 var buoy_dynamics := BuoyDynamics.new()
@@ -121,6 +133,8 @@ func _ready() -> void:
 	coast.attach_sand(sand)
 	coast.set_sand("orthographic_glitter", 1.0)
 	coast.set_sand("island_biome", 1.0)
+	# Землю под посёлком больше не красим гигантским серым кругом: квартал
+	# стоит на собственной каменной плите, а вокруг остаётся живой рельеф.
 	water = WaterSurface.new()
 	water.shader_path = "res://shaders/water_boat.gdshader"
 	add_child(water)
@@ -145,6 +159,9 @@ func _ready() -> void:
 	village = IslandVillage.new()
 	add_child(village)
 	village.setup(self)
+	village_interaction = VillageInteraction.new()
+	add_child(village_interaction)
+	village_interaction.setup(self)
 	_build_beacons()
 	_build_reefs()
 	_build_resources()
@@ -204,6 +221,11 @@ func _ready() -> void:
 	add_child(sea_look_trial)
 	sea_look_trial.setup(self)
 	weather.setup()
+	# Слой стиля создаётся до первого _apply_atmosphere: он читает night01
+	# и должен появиться на кадре сразу, без «вспышки» на первом апдейте.
+	style_layer = GiltStyle.new()
+	add_child(style_layer)
+	style_layer.setup()
 	sea_whales = SeaWhales.new()
 	sea_whales.name = "SeaWhales"
 	add_child(sea_whales)
@@ -310,6 +332,9 @@ func _apply_atmosphere(n01: float) -> void:
 		boat.update_night_lights(night01, overdrive_timer > 0.0)
 		for slick in slicks:
 			slick.configure_night_visibility(boat._bow_spot, night01)
+	if style_layer != null:
+		# Ночь разжигает неон, день держит золото: один вызов на кадр воздуха.
+		style_layer.set_night(night01)
 	if inspector != null:
 		inspector.apply_view_override()
 
@@ -916,7 +941,7 @@ func _start_voyage() -> void:
 	_close_menu()
 	if harbor != null and harbor.moored:
 		# Рейс начинается у причала: отдать швартовы и выйти на глубокую воду.
-		announce("ТИХАЯ БУХТА. [E] — ОТДАТЬ ШВАРТОВЫ, ЗАТЕМ ВЫХОДИТЕ НА ГЛУБОКУЮ ВОДУ.")
+		announce("ТИХАЯ БУХТА. КЛИКНИТЕ ПО ДОМУ — ТАМ ЖИВУТ. [E] — ОТДАТЬ ШВАРТОВЫ.")
 		return
 	if raid != null and not raid.engaged():
 		# Рейд больше не начинается из афиши: вход — сфера в открытом океане.
@@ -1272,10 +1297,12 @@ func inspection_active() -> bool:
 
 
 func gameplay_paused() -> bool:
-	return raid != null and raid.engaged() and (raid.modal() or inspection_active())
+	return village_panel_open or (raid != null and raid.engaged() and (raid.modal() or inspection_active()))
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if village_panel_open:
+		return
 	if rest != null and rest.visible:
 		return
 	if menu_open:
@@ -1357,6 +1384,23 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 			KEY_9:
 				debug_adjust_fill(0.04)
+				get_viewport().set_input_as_handled()
+			KEY_C:
+				# Стиль мира [C]: выкл → 35% → 55% → 78% → выкл. Одна клавиша,
+				# потому что сравнивать варианты надо на ходу, а не в меню.
+				# F-клавиши заняты F9/F10 (киты) и редактором, поэтому C.
+				if style_layer != null:
+					var steps := [0.0, 0.35, 0.55, 0.78]
+					var next := 0.0
+					for i in range(steps.size()):
+						if steps[i] > style_layer.intensity + 0.001:
+							next = steps[i]
+							break
+					if not style_layer.enabled:
+						next = 0.35
+						style_layer.set_enabled(true)
+					style_layer.set_intensity(next)
+					announce("СТИЛЬ «ЗОЛОЧЁНЫЙ ПРИЛИВ»: %d%%" % int(round(next * 100.0)))
 				get_viewport().set_input_as_handled()
 			KEY_H:
 				debug_toggle_headlight()
@@ -1449,8 +1493,32 @@ func _process(delta: float) -> void:
 	else:
 		# Рендерная камера должна следовать рендерной, а не последней тиковой
 		# позиции лодки. Иначе при 60 Гц физики и другом FPS видны ступеньки.
-		var target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
-		_camera_focus = _camera_focus.lerp(target, 1.0 - exp(-4.0 * delta))
+		var port := harbor != null and harbor.moored \
+			and OS.get_environment("JOURNEY_BOAT_SMOKE") != "1"
+		if port and not _port_view:
+			_size_before_port = camera.size
+			_port_view = true
+			_port_restore = 0.0
+			_port_zoom = 0.0
+		elif not port and _port_view:
+			_port_view = false
+			# Если игрок не приближал кадр в порту, вернём прежнее отдаление.
+			_port_restore = 0.9 if absf(camera.size - PORT_VIEW_SIZE) < 1.0 else 0.0
+		var focus_target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
+		if _port_view:
+			# В порту камера смотрит на посёлок, оставляя лодку у левого края:
+			# так все дома в кадре и по ним можно кликать. Отдаление
+			# подводим только на входе, дальше игрок может приблизить сам.
+			focus_target = PORT_VIEW_FOCUS
+			if _port_zoom < 1.2:
+				_port_zoom += delta
+				camera.size = lerpf(camera.size, PORT_VIEW_SIZE, 1.0 - exp(-3.2 * delta))
+		elif _port_restore > 0.0:
+			# Возврат к прежнему отдалению коротким окном; ручной зум игрока
+			# после него не перехватывается.
+			_port_restore = maxf(0.0, _port_restore - delta)
+			camera.size = lerpf(camera.size, _size_before_port, 1.0 - exp(-4.5 * delta))
+		_camera_focus = _camera_focus.lerp(focus_target, 1.0 - exp(-(2.4 if _port_view else 4.0) * delta))
 		var offset := camera_framing.fit_offset(_camera_focus, Vector3(21.0, camera_height, 30.0), camera, get_viewport().get_visible_rect().size)
 		var desired := _camera_focus + offset
 		# Один фильтр для focus; второй лаг позиции менял угол взгляда камеры
@@ -1462,7 +1530,8 @@ func _process(delta: float) -> void:
 	if not inspection_active() and not gameplay_paused():
 		resource_zones.update(delta)
 	hud.visible = (
-		not menu_open and not inspection_active() and not (raid != null and raid.engaged())
+		not menu_open and not village_panel_open and not inspection_active()
+		and not (raid != null and raid.engaged())
 		and not (rest != null and rest.visible)
 	)
 	hud.queue_redraw()
