@@ -133,6 +133,7 @@ jobs:
           cp -f import.log .ci-logs/ 2>/dev/null || echo "import: пропущен" > .ci-logs/import.log
           cp -f smoke.log .ci-logs/ 2>/dev/null || echo "smoke: пропущен" > .ci-logs/smoke.log
           cp -f boat-smoke.log .ci-logs/ 2>/dev/null || echo "boat-smoke: пропущен" > .ci-logs/boat-smoke.log
+          cp -f parse-village-props.log .ci-logs/ 2>/dev/null || true
           git add .ci-logs
           git commit -q -m "ci: логи headless-прогона ${GITHUB_SHA::7} [skip ci]" || true
           OURS=$(git rev-parse HEAD)
