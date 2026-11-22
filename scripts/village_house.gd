@@ -19,7 +19,7 @@ const PLANS := {
 		"storeys": 1, "roof_style": "gable", "chimney": 1, "feature": "lantern",
 	},
 	"tavern": {
-		"sign": "ТИХИЙ ВАЛ", "width": 8.6, "depth": 6.2, "eaves": 3.85, "ridge": 6.55,
+		"sign": "ТИХИЙ ВАЛ", "width": 8.6, "depth": 6.2, "eaves": 4.45, "ridge": 6.85,
 		"wall": Color("8c4a3b"), "roof": Color("2c2724"), "trim": Color("e6dcc4"),
 		"door": Color("d2a24c"), "glass": Color("ffb46a"), "stone": Color("2b2c33"),
 		"storeys": 2, "roof_style": "gable", "chimney": 1, "feature": "tavern",
@@ -157,6 +157,13 @@ func _collision() -> void:
 	body.shape = shape
 	body.position.y = (ridge + 0.8) * 0.5 - 0.1
 	solid.add_child(body)
+	if plan_name in ["keeper", "pilot"]:
+		var annex := CollisionShape3D.new()
+		var annex_shape := BoxShape3D.new()
+		annex_shape.size = Vector3(width * 0.68, 2.84, 1.25)
+		annex.shape = annex_shape
+		annex.position = Vector3(0.0, 1.42, -depth * 0.5 - 0.505)
+		solid.add_child(annex)
 
 
 # --- Цоколь, двор и водоотвод ----------------------------------------------
@@ -278,17 +285,24 @@ func _roof_cover() -> void:
 ## Уличный фасад (+Z): дверь, окна, ставни, фонарь, вывеска с именем.
 func _street_face() -> void:
 	var front := depth * 0.5
-	# Прямоугольная деревянная дверь и два одинаковых окна: все элементы
-	# находятся на одной плоскости фасада, не пересекают дорогу или соседа.
-	GiltShapes.box(_wood, Vector3(0.0, 1.06, front + 0.02),
-		Vector3(1.14, 2.04, 0.14), palette["trim"] * 0.65)
-	GiltShapes.box(_wood, Vector3(0.0, 1.06, front + 0.10),
-		Vector3(0.93, 1.90, 0.05), palette["door"])
+	var work := plan_name == "salthouse" or plan_name == "netloft"
+	var door_width := 1.85 if work else 0.93
+	GiltShapes.box(_wood, Vector3(0.0, 1.08, front + 0.02),
+		Vector3(door_width + 0.22, 2.12, 0.14), palette["trim"] * 0.65)
+	GiltShapes.box(_wood, Vector3(0.0, 1.08, front + 0.10),
+		Vector3(door_width, 1.98, 0.05), palette["door"])
+	if work:
+		# Двустворчатые рабочие двери вместо двери жилого дома.
+		GiltShapes.box(_dark, Vector3(0.0, 1.08, front + 0.14),
+			Vector3(0.045, 1.95, 0.025), GiltPalette.IRON)
+		for y in [0.52, 1.62]:
+			GiltShapes.box(_dark, Vector3(0.0, float(y), front + 0.14),
+				Vector3(door_width - 0.12, 0.055, 0.03), GiltPalette.IRON)
 	for side in [-1.0, 1.0]:
 		var x := float(side) * width * 0.30
 		_simple_window(Vector3(x, 1.45, front + 0.04), false)
 	GiltShapes.box(_stone, Vector3(0.0, 0.04, front + 0.30),
-		Vector3(1.45, 0.12, 0.48), palette["stone"].lightened(0.12))
+		Vector3(door_width + 0.50, 0.12, 0.48), palette["stone"].lightened(0.12))
 
 
 func _side_faces() -> void:
@@ -318,6 +332,17 @@ func _workshop_details() -> void:
 				Vector3(x + 0.75, eaves + 1.12, 0.0), 0.09, GiltPalette.WOOD_DARK)
 			GiltShapes.beam(_dark, Vector3(x + 0.70, eaves + 1.1, 0.0),
 				Vector3(x + 0.70, eaves + 0.60, 0.0), 0.025, GiltPalette.ROPE)
+			# Со стороны причала расположены реальные грузовые ворота и люк
+			# верхнего этажа, а не глухая жилой фасад.
+			var back := -depth * 0.5
+			GiltShapes.box(_wood, Vector3(0.0, 1.23, back - 0.04),
+				Vector3(2.2, 2.35, 0.10), palette["trim"] * 0.65)
+			GiltShapes.box(_wood, Vector3(0.0, 1.23, back - 0.10),
+				Vector3(1.95, 2.14, 0.06), palette["door"].darkened(0.15))
+			GiltShapes.box(_wood, Vector3(0.0, eaves - 0.75, back - 0.08),
+				Vector3(1.35, 1.15, 0.08), palette["door"].darkened(0.24))
+			GiltShapes.beam(_wood, Vector3(0.0, eaves - 0.05, back - 0.05),
+				Vector3(0.0, eaves - 0.05, back - 0.75), 0.09, GiltPalette.WOOD_DARK)
 		"lantern", "pilot":
 			# Linney: пристройка с односкатной крышей у задней стены.
 			# В пределах собственного участка, не на проезжей части.
@@ -342,11 +367,6 @@ func _workshop_details() -> void:
 			# Навес над витриной слева от входа.
 			GiltShapes.pent_roof(_roof, Vector3(-width * 0.30, 2.34, front + 0.35),
 				1.65, 0.72, 0.06, 0.18, palette["roof"].lightened(0.12), GiltPalette.LEAD)
-		"salting":
-			# Поперечины на широком складском входе.
-			for y in [0.48, 1.55]:
-				GiltShapes.box(_dark, Vector3(0.0, float(y), front + 0.15),
-					Vector3(0.86, 0.07, 0.04), GiltPalette.IRON)
 		"forge":
 			# Характерная широкая труба и табличка мастерской на фасаде.
 			GiltShapes.box(_stone, Vector3(width * 0.32, ridge + 0.25, 0.0),

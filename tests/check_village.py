@@ -48,6 +48,14 @@ for i, (x, z, yaw, name) in enumerate(sites):
         clearance_z = abs(float(z) - float(Z)) - (w + W) / 2 - 0.92
         assert max(clearance_x, clearance_z) >= 0.4, (name, other)
     assert f'"resident": ' in village
+# Задние хозяйственные пристройки ориентированы в +X; не выходят на
+# задний проезд и имеют отдельную коллизию, а не только видимую крышу.
+for x, z, yaw, name in sites:
+    if name in ('keeper', 'pilot'):
+        _, d = plans[name]
+        assert float(x) + d / 2 - .12 + 1.25 + .12 < 188.5, name
+assert 'annex_shape.size = Vector3(width * 0.68, 2.84, 1.25)' in house
+assert 'var door_width := 1.85 if work else 0.93' in house
 # Проём съезда свободен не только от корпусов, но и от свесов крыш.
 for x, z, _, name in sites:
     w, d = plans[name]
