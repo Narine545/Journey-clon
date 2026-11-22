@@ -29,6 +29,7 @@ var water: WaterSurface
 var boat: BoatVessel
 var camera: Camera3D
 var hud: BoatHud
+var fps_counter: GameFpsCounter
 ## Главное меню — афиша пароходства в стиле TIDECUT (только для человека).
 var menu: TideMainMenu
 var menu_layer: CanvasLayer
@@ -191,6 +192,9 @@ func _ready() -> void:
 	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hud)
+	fps_counter = GameFpsCounter.new()
+	fps_counter.name = "FpsCounter"
+	add_child(fps_counter)
 	var harbor_controls := HarborViewControls.new()
 	harbor_controls.main = self
 	layer.add_child(harbor_controls)

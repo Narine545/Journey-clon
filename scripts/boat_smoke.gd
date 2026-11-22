@@ -25,6 +25,15 @@ func _physics_process(_delta: float) -> void:
 		_check(main.coast.water_depth(origin.x, origin.z) > 2.0, "лодка спущена на глубокую воду")
 		_check(main.slicks.size() >= 6, "SDF-пятна распределены вокруг лодки")
 		_check(main.camera.projection == Camera3D.PROJECTION_ORTHOGONAL, "изометрическая камера")
+		_check(main.fps_counter != null and main.fps_counter.visible and
+			main.fps_counter._label.text.ends_with(" FPS"), "счётчик FPS виден без панели корабля")
+		var fps_key := InputEventKey.new()
+		fps_key.physical_keycode = KEY_F3
+		fps_key.pressed = true
+		main.fps_counter._input(fps_key)
+		_check(not main.fps_counter.visible, "F3 скрывает счётчик FPS")
+		main.fps_counter._input(fps_key)
+		_check(main.fps_counter.visible, "F3 возвращает счётчик FPS")
 		_check(is_zero_approx(main.boat._window_light.light_energy) and
 			is_zero_approx(main.boat._window_glass_mat.emission_energy_multiplier) and
 			main.boat._window_glass_mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA,
