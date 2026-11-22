@@ -839,6 +839,9 @@ func _check_village() -> void:
 	var origin_lod := test_house.global_position + Vector3(0, 2, 20)
 	_check(test_house.ray_distance(origin_lod, Vector3(0, 0, -1)) > 0.0,
 		"упрощение не мешает выбрать жителя")
+	# Dummy renderer может иметь очень маленький viewport: приблизим ещё и
+	# ортографический масштаб, чтобы проверить экранный порог независимо от него.
+	lod_camera.size = 1.0
 	lod_camera.global_position = test_house.global_position + Vector3(0, 18, 22)
 	lod_camera.look_at(test_house.global_position + Vector3.UP * 2.0)
 	test_house.update_lod(lod_camera)

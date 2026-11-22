@@ -566,7 +566,7 @@ func update_lod(camera: Camera3D) -> void:
 		pixels = maxf(width, depth) * viewport.y / maxf(2.0 * distance * tan(deg_to_rad(camera.fov * 0.5)), 0.01)
 	# Гистерезис исключает мигание на границе. Удаление и zoom учитываются
 	# отдельно: в ортографической камере расстояние не меняет размер на экране.
-	var far := distance > (135.0 if lod_simplified else 165.0) or pixels < (85.0 if lod_simplified else 65.0)
+	var far := distance > (135.0 if lod_simplified else 165.0) or pixels < (58.0 if lod_simplified else 45.0)
 	_set_lod(far)
 	var screen := camera.unproject_position(focus)
 	var on_screen := not camera.is_position_behind(focus) and screen.x > -160 and screen.y > -160 \
