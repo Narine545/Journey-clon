@@ -198,9 +198,7 @@ func _build_foundation() -> void:
 		var z := BASE_RECT.position.y
 		while z < BASE_RECT.end.y - 0.001:
 			var z1 := minf(z + tile, BASE_RECT.end.y)
-			var tone := Color("625d67") if (ix + iz) % 2 == 0 else Color("56515b")
-			if (ix * 3 + iz * 5) % 9 == 0:
-				tone = Color("4a4650")
+			var tone := Color("5a565a").lerp(Color("666064"), float((ix * 17 + iz * 23) % 7) / 12.0)
 			_flat_quad(slab, Rect2(x + 0.016, z + 0.016, x1 - x - 0.032, z1 - z - 0.032),
 				BASE_Y, tone)
 			z = z1

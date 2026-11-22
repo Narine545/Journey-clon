@@ -19,6 +19,9 @@ assert '_build_chapel()' not in village and '_build_shrine()' not in village
 assert 'GiltShapes.pointed_arch' not in house and 'GiltShapes.spire' not in house
 assert '_match_feature(' not in house and '_yard(' not in house
 assert '_simple_window(' in house
+assert 'var roof_shift := depth * 0.18 if plan_name == "pilot" else 0.0' in house
+assert 'ridge_offset := 0.0' in Path('scripts/art/gilt_shapes.gd').read_text()
+assert 'if plan_name == "netloft":' in house
 assert not Path('scripts/village_portrait.gd').exists()
 assert not Path('scripts/village_chapel.gd').exists()
 assert not Path('scripts/village_shrine.gd').exists()

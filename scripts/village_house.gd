@@ -8,7 +8,7 @@ extends Node3D
 const PLANS := {
 	"netloft": {
 		"sign": "СЕТИ", "width": 6.4, "depth": 5.6, "eaves": 4.55, "ridge": 7.05,
-		"wall": Color("b9ae95"), "roof": Color("2b2a2e"), "trim": Color("d8cdb6"),
+		"wall": Color("955b49"), "roof": Color("393531"), "trim": Color("d8cdb6"),
 		"door": Color("2b6f6c"), "glass": Color("ffc07a"), "stone": Color("2b2f38"),
 		"storeys": 2, "roof_style": "gable", "chimney": 2, "feature": "loft",
 	},
@@ -201,14 +201,29 @@ func _walls() -> void:
 		Vector3(body_w + 0.20, 0.10, body_d + 0.20), palette["trim"] * 0.55)
 	GiltShapes.box(_wood, Vector3(0.0, base_h + (eaves - base_h) * 0.5 + 0.10, 0.0),
 		Vector3(body_w, eaves - base_h, body_d), wall)
-	# Обшивка внахлёст: тонкие пояса с шагом 0.30 м, каждый чуть темнее/светлее.
-	var rows := maxi(4, int((eaves - base_h) / 0.30))
-	for i in range(rows):
-		var y := base_h + 0.10 + (float(i) + 0.5) * (eaves - base_h) / float(rows)
-		var tone: Color = wall.lightened(0.06 + 0.03 * float(i % 3)) \
-			if i % 2 == 0 else wall.darkened(0.10 + 0.02 * float((i + 1) % 3))
-		GiltShapes.box(_wood, Vector3(0.0, y, 0.0),
-			Vector3(body_w + 0.035, 0.045, body_d + 0.035), tone)
+	# Рабочий сетевой сарай обшит вертикальными досками; жилые дома —
+	# горизонтальным сайдингом. Линии остаются на поверхности стен.
+	if plan_name == "netloft":
+		var wall_height := eaves - base_h
+		for side in [-1.0, 1.0]:
+			for i in range(int(body_w / 0.22)):
+				var x := -body_w * 0.5 + (float(i) + 0.5) * 0.22
+				GiltShapes.box(_wood, Vector3(x, base_h + 0.10 + wall_height * 0.5,
+					float(side) * (body_d * 0.5 + 0.018)),
+					Vector3(0.018, wall_height, 0.02), wall.darkened(0.13))
+			for i in range(int(body_d / 0.22)):
+				var z := -body_d * 0.5 + (float(i) + 0.5) * 0.22
+				GiltShapes.box(_wood, Vector3(float(side) * (body_w * 0.5 + 0.018),
+					base_h + 0.10 + wall_height * 0.5, z),
+					Vector3(0.02, wall_height, 0.018), wall.darkened(0.13))
+	else:
+		var rows := maxi(4, int((eaves - base_h) / 0.30))
+		for i in range(rows):
+			var y := base_h + 0.10 + (float(i) + 0.5) * (eaves - base_h) / float(rows)
+			var tone: Color = wall.lightened(0.06 + 0.03 * float(i % 3)) \
+				if i % 2 == 0 else wall.darkened(0.10 + 0.02 * float((i + 1) % 3))
+			GiltShapes.box(_wood, Vector3(0.0, y, 0.0),
+				Vector3(body_w + 0.035, 0.045, body_d + 0.035), tone)
 	# Мачтовые стойки по углам и шпангоуты по стенам: каркас виден.
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
@@ -236,8 +251,11 @@ func _walls() -> void:
 func _roof_cover() -> void:
 	var roof_col: Color = palette["roof"]
 	var rise := ridge - eaves
+	# Лоцманский дом отличается не только цветом: конёк смещён, скаты
+	# имеют разную длину; задняя пристройка собрана отдельно от крыши.
+	var roof_shift := depth * 0.18 if plan_name == "pilot" else 0.0
 	var ridge_y := GiltShapes.gable_roof(_roof, Vector3.ZERO, width, depth, eaves, rise,
-		roof_col, roof_col.lightened(0.18), palette["wall"].darkened(0.10), 0.46)
+		roof_col, roof_col.lightened(0.18), palette["wall"].darkened(0.10), 0.46, roof_shift)
 	# Карниз и водосток: два ската, две нити, четыре стояка.
 	for sz in [-1.0, 1.0]:
 		var z: float = float(sz) * (depth * 0.5 + 0.44)
@@ -250,8 +268,8 @@ func _roof_cover() -> void:
 				Vector3(float(sx) * (width * 0.5 - 0.10), 0.16, z + 0.10), 0.045,
 				GiltPalette.IRON)
 	# Конёк: тяжёлый брус, поверх — золотая нить, по краям фиалы.
-	GiltShapes.beam(_wood, Vector3(-width * 0.5 - 0.42, ridge_y + 0.04, 0.0),
-		Vector3(width * 0.5 + 0.42, ridge_y + 0.04, 0.0), 0.13, roof_col.lightened(0.22))
+	GiltShapes.beam(_wood, Vector3(-width * 0.5 - 0.42, ridge_y + 0.04, roof_shift),
+		Vector3(width * 0.5 + 0.42, ridge_y + 0.04, roof_shift), 0.13, roof_col.lightened(0.22))
 	# Щипцы: шпангоуты и ветровые доски — «корабельный» силуэт.
 	for sx in [-1.0, 1.0]:
 		var x: float = float(sx) * (width * 0.5 - 0.03)
@@ -259,13 +277,14 @@ func _roof_cover() -> void:
 		for i in range(3):
 			var t := (float(i) + 0.5) / 4.0
 			var y := lerpf(eave_y + 0.18, ridge_y - 0.12, t)
-			var half := lerpf(depth * 0.5, 0.10, t)
-			GiltShapes.beam(_wood, Vector3(x, y, -half), Vector3(x, y, half), 0.075,
+			var left := lerpf(-depth * 0.5, roof_shift - 0.10, t)
+			var right := lerpf(depth * 0.5, roof_shift + 0.10, t)
+			GiltShapes.beam(_wood, Vector3(x, y, left), Vector3(x, y, right), 0.075,
 				palette["wall"].darkened(0.20))
 		GiltShapes.beam(_wood, Vector3(x, eaves, depth * 0.5),
-			Vector3(x, ridge_y, 0.0), 0.10, palette["trim"] * 0.55)
+			Vector3(x, ridge_y, roof_shift), 0.10, palette["trim"] * 0.55)
 		GiltShapes.beam(_wood, Vector3(x, eaves, -depth * 0.5),
-			Vector3(x, ridge_y, 0.0), 0.10, palette["trim"] * 0.55)
+			Vector3(x, ridge_y, roof_shift), 0.10, palette["trim"] * 0.55)
 	# Трубы: на коньке или у ската, всегда на 0.8 м выше конька (норма).
 	var chimney_count := int(plan.get("chimney", 1))
 	for i in range(chimney_count):

@@ -116,15 +116,15 @@ static func spire(st: SurfaceTool, base: Vector3, half: float, height: float,
 ## Конёк идёт вдоль X, скаты смотрят в ±Z. Возвращает высоту конька.
 static func gable_roof(st: SurfaceTool, center: Vector3, width: float, depth: float,
 		eave_y: float, rise: float, col_roof: Color, col_edge: Color,
-		col_gable: Color, overhang := 0.34) -> float:
+		col_gable: Color, overhang := 0.34, ridge_offset := 0.0) -> float:
 	var hw := width * 0.5 + overhang
 	var hd := depth * 0.5 + overhang
 	var ridge := center.y + eave_y + rise
-	var inside := center + Vector3(0.0, eave_y + rise * 0.3, 0.0)
+	var inside := center + Vector3(0.0, eave_y + rise * 0.3, ridge_offset)
 	for side in [-1.0, 1.0]:
 		var z_out: float = center.z + float(side) * hd
-		var a := Vector3(center.x - hw, ridge, center.z)
-		var b := Vector3(center.x + hw, ridge, center.z)
+		var a := Vector3(center.x - hw, ridge, center.z + ridge_offset)
+		var b := Vector3(center.x + hw, ridge, center.z + ridge_offset)
 		var c := Vector3(center.x + hw, center.y + eave_y, z_out)
 		var d := Vector3(center.x - hw, center.y + eave_y, z_out)
 		out_quad(st, a, b, c, d, col_roof, inside)
@@ -133,7 +133,7 @@ static func gable_roof(st: SurfaceTool, center: Vector3, width: float, depth: fl
 		for i in range(rows):
 			var t := (float(i) + 0.5) / float(rows)
 			var y := lerpf(ridge, center.y + eave_y, t) + 0.018
-			var z := lerpf(center.z, z_out, t)
+			var z := lerpf(center.z + ridge_offset, z_out, t)
 			var shift := lerpf(hw, hw - 0.03, t)
 			beam(st, Vector3(center.x - shift, y, z), Vector3(center.x + shift, y, z),
 				0.022, col_edge)
@@ -142,13 +142,13 @@ static func gable_roof(st: SurfaceTool, center: Vector3, width: float, depth: fl
 		var x: float = center.x + float(side) * (width * 0.5 - 0.02)
 		var a := Vector3(x, center.y + eave_y, center.z - depth * 0.5 + 0.02)
 		var b := Vector3(x, center.y + eave_y, center.z + depth * 0.5 - 0.02)
-		var c := Vector3(x, ridge, center.z)
+		var c := Vector3(x, ridge, center.z + ridge_offset)
 		out_tri(st, a, b, c, col_gable, center)
 		# Ветровая доска по кромке щипца — характер готического силуэта.
 		beam(st, a, c, 0.085, col_edge)
 		beam(st, b, c, 0.085, col_edge)
-	beam(st, Vector3(center.x - hw, ridge + 0.02, center.z),
-		Vector3(center.x + hw, ridge + 0.02, center.z), 0.11, col_edge)
+	beam(st, Vector3(center.x - hw, ridge + 0.02, center.z + ridge_offset),
+		Vector3(center.x + hw, ridge + 0.02, center.z + ridge_offset), 0.11, col_edge)
 	return eave_y + rise
 
 
