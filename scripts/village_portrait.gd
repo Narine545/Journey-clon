@@ -24,6 +24,8 @@ func _ready() -> void:
 
 
 func _draw() -> void:
+	if size.x <= 1.0 or size.y <= 1.0:
+		return
 	if portrait_texture != null:
 		draw_texture_rect(portrait_texture, Rect2(Vector2.ZERO, size), false)
 		return
@@ -60,15 +62,8 @@ func _draw() -> void:
 	])
 	draw_colored_polygon(points, coat)
 	# Воротник-платок и шарф: единственный яркий цвет.
-	var collar := PackedVector2Array([
-		Vector2(cx - w * 0.20, shoulder - h * 0.04),
-		Vector2(cx, shoulder + h * 0.10),
-		Vector2(cx + w * 0.20, shoulder - h * 0.04),
-		Vector2(cx + w * 0.12, shoulder + h * 0.04),
-		Vector2(cx, shoulder + h * 0.02),
-		Vector2(cx - w * 0.12, shoulder + h * 0.04),
-	])
-	draw_colored_polygon(collar, accent)
+	for triangle in collar_triangles(size):
+		draw_colored_polygon(triangle, accent)
 	# Шея и голова — простые пятна, без черт лица, кроме двух штрихов.
 	draw_rect(Rect2(cx - head_r * 0.30, head_y + head_r * 0.45, head_r * 0.60, head_r * 0.65),
 		Color("c99a76"))
@@ -124,6 +119,20 @@ func _draw() -> void:
 	var text_size := font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 17)
 	draw_string(font, Vector2((w - text_size.x) * 0.5, h - 11.0), caption,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 17, TideTokens.foam_alpha(0.78))
+
+
+## Two simple triangles rather than a self-intersecting scarf polygon.
+static func collar_triangles(portrait_size: Vector2) -> Array[PackedVector2Array]:
+	var w := portrait_size.x
+	var h := portrait_size.y
+	var cx := w * 0.5
+	var shoulder := h * 0.72
+	var tip := Vector2(cx, shoulder + h * 0.10)
+	var inner := Vector2(cx, shoulder + h * 0.02)
+	return [
+		PackedVector2Array([Vector2(cx - w * 0.20, shoulder - h * 0.04), tip, inner]),
+		PackedVector2Array([tip, Vector2(cx + w * 0.20, shoulder - h * 0.04), inner]),
+	]
 
 
 func _draw_tool(w: float, h: float, tool: String, accent: Color) -> void:

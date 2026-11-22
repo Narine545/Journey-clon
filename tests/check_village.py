@@ -139,3 +139,14 @@ assert 'TideKit.panel(' in interaction and 'TideKit.button(' in interaction
 assert 'TideTokens.style_body' in interaction
 assert 'light_28_flagpole' in shots and 'light_29_village_dialog' in shots
 assert 'props.flagpole(Vector3(166.7, QUAY_Y - 0.02, -18.4)' in village
+
+# Регрессии из реального запуска: светильник часовни включён в запечённую
+# геометрию, и полотно воротника состоит из простых треугольников.
+commit_section = chapel.split('func _commit() -> void:', 1)[1].split('func _lantern(', 1)[0]
+assert commit_section.index('_lantern(') < commit_section.index('_bake("Gilt"')
+assert 'func collar_triangles(' in portrait and 'draw_colored_polygon(triangle, accent)' in portrait
+assert 'var _painted_window' not in house
+assert 'var _time := 0.0' not in Path('scripts/art/gilt_props.gd').read_text()
+assert 'float(i / 3)' not in props and 'float(i / 2)' not in house
+assert 'var basis := GiltShapes.facing' not in chapel
+assert 'nose_top - nose_bottom' in props and 'nose_x + 0.55' in props

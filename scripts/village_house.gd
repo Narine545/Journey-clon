@@ -105,7 +105,6 @@ var _highlight: MeshInstance3D
 var _highlight_mat: StandardMaterial3D
 var _nameplate: Label3D
 var _smoke_points: Array[Vector3] = []
-var _painted_window := false
 
 
 ## Основная точка входа. data — запись из IslandVillage.HOUSE_SITES:
@@ -194,7 +193,6 @@ func _yard(foundation_bottom: float) -> void:
 	var pad_front := depth * 0.5 + 1.45
 	var pad_back := -depth * 0.5 - 0.95
 	var pad := GiltShapes.begin()
-	var bx := Basis.IDENTITY
 	GiltShapes.box(pad, Vector3(0.0, y, (pad_front + pad_back) * 0.5),
 		Vector3(width + 1.15, 0.16, pad_front - pad_back), Color("3a3a42"))
 	# Брусчатка двора: светлые швы через каждые 0.9 м.
@@ -607,7 +605,6 @@ func _lantern_room() -> void:
 		var a1 := TAU * float(i + 1) / 8.0
 		var p0 := Vector3(cos(a0) * 0.75, 0.0, sin(a0) * 0.75)
 		var p1 := Vector3(cos(a1) * 0.75, 0.0, sin(a1) * 0.75)
-		var mid := (p0 + p1) * 0.5 * 1.25
 		GiltShapes.out_quad(_glass, Vector3(0.0, base_y + 0.12, 0.0) + p0,
 			Vector3(0.0, base_y + 0.12, 0.0) + p1,
 			Vector3(0.0, base_y + h - 0.12, 0.0) + p1 * 0.96,
@@ -723,7 +720,7 @@ func _salting() -> void:
 		GiltPalette.GILT * 0.55, 14, Vector3.UP)
 	for i in range(4):
 		GiltShapes.cylinder(_wood, Vector3(width * 0.28 + float(i % 2) * 0.56, 0.38,
-			front + 0.70 + float(i / 2) * 0.56), 0.24, 0.24, 0.72,
+			front + 0.70 + floorf(float(i) / 2.0) * 0.56), 0.24, 0.24, 0.72,
 			GiltPalette.CLOTH.darkened(0.25), 10)
 
 

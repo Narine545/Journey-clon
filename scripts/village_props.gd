@@ -286,11 +286,18 @@ func quay() -> void:
 			Vector3(0.52, 0.18, 1.15), Color("4a4852").lightened(0.03 * float(i % 3)))
 	# --- Наковальня-«носик»: бетонный выступ с фонарём ---------------------
 	var nose_z := -39.6
-	var nose_x := quay_edge_x(nose_z) - 1.1
+	var nose_x := quay_edge_x(nose_z) - 0.85
+	# Площадка должна опираться на стену, а не висеть рядом с ней.
+	var nose_bottom := QUAY_BOTTOM
+	var nose_top := QUAY_Y - 0.12
+	GiltShapes.cylinder(_stone, Vector3(nose_x, (nose_bottom + nose_top) * 0.5, nose_z),
+		0.82, 0.92, nose_top - nose_bottom, Color("3d3c44"), 10)
+	GiltShapes.box(_stone, Vector3(nose_x + 0.55, QUAY_Y - 0.14, nose_z),
+		Vector3(1.10, 0.22, 1.65), Color("4a4852"))
 	GiltShapes.cylinder(_stone, Vector3(nose_x, QUAY_Y - 0.10, nose_z), 1.05, 0.95, 0.30,
 		Color("55525b"), 10)
 	# Фонарь на кромке: точка, по которой ночью находят вход в бухту.
-	lamp_post(Vector3(nose_x, QUAY_Y + 0.06, nose_z), 3.2, true)
+	lamp_post(Vector3(nose_x, QUAY_Y + 0.04, nose_z), 3.2, true)
 	# Пара старых пушек-«кнехтов» у входа: остров жил не только рыбой.
 	for i in range(2):
 		var px := nose_x - 1.2 + float(i) * 0.55
@@ -553,7 +560,7 @@ func notice_board(at: Vector3, yaw := 0.0) -> void:
 	for i in range(5):
 		var col := Color("cfc4b4") if i % 2 == 0 else Color("b9ae95")
 		GiltShapes.box(_wood, at + bx * Vector3(-0.62 + float(i % 3) * 0.62,
-			1.68 - float(i / 3) * 0.42, 0.07), Vector3(0.42, 0.34, 0.012), col)
+			1.68 - floorf(float(i) / 3.0) * 0.42, 0.07), Vector3(0.42, 0.34, 0.012), col)
 	GiltShapes.pent_roof(_stone, at + bx * Vector3(0.0, 2.42, 0.0), 2.30, 0.85, 0.0, 0.30,
 		Color("2b2a2e"), GiltPalette.LEAD)
 	GiltShapes.spire(_gilt, at + bx * Vector3(0.0, 2.72, 0.0), 0.08, 0.24,

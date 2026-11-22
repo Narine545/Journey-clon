@@ -19,7 +19,6 @@ var _glass: SurfaceTool
 var _dark: SurfaceTool
 var _lights: Array[Dictionary] = []
 var _glow: Array[MeshInstance3D] = []
-var _time := 0.0
 
 
 ## host — узел посёлка: сюда вешаются источники света (они не геометрия

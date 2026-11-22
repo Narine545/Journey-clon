@@ -47,7 +47,7 @@ func build(variant: int, foundation_bottom: float) -> void:
 	style = variant % 5
 	_foundation_bottom = foundation_bottom
 	palette = _palette_for(style)
-	_collision(foundation_bottom)
+	_collision()
 	if replacement_visual != null:
 		var replacement := replacement_visual.instantiate()
 		replacement.name = "ReplacementVisual"
@@ -104,7 +104,7 @@ func _palette_for(variant: int) -> Dictionary:
 	}
 
 
-func _collision(_foundation_bottom: float) -> void:
+func _collision() -> void:
 	var solid := StaticBody3D.new()
 	solid.name = "BuildingCollision"
 	add_child(solid)

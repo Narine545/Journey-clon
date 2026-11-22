@@ -141,8 +141,6 @@ func _build_quay() -> void:
 ## в вырезе стены, поэтому не пробивает её и не висит над водой.
 func _build_bridge() -> void:
 	var st := GiltShapes.begin()
-	var length := Vector2(BRIDGE_FINISH.x - BRIDGE_START.x, 0.0).length()
-	var rise := BRIDGE_FINISH.y - BRIDGE_START.y
 	# Каменные пилоны до дна: съезд стоит, а не парит.
 	for t in [0.35, 0.68]:
 		var x := lerpf(BRIDGE_START.x, BRIDGE_FINISH.x, float(t))

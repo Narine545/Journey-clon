@@ -253,8 +253,8 @@ jobs:
             --rendering-method forward_plus --resolution 1280x720 \
             --fixed-fps 30 --quit-after 1200 > light-village.log 2>&1 || true
           tail -40 light-village.log
-          if grep -qiE "SCRIPT ERROR|SHADER ERROR|Parse Error" light-village.log; then
-            grep -iE "SCRIPT ERROR|SHADER ERROR|Parse Error" -A3 light-village.log | head -20 | while read -r line; do
+          if grep -qiE "SCRIPT ERROR|SHADER ERROR|Parse Error|Invalid polygon data|triangulation failed" light-village.log; then
+            grep -iE "SCRIPT ERROR|SHADER ERROR|Parse Error|Invalid polygon data|triangulation failed" -A3 light-village.log | head -20 | while read -r line; do
               echo "::error::$line"
             done
             exit 1

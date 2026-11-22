@@ -284,7 +284,7 @@ static func line_for(id: String, hour: float, step: int) -> String:
 
 
 ## Утренняя/вечерняя «сцена» у дома: что человек делает прямо сейчас.
-static func scene_for(id: String, hour: float, night01: float) -> String:
+static func scene_for(id: String, _hour: float, night01: float) -> String:
 	var person := get_person(id)
 	var prop := String(person.get("prop", "net"))
 	var person_name := String(person.get("name", "")).capitalize()

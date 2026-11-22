@@ -788,6 +788,9 @@ func _check_village() -> void:
 		"съезд с причала доводит дорогу до ворот посёлка")
 	_check(village.chapel != null and village.chapel.get_node_or_null("Glass") is MeshInstance3D,
 		"часовня со витражами построена")
+	for triangle in VillagePortrait.collar_triangles(Vector2(310.0, 410.0)):
+		_check(Geometry2D.triangulate_polygon(triangle).size() == 3,
+			"фрагмент воротника портрета корректно триангулируется")
 	_check(village.shrine != null and village.shrine.get_node_or_null("ShrineGlass") is MeshInstance3D,
 		"прибрежный храм-фонарь построен")
 	_check(village.plaza != null and village.plaza.get_node_or_null("PlazaPaving") is MeshInstance3D,

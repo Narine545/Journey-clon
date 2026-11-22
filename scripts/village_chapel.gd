@@ -130,18 +130,18 @@ func _buttresses() -> void:
 func _west_facade() -> void:
 	# Западный фасад: роза над стрельчатым порталом, фиалы по краям.
 	var face_x := LENGTH * 0.5
-	var basis := GiltShapes.facing(Vector3.RIGHT)
+	var facade_basis := GiltShapes.facing(Vector3.RIGHT)
 	# Портальная арка в три обвода: глубина, а не наклейка.
 	for i in range(3):
 		var w := 2.05 - float(i) * 0.30
 		var arch := GiltShapes.pointed_arch(w, -0.10, 1.45 - float(i) * 0.10, 7)
 		GiltShapes.extrude_z(_stone, arch, -0.02 - float(i) * 0.09, 0.10,
 			Color("2c3040").lightened(0.04 * float(i)),
-			Vector3(face_x, 0.0, 0.0), basis)
+			Vector3(face_x, 0.0, 0.0), facade_basis)
 	# Дверь: тёмное дерево, золотые петли, кольцо.
 	var door := GiltShapes.pointed_arch(1.05, 0.0, 1.34, 6)
 	GiltShapes.extrude_z(_stone, door, 0.02, 0.12, GiltPalette.WOOD_DARK,
-		Vector3(face_x, 0.0, 0.0), basis)
+		Vector3(face_x, 0.0, 0.0), facade_basis)
 	for i in range(4):
 		var y := 0.42 + float(i) * 0.40
 		GiltShapes.beam(_gilt, Vector3(face_x + 0.13, y, -0.50),
@@ -222,12 +222,13 @@ func set_night(amount: float) -> void:
 
 
 func _commit() -> void:
+	# Кронштейн и раму нужно добавить до запекания материала.
+	_lantern(Vector3(LENGTH * 0.5 + 0.55, 2.35, 0.0))
 	_bake("Stone", _stone, _solid_material(0.88, 0.0))
 	_bake("Roof", _roof, _solid_material(0.95, 0.12))
 	_bake("Gilt", _gilt, _solid_material(0.28, 0.72))
 	window_material = _glass_material()
 	_bake("Glass", _glass, window_material)
-	_lantern(Vector3(LENGTH * 0.5 + 0.55, 2.35, 0.0))
 	# Два витражных «дышащих» пятна: роза на фасаде и апсида.
 	# Плоскость витража повёрнута вместе с поворотом узла: роза смотрит на
 	# площадь, апсидный витраж — на море.
@@ -239,6 +240,11 @@ func _commit() -> void:
 
 
 func _lantern(at: Vector3) -> void:
+	# Стальной кронштейн связывает светильник с фасадом часовни.
+	GiltShapes.beam(_gilt, Vector3(LENGTH * 0.5 + 0.04, at.y + 0.24, at.z),
+		at + Vector3(0.0, 0.24, 0.0), 0.06, GiltPalette.GILT * 0.75)
+	GiltShapes.beam(_gilt, at + Vector3(0.0, 0.24, 0.0),
+		at + Vector3(0.0, 0.13, 0.0), 0.06, GiltPalette.GILT * 0.75)
 	GiltShapes.box(_gilt, at, Vector3(0.22, 0.28, 0.22), GiltPalette.GILT * 0.85)
 	var post := MeshInstance3D.new()
 	var box := BoxMesh.new()
@@ -259,7 +265,7 @@ func _lantern(at: Vector3) -> void:
 		light.omni_range = 7.5
 		light.light_energy = 0.0
 		light.shadow_enabled = false
-		light.position = at + Vector3(0.35, 0.2, 0.0)
+		light.position = at + offset
 		light.light_volumetric_fog_energy = 0.6
 		add_child(light)
 		_lights.append(light)
