@@ -34,6 +34,17 @@ func _physics_process(_delta: float) -> void:
 		_check(not main.fps_counter.visible, "F3 скрывает счётчик FPS")
 		main.fps_counter._input(fps_key)
 		_check(main.fps_counter.visible, "F3 возвращает счётчик FPS")
+		var baseline_scale := get_viewport().scaling_3d_scale
+		var baseline_msaa := get_viewport().msaa_3d
+		main.fps_counter.set_test_mode(1)
+		_check(is_equal_approx(get_viewport().scaling_3d_scale, baseline_scale * 0.70)
+			and get_viewport().msaa_3d == baseline_msaa, "тест уменьшает только 3D-разрешение")
+		main.fps_counter.set_test_mode(2)
+		_check(is_equal_approx(get_viewport().scaling_3d_scale, baseline_scale)
+			and get_viewport().msaa_3d == Viewport.MSAA_DISABLED, "тест отключает только MSAA")
+		main.fps_counter.set_test_mode(0)
+		_check(is_equal_approx(get_viewport().scaling_3d_scale, baseline_scale)
+			and get_viewport().msaa_3d == baseline_msaa, "обычное качество восстанавливается")
 		_check(is_zero_approx(main.boat._window_light.light_energy) and
 			is_zero_approx(main.boat._window_glass_mat.emission_energy_multiplier) and
 			main.boat._window_glass_mat.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA,

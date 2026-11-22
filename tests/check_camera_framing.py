@@ -31,6 +31,7 @@ assert 'camera.near = 0.2' in main and 'camera.far = 1500.0' in main
 assert 'fps_counter = GameFpsCounter.new()' in main
 fps = (root/'scripts/ui/fps_counter.gd').read_text()
 assert 'KEY_F3' in fps and 'Engine.get_frames_per_second()' in fps
+assert 'KEY_F4' in fps and 'viewport.scaling_3d_scale' in fps and 'Viewport.MSAA_DISABLED' in fps
 
 
 def add(a,b): return tuple(x+y for x,y in zip(a,b))
