@@ -165,37 +165,59 @@ func quay() -> void:
 	for side_index in range(2):
 		var pz: float = side_a if side_index == 0 else side_b
 		GiltShapes.box(_stone, Vector3(well_mid, wall_bottom + wall_h * 0.5, pz),
-			Vector3(RAMP_WELL.size.x, wall_h, 0.28), Color("5a555e"))
+			Vector3(RAMP_WELL.size.x, wall_h, 0.28), Color("6a646d"))
 		GiltShapes.box(_stone, Vector3(well_mid, wall_top + 0.05, pz),
-			Vector3(RAMP_WELL.size.x + 0.12, 0.10, 0.38), Color("6b656d"))
+			Vector3(RAMP_WELL.size.x + 0.12, 0.10, 0.38), Color("7b747d"))
 		var zf: float = pz - 0.15
 		if pz > -30.0:
 			zf = pz + 0.15
 		for course_index in range(4):
 			var course_y := wall_bottom + 0.85 + float(course_index) * 0.82
 			GiltShapes.beam(_stone, Vector3(RAMP_WELL.position.x + 0.08, course_y, zf),
-				Vector3(RAMP_WELL.end.x - 0.08, course_y, zf), 0.035, Color("45414a"))
+				Vector3(RAMP_WELL.end.x - 0.08, course_y, zf), 0.035, Color("514c56"))
 		for pier_index in range(4):
 			var pier_x := RAMP_WELL.position.x + 1.15 + float(pier_index) * 2.15
 			GiltShapes.box(_stone, Vector3(pier_x, wall_bottom + wall_h * 0.5, zf),
-				Vector3(0.16, wall_h, 0.06), Color("66616a"))
+				Vector3(0.16, wall_h, 0.06), Color("756e77"))
 	# Пол траншеи и задняя стена закрывают подклет: из портала видно
 	# продолжение съезда, а не чёрную пустоту.
 	GiltShapes.box(_stone, Vector3(well_mid, 1.14, z_mid),
-		Vector3(RAMP_WELL.size.x - 0.1, 0.22, RAMP_WELL.size.y - 0.1), Color("3a3840"))
+		Vector3(RAMP_WELL.size.x - 0.1, 0.22, RAMP_WELL.size.y - 0.1), Color("57525b"))
 	GiltShapes.box(_stone, Vector3(RAMP_WELL.end.x - 0.16, 2.30, z_mid),
-		Vector3(0.30, 3.30, RAMP_WELL.size.y), Color("4a4650"))
+		Vector3(0.30, 3.30, RAMP_WELL.size.y), Color("5d5861"))
+	# Фонарь в горле портала: тёплая точка вместо чёрной дыры.
+	var portal_bulb := MeshInstance3D.new()
+	var portal_sphere := SphereMesh.new()
+	portal_sphere.radius = 0.12
+	portal_sphere.height = 0.24
+	portal_sphere.radial_segments = 10
+	portal_bulb.mesh = portal_sphere
+	var portal_mat := StandardMaterial3D.new()
+	portal_mat.albedo_color = Color("ffd9a8")
+	portal_mat.emission_enabled = true
+	portal_mat.emission = Color("ffd9a8")
+	portal_mat.emission_energy_multiplier = 1.4
+	portal_bulb.material_override = portal_mat
+	portal_bulb.position = Vector3(RAMP_WELL.position.x + 0.90, 2.86, z_mid)
+	host.add_child(portal_bulb)
+	var portal_light := OmniLight3D.new()
+	portal_light.position = Vector3(RAMP_WELL.position.x + 1.60, 2.70, z_mid)
+	portal_light.light_color = Color("ffd2a1")
+	portal_light.light_energy = 0.75
+	portal_light.omni_range = 7.0
+	portal_light.shadow_enabled = false
+	host.add_child(portal_light)
 	# Наличники портала: пилоны, перемычка, карниз, замок и золотая нить.
 	var portal_a: float = RAMP_WELL.position.y - 0.18
 	var portal_b: float = RAMP_WELL.end.y + 0.18
 	for portal_index in range(2):
 		var portal_pz: float = portal_a if portal_index == 0 else portal_b
 		GiltShapes.box(_stone, Vector3(portal_x - 0.08, 2.15, portal_pz),
-			Vector3(0.66, 2.85, 0.42), Color("6b656d"))
+			Vector3(0.66, 2.85, 0.42), Color("736c75"))
 		GiltShapes.box(_gilt, Vector3(portal_x - 0.42, 2.15, portal_pz),
 			Vector3(0.05, 2.70, 0.28), GiltPalette.GILT * 0.55)
 	GiltShapes.box(_stone, Vector3(portal_x - 0.06, 3.18, z_mid),
-		Vector3(0.72, 0.46, RAMP_WELL.size.y + 0.9), Color("6b656d"))
+		Vector3(0.72, 0.46, RAMP_WELL.size.y + 0.9), Color("736c75"))
 	GiltShapes.box(_stone, Vector3(portal_x - 0.02, 3.46, z_mid),
 		Vector3(0.84, 0.12, RAMP_WELL.size.y + 1.1), Color("575159"))
 	GiltShapes.box(_gilt, Vector3(portal_x - 0.44, 3.00, z_mid),

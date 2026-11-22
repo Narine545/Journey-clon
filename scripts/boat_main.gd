@@ -133,10 +133,8 @@ func _ready() -> void:
 	coast.attach_sand(sand)
 	coast.set_sand("orthographic_glitter", 1.0)
 	coast.set_sand("island_biome", 1.0)
-	# Земля посёлка — каменное плато, а не продолжение пляжа. Радиус и центр
-	# держим здесь же, где ставится посёлок: шейдер не должен знать про него
-	# больше, чем нужно.
-	coast.set_gilt(IslandVillage.PLAZA, 46.0, 1.0)
+	# Землю под посёлком больше не красим гигантским серым кругом: квартал
+	# стоит на собственной каменной плите, а вокруг остаётся живой рельеф.
 	water = WaterSurface.new()
 	water.shader_path = "res://shaders/water_boat.gdshader"
 	add_child(water)

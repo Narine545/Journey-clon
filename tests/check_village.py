@@ -79,7 +79,7 @@ assert 'props.mooring_bell(' in village and 'props.stall(' in village
 assert 'props.tree(' not in village and 'props.rocks(' not in village
 
 # --- Земля посёлка -------------------------------------------------------
-assert 'coast.set_gilt(IslandVillage.PLAZA' in main
+assert 'coast.set_gilt(IslandVillage.PLAZA' not in main
 coast = Path('scripts/coast.gd').read_text()
 sand = Path('shaders/sand.gdshader').read_text()
 assert 'func set_gilt(' in coast and '"gilt_center"' in coast

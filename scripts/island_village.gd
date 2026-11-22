@@ -75,7 +75,6 @@ var plaza: Node3D
 var _lamps: Array[OmniLight3D] = []
 var _lamp_strength: Array[float] = []
 var _day_night := -1.0
-var _boats: Array[Dictionary] = []
 var _gulls: Array[Dictionary] = []
 var _time := 0.0
 
@@ -355,7 +354,7 @@ func _build_foundation() -> void:
 	var slab := SurfaceTool.new()
 	slab.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# Тёмный раствор под плиткой: швы читаются, а трава не проступает.
-	_flat_quad(slab, BASE_RECT, BASE_Y - 0.008, Color("33313a"))
+	_flat_quad(slab, BASE_RECT, BASE_Y - 0.008, Color("2a2832"))
 	var tile := 2.0
 	var ix := 0
 	var x := BASE_RECT.position.x
@@ -365,10 +364,10 @@ func _build_foundation() -> void:
 		var z := BASE_RECT.position.y
 		while z < BASE_RECT.end.y - 0.001:
 			var z1 := minf(z + tile, BASE_RECT.end.y)
-			var tone := Color("5b5760") if (ix + iz) % 2 == 0 else Color("54505a")
+			var tone := Color("625d67") if (ix + iz) % 2 == 0 else Color("56515b")
 			if (ix * 3 + iz * 5) % 9 == 0:
-				tone = Color("4f4b55")
-			_flat_quad(slab, Rect2(x + 0.012, z + 0.012, x1 - x - 0.024, z1 - z - 0.024),
+				tone = Color("4a4650")
+			_flat_quad(slab, Rect2(x + 0.016, z + 0.016, x1 - x - 0.032, z1 - z - 0.032),
 				BASE_Y, tone)
 			z = z1
 			iz += 1
@@ -392,19 +391,19 @@ func _build_foundation() -> void:
 	var cz := (lo.y + hi.y) * 0.5
 	for z in [lo.y, hi.y]:
 		GiltShapes.box(edge, Vector3(cx, BASE_Y + 0.045, z),
-			Vector3(hi.x - lo.x + 0.5, 0.09, 0.5), Color("6b656d"))
+			Vector3(hi.x - lo.x + 0.5, 0.09, 0.5), Color("7b747d"))
 		var low := minf(main.coast.ground_height(lo.x, z), main.coast.ground_height(hi.x, z))
 		low = minf(low, main.coast.ground_height(cx, z)) - 0.35
 		var h := maxf(0.40, BASE_Y - low)
 		GiltShapes.box(edge, Vector3(cx, BASE_Y - h * 0.5, z),
-			Vector3(hi.x - lo.x + 0.4, h, 0.34), Color("45414a"))
+			Vector3(hi.x - lo.x + 0.4, h, 0.34), Color("3d3943"))
 	GiltShapes.box(edge, Vector3(hi.x, BASE_Y + 0.045, cz),
-		Vector3(0.5, 0.09, hi.y - lo.y), Color("6b656d"))
+		Vector3(0.5, 0.09, hi.y - lo.y), Color("7b747d"))
 	var east_low := minf(main.coast.ground_height(hi.x, lo.y), main.coast.ground_height(hi.x, hi.y))
 	east_low = minf(east_low, main.coast.ground_height(hi.x, cz)) - 0.35
 	var east_h := maxf(0.40, BASE_Y - east_low)
 	GiltShapes.box(edge, Vector3(hi.x, BASE_Y - east_h * 0.5, cz),
-		Vector3(0.34, east_h, hi.y - lo.y), Color("45414a"))
+		Vector3(0.34, east_h, hi.y - lo.y), Color("3d3943"))
 	# Западный край плиты: только вне проёма съезда, иначе подбой закрыл бы
 	# арку портала изнутри.
 	var seg_a := Vector2(lo.y, VillageProps.RAMP_WELL.position.y)
@@ -416,7 +415,7 @@ func _build_foundation() -> void:
 			main.coast.ground_height(lo.x, seg.y)) - 0.35
 		var west_h := maxf(0.40, BASE_Y - west_low)
 		GiltShapes.box(edge, Vector3(lo.x, BASE_Y - west_h * 0.5, seg_mid),
-			Vector3(0.34, west_h, seg.y - seg.x), Color("45414a"))
+			Vector3(0.34, west_h, seg.y - seg.x), Color("3d3943"))
 	var edge_mesh := MeshInstance3D.new()
 	edge_mesh.name = "VillageBaseEdge"
 	edge_mesh.mesh = edge.commit()
@@ -434,14 +433,14 @@ func _build_streets() -> void:
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for rect in [MAIN_STREET, BACK_STREET, CHAPEL_STREET]:
 		var street: Rect2 = rect
-		_flat_quad(surface, street, STREET_Y, Color("45414b"))
+		_flat_quad(surface, street, STREET_Y, Color("38353f"))
 		# Кромки чуть светлее, по центру — вытертый шов.
 		_flat_quad(surface, Rect2(street.position.x, street.position.y, 0.18, street.size.y),
-			STREET_Y + 0.004, Color("6a646c"))
+			STREET_Y + 0.004, Color("7a737d"))
 		_flat_quad(surface, Rect2(street.end.x - 0.18, street.position.y, 0.18, street.size.y),
-			STREET_Y + 0.004, Color("6a646c"))
+			STREET_Y + 0.004, Color("7a737d"))
 		_flat_quad(surface, Rect2(street.get_center().x - 0.035, street.position.y, 0.07, street.size.y),
-			STREET_Y + 0.003, Color("37343e"))
+			STREET_Y + 0.003, Color("26242d"))
 	var mesh := MeshInstance3D.new()
 	mesh.name = "VillageStreets"
 	mesh.mesh = surface.commit()
@@ -681,14 +680,8 @@ func _build_details() -> void:
 	props.commit(details)
 
 
-## Лодки в воде и чайки: единственное, что движется само.
+## Чайки над бухтой.
 func _build_harbour_life() -> void:
-	# Одна лодка на воде у набережной.
-	var boat := VillageProps.new()
-	boat.setup(main, self)
-	var node := boat.boat_node(Vector3(148.0, 0.26, -19.0), 1.15, Color("8c4a3b"))
-	add_child(node)
-	_boats.append({"node": node, "base_y": 0.26, "phase": 0.4, "amp": 0.035})
 	# Чайки: шесть силуэтов над бухтой, круги разные.
 	for i in range(6):
 		_gulls.append(_make_gull(i))
@@ -806,15 +799,6 @@ func _process(delta: float) -> void:
 		return
 	if absf(main.night01 - _day_night) > 0.015:
 		set_night(main.night01)
-	# Лодка на воде качается на собственной волне.
-	for entry in _boats:
-		var node: Node3D = entry["node"]
-		if not is_instance_valid(node):
-			continue
-		var phase := float(entry["phase"])
-		node.position.y = float(entry["base_y"]) + sin(_time * 0.9 + phase) * float(entry["amp"])
-		node.rotation.z = sin(_time * 0.7 + phase) * 0.025
-		node.rotation.x = cos(_time * 0.55 + phase) * 0.018
 	# Чайки не «ездят по кругу»: птица смотрит по касательной, кренится
 	# на повороте и чередует мах с коротким планированием.
 	for entry in _gulls:
