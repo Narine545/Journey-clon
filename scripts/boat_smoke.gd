@@ -766,12 +766,11 @@ func _check_village() -> void:
 		"посёлок: отдельные дома на своих местах")
 	if village == null:
 		return
-	_check(village.get_node_or_null("GroundedUnpavedLane") is MeshInstance3D,
-		"дорога и дорожки лежат на рельефе за причалом")
+	_check(village.get_node_or_null("VillageBase") is MeshInstance3D
+		and village.get_node_or_null("VillageStreets") is MeshInstance3D,
+		"квартал стоит на каменном основании с ровными улицами")
 	_check(village.get_node_or_null("PropsStone") is MeshInstance3D,
 		"каменная набережная с кордоном и трапами стоит на воде")
-	_check(village.resident_nodes.size() >= 10,
-		"в домах и у храмов живут люди")
 	for house in village.cottages:
 		var p := house.global_position
 		_check(main.coast.ground_height(p.x, p.z) > 0.5,

@@ -90,7 +90,6 @@ var style := 0
 var night01 := 0.0
 var palette := {}
 var person_id := ""
-var resident := {}
 var window_material: StandardMaterial3D
 
 var _stone: SurfaceTool
@@ -125,7 +124,6 @@ func build_site(data: Dictionary, foundation_bottom: float) -> void:
 	ridge = float(plan["ridge"])
 	style = int(data.get("style", 0))
 	person_id = String(data.get("resident", "netmaker"))
-	resident = VillagePeople.get_person(person_id)
 	_foundation_bottom = foundation_bottom
 	palette = {
 		"wall": plan["wall"], "roof": plan["roof"], "trim": plan["trim"],
@@ -1062,10 +1060,6 @@ func house_label() -> String:
 	return String(plan.get("sign", "ДОМ"))
 
 
-## Точка, где стоит житель: перед домом, чуть в стороне от двери.
-func resident_spot() -> Vector3:
-	var x := width * 0.28 if width > 7.0 else width * 0.34
-	return to_global(Vector3(x, 0.06, depth * 0.5 + 1.05))
 
 
 ## Пересечение луча с габаритом дома (для клика без физики).

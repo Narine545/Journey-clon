@@ -8,8 +8,8 @@ extends GiltProps
 ##                   кольцами, трапами и чёрным ходом к воде;
 ##   • hjell()     — вешала для рыбы: главный признак Северной Атлантики;
 ##   • rowboat()   — вёсельная лодка с обшивкой внахлёст (а не «ящик»);
-##   • well(), capstan(), fish_table(), lobster_pots(), laundry(), rocks(),
-##     grass(), tree() — остальная уличная жизнь.
+##   • well(), capstan(), fish_table(), lobster_pots(), laundry(),
+##     grass() — остальная уличная жизнь.
 ##
 ## Геометрия складывается в те же SurfaceTool-наборы, что у GiltProps:
 ## один материал — одна сетка, поэтому набережная не стоит сотен draw-call.
@@ -123,24 +123,17 @@ func quay() -> void:
 			GiltShapes.out_quad(_stone, a, b, c, d, tone,
 				Vector3(edge + 2.0, (y0 + y1) * 0.5, (z + z1) * 0.5))
 		z = z1
-	# Откосы по концам набережной и по краям выреза под пирс.
-	for edge_z in [QUAY_MIN_Z, QUAY_MAX_Z, SLIP_MIN_Z, SLIP_MAX_Z]:
-		var facing := -1.0 if edge_z <= QUAY_MIN_Z or edge_z == SLIP_MAX_Z else 1.0
-		if edge_z == QUAY_MIN_Z:
-			facing = -1.0
-		elif edge_z == QUAY_MAX_Z:
-			facing = 1.0
-		elif edge_z == SLIP_MIN_Z:
-			facing = 1.0
-		else:
-			facing = -1.0
+	# Откосы только по концам набережной. Края выреза под съезд закрыты
+	# полноценными стенами портала ниже, а не одной повёрнутой плоскостью.
+	for edge_z in [QUAY_MIN_Z, QUAY_MAX_Z]:
+		var facing := -1.0 if edge_z == QUAY_MIN_Z else 1.0
 		var xa := quay_edge_x(edge_z) - 0.05
 		var xb := QUAY_BACK_X
 		var a := Vector3(xa, QUAY_Y, edge_z)
 		var b := Vector3(xb, QUAY_Y, edge_z)
 		var c := Vector3(xb, QUAY_BOTTOM, edge_z)
 		var d := Vector3(xa, QUAY_BOTTOM, edge_z)
-		GiltShapes.out_quad(_stone, a, b, c, d, stone.darkened(0.10),
+		GiltShapes.out_quad(_stone, a, b, c, d, stone.darkened(0.06),
 			Vector3((xa + xb) * 0.5, 1.0, edge_z - facing * 2.0))
 	# Задняя подпорная стена: с улицы набережная — тоже камень, а не
 	# открытая полость под настилом. В проёме съезда её нет.
@@ -159,32 +152,70 @@ func quay() -> void:
 				GiltShapes.box(_stone, Vector3(QUAY_BACK_X + 0.09, bottom + h * 0.5, mid),
 					Vector3(0.44, 0.10, 0.05), stone.lightened(0.16))
 		bz = bz1
-	# Портал съезда: пяты, перемычка и медные наличники.
-	if true:
-		var px := 160.66
-		for pz in [RAMP_WELL.position.y - 0.18, RAMP_WELL.end.y + 0.18]:
-			GiltShapes.box(_stone, Vector3(px, 1.48, pz), Vector3(0.58, 2.92, 0.36),
-				Color("575159"))
-			GiltShapes.box(_gilt, Vector3(px - 0.30, 1.48, pz), Vector3(0.06, 2.80, 0.24),
-				GiltPalette.GILT * 0.55)
-		GiltShapes.box(_stone, Vector3(px, 2.95, (RAMP_WELL.position.y + RAMP_WELL.end.y) * 0.5),
-			Vector3(0.62, 0.56, RAMP_WELL.size.y + 0.70), Color("6b656d"))
-		GiltShapes.box(_gilt, Vector3(px - 0.32, 2.95, (RAMP_WELL.position.y + RAMP_WELL.end.y) * 0.5),
-			Vector3(0.05, 0.16, RAMP_WELL.size.y + 0.60), GiltPalette.GILT * 0.75)
-		# Стенки проёма: щель не должна просвечивать в подклет набережной.
-		for pz in [RAMP_WELL.position.y, RAMP_WELL.end.y]:
-			GiltShapes.box(_stone, Vector3((RAMP_WELL.position.x + RAMP_WELL.end.x) * 0.5,
-				QUAY_Y - 0.62, pz), Vector3(RAMP_WELL.size.x, 1.24, 0.18),
-				Color("34333b"))
-		# Обрамление проёма в настиле: чугунный угол и золотая нить.
-		for pz in [RAMP_WELL.position.y, RAMP_WELL.end.y]:
-			GiltShapes.box(_stone, Vector3((RAMP_WELL.position.x + RAMP_WELL.end.x) * 0.5,
-				QUAY_Y + 0.06, pz), Vector3(RAMP_WELL.size.x, 0.14, 0.26), Color("6b656d"))
-			GiltShapes.box(_gilt, Vector3((RAMP_WELL.position.x + RAMP_WELL.end.x) * 0.5,
-				QUAY_Y + 0.14, pz), Vector3(RAMP_WELL.size.x - 0.2, 0.03, 0.06),
-				GiltPalette.GILT * 0.85)
-		GiltShapes.box(_stone, Vector3(RAMP_WELL.end.x, QUAY_Y + 0.06, -30.0),
-			Vector3(0.26, 0.14, RAMP_WELL.size.y), Color("6b656d"))
+	# Портал съезда — не дыра, а каменные ворота: стены траншеи во всю
+	# глубину, пол, задняя стена, наличники и свет внутри.
+	var px := 160.66
+	var well_mid := (RAMP_WELL.position.x + RAMP_WELL.end.x) * 0.5
+	var z_mid := (RAMP_WELL.position.y + RAMP_WELL.end.y) * 0.5
+	var wall_bottom := 0.55
+	var wall_top := QUAY_Y + 0.50
+	var wall_h := wall_top - wall_bottom
+	for pz in [RAMP_WELL.position.y - 0.14, RAMP_WELL.end.y + 0.14]:
+		GiltShapes.box(_stone, Vector3(well_mid, wall_bottom + wall_h * 0.5, pz),
+			Vector3(RAMP_WELL.size.x, wall_h, 0.28), Color("5a555e"))
+		GiltShapes.box(_stone, Vector3(well_mid, wall_top + 0.05, pz),
+			Vector3(RAMP_WELL.size.x + 0.12, 0.10, 0.38), Color("6b656d"))
+		var zf: float = pz + (0.15 if pz > -30.0 else -0.15)
+		for i in range(4):
+			var cy := wall_bottom + 0.85 + float(i) * 0.82
+			GiltShapes.beam(_stone, Vector3(RAMP_WELL.position.x + 0.08, cy, zf),
+				Vector3(RAMP_WELL.end.x - 0.08, cy, zf), 0.035, Color("45414a"))
+		for k in range(4):
+			var cx := RAMP_WELL.position.x + 1.15 + float(k) * 2.15
+			GiltShapes.box(_stone, Vector3(cx, wall_bottom + wall_h * 0.5, zf),
+				Vector3(0.16, wall_h, 0.06), Color("66616a"))
+	# Пол траншеи и задняя стена закрывают подклет: из портала видно
+	# продолжение съезда, а не чёрную пустоту.
+	GiltShapes.box(_stone, Vector3(well_mid, 1.14, z_mid),
+		Vector3(RAMP_WELL.size.x - 0.1, 0.22, RAMP_WELL.size.y - 0.1), Color("3a3840"))
+	GiltShapes.box(_stone, Vector3(RAMP_WELL.end.x - 0.16, 2.30, z_mid),
+		Vector3(0.30, 3.30, RAMP_WELL.size.y), Color("4a4650"))
+	# Наличники портала: пилоны, перемычка, карниз, замок и золотая нить.
+	for pz in [RAMP_WELL.position.y - 0.18, RAMP_WELL.end.y + 0.18]:
+		GiltShapes.box(_stone, Vector3(px - 0.08, 2.15, pz),
+			Vector3(0.66, 2.85, 0.42), Color("6b656d"))
+		GiltShapes.box(_gilt, Vector3(px - 0.42, 2.15, pz),
+			Vector3(0.05, 2.70, 0.28), GiltPalette.GILT * 0.55)
+	GiltShapes.box(_stone, Vector3(px - 0.06, 3.18, z_mid),
+		Vector3(0.72, 0.46, RAMP_WELL.size.y + 0.9), Color("6b656d"))
+	GiltShapes.box(_stone, Vector3(px - 0.02, 3.46, z_mid),
+		Vector3(0.84, 0.12, RAMP_WELL.size.y + 1.1), Color("575159"))
+	GiltShapes.box(_gilt, Vector3(px - 0.44, 3.00, z_mid),
+		Vector3(0.05, 0.05, RAMP_WELL.size.y + 0.5), GiltPalette.GILT * 0.8)
+	GiltShapes.box(_gilt, Vector3(px - 0.46, 3.22, z_mid),
+		Vector3(0.20, 0.34, 0.38), GiltPalette.GILT * 0.7)
+	# Тёплый фонарь в горле портала: чёрный проём читается как вход.
+	var portal_lamp := MeshInstance3D.new()
+	var bulb := SphereMesh.new()
+	bulb.radius = 0.11
+	bulb.height = 0.22
+	bulb.radial_segments = 10
+	portal_lamp.mesh = bulb
+	var bulb_mat := StandardMaterial3D.new()
+	bulb_mat.albedo_color = Color("ffd2a1")
+	bulb_mat.emission_enabled = true
+	bulb_mat.emission = Color("ffd2a1")
+	bulb_mat.emission_energy_multiplier = 1.5
+	portal_lamp.material_override = bulb_mat
+	portal_lamp.position = Vector3(px + 0.20, 2.86, z_mid)
+	host.add_child(portal_lamp)
+	var portal_light := OmniLight3D.new()
+	portal_light.position = Vector3(px + 1.40, 2.70, z_mid)
+	portal_light.light_color = Color("ffd2a1")
+	portal_light.light_energy = 0.85
+	portal_light.omni_range = 6.5
+	portal_light.shadow_enabled = false
+	host.add_child(portal_light)
 	# Кордон: тяжёлый камень по кромке, на нём и стоят тумбы.
 	z = QUAY_MIN_Z
 	while z < QUAY_MAX_Z:
@@ -478,27 +509,6 @@ func laundry(a: Vector3, b: Vector3) -> void:
 			cloth, p + Vector3(0.0, -0.30, 2.0))
 
 
-## Камень: валуны на склоне, у кромки и в садах.
-func rocks(at: Vector3, radius := 1.6, count := 5, seed_value := 7) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_value
-	for i in range(count):
-		var a := rng.randf_range(0.0, TAU)
-		var r := rng.randf_range(0.0, radius)
-		var p := at + Vector3(cos(a) * r, 0.0, sin(a) * r)
-		p.y = main.coast.ground_height(p.x, p.z) - 0.10
-		var size := rng.randf_range(0.28, 0.72)
-		var tilt := Basis(Vector3.UP, rng.randf_range(0.0, TAU)) \
-			* Basis(Vector3.RIGHT, rng.randf_range(-0.35, 0.35))
-		var tone := Color("4e4c52").lightened(rng.randf_range(-0.08, 0.12))
-		GiltShapes.cylinder(_stone, p + Vector3(0.0, size * 0.45, 0.0),
-			size * rng.randf_range(0.7, 1.0), size * rng.randf_range(0.35, 0.65),
-			size * rng.randf_range(1.0, 1.6), tone, rng.randi_range(5, 7), tilt)
-		# Лишайник: светлое пятно на камне.
-		GiltShapes.box(_wood, p + Vector3(0.0, size * 1.05, 0.0),
-			Vector3(size * 0.7, 0.02, size * 0.7), Color("6b7a5e"))
-
-
 ## Трава: пучки жёстких северных былинок, гнущихся по ветру.
 func grass(at: Vector3, scale_value := 1.0, seed_value := 3) -> void:
 	var rng := RandomNumberGenerator.new()
@@ -516,33 +526,6 @@ func grass(at: Vector3, scale_value := 1.0, seed_value := 3) -> void:
 				rng.randf_range(-0.12, 0.12) * scale_value, h * (0.7 + 0.15 * float(k)),
 				rng.randf_range(-0.12, 0.12) * scale_value)
 			GiltShapes.beam(_wood, p, tip, 0.018 * scale_value, shade)
-
-
-## Кривое прибрежное дерево: ствол, три ветви, шапки листвы.
-func tree(at: Vector3, scale_value := 1.0, yaw := 0.0) -> void:
-	var bx := Basis(Vector3.UP, yaw)
-	var base := at
-	base.y = main.coast.ground_height(at.x, at.z)
-	var top := base + bx * Vector3(0.55, 4.2, 0.0) * scale_value
-	GiltShapes.cylinder(_wood, (base + top) * 0.5, 0.24 * scale_value, 0.09 * scale_value,
-		4.3 * scale_value, GiltPalette.WOOD_DARK, 7,
-		Basis(Quaternion(Vector3.UP, (top - base).normalized())))
-	for i in range(4):
-		var a := TAU * float(i) / 4.0 + 0.4
-		var start := base + bx * Vector3(0.45, 2.2 + float(i) * 0.35, 0.0) * scale_value
-		var end := start + bx * Vector3(cos(a) * 1.3, 1.1 + 0.35 * float(i), sin(a) * 1.3) * scale_value
-		GiltShapes.beam(_wood, start, end, 0.075 * scale_value, GiltPalette.WOOD_DARK)
-	var crowns := [
-		Vector3(0.55, 4.6, 0.0), Vector3(-0.35, 4.1, 0.35), Vector3(1.35, 3.9, -0.25),
-		Vector3(0.35, 5.2, 0.25),
-	]
-	for i in range(crowns.size()):
-		var c: Vector3 = base + bx * crowns[i] * scale_value
-		var col := Color("3f5540").lightened(0.05 * float(i % 3))
-		GiltShapes.spire(_wood, c, 1.05 * scale_value, 1.5 * scale_value, col, 7,
-			float(i) * 0.7)
-		GiltShapes.spire(_wood, c + Vector3(0.0, 0.45, 0.0) * scale_value,
-			0.75 * scale_value, 1.2 * scale_value, col.lightened(0.06), 6, float(i) * 1.1)
 
 
 ## Доска объявлений у площади: столбы, навес, «бумаги».

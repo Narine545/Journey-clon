@@ -128,15 +128,14 @@
 | `scripts/art/gilt_shapes.gd` | `GiltShapes`: стрельчатая арка, ланцет, кровли, шпиль, роза, кольцо, экструзия профиля, `facing()` для любого фасада |
 | `scripts/art/gilt_props.gd` | `GiltProps`: ворота, фонарь, фонтан, прилавок, ограда, бочка, колокол, сушильня, склад, арка |
 | `scripts/village_house.gd` | `GiltHouse` — восемь уникальных домов (`PLANS`), двор, цоколь, вывеска, дым, ночные окна, клик |
-| `scripts/village_props.gd` | `VillageProps` — набережная, вешала, лодки, колодец, кабестан, рынок, трава, камни |
+| `scripts/village_props.gd` | `VillageProps` — набережная с порталом съезда, вешала, лодки, колодец, кабестан, рынок, трава |
 | `scripts/village_people.gd` | `VillagePeople` — десять жителей, реплики по фазам суток, малые дела |
-| `scripts/village_resident.gd` | `VillageResident` — 3D-житель на CC0-риге с шапкой, шарфом и предметом |
 | `scripts/village_portrait.gd` | `VillagePortrait` — рисованный портрет для судовой роли |
 | `scripts/village_interaction.gd` | `VillageInteraction` — наведение, клик по дому, панель, подарки |
 | `scripts/village_cottage.gd` | `GiltCottage` — прежний дом с пятью силуэтами; `WIDTH/DEPTH` и `replacement_visual` сохранены для старых GLB |
 | `scripts/village_chapel.gd` | `GiltChapel` — часовня |
 | `scripts/village_shrine.gd` | `GiltShrine` — прибрежный храм-фонарь |
-| `scripts/island_village.gd` | `IslandVillage` — план улиц, площадь, рынок, ночной свет |
+| `scripts/island_village.gd` | `IslandVillage` — каменная плита-основание, прямые улицы, площадь, рынок, ночной свет |
 | `scripts/gilt_style.gd` + `shaders/gilt_style.gdshader` | слой стиля кадра |
 | `shaders/gilt_neon_water.gdshader` | вода фонтана и неоновые полосы |
 | `shaders/sand.gdshader` | земля посёлка (`gilt_*`), время суток через `gilt_tint` |

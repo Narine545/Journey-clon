@@ -45,29 +45,17 @@ const HOUSE_SITES := [
 		"plan": "parsonage", "style": 4, "floor": 4.20, "resident": "parson"},
 ]
 
-## Главная улица: от северного конца через площадь к съезду с пирса.
-const QUAY_LANE := [
-	Vector2(177.2, -40.4), Vector2(177.0, -36.0), Vector2(176.8, -33.0),
-	Vector2(176.4, -32.4),
-]
-## Южная половина главной улицы: от развилки у площади к лоцманскому дому.
-const SOUTH_LANE := [
-	Vector2(176.8, -32.4), Vector2(177.0, -28.0), Vector2(177.0, -22.0),
-	Vector2(176.8, -16.0), Vector2(176.2, -8.2),
-]
-## Задний проезд: хозяйственные дворы, поленницы, сушильни, дом пастора.
-const UPPER_LANE := [
-	Vector2(184.4, -41.0), Vector2(188.0, -38.0), Vector2(190.2, -34.0),
-	Vector2(190.2, -28.0), Vector2(190.2, -22.0), Vector2(190.2, -16.0),
-	Vector2(190.0, -9.0),
-]
-## Переулок к часовне: поднимается по восточному склону.
-const CHAPEL_WALK := [
-	Vector2(190.2, -33.6), Vector2(194.4, -35.4), Vector2(198.2, -37.4),
-	Vector2(201.8, -38.6),
-]
-const PLAZA := Vector2(173.0, -31.6)
-const PLAZA_RADIUS := 3.2
+## Город стоит на едином каменном основании, а не на лоскутках рельефа.
+## Плита накрывает весь квартал; улицы — прямые полосы поверх неё.
+const BASE_RECT := Rect2(168.45, -43.8, 42.05, 39.6)
+const BASE_Y := 4.04
+const STREET_Y := 4.065
+## Прямые улицы: главная между фасадами, задний проезд и переулок к часовне.
+const MAIN_STREET := Rect2(175.0, -40.8, 4.6, 33.8)
+const BACK_STREET := Rect2(188.5, -40.4, 3.0, 32.6)
+const CHAPEL_STREET := Rect2(191.5, -36.6, 15.0, 2.0)
+const PLAZA := Vector2(172.2, -31.6)
+const PLAZA_RADIUS := 2.6
 const CHAPEL_AT := Vector2(206.0, -38.6)
 const SHRINE_AT := Vector2(160.4, -8.4)
 const PIER_Y := 1.42
@@ -80,7 +68,6 @@ const CHIMNEY_ABOVE_RIDGE := 0.95
 
 var main: BoatMain
 var cottages: Array[GiltHouse] = []
-var resident_nodes: Dictionary = {}
 var chapel: GiltChapel
 var shrine: GiltShrine
 var props: VillageProps
@@ -100,18 +87,24 @@ func setup(owner_main: BoatMain) -> void:
 	props.setup(main, self)
 	_build_quay()
 	_build_bridge()
-	_build_roads()
+	_build_foundation()
 	_build_plaza()
 	for site in HOUSE_SITES:
 		_build_house(site)
 	_build_chapel()
 	_build_shrine()
 	_build_market()
-	_build_residents()
 	_build_details()
 	_build_harbour_life()
 	_build_lighting()
 	set_night(main.night01)
+
+
+## Высота мостовой: на плите — её верх, за плитой — рельеф.
+func _deck_height(x: float, z: float) -> float:
+	if BASE_RECT.has_point(Vector2(x, z)):
+		return BASE_Y + 0.02
+	return main.coast.ground_height(x, z) + 0.02
 
 
 # --- Набережная -------------------------------------------------------------
@@ -223,29 +216,17 @@ static func smoothstep01(t: float) -> float:
 func _build_house(site: Dictionary) -> void:
 	var at: Vector2 = site["at"]
 	var yaw: float = site["yaw"]
-	var plan := (GiltHouse.PLANS.get(String(site["plan"])) as Dictionary)
-	var hw := float(plan["width"]) * 0.5
-	var hd := float(plan["depth"]) * 0.5
-	var rotation_basis := Basis(Vector3.UP, yaw)
-	var min_ground := INF
-	var max_ground := -INF
-	for x in [-hw, hw]:
-		for z in [-hd, hd]:
-			var p := Vector3(at.x, 0.0, at.y) + rotation_basis * Vector3(float(x), 0.0, float(z))
-			var ground := main.coast.ground_height(p.x, p.z)
-			min_ground = minf(min_ground, ground)
-			max_ground = maxf(max_ground, ground)
-	# Первая линия стоит на каменной террасе набережной, остальные — на своём
-	# выровненном дворе, но не ниже самой высокой точки рельефа.
-	var floor_height := max_ground + 0.10
+	# Весь квартал стоит на одной плите: пол дома — плоскость плиты плюс
+	# слой кладки, без подгонки под рельеф под каждым углом.
+	var floor_height := BASE_Y + 0.06
 	if site.has("floor"):
-		floor_height = maxf(float(site["floor"]), floor_height - 0.02)
+		floor_height = maxf(float(site["floor"]), floor_height)
 	var house := GiltHouse.new()
 	house.name = site["name"]
 	house.position = Vector3(at.x, floor_height, at.y)
 	house.rotation.y = yaw
 	add_child(house)
-	house.build_site(site, min_ground - floor_height)
+	house.build_site(site, BASE_Y - floor_height - 0.25)
 	cottages.append(house)
 
 
@@ -257,7 +238,7 @@ func _build_chapel() -> void:
 			var ground := main.coast.ground_height(CHAPEL_AT.x - float(x), CHAPEL_AT.y + float(z))
 			min_ground = minf(min_ground, ground)
 			max_ground = maxf(max_ground, ground)
-	var floor_height := max_ground + 0.16
+	var floor_height := maxf(BASE_Y + 0.12, max_ground + 0.16)
 	chapel = GiltChapel.new()
 	chapel.name = "Chapel"
 	chapel.position = Vector3(CHAPEL_AT.x, floor_height, CHAPEL_AT.y)
@@ -276,11 +257,7 @@ func _build_chapel() -> void:
 	solid.add_child(box)
 	# Подклет: часовня стоит на склоне, западный фасад не должен парить.
 	var podium := GiltShapes.begin()
-	var lowest := floor_height
-	for x in [-GiltChapel.LENGTH * 0.5, GiltChapel.LENGTH * 0.5]:
-		for z in [-GiltChapel.WIDTH * 0.5, GiltChapel.WIDTH * 0.5]:
-			lowest = minf(lowest, main.coast.ground_height(CHAPEL_AT.x - float(x),
-				CHAPEL_AT.y + float(z)))
+	var lowest := minf(min_ground, BASE_Y - 0.35)
 	var depth := maxf(0.55, floor_height - 0.30 - lowest)
 	for i in range(3):
 		var h := depth / 3.0
@@ -300,8 +277,7 @@ func _build_chapel() -> void:
 	for i in range(count):
 		var t := float(i) / float(count - 1)
 		var x := CHAPEL_AT.x - GiltChapel.LENGTH * 0.5 - 0.58 - float(i) * 0.34
-		var step_y := lerpf(floor_height - 0.16,
-			main.coast.ground_height(x, CHAPEL_AT.y) + 0.06, t)
+		var step_y := lerpf(floor_height - 0.16, BASE_Y + 0.02, t)
 		GiltShapes.box(podium, Vector3(x, step_y, CHAPEL_AT.y),
 			Vector3(0.40, 0.30, 3.0 - t * 0.4), GiltPalette.STONE_COLD * (0.42 + 0.12 * t))
 	for sz in [-1.0, 1.0]:
@@ -309,7 +285,7 @@ func _build_chapel() -> void:
 			var t := (float(i) + 0.5) / 4.0
 			var x := CHAPEL_AT.x - GiltChapel.LENGTH * 0.5 - 0.72 - t * 2.8
 			var z: float = CHAPEL_AT.y + float(sz) * 1.58
-			var y := lerpf(floor_height - 0.16, main.coast.ground_height(x, z) + 0.06, t)
+			var y := lerpf(floor_height - 0.16, BASE_Y + 0.02, t)
 			GiltShapes.box(podium, Vector3(x, y + 0.34, z), Vector3(0.30, 0.68, 0.30),
 				Color("262a35"))
 			GiltShapes.spire(podium, Vector3(x, y + 0.68, z), 0.16, 0.50,
@@ -373,137 +349,119 @@ func _build_shrine() -> void:
 
 # --- Дороги и площадь -------------------------------------------------------
 
-func _build_roads() -> void:
+## Основание квартала: каменная плита с плиткой, кордоном и подбоем.
+## Дороги больше не «лежат на рельефе» — они прямые полосы поверх плиты.
+func _build_foundation() -> void:
+	var slab := SurfaceTool.new()
+	slab.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# Тёмный раствор под плиткой: швы читаются, а трава не проступает.
+	_flat_quad(slab, BASE_RECT, BASE_Y - 0.008, Color("33313a"))
+	var tile := 2.0
+	var ix := 0
+	var x := BASE_RECT.position.x
+	while x < BASE_RECT.end.x - 0.001:
+		var x1 := minf(x + tile, BASE_RECT.end.x)
+		var iz := 0
+		var z := BASE_RECT.position.y
+		while z < BASE_RECT.end.y - 0.001:
+			var z1 := minf(z + tile, BASE_RECT.end.y)
+			var tone := Color("5b5760") if (ix + iz) % 2 == 0 else Color("54505a")
+			if (ix * 3 + iz * 5) % 9 == 0:
+				tone = Color("4f4b55")
+			_flat_quad(slab, Rect2(x + 0.012, z + 0.012, x1 - x - 0.024, z1 - z - 0.024),
+				BASE_Y, tone)
+			z = z1
+			iz += 1
+		x = x1
+		ix += 1
+	var slab_mesh := MeshInstance3D.new()
+	slab_mesh.name = "VillageBase"
+	slab_mesh.mesh = slab.commit()
+	var slab_mat := StandardMaterial3D.new()
+	slab_mat.vertex_color_use_as_albedo = true
+	slab_mat.roughness = 0.95
+	slab_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	slab_mesh.material_override = slab_mat
+	slab_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(slab_mesh)
+	# Кордон по краю и каменный подбой: квартал стоит на террасе.
+	var edge := GiltShapes.begin()
+	var lo := BASE_RECT.position
+	var hi := BASE_RECT.end
+	var cx := (lo.x + hi.x) * 0.5
+	var cz := (lo.y + hi.y) * 0.5
+	for z in [lo.y, hi.y]:
+		GiltShapes.box(edge, Vector3(cx, BASE_Y + 0.045, z),
+			Vector3(hi.x - lo.x + 0.5, 0.09, 0.5), Color("6b656d"))
+		var low := minf(main.coast.ground_height(lo.x, z), main.coast.ground_height(hi.x, z))
+		low = minf(low, main.coast.ground_height(cx, z)) - 0.35
+		var h := maxf(0.40, BASE_Y - low)
+		GiltShapes.box(edge, Vector3(cx, BASE_Y - h * 0.5, z),
+			Vector3(hi.x - lo.x + 0.4, h, 0.34), Color("45414a"))
+	GiltShapes.box(edge, Vector3(hi.x, BASE_Y + 0.045, cz),
+		Vector3(0.5, 0.09, hi.y - lo.y), Color("6b656d"))
+	var east_low := minf(main.coast.ground_height(hi.x, lo.y), main.coast.ground_height(hi.x, hi.y))
+	east_low = minf(east_low, main.coast.ground_height(hi.x, cz)) - 0.35
+	var east_h := maxf(0.40, BASE_Y - east_low)
+	GiltShapes.box(edge, Vector3(hi.x, BASE_Y - east_h * 0.5, cz),
+		Vector3(0.34, east_h, hi.y - lo.y), Color("45414a"))
+	# Западный край плиты: только вне проёма съезда, иначе подбой закрыл бы
+	# арку портала изнутри.
+	for seg in [Vector2(lo.y, VillageProps.RAMP_WELL.position.y),
+			Vector2(VillageProps.RAMP_WELL.end.y, hi.y)]:
+		var seg_mid := (seg.x + seg.y) * 0.5
+		var west_low := minf(main.coast.ground_height(lo.x, seg.x),
+			main.coast.ground_height(lo.x, seg.y)) - 0.35
+		var west_h := maxf(0.40, BASE_Y - west_low)
+		GiltShapes.box(edge, Vector3(lo.x, BASE_Y - west_h * 0.5, seg_mid),
+			Vector3(0.34, west_h, seg.y - seg.x), Color("45414a"))
+	var edge_mesh := MeshInstance3D.new()
+	edge_mesh.name = "VillageBaseEdge"
+	edge_mesh.mesh = edge.commit()
+	var edge_mat := StandardMaterial3D.new()
+	edge_mat.vertex_color_use_as_albedo = true
+	edge_mat.roughness = 0.94
+	edge_mesh.material_override = edge_mat
+	edge_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(edge_mesh)
+	_build_streets()
+
+
+func _build_streets() -> void:
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# Набережная: 3.4 м, две полосы брусчатки со швом по центру.
-	_road_strip(surface, QUAY_LANE, 3.2, true)
-	_road_strip(surface, SOUTH_LANE, 3.2, true)
-	# Задний проезд уже и без шва: хозяйственный переулок.
-	_road_strip(surface, UPPER_LANE, 2.2, false)
-	_road_strip(surface, CHAPEL_WALK, 2.4, false)
-	# Дорожки к дверям: заканчиваются у крыльца, а не бьют в стену.
-	for site in HOUSE_SITES:
-		var at: Vector2 = site["at"]
-		var yaw: float = site["yaw"]
-		var front := Vector3(0.0, 0.0, float((GiltHouse.PLANS[site["plan"]] as Dictionary)["depth"]) * 0.5 + 0.55)
-		var world_front := Vector3(at.x, 0.0, at.y) + Basis(Vector3.UP, yaw) * front
-		var anchor := _nearest_on_lane(at, yaw)
-		_road_strip(surface, [anchor, Vector2(world_front.x, world_front.z)], 1.15, false)
-	var road := MeshInstance3D.new()
-	road.name = "GroundedUnpavedLane"
-	road.mesh = surface.commit()
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color.WHITE
-	material.roughness = 0.97
-	material.vertex_color_use_as_albedo = true
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	road.material_override = material
-	road.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(road)
-	# Бордюр и лоток: дорога перестаёт быть «нарисованной лентой».
-	_build_kerbs()
-
-
-func _nearest_on_lane(at: Vector2, yaw: float) -> Vector2:
-	var front := Vector3(at.x, 0.0, at.y) + Basis(Vector3.UP, yaw) * Vector3(0.0, 0.0, 3.2)
-	var best := Vector2(front.x, front.z)
-	var best_d := INF
-	for lane in [QUAY_LANE, SOUTH_LANE, UPPER_LANE, CHAPEL_WALK]:
-		for i in range(lane.size() - 1):
-			var a: Vector2 = lane[i]
-			var b: Vector2 = lane[i + 1]
-			var p := Geometry2D.get_closest_point_to_segment(Vector2(front.x, front.z), a, b)
-			var d := p.distance_to(Vector2(front.x, front.z))
-			if d < best_d:
-				best_d = d
-				best = p
-	return best
-
-
-func _road_strip(surface: SurfaceTool, points: Array, width: float, seam: bool) -> void:
-	# Короткие сегменты повторяют рельеф; больших висящих прямоугольников нет.
-	for i in range(points.size() - 1):
-		var a: Vector2 = points[i]
-		var b: Vector2 = points[i + 1]
-		var forward := (b - a).normalized()
-		var side := Vector2(-forward.y, forward.x)
-		var steps := maxi(1, int(ceil(a.distance_to(b) / 0.8)))
-		for j in range(steps):
-			var p0 := a.lerp(b, float(j) / float(steps))
-			var p1 := a.lerp(b, float(j + 1) / float(steps))
-			# Пять полос: кромки темнее, центр — вытертый камень.
-			for band in range(5):
-				var d0 := lerpf(-width * 0.5, width * 0.5, float(band) / 5.0)
-				var d1 := lerpf(-width * 0.5, width * 0.5, float(band + 1) / 5.0)
-				var edge := band == 0 or band == 4
-				var c0 := Color("3d3a44") if edge else Color("4d4954")
-				var c1 := Color("3d3a44") if edge else Color("4d4954")
-				if not edge:
-					c0 = c0.lerp(Color("5b5661"), 0.35)
-					c1 = c1.lerp(Color("5b5661"), 0.35)
-				_road_triangle(surface, p0 + side * d0, p1 + side * d0, p1 + side * d1, c0, c0, c1)
-				_road_triangle(surface, p0 + side * d0, p1 + side * d1, p0 + side * d1, c0, c1, c1)
-			# Шов по центру: тёмная нить стыка мостовой.
-			if seam:
-				var t := float(j) / float(steps)
-				var shade := Color("35323c") if int(t * 4.0) % 2 == 0 else Color("3a3640")
-				_road_triangle(surface, p0 - side * 0.05, p1 - side * 0.05, p1 + side * 0.05,
-					shade, shade, shade)
-				_road_triangle(surface, p0 - side * 0.05, p1 + side * 0.05, p0 + side * 0.05,
-					shade, shade, shade)
-			# Поперечные швы брусчатки — каждые ~1.6 м.
-			if j % 2 == 0:
-				_road_triangle(surface, p0 - side * width * 0.5, p0 + side * width * 0.5,
-					p0 + side * width * 0.45, Color("34313a"), Color("34313a"), Color("34313a"))
-
-
-func _road_triangle(surface: SurfaceTool, a: Vector2, b: Vector2, c: Vector2,
-		ca: Color, cb: Color, cc: Color) -> void:
-	for entry in [[a, ca], [b, cb], [c, cc]]:
-		var p: Vector2 = entry[0]
-		surface.set_color(entry[1])
-		surface.set_normal(main.coast.ground_normal(p.x, p.y))
-		surface.add_vertex(Vector3(p.x, main.coast.ground_height(p.x, p.y) + 0.055, p.y))
-
-
-## Бордюрные камни по обеим кромкам главной улицы и площадь — отдельной
-## сеткой камня. Они дают дороге толщину и тень, которой не было у ленты.
-func _build_kerbs() -> void:
-	var st := GiltShapes.begin()
-	for lane in [QUAY_LANE, SOUTH_LANE]:
-		_kerb_strip(st, lane, 3.2)
-	_kerb_strip(st, UPPER_LANE, 2.2)
+	for rect in [MAIN_STREET, BACK_STREET, CHAPEL_STREET]:
+		var street: Rect2 = rect
+		_flat_quad(surface, street, STREET_Y, Color("45414b"))
+		# Кромки чуть светлее, по центру — вытертый шов.
+		_flat_quad(surface, Rect2(street.position.x, street.position.y, 0.18, street.size.y),
+			STREET_Y + 0.004, Color("6a646c"))
+		_flat_quad(surface, Rect2(street.end.x - 0.18, street.position.y, 0.18, street.size.y),
+			STREET_Y + 0.004, Color("6a646c"))
+		_flat_quad(surface, Rect2(street.get_center().x - 0.035, street.position.y, 0.07, street.size.y),
+			STREET_Y + 0.003, Color("37343e"))
 	var mesh := MeshInstance3D.new()
-	mesh.name = "StreetKerbs"
-	mesh.mesh = st.commit()
+	mesh.name = "VillageStreets"
+	mesh.mesh = surface.commit()
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 0.94
+	mat.roughness = 0.93
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mesh.material_override = mat
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mesh)
 
 
-func _kerb_strip(st: SurfaceTool, points: Array, width: float) -> void:
-	for i in range(points.size() - 1):
-		var a: Vector2 = points[i]
-		var b: Vector2 = points[i + 1]
-		var forward := (b - a).normalized()
-		var side := Vector2(-forward.y, forward.x)
-		var steps := maxi(1, int(ceil(a.distance_to(b) / 0.75)))
-		for j in range(steps):
-			var t0 := float(j) / float(steps)
-			var t1 := float(j + 1) / float(steps)
-			for edge in [-1.0, 1.0]:
-				var p0 := a.lerp(b, t0) + side * float(edge) * (width * 0.5 + 0.09)
-				var p1 := a.lerp(b, t1) + side * float(edge) * (width * 0.5 + 0.09)
-				var h0 := main.coast.ground_height(p0.x, p0.y)
-				var h1 := main.coast.ground_height(p1.x, p1.y)
-				GiltShapes.beam(st, Vector3(p0.x, h0 + 0.11, p0.y),
-					Vector3(p1.x, h1 + 0.11, p1.y), 0.16, Color("6a646c"))
-				GiltShapes.beam(st, Vector3(p0.x, h0 + 0.02, p0.y),
-					Vector3(p1.x, h1 + 0.02, p1.y), 0.20, Color("403d46"))
+## Плоский прямоугольник на общей высоте: плита, улица, кромка.
+func _flat_quad(surface: SurfaceTool, rect: Rect2, y: float, tone: Color) -> void:
+	var a := Vector2(rect.position.x, rect.position.y)
+	var b := Vector2(rect.end.x, rect.position.y)
+	var c := Vector2(rect.end.x, rect.end.y)
+	var d := Vector2(rect.position.x, rect.end.y)
+	for p in [a, b, c, a, c, d]:
+		surface.set_color(tone)
+		surface.set_normal(Vector3.UP)
+		surface.add_vertex(Vector3(p.x, y, p.y))
 
 
 ## Площадь у съезда: не «круг с фонтаном», а каменная площадка порта.
@@ -520,7 +478,7 @@ func _build_plaza_paving() -> void:
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rings := 10
 	var segs := 36
-	var center_h := QUAY_Y + 0.02
+	var center_h := BASE_Y + 0.06
 	for r in range(rings):
 		var r0 := PLAZA_RADIUS * float(r) / float(rings)
 		var r1 := PLAZA_RADIUS * float(r + 1) / float(rings)
@@ -545,8 +503,8 @@ func _build_plaza_paving() -> void:
 	for i in range(8):
 		var ang := TAU * float(i) / 8.0 + PI * 0.5
 		var long := i == 0
-		var length := 3.6 if long else 2.2
-		var width := 0.34 if long else 0.20
+		var length := 2.0 if long else 1.35
+		var width := 0.30 if long else 0.18
 		var dir := Vector2(cos(ang), sin(ang))
 		var side := Vector2(-dir.y, dir.x) * width * 0.5
 		var a := PLAZA + side
@@ -582,7 +540,7 @@ func _build_plaza_paving() -> void:
 	plaza.add_child(skirt)
 	# Латунное кольцо в центре и бордюр по краю площади.
 	var rim := GiltShapes.begin()
-	GiltShapes.ring(rim, Vector3(PLAZA.x, center_h + 0.08, PLAZA.y), 0.95, 0.70, 0.04,
+	GiltShapes.ring(rim, Vector3(PLAZA.x, center_h + 0.08, PLAZA.y), 0.75, 0.58, 0.04,
 		GiltPalette.GILT * 0.85, 28, Vector3.UP)
 	var steps := 36
 	for i in range(steps):
@@ -625,15 +583,13 @@ func _build_market() -> void:
 	# Колокол у съезда: формальный «вход в порт».
 	props.mooring_bell(Vector3(166.6, QUAY_Y + 0.02, -34.0))
 	# Прилавки на площади: два под полосатыми тентами.
-	props.stall(Vector3(171.0, QUAY_Y + 0.10, -33.2), 0.18)
 	props.stall(Vector3(165.4, QUAY_Y + 0.02, -25.6), -0.24)
 	# Склад у воды: эмалевые полосы, дверь и помост.
 	props.store_hut(Vector3(161.4, QUAY_Y + 0.02, -13.6), 0.16)
 	props.commit(market)
 	# Бочки и ящики — одной сеткой на весь рынок.
 	props.begin()
-	for p in [Vector2(166.2, -37.2), Vector2(166.8, -26.6), Vector2(159.2, -39.6),
-			Vector2(160.4, -36.4), Vector2(165.2, -12.4)]:
+	for p in [Vector2(159.2, -39.6), Vector2(160.4, -36.4), Vector2(165.2, -12.4)]:
 		var h := QUAY_Y + 0.02
 		if p.x > 168.0:
 			h = main.coast.ground_height(p.x, p.y) + 0.02
@@ -645,38 +601,6 @@ func _build_market() -> void:
 
 # --- Жители -----------------------------------------------------------------
 
-func _build_residents() -> void:
-	for house in cottages:
-		var id := house.person_id
-		if id.is_empty():
-			continue
-		var resident := VillageResident.new()
-		add_child(resident)
-		# Житель стоит у своего крыльца, лицом к улице.
-		var facing := house.to_global(Vector3(0.0, 0.0, 1.0)) - house.global_position
-		facing.y = 0.0
-		var spot := house.resident_spot()
-		# Житель стоит на земле/настиле, а не на полу дома: иначе у
-		# приподнятого цоколя он висит в воздухе на 20 см.
-		spot.y = main.coast.ground_height(spot.x, spot.z) + 0.04
-		resident.setup(main, id, spot, facing.normalized())
-		resident_nodes[id] = resident
-	# Звонарь у часовни и фонарщик у прибрежного храма — тоже жители.
-	var bell := VillageResident.new()
-	add_child(bell)
-	bell.setup(main, "bellringer",
-		Vector3(CHAPEL_AT.x - GiltChapel.LENGTH * 0.5 - 2.0, main.coast.ground_height(
-			CHAPEL_AT.x - GiltChapel.LENGTH * 0.5 - 2.0, CHAPEL_AT.y) + 0.06, CHAPEL_AT.y + 1.6),
-		Vector3(0.7, 0.0, -0.2))
-	resident_nodes["bellringer"] = bell
-	var lamp := VillageResident.new()
-	add_child(lamp)
-	lamp.setup(main, "lanternkeeper",
-		Vector3(SHRINE_AT.x - 1.1, QUAY_Y + 0.06, SHRINE_AT.y + 2.1),
-		Vector3(-1.0, 0.0, 0.4))
-	resident_nodes["lanternkeeper"] = lamp
-
-
 # --- Детали и жизнь ---------------------------------------------------------
 
 func _build_details() -> void:
@@ -685,95 +609,73 @@ func _build_details() -> void:
 	add_child(details)
 	props.begin()
 	# Колодец и кабестан на площади и набережной: два центра притяжения.
-	props.well(Vector3(173.8, QUAY_Y + 0.10, -33.3))
-	props.capstan(Vector3(161.0, QUAY_Y + 0.02, -34.4))
+	props.well(Vector3(171.4, BASE_Y + 0.08, -32.4))
+	props.capstan(Vector3(162.2, QUAY_Y + 0.02, -33.0))
 	props.fish_table(Vector3(161.0, QUAY_Y + 0.02, -24.2), 0.22)
 	props.notice_board(Vector3(166.8, QUAY_Y + 0.02, -20.6), 0.42)
-	props.flagpole(Vector3(175.0, QUAY_Y + 0.10, -32.4), Color("7e4a63"))
+	props.flagpole(Vector3(172.6, BASE_Y + 0.06, -29.4), Color("7e4a63"))
 	# Вешала для рыбы — главный «северный» силуэт посёлка.
 	props.hjell(Vector3(163.0, QUAY_Y + 0.02, -38.0), PI * 0.5, 5.4)
-	props.hjell(Vector3(157.8, QUAY_Y + 0.02, -17.0), PI * 0.5, 4.4)
+	props.hjell(Vector3(161.2, QUAY_Y + 0.02, -17.0), PI * 0.5, 4.4)
 	# Сети, ловушки, верёвки, вёсла: рабочий двор, а не витрина.
 	props.lobster_pots(Vector3(164.6, QUAY_Y + 0.02, -21.2), 0.3)
-	props.lobster_pots(Vector3(157.0, QUAY_Y + 0.02, -36.8), -0.2)
+	props.lobster_pots(Vector3(164.8, QUAY_Y + 0.02, -39.6), -0.2)
 	props.bench(Vector3(165.9, QUAY_Y + 0.02, -35.6), -0.1)
-	props.bench(Vector3(165.0, QUAY_Y + 0.02, -27.6), 1.4)
-	props.bench(Vector3(161.8, QUAY_Y + 0.02, -27.2), 1.4)
 	# Лодки: две вытащены на набережную, одна стоит в воде и качается.
 	props.rowboat(Vector3(158.4, QUAY_Y + 0.44, -35.6), 1.35, Color("8c4a3b"))
 	props.rowboat(Vector3(158.0, QUAY_Y + 0.44, -22.8), 0.28, Color("2b6f6c"))
 	# Святой источник за часовней: маленькая вода, но своя.
-	props.fountain(Vector3(210.4, main.coast.ground_height(210.4, -34.0) + 0.02, -34.0))
+	props.fountain(Vector3(212.6, main.coast.ground_height(212.6, -34.0) + 0.02, -34.0))
 	props.commit(details)
 	# Фонари вдоль улиц — ритм, по которому посёлок читается вечером.
 	props.begin()
-	var west_lamps := [Vector2(175.3, -37.0), Vector2(175.3, -28.8), Vector2(175.2, -21.6),
-		Vector2(175.0, -14.4)]
+	var west_lamps := [Vector2(174.55, -37.0), Vector2(174.55, -28.8), Vector2(174.5, -21.6),
+		Vector2(174.4, -14.4)]
 	for i in range(west_lamps.size()):
 		var p: Vector2 = west_lamps[i]
-		var h := main.coast.ground_height(p.x, p.y)
+		var h := _deck_height(p.x, p.y)
 		props.lamp_post(Vector3(p.x, h, p.y), 3.2, i % 3 == 1)
-	var east_lamps := [Vector2(179.0, -33.4), Vector2(179.0, -25.6), Vector2(178.8, -17.8),
-		Vector2(178.4, -10.6)]
+	var east_lamps := [Vector2(180.3, -33.4), Vector2(180.3, -25.6), Vector2(180.3, -17.8),
+		Vector2(180.2, -10.6)]
 	for i in range(east_lamps.size()):
 		var p: Vector2 = east_lamps[i]
-		var h := main.coast.ground_height(p.x, p.y)
+		var h := _deck_height(p.x, p.y)
 		props.lamp_post(Vector3(p.x, h, p.y), 3.3, i % 2 == 0)
 	# Фонари заднего проезда и переулка к часовне.
-	for p in [Vector2(188.3, -25.0), Vector2(188.3, -17.4), Vector2(191.8, -36.6),
-			Vector2(200.6, -36.6)]:
-		var h := main.coast.ground_height(p.x, p.y)
+	for p in [Vector2(187.9, -25.0), Vector2(187.9, -17.4), Vector2(192.2, -37.1),
+			Vector2(200.8, -37.1)]:
+		var h := _deck_height(p.x, p.y)
 		props.lamp_post(Vector3(p.x, h, p.y), 3.0, true)
 	props.commit(details)
 	# Ограды: только там, где не режут дорожку. Сад пастора, часовня, дворы.
 	props.begin()
-	props.fence(Vector3(201.2, main.coast.ground_height(201.2, -26.0), -26.0),
-		Vector3(201.2, main.coast.ground_height(201.2, -34.4), -34.4), false)
+	props.fence(Vector3(201.2, _deck_height(201.2, -26.0) - 0.02, -26.0),
+		Vector3(201.2, _deck_height(201.2, -34.4) - 0.02, -34.4), false)
 	for p in [Vector2(174.6, -18.8), Vector2(180.6, -15.8), Vector2(180.6, -22.8),
-			Vector2(174.8, -35.6), Vector2(179.4, -30.0)]:
-		var h := main.coast.ground_height(p.x, p.y)
+			Vector2(174.5, -35.6), Vector2(180.0, -30.0)]:
+		var h := _deck_height(p.x, p.y) - 0.02
 		props.barrel(Vector3(p.x, h, p.y), 0.60, 0.36)
 	props.commit(details)
 	# Бельё между домами и во дворах: цветные пятна, которые видно с воды.
 	props.begin()
-	props.laundry(Vector3(174.5, main.coast.ground_height(174.5, -19.4), -19.4),
-		Vector3(174.5, main.coast.ground_height(174.5, -16.9), -16.9))
-	props.laundry(Vector3(188.4, main.coast.ground_height(188.4, -38.8), -38.8),
-		Vector3(188.4, main.coast.ground_height(188.4, -35.0), -35.0))
-	props.laundry(Vector3(192.2, main.coast.ground_height(192.2, -37.6), -37.6),
-		Vector3(197.4, main.coast.ground_height(197.4, -37.6), -37.6))
+	props.laundry(Vector3(174.1, _deck_height(174.1, -19.4) - 0.02, -19.4),
+		Vector3(174.1, _deck_height(174.1, -16.9) - 0.02, -16.9))
+	props.laundry(Vector3(187.6, _deck_height(187.6, -38.8) - 0.02, -38.8),
+		Vector3(187.6, _deck_height(187.6, -35.0) - 0.02, -35.0))
+	props.laundry(Vector3(192.2, _deck_height(192.2, -37.6) - 0.02, -37.6),
+		Vector3(197.4, _deck_height(197.4, -37.6) - 0.02, -37.6))
 	props.commit(details)
-	# Трава и камни: остров не должен быть «залит бетоном».
+	# Трава по краям плиты: город не должен быть залит бетоном.
 	props.begin()
 	var tufts := [
-		Vector2(174.8, -40.0), Vector2(174.6, -35.6), Vector2(180.2, -40.0),
-		Vector2(187.4, -40.2), Vector2(188.8, -36.4), Vector2(188.0, -30.8),
-		Vector2(188.6, -23.4), Vector2(188.4, -15.0), Vector2(188.2, -9.4),
-		Vector2(180.0, -8.6), Vector2(174.4, -9.4), Vector2(174.6, -12.2),
-		Vector2(191.8, -8.6), Vector2(196.0, -12.6), Vector2(198.6, -17.4),
-		Vector2(199.4, -22.8), Vector2(200.2, -27.8), Vector2(201.0, -41.4),
-		Vector2(196.2, -42.0), Vector2(192.8, -43.4), Vector2(169.2, -43.2),
-		Vector2(169.4, -4.6), Vector2(197.4, -6.2), Vector2(204.0, -10.4),
-		Vector2(212.0, -24.0), Vector2(211.0, -31.0), Vector2(213.0, -41.6),
+		Vector2(211.2, -8.4), Vector2(212.4, -14.8), Vector2(211.6, -21.6),
+		Vector2(212.8, -28.4), Vector2(211.4, -35.2), Vector2(212.6, -41.8),
+		Vector2(207.0, -45.2), Vector2(211.8, -24.0), Vector2(210.8, -31.4),
+		Vector2(213.0, -41.6), Vector2(169.0, -3.0), Vector2(170.2, -45.2),
 	]
 	for i in range(tufts.size()):
 		var p: Vector2 = tufts[i]
 		props.grass(Vector3(p.x, 0.0, p.y), 0.9 + 0.2 * float(i % 3), 11 + i)
-	props.commit(details)
-	props.begin()
-	props.rocks(Vector3(169.0, 0.0, -43.4), 2.2, 6, 3)
-	props.rocks(Vector3(169.4, 0.0, -4.2), 2.0, 5, 9)
-	props.rocks(Vector3(197.0, 0.0, -44.0), 2.6, 6, 17)
-	props.rocks(Vector3(211.0, 0.0, -44.0), 3.0, 7, 23)
-	props.rocks(Vector3(204.0, 0.0, -8.0), 2.2, 5, 31)
-	props.commit(details)
-	# Кривые деревья на восточном склоне: силуэт над крышами.
-	props.begin()
-	props.tree(Vector3(199.6, 0.0, -11.2), 1.15, 0.3)
-	props.tree(Vector3(200.2, 0.0, -21.0), 1.0, 1.2)
-	props.tree(Vector3(202.0, 0.0, -31.6), 1.25, -0.4)
-	props.tree(Vector3(212.6, 0.0, -26.0), 0.9, 0.8)
-	props.tree(Vector3(191.0, 0.0, -43.6), 0.85, 1.7)
 	props.commit(details)
 
 
@@ -848,11 +750,13 @@ func _make_gull(index: int) -> Dictionary:
 	root.add_child(tail)
 	return {
 		"node": root, "left": wings[0], "right": wings[1],
-		"radius": 9.0 + float(index % 4) * 3.2,
-		"height": 9.5 + float(index) * 1.15,
-		"speed": 0.10 + 0.025 * float(index % 3),
-		"phase": float(index) * 1.3,
-		"center": Vector2(164.0 + float(index % 3) * 5.0, -24.0 - float(index) * 1.8),
+		"radius": 10.0 + float(index % 3) * 3.6,
+		"radius_z": (10.0 + float(index % 3) * 3.6) * 0.62,
+		"height": 12.4 + float(index) * 0.85,
+		"speed": 0.115 + 0.018 * float(index % 3),
+		"flap": 5.8 + 0.55 * float(index % 4),
+		"phase": float(index) * 1.37,
+		"center": Vector2(153.0 + float(index % 3) * 4.5, -30.0 - float(index % 2) * 6.0),
 	}
 
 
@@ -863,7 +767,7 @@ func _build_lighting() -> void:
 	# редкие «фонарные» источники, чтобы улица не была чёрной между домами.
 	for entry in [
 		{"p": Vector2(172.0, -30.6), "color": GiltPalette.LAMP_WARM, "energy": 0.55},
-		{"p": Vector2(165.0, -29.0), "color": GiltPalette.LAMP_NEON, "energy": 0.35},
+		{"p": Vector2(165.5, -26.5), "color": GiltPalette.LAMP_NEON, "energy": 0.35},
 		{"p": Vector2(180.0, -20.0), "color": GiltPalette.LAMP_WARM, "energy": 0.45},
 		{"p": Vector2(190.0, -30.0), "color": GiltPalette.LAMP_VIOLET, "energy": 0.32},
 	]:
@@ -909,18 +813,30 @@ func _process(delta: float) -> void:
 		node.position.y = float(entry["base_y"]) + sin(_time * 0.9 + phase) * float(entry["amp"])
 		node.rotation.z = sin(_time * 0.7 + phase) * 0.025
 		node.rotation.x = cos(_time * 0.55 + phase) * 0.018
-	# Чайки ходят кругами и машут крыльями — дешёвая, но настоящая жизнь.
+	# Чайки не «ездят по кругу»: птица смотрит по касательной, кренится
+	# на повороте и чередует мах с коротким планированием.
 	for entry in _gulls:
 		var node: Node3D = entry["node"]
 		if not is_instance_valid(node):
 			continue
-		var angle := _time * float(entry["speed"]) + float(entry["phase"])
+		var phase := float(entry["phase"])
+		var angle := _time * float(entry["speed"]) + phase
 		var center: Vector2 = entry["center"]
-		var radius := float(entry["radius"])
-		node.position = Vector3(center.x + cos(angle) * radius,
-			float(entry["height"]) + sin(angle * 2.1) * 0.35,
-			center.y + sin(angle) * radius)
-		node.rotation.y = -angle - PI * 0.5
-		var flap := sin(_time * 7.5 + float(entry["phase"])) * 0.55
-		(entry["left"] as Node3D).rotation.z = flap
-		(entry["right"] as Node3D).rotation.z = -flap
+		var rx := float(entry["radius"])
+		var rz := float(entry["radius_z"])
+		var height := float(entry["height"]) + sin(angle * 1.7 + phase) * 0.45
+		var pos := Vector3(center.x + cos(angle) * rx, height, center.y + sin(angle) * rz)
+		var next_angle := angle + 0.05
+		var ahead := Vector3(center.x + cos(next_angle) * rx,
+			height, center.y + sin(next_angle) * rz)
+		node.position = pos
+		if pos.distance_squared_to(ahead) > 0.0001:
+			node.look_at(ahead, Vector3.UP)
+		# Левый крен на левом повороте: силуэт перестаёт быть плоским.
+		node.rotate_object_local(Vector3(0.0, 0.0, 1.0), -0.20)
+		# Длинные фазы планирования с редкими сериями взмахов.
+		var glide := clampf(sin(_time * 0.21 + phase * 1.9) * 1.9, 0.0, 1.0)
+		var amp := lerpf(0.06, 0.48, glide)
+		var flap := sin(_time * float(entry["flap"]) + phase * 3.0) * amp
+		(entry["left"] as Node3D).rotation.z = 0.10 + flap
+		(entry["right"] as Node3D).rotation.z = -0.10 - flap

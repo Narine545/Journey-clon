@@ -316,22 +316,12 @@ func _set_hover(index: int) -> void:
 		if String(old["kind"]) == "house":
 			var old_house: GiltHouse = old["house"]
 			old_house.set_highlight(false)
-		_named(String(old["person_id"]), false)
 	hovered = index
 	if hovered >= 0 and hovered < _targets.size():
 		var target := _targets[hovered]
 		if String(target["kind"]) == "house":
 			var house: GiltHouse = target["house"]
 			house.set_highlight(true)
-		_named(String(target["person_id"]), true)
-
-
-func _named(id: String, on: bool) -> void:
-	if main == null or main.village == null:
-		return
-	var resident: VillageResident = main.village.resident_nodes.get(id)
-	if resident != null:
-		resident.set_named(on)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -423,9 +413,6 @@ func _on_talk() -> void:
 		return
 	var id := String(_targets[_current]["person_id"])
 	_steps[id] = int(_steps.get(id, 0)) + 1
-	var resident: VillageResident = main.village.resident_nodes.get(id)
-	if resident != null:
-		resident.spoke()
 	UiSound.tap()
 	_refresh_texts()
 
@@ -445,9 +432,6 @@ func _on_gift() -> void:
 	_gift_text.text = text
 	_gift_note.text = String(person.get("gift_title", "ДЕЛО")) + " · СДЕЛАНО"
 	_gift_button.set_caption("СПАСИБО", TideTokens.ink_alpha(0.42))
-	var resident: VillageResident = main.village.resident_nodes.get(id)
-	if resident != null:
-		resident.spoke()
 	UiSound.tap()
 
 
