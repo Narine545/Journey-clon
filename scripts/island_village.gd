@@ -24,7 +24,7 @@ const HOUSE_SITES := [
 
 ## Город стоит на едином каменном основании, а не на лоскутках рельефа.
 ## Плита накрывает весь квартал; улицы — прямые полосы поверх неё.
-const BASE_RECT := Rect2(168.45, -43.8, 42.05, 39.6)
+const BASE_RECT := Rect2(168.45, -43.0, 31.85, 36.3)
 const BASE_Y := 4.04
 const STREET_Y := 4.065
 ## Прямые улицы: главная между фасадами и задний проезд.
@@ -53,6 +53,7 @@ func setup(owner_main: BoatMain) -> void:
 	_build_quay()
 	_build_bridge()
 	_build_foundation()
+	_build_dirt_lane()
 	for site in HOUSE_SITES:
 		_build_house(site)
 	_build_details()
@@ -257,6 +258,39 @@ func _flat_quad(surface: SurfaceTool, rect: Rect2, y: float, tone: Color) -> voi
 		surface.add_vertex(Vector3(p.x, y, p.y))
 
 
+## Просёлок за кварталом: короткие треугольники повторяют рельеф.
+func _build_dirt_lane() -> void:
+	var surface := GiltShapes.begin()
+	var points := [Vector2(190.0, -15.5), Vector2(199.5, -15.5),
+		Vector2(211.0, -17.0), Vector2(224.0, -19.0)]
+	for i in range(points.size() - 1):
+		var a: Vector2 = points[i]
+		var b: Vector2 = points[i + 1]
+		var direction := (b - a).normalized()
+		var side := Vector2(-direction.y, direction.x) * 1.4
+		var steps := maxi(1, int(ceil(a.distance_to(b))))
+		for j in range(steps):
+			var p0 := a.lerp(b, float(j) / float(steps))
+			var p1 := a.lerp(b, float(j + 1) / float(steps))
+			for point in [p0 - side, p1 - side, p1 + side, p0 - side, p1 + side, p0 + side]:
+				var y: float = main.coast.ground_height(point.x, point.y) + 0.07
+				if BASE_RECT.has_point(point):
+					y = STREET_Y + 0.02
+				surface.set_color(Color("9e8c70"))
+				surface.set_normal(main.coast.ground_normal(point.x, point.y))
+				surface.add_vertex(Vector3(point.x, y, point.y))
+	var mesh := MeshInstance3D.new()
+	mesh.name = "DirtLane"
+	mesh.mesh = surface.commit()
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 1.0
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mesh.material_override = mat
+	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mesh)
+
+
 ## Небольшое число фонарей на свободных участках набережной.
 func _build_details() -> void:
 	# Три фонаря на открытой набережной, вдали от фасадов и съезда.
@@ -264,7 +298,7 @@ func _build_details() -> void:
 	details.name = "VillageLife"
 	add_child(details)
 	props.begin()
-	for p in [Vector2(157.0, -38.0), Vector2(157.0, -22.5), Vector2(157.0, -10.0)]:
+	for p in [Vector2(164.0, -34.5), Vector2(157.0, -22.5), Vector2(164.0, -16.5)]:
 		props.simple_lamp(Vector3(p.x, QUAY_Y - 0.02, p.y))
 	# Отдельные рабочие места, с запасом от съезда, домов и фонарей.
 	props.hjell(Vector3(160.5, QUAY_Y, -37.5), 0.0, 3.0)

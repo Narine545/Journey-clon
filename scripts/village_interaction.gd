@@ -91,7 +91,9 @@ func _layout_page() -> void:
 	var viewport_size := Vector2(get_viewport().get_texture().get_size())
 	var factor := minf(viewport_size.x / 1920.0, viewport_size.y / 1080.0)
 	_page.scale = Vector2.ONE * factor
-	_page.position = (viewport_size - Vector2(1420, 840) * factor) * 0.5
+	# Масштабирование идёт относительно центра листа (pivot_offset),
+	# поэтому центрируем исходный размер, а не уже масштабированный.
+	_page.position = (viewport_size - Vector2(1420, 840)) * 0.5
 
 
 func _can_interact() -> bool:

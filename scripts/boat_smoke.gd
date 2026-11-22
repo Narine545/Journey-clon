@@ -767,7 +767,8 @@ func _check_village() -> void:
 	if village == null:
 		return
 	_check(village.get_node_or_null("VillageBase") is MeshInstance3D
-		and village.get_node_or_null("VillageStreets") is MeshInstance3D,
+		and village.get_node_or_null("VillageStreets") is MeshInstance3D
+		and village.get_node_or_null("DirtLane") is MeshInstance3D,
 		"квартал стоит на каменном основании с ровными улицами")
 	_check(village.get_node_or_null("PropsStone") is MeshInstance3D,
 		"каменная набережная с кордоном и трапами стоит на воде")
@@ -815,6 +816,15 @@ func _check_village() -> void:
 		_check(dialog.panel_open and main.gameplay_paused() and dialog._next is TideButton,
 			"диалог жителя открывается в стиле TIDECUT и останавливает управление")
 		if dialog.panel_open:
+			var page_transform := dialog._page.get_global_transform_with_canvas()
+			var viewport_size := Vector2(get_viewport().get_texture().get_size())
+			var page_fits := true
+			for corner in [Vector2.ZERO, Vector2(1420, 0), Vector2(0, 840), Vector2(1420, 840)]:
+				var screen_point: Vector2 = page_transform * corner
+				if screen_point.x < 0.0 or screen_point.y < 0.0 \
+					or screen_point.x > viewport_size.x or screen_point.y > viewport_size.y:
+					page_fits = false
+			_check(page_fits, "лист диалога помещается в окно")
 			var previous_step := int(dialog._steps.get(String(dialog._targets[0]["person_id"]), -1))
 			dialog._on_talk()
 			_check(int(dialog._steps.get(String(dialog._targets[0]["person_id"]), -1)) == previous_step + 1,

@@ -80,6 +80,15 @@ static func harbor_ramp_clearance(p: Vector2, height: float) -> float:
 	return lerpf(height, minf(height, deck - 0.50), side_mask * start_mask * end_mask)
 
 
+## Убираем грунт под плитой квартала, не меняя естественную высоту вокруг.
+static func village_base_clearance(p: Vector2, height: float) -> float:
+	var bounds := Rect2(168.45, -43.0, 31.85, 36.3)
+	var dx := maxf(maxf(bounds.position.x - p.x, p.x - bounds.end.x), 0.0)
+	var dz := maxf(maxf(bounds.position.y - p.y, p.y - bounds.end.y), 0.0)
+	var mask := 1.0 - _smooth(maxf(dx, dz), 0.0, 3.0)
+	return lerpf(height, minf(height, 3.80), mask)
+
+
 static func height_at(p: Vector2) -> float:
 	var d := inland_distance(p)
 	if d <= 0.0:
