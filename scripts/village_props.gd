@@ -125,11 +125,25 @@ func quay() -> void:
 ## Простой рабочий фонарь на собственном основании.
 func simple_lamp(at: Vector3) -> void:
 	GiltShapes.box(_stone, at + Vector3(0.0, 0.08, 0.0), Vector3(0.42, 0.16, 0.42), Color("5b5655"))
-	GiltShapes.cylinder(_wood, at + Vector3(0.0, 1.34, 0.0), 0.08, 0.06, 2.55,
+	# Стойка заканчивается под фонарём, а не проходит сквозь стекло.
+	GiltShapes.cylinder(_wood, at + Vector3(0.0, 1.17, 0.0), 0.07, 0.09, 2.18,
 		Color("51473d"), 8)
-	GiltShapes.box(_dark, at + Vector3(0.0, 2.63, 0.0), Vector3(0.32, 0.10, 0.32), Color("383838"))
-	GiltShapes.box(_glass, at + Vector3(0.0, 2.40, 0.0), Vector3(0.20, 0.35, 0.20), Color("ffd2a1"))
-	_light_at(at + Vector3(0.0, 2.40, 0.0), Color("ffd2a1"), 0.45, 6.5)
+	GiltShapes.box(_dark, at + Vector3(0.0, 2.28, 0.0), Vector3(0.30, 0.09, 0.30), Color("383838"))
+	GiltShapes.box(_glass, at + Vector3(0.0, 2.50, 0.0), Vector3(0.20, 0.35, 0.20), Color("ffd2a1"))
+	GiltShapes.box(_dark, at + Vector3(0.0, 2.72, 0.0), Vector3(0.32, 0.09, 0.32), Color("383838"))
+	_light_at(at + Vector3(0.0, 2.50, 0.0), Color("ffd2a1"), 0.45, 6.5)
+
+
+## Настенный фонарь закреплён на фасаде у двери; свет совпадает со стеклом.
+func wall_lamp(house_at: Vector3, yaw: float, depth: float, x: float) -> void:
+	var basis := Basis(Vector3.UP, yaw)
+	var wall := house_at + basis * Vector3(x, 2.45, depth * 0.5 + 0.03)
+	var bulb := wall + basis * Vector3(0.0, -0.12, 0.25)
+	GiltShapes.beam(_dark, wall, wall + basis * Vector3(0, 0, 0.25), 0.07, GiltPalette.IRON)
+	GiltShapes.box(_glass, bulb, Vector3(0.18, 0.30, 0.18), Color("ffd2a1"), basis)
+	GiltShapes.box(_dark, bulb + Vector3(0, 0.18, 0), Vector3(0.27, 0.08, 0.27), GiltPalette.IRON, basis)
+	GiltShapes.box(_dark, bulb + Vector3(0, -0.18, 0), Vector3(0.25, 0.08, 0.25), GiltPalette.IRON, basis)
+	_light_at(bulb, Color("ffd2a1"), 0.36, 5.0)
 
 
 ## Вешала для рыбы (hjell): A-образные рамы, перекладины, ряды рыбы.

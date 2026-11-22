@@ -29,6 +29,14 @@ assert 'village_audit_lighthouse' in shots
 assert 'var roof_shift := depth * 0.18 if plan_name == "pilot" else 0.0' in house
 assert 'ridge_offset := 0.0' in Path('scripts/art/gilt_shapes.gd').read_text()
 assert 'if plan_name == "netloft":' in house
+# Фонари стоят у лестницы или крепятся к входам; нет безымянных источников.
+assert 'Vector2(166.4, -32.8), Vector2(166.4, -27.2)' in village
+assert 'props.wall_lamp(house.position, house.rotation.y, house.depth, 1.40)' in village
+assert 'func _build_lighting()' not in village
+assert 'func wall_lamp(' in props and '_light_at(bulb' in props
+for z in (-32.8, -27.2):
+    assert not (160.4 <= 166.4 <= 168.8 and -31.8 <= z <= -28.2)
+
 assert not Path('scripts/village_portrait.gd').exists()
 assert not Path('scripts/village_chapel.gd').exists()
 assert not Path('scripts/village_shrine.gd').exists()

@@ -873,9 +873,20 @@ func _check_village() -> void:
 		main.harbor.moored = old_moored
 		main.menu_open = old_menu
 	village.set_night(0.0)
+	_check(village.props._lights.size() == 4, "два фонаря у лестницы и два у входов")
+	var lamps_dark := true
+	for entry in village.props._lights:
+		var lamp: OmniLight3D = entry["light"]
+		lamps_dark = lamps_dark and is_zero_approx(lamp.light_energy)
+	_check(lamps_dark, "фонари выключены днём")
 	_check(village.cottages[0].window_material.emission_energy_multiplier == 0.0,
 		"окна посёлка не горят днём")
 	village.set_night(0.88)
+	var lamps_lit := true
+	for entry in village.props._lights:
+		var lamp: OmniLight3D = entry["light"]
+		lamps_lit = lamps_lit and lamp.light_energy > 0.0
+	_check(lamps_lit, "фонари загораются ночью")
 	_check(village.cottages[0].window_material.emission_energy_multiplier > 0.5,
 		"окна посёлка загораются ночью")
 	village.set_night(main.night01)

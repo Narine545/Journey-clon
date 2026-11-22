@@ -38,8 +38,6 @@ const BRIDGE_FINISH := Vector3(168.4, QUAY_Y, -30.0)
 var main: BoatMain
 var cottages: Array[GiltHouse] = []
 var props: VillageProps
-var _lamps: Array[OmniLight3D] = []
-var _lamp_strength: Array[float] = []
 var _day_night := -1.0
 var _gulls: Array[Dictionary] = []
 var _time := 0.0
@@ -57,7 +55,6 @@ func setup(owner_main: BoatMain) -> void:
 		_build_house(site)
 	_build_details()
 	_build_harbour_life()
-	_build_lighting()
 	set_night(main.night01)
 
 
@@ -300,15 +297,19 @@ func _flat_quad(surface: SurfaceTool, rect: Rect2, y: float, tone: Color) -> voi
 		surface.add_vertex(Vector3(p.x, y, p.y))
 
 
-## Небольшое число фонарей на свободных участках набережной.
+## Освещение привязано к реальным местам работы и движения.
 func _build_details() -> void:
-	# Три фонаря на открытой набережной, вдали от фасадов и съезда.
+	# Парные фонари отмечают верх лестницы, не занимая сам проход.
 	var details := Node3D.new()
 	details.name = "VillageLife"
 	add_child(details)
 	props.begin()
-	for p in [Vector2(164.0, -34.5), Vector2(157.0, -22.5), Vector2(164.0, -16.5)]:
-		props.simple_lamp(Vector3(p.x, QUAY_Y - 0.02, p.y))
+	for p in [Vector2(166.4, -32.8), Vector2(166.4, -27.2)]:
+		props.simple_lamp(Vector3(p.x, QUAY_Y, p.y))
+	# Фонари у действующих входов таверны и лавки вместо источников в воздухе.
+	for house in cottages:
+		if house.plan_name in ["tavern", "chandler"]:
+			props.wall_lamp(house.position, house.rotation.y, house.depth, 1.40)
 	# Отдельные рабочие места, с запасом от съезда, домов и фонарей.
 	props.hjell(Vector3(160.5, QUAY_Y, -37.5), 0.0, 3.0)
 	props.hjell(Vector3(160.5, QUAY_Y, -13.0), 0.0, 3.0)
@@ -394,36 +395,12 @@ func _make_gull(index: int) -> Dictionary:
 
 # --- Ночной свет ------------------------------------------------------------
 
-func _build_lighting() -> void:
-	# Дополнительные тёплые пятна: входы домов светятся сами, а здесь —
-	# редкие «фонарные» источники, чтобы улица не была чёрной между домами.
-	for entry in [
-		{"p": Vector2(172.0, -30.6), "color": GiltPalette.LAMP_WARM, "energy": 0.55},
-		{"p": Vector2(165.5, -26.5), "color": GiltPalette.LAMP_NEON, "energy": 0.35},
-		{"p": Vector2(180.0, -20.0), "color": GiltPalette.LAMP_WARM, "energy": 0.45},
-		{"p": Vector2(190.0, -30.0), "color": GiltPalette.LAMP_VIOLET, "energy": 0.32},
-	]:
-		var p: Vector2 = entry["p"]
-		var h := QUAY_Y if p.x < 168.4 else main.coast.ground_height(p.x, p.y)
-		var lamp := OmniLight3D.new()
-		lamp.position = Vector3(p.x, h + 3.0, p.y)
-		lamp.light_color = entry["color"]
-		lamp.omni_range = 8.0
-		lamp.shadow_enabled = false
-		lamp.light_volumetric_fog_energy = 0.55
-		add_child(lamp)
-		_lamps.append(lamp)
-		_lamp_strength.append(float(entry["energy"]))
-
-
 func set_night(amount: float) -> void:
 	_day_night = amount
 	for house in cottages:
 		house.set_night(amount)
 	if props != null:
 		props.set_night(amount)
-	for i in range(_lamps.size()):
-		_lamps[i].light_energy = maxf(0.0, amount - 0.26) * _lamp_strength[i] * 1.7
 
 
 func _process(delta: float) -> void:
