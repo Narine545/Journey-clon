@@ -11,7 +11,7 @@ shots = Path('scripts/light_shots.gd').read_text()
 smoke = Path('scripts/boat_smoke.gd').read_text()
 
 assert 'village.setup(self)' in Path('scripts/boat_main.gd').read_text()
-assert 'VillageBase' in village and 'VillageStreets' in village and 'DirtLane' in village
+assert 'VillageBase' in village and 'VillageStreets' in village
 assert 'PierBridge' in village and 'props.quay()' in village
 assert 'RAMP_WELL' in props and '_deck_quad' in props
 assert 'portal_bulb' not in props and 'portal_x' not in props

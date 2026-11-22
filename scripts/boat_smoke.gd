@@ -767,8 +767,7 @@ func _check_village() -> void:
 	if village == null:
 		return
 	_check(village.get_node_or_null("VillageBase") is MeshInstance3D
-		and village.get_node_or_null("VillageStreets") is MeshInstance3D
-		and village.get_node_or_null("DirtLane") is MeshInstance3D,
+		and village.get_node_or_null("VillageStreets") is MeshInstance3D,
 		"квартал стоит на каменном основании с ровными улицами")
 	_check(village.get_node_or_null("PropsStone") is MeshInstance3D,
 		"каменная набережная с кордоном и трапами стоит на воде")

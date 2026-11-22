@@ -57,6 +57,7 @@ func quay() -> void:
 	# Сплошной настил с настоящим вырезом для съезда. Плитки у кромки
 	# разрезаются по точным границам, а не по положению центра.
 	var z := QUAY_MIN_Z
+	var previous_edge := quay_edge_x(QUAY_MIN_Z + 0.5)
 	while z < QUAY_MAX_Z:
 		var z1 := minf(z + 1.0, QUAY_MAX_Z)
 		for boundary in [RAMP_WELL.position.y, RAMP_WELL.end.y]:
@@ -81,10 +82,17 @@ func quay() -> void:
 		if mid <= RAMP_WELL.position.y or mid >= RAMP_WELL.end.y:
 			var edge := quay_edge_x(mid)
 			var wall_h := QUAY_Y - QUAY_BOTTOM
+			# Закрываем ступенчатые переходы между соседними секциями стены:
+			# без торцевой вставки в изломе кромки оставалась сквозная щель.
+			if absf(edge - previous_edge) > 0.001:
+				GiltShapes.box(_stone, Vector3((edge + previous_edge) * 0.5 + 0.16,
+					(QUAY_Y + QUAY_BOTTOM) * 0.5, z),
+					Vector3(absf(edge - previous_edge) + 0.42, wall_h, 0.42), Color("45424a"))
 			GiltShapes.box(_stone, Vector3(edge + 0.16, (QUAY_Y + QUAY_BOTTOM) * 0.5, mid),
 				Vector3(0.42, wall_h, z1 - z + 0.03), Color("45424a"))
 			GiltShapes.box(_stone, Vector3(edge + 0.16, QUAY_Y + 0.03, mid),
 				Vector3(0.48, 0.12, z1 - z + 0.03), Color("777078"))
+		previous_edge = quay_edge_x(mid)
 		z = z1
 	# Боковые стенки траншеи упираются в основание, не перекрывая съезд.
 	var mid_x := (RAMP_WELL.position.x + QUAY_BACK_X) * 0.5

@@ -53,7 +53,6 @@ func setup(owner_main: BoatMain) -> void:
 	_build_quay()
 	_build_bridge()
 	_build_foundation()
-	_build_dirt_lane()
 	for site in HOUSE_SITES:
 		_build_house(site)
 	_build_details()
@@ -103,20 +102,64 @@ func _build_quay() -> void:
 ## каменные опоры, ворота и фонари. Съезд поднимается на набережную
 ## в вырезе стены, поэтому не пробивает её и не висит над водой.
 func _build_bridge() -> void:
-	# Сам наклонный настил строит HarborArchitecture. Боковые стены съезда
-	# уже построены вместе с набережной; повторные перила/опоры здесь бы
-	# пересекались с ними. Открытая площадка соединяет настил с улицей.
-	var surface := GiltShapes.begin()
-	GiltShapes.box(surface, Vector3(169.0, QUAY_Y - 0.05, -30.0),
-		Vector3(1.25, 0.12, 3.5), Color("625c62"))
+	var st := GiltShapes.begin()
+	var length := Vector2(BRIDGE_FINISH.x - BRIDGE_START.x, 0.0).length()
+	var rise := BRIDGE_FINISH.y - BRIDGE_START.y
+	# Каменные пилоны до дна: съезд стоит, а не парит.
+	for t in [0.35, 0.68]:
+		var x := lerpf(BRIDGE_START.x, BRIDGE_FINISH.x, float(t))
+		var y := lerpf(BRIDGE_START.y, BRIDGE_FINISH.y, float(t))
+		for z in [-31.52, -28.48]:
+			var bed := main.coast.ground_height(x, float(z)) - 0.6
+			var h := maxf(0.5, y - bed)
+			GiltShapes.box(st, Vector3(x, bed + h * 0.5, float(z)),
+				Vector3(0.55, h, 0.55), Color("2c2f38"))
+			GiltShapes.box(st, Vector3(x, y - 0.30, float(z)),
+				Vector3(0.72, 0.24, 0.72), Color("5e5862"))
+	# Перила по обеим сторонам: стойки, две нити, золотые навершия.
+	var rails := 12
+	for i in range(rails + 1):
+		var t := float(i) / float(rails)
+		var x := lerpf(BRIDGE_START.x, BRIDGE_FINISH.x, t)
+		var y := lerpf(BRIDGE_START.y, BRIDGE_FINISH.y, t)
+		for z in [-31.58, -28.42]:
+			GiltShapes.beam(st, Vector3(x, y + 0.06, float(z)),
+				Vector3(x, y + 1.02, float(z)), 0.06, GiltPalette.IRON)
+			if i % 3 == 0:
+				GiltShapes.spire(st, Vector3(x, y + 1.02, float(z)), 0.075, 0.18,
+					GiltPalette.GILT * 0.82, 4, PI * 0.25)
+	for z in [-31.58, -28.42]:
+		GiltShapes.beam(st, Vector3(BRIDGE_START.x, BRIDGE_START.y + 0.92, float(z)),
+			Vector3(BRIDGE_FINISH.x, BRIDGE_FINISH.y + 0.92, float(z)), 0.055,
+			GiltPalette.IRON)
+		GiltShapes.beam(st, Vector3(BRIDGE_START.x, BRIDGE_START.y + 0.48, float(z)),
+			Vector3(BRIDGE_FINISH.x, BRIDGE_FINISH.y + 0.48, float(z)), 0.04,
+			GiltPalette.IRON)
 	var mesh := MeshInstance3D.new()
 	mesh.name = "PierBridge"
-	mesh.mesh = surface.commit()
+	mesh.mesh = st.commit()
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 0.92
+	mat.roughness = 0.9
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mesh.material_override = mat
 	add_child(mesh)
+	# Каменный порог между верхом съезда и площадью.
+	var apron := GiltShapes.begin()
+	GiltShapes.box(apron, Vector3(169.05, QUAY_Y - 0.03, -30.0),
+		Vector3(1.70, 0.18, 3.6), Color("575159"))
+	GiltShapes.beam(apron, Vector3(168.8, QUAY_Y + 0.07, -31.7),
+		Vector3(169.9, QUAY_Y + 0.07, -31.7), 0.10, Color("6b656d"))
+	GiltShapes.beam(apron, Vector3(168.8, QUAY_Y + 0.07, -28.3),
+		Vector3(169.9, QUAY_Y + 0.07, -28.3), 0.10, Color("6b656d"))
+	var apron_mesh := MeshInstance3D.new()
+	apron_mesh.name = "BridgeApron"
+	apron_mesh.mesh = apron.commit()
+	var apron_mat := StandardMaterial3D.new()
+	apron_mat.vertex_color_use_as_albedo = true
+	apron_mat.roughness = 0.92
+	apron_mesh.material_override = apron_mat
+	add_child(apron_mesh)
 
 
 static func smoothstep01(t: float) -> float:
@@ -256,39 +299,6 @@ func _flat_quad(surface: SurfaceTool, rect: Rect2, y: float, tone: Color) -> voi
 		surface.set_color(tone)
 		surface.set_normal(Vector3.UP)
 		surface.add_vertex(Vector3(p.x, y, p.y))
-
-
-## Просёлок за кварталом: короткие треугольники повторяют рельеф.
-func _build_dirt_lane() -> void:
-	var surface := GiltShapes.begin()
-	var points := [Vector2(190.0, -15.5), Vector2(199.5, -15.5),
-		Vector2(211.0, -17.0), Vector2(224.0, -19.0)]
-	for i in range(points.size() - 1):
-		var a: Vector2 = points[i]
-		var b: Vector2 = points[i + 1]
-		var direction := (b - a).normalized()
-		var side := Vector2(-direction.y, direction.x) * 1.4
-		var steps := maxi(1, int(ceil(a.distance_to(b))))
-		for j in range(steps):
-			var p0 := a.lerp(b, float(j) / float(steps))
-			var p1 := a.lerp(b, float(j + 1) / float(steps))
-			for point in [p0 - side, p1 - side, p1 + side, p0 - side, p1 + side, p0 + side]:
-				var y: float = main.coast.ground_height(point.x, point.y) + 0.07
-				if BASE_RECT.has_point(point):
-					y = STREET_Y + 0.02
-				surface.set_color(Color("9e8c70"))
-				surface.set_normal(main.coast.ground_normal(point.x, point.y))
-				surface.add_vertex(Vector3(point.x, y, point.y))
-	var mesh := MeshInstance3D.new()
-	mesh.name = "DirtLane"
-	mesh.mesh = surface.commit()
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 1.0
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mesh.material_override = mat
-	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mesh)
 
 
 ## Небольшое число фонарей на свободных участках набережной.
