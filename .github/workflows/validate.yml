@@ -487,7 +487,7 @@ jobs:
           cat /tmp/village-audit.log
           ! grep -qiE 'SCRIPT ERROR|SHADER ERROR|Parse Error|Invalid polygon data|triangulation failed' /tmp/village-audit.log
           grep -F '[VILLAGE AUDIT] готово' /tmp/village-audit.log
-          for name in overview entry lane north_wall south_wall street trail dialog; do test -s "shots/village_audit_${name}.png"; done
+          for name in overview entry lane north_wall south_wall street trail backyards dialog; do test -s "shots/village_audit_${name}.png"; done
       - name: Publish village frames
         run: |
           mkdir -p /tmp/village-frames

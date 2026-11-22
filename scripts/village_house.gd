@@ -1,7 +1,7 @@
 class_name GiltHouse
 extends Node3D
 ## Временные дома рыбацкого посёлка: размеры и цвета отличаются,
-## но корпуса, двери и окна простые, без готических украшений.
+## с жилыми пристройками и рабочими деталями, без готических украшений.
 ## Координаты модели: центр пола, +Y вверх, вход в локальный +Z.
 ## replacement_visual позволяет заменить визуал сценой Blender.
 
@@ -318,17 +318,10 @@ func _workshop_details() -> void:
 				Vector3(x + 0.75, eaves + 1.12, 0.0), 0.09, GiltPalette.WOOD_DARK)
 			GiltShapes.beam(_dark, Vector3(x + 0.70, eaves + 1.1, 0.0),
 				Vector3(x + 0.70, eaves + 0.60, 0.0), 0.025, GiltPalette.ROPE)
-		"lantern":
-			# Небольшая застеклённая смотровая будка, без шпиля.
-			var y := ridge + 0.12
-			GiltShapes.box(_wood, Vector3(0.0, y, 0.0), Vector3(1.55, 0.18, 1.55), palette["trim"] * 0.65)
-			GiltShapes.box(_glass, Vector3(0.0, y + 0.57, 0.0), Vector3(1.10, 0.98, 1.10), palette["glass"])
-			for sx in [-1.0, 1.0]:
-				for sz in [-1.0, 1.0]:
-					GiltShapes.beam(_wood, Vector3(float(sx) * 0.58, y + 0.08, float(sz) * 0.58),
-						Vector3(float(sx) * 0.58, y + 1.10, float(sz) * 0.58), 0.09, palette["trim"])
-			GiltShapes.hip_roof(_roof, Vector3(0.0, y + 1.08, 0.0), 1.55, 1.55,
-				0.0, 0.40, palette["roof"], palette["trim"], 0.06)
+		"lantern", "pilot":
+			# Linney: пристройка с односкатной крышей у задней стены.
+			# В пределах собственного участка, не на проезжей части.
+			_back_kitchen()
 		"tavern":
 			# Рабочая веранда с обращённой к гавани стороны, отдельно от улицы.
 			var back := -depth * 0.5
@@ -358,12 +351,6 @@ func _workshop_details() -> void:
 			# Характерная широкая труба и табличка мастерской на фасаде.
 			GiltShapes.box(_stone, Vector3(width * 0.32, ridge + 0.25, 0.0),
 				Vector3(0.92, 1.40, 0.90), palette["stone"].lightened(0.12))
-		"pilot":
-			# Небольшой сигнальный кронштейн над фасадом.
-			GiltShapes.beam(_wood, Vector3(width * 0.38, eaves - 0.3, front + 0.04),
-				Vector3(width * 0.38, eaves + 0.5, front + 0.04), 0.06, GiltPalette.WOOD_DARK)
-			GiltShapes.box(_wood, Vector3(width * 0.38 + 0.25, eaves + 0.25, front + 0.05),
-				Vector3(0.48, 0.28, 0.05), Color("b4543c"))
 		_:
 			pass
 	# Второй этаж мастерской и таверны читается окнами, а не пустой коробкой.
@@ -378,6 +365,36 @@ func _workshop_details() -> void:
 				Vector3(0.21, 1.06, 0.08), palette["door"].darkened(0.10))
 		GiltShapes.box(_wood, Vector3(x, 1.45, front + 0.12),
 			Vector3(0.65, 0.045, 0.04), palette["trim"])
+
+
+## Низкая хозяйственная пристройка (linney): опирается на площадку и
+## примыкает скатом к дому, без лишней геометрии на соседних участках.
+func _back_kitchen() -> void:
+	var back := -depth * 0.5 + 0.12
+	var outer := back - 1.25
+	var half := width * 0.34
+	var wall: Color = palette["wall"].darkened(0.08)
+	GiltShapes.box(_stone, Vector3(0.0, 0.18, (back + outer) * 0.5),
+		Vector3(half * 2.0, 0.36, back - outer), palette["stone"])
+	GiltShapes.box(_wood, Vector3(0.0, 1.30, (back + outer) * 0.5),
+		Vector3(half * 2.0, 2.20, back - outer), wall)
+	var inside := Vector3(0.0, 2.0, (back + outer) * 0.5)
+	GiltShapes.out_quad(_roof, Vector3(-half - 0.12, 2.84, back),
+		Vector3(half + 0.12, 2.84, back), Vector3(half + 0.12, 2.40, outer - 0.12),
+		Vector3(-half - 0.12, 2.40, outer - 0.12), palette["roof"], inside)
+	for side in [-1.0, 1.0]:
+		var x := float(side) * half
+		GiltShapes.out_tri(_wood, Vector3(x, 2.40, back), Vector3(x, 2.84, back),
+			Vector3(x, 2.40, outer), wall, inside)
+		GiltShapes.beam(_wood, Vector3(x, 0.36, outer), Vector3(x, 2.38, outer),
+			0.11, palette["trim"] * 0.75)
+	# Окно на глухой стороне пристройки и простая дверь со двора.
+	GiltShapes.box(_wood, Vector3(-half * 0.48, 1.12, outer - 0.03),
+		Vector3(0.82, 1.95, 0.10), palette["door"])
+	GiltShapes.box(_wood, Vector3(half * 0.45, 1.42, outer - 0.04),
+		Vector3(0.85, 0.90, 0.10), palette["trim"])
+	GiltShapes.box(_glass, Vector3(half * 0.45, 1.42, outer - 0.10),
+		Vector3(0.65, 0.70, 0.04), palette["glass"])
 
 
 func _add_nameplate() -> void:
