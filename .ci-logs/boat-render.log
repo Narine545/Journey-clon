@@ -15,12 +15,12 @@ ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
 WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
-[BOOT] старт · 77 МБ
-[BOOT] мир собран · 99 МБ
-[BOOT] HUD рейда · 100 МБ
-[BOOT] звук моря · 265 МБ
-[BOOT] меню · 268 МБ
-[BOOT] постобработка · 268 МБ
+[BOOT] старт · 86 МБ
+[BOOT] мир собран · 118 МБ
+[BOOT] HUD рейда · 121 МБ
+[BOOT] звук моря · 284 МБ
+[BOOT] меню · 285 МБ
+[BOOT] постобработка · 285 МБ
 RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
-[BOOT] готово · 266 МБ
+[BOOT] готово · 284 МБ
 [BOAT] screenshot /home/runner/work/Journey-clon/Journey-clon/boat.png (0)
