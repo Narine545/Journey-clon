@@ -318,7 +318,27 @@ func _workshop_details() -> void:
 				Vector3(x + 0.75, eaves + 1.12, 0.0), 0.09, GiltPalette.WOOD_DARK)
 			GiltShapes.beam(_dark, Vector3(x + 0.70, eaves + 1.1, 0.0),
 				Vector3(x + 0.70, eaves + 0.60, 0.0), 0.025, GiltPalette.ROPE)
+		"lantern":
+			# Небольшая застеклённая смотровая будка, без шпиля.
+			var y := ridge + 0.12
+			GiltShapes.box(_wood, Vector3(0.0, y, 0.0), Vector3(1.55, 0.18, 1.55), palette["trim"] * 0.65)
+			GiltShapes.box(_glass, Vector3(0.0, y + 0.57, 0.0), Vector3(1.10, 0.98, 1.10), palette["glass"])
+			for sx in [-1.0, 1.0]:
+				for sz in [-1.0, 1.0]:
+					GiltShapes.beam(_wood, Vector3(float(sx) * 0.58, y + 0.08, float(sz) * 0.58),
+						Vector3(float(sx) * 0.58, y + 1.10, float(sz) * 0.58), 0.09, palette["trim"])
+			GiltShapes.hip_roof(_roof, Vector3(0.0, y + 1.08, 0.0), 1.55, 1.55,
+				0.0, 0.40, palette["roof"], palette["trim"], 0.06)
 		"tavern":
+			# Рабочая веранда с обращённой к гавани стороны, отдельно от улицы.
+			var back := -depth * 0.5
+			GiltShapes.box(_wood, Vector3(0.0, 0.10, back - 0.65),
+				Vector3(width * 0.72, 0.20, 1.35), GiltPalette.WOOD_WARM)
+			GiltShapes.pent_roof(_roof, Vector3(0.0, 2.60, back - 0.62), width * 0.76,
+				1.35, 0.08, 0.22, palette["roof"], GiltPalette.LEAD)
+			for x in [-width * 0.33, width * 0.33]:
+				GiltShapes.beam(_wood, Vector3(float(x), 0.20, back - 1.20),
+					Vector3(float(x), 2.55, back - 1.20), 0.12, palette["trim"] * 0.65)
 			# Небольшой крытый вход, без стола посреди дороги.
 			GiltShapes.pent_roof(_roof, Vector3(0.0, 2.78, front + 0.52), 2.5, 1.10,
 				0.08, 0.20, palette["roof"], GiltPalette.LEAD)
@@ -346,6 +366,10 @@ func _workshop_details() -> void:
 				Vector3(0.48, 0.28, 0.05), Color("b4543c"))
 		_:
 			pass
+	# Второй этаж мастерской и таверны читается окнами, а не пустой коробкой.
+	if int(plan["storeys"]) > 1:
+		for side in [-1.0, 1.0]:
+			_simple_window(Vector3(float(side) * width * 0.26, eaves - 0.66, front + 0.04), false)
 	# Ставни и оконные перемычки дают фасадам масштаб, не закрывая стёкла.
 	for side in [-1.0, 1.0]:
 		var x := float(side) * width * 0.30

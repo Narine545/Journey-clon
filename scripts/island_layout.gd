@@ -89,6 +89,13 @@ static func village_base_clearance(p: Vector2, height: float) -> float:
 	return lerpf(height, minf(height, 3.80), mask)
 
 
+## Плавное примыкание реального грунта к восточному выходу из квартала.
+static func village_trail_join(p: Vector2, height: float) -> float:
+	var side := 1.0 - _smooth(absf(p.y + 30.0), 1.5, 3.2)
+	var along := (1.0 - _smooth(p.x, 200.3, 207.5)) * _smooth(p.x, 198.5, 200.3)
+	return lerpf(height, 4.02, side * along)
+
+
 static func height_at(p: Vector2) -> float:
 	var d := inland_distance(p)
 	if d <= 0.0:

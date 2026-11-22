@@ -147,12 +147,19 @@ func setup(game: BoatMain) -> void:
 	var finish := IslandVillage.BRIDGE_FINISH
 	var run := finish.x - start.x
 	var rise := finish.y - start.y
-	var slope := atan2(rise, run)
-	var board_count := 44
-	for i in range(board_count):
-		var t := (float(i) + 0.5) / float(board_count)
-		_box("boards", Vector3(start.x + run * t, start.y + rise * t + 0.03, -30.0),
-			Vector3(0.27, 0.12, 3.2), _deck, Vector3(0, 0, slope))
+	# Реальные горизонтальные проступи и подступенки, а не наклонная плоскость.
+	# Верх последней ступени точно совпадает с уровнем набережной.
+	var stair_count := 16
+	var tread := run / float(stair_count)
+	var riser := rise / float(stair_count)
+	for i in range(stair_count):
+		var x := start.x + (float(i) + 0.5) * tread
+		var top := start.y + (float(i) + 1.0) * riser
+		_box("boards", Vector3(x, top - 0.08, -30.0),
+			Vector3(tread + 0.015, 0.16, 3.2), _deck)
+		# Подступенок заполняет просвет до предыдущей проступи.
+		_box("timber", Vector3(start.x + float(i) * tread + 0.025,
+			top - riser * 0.5, -30.0), Vector3(0.07, riser + 0.02, 3.14), _timber)
 	for z in [-31.8, -28.2]:
 		_beam(Vector3(start.x, start.y - 0.36, float(z)),
 			Vector3(finish.x, finish.y - 0.36, float(z)), 0.19, _timber)

@@ -103,8 +103,6 @@ func _build_quay() -> void:
 ## в вырезе стены, поэтому не пробивает её и не висит над водой.
 func _build_bridge() -> void:
 	var st := GiltShapes.begin()
-	var length := Vector2(BRIDGE_FINISH.x - BRIDGE_START.x, 0.0).length()
-	var rise := BRIDGE_FINISH.y - BRIDGE_START.y
 	# Каменные пилоны до дна: съезд стоит, а не парит.
 	for t in [0.35, 0.68]:
 		var x := lerpf(BRIDGE_START.x, BRIDGE_FINISH.x, float(t))
@@ -224,7 +222,6 @@ func _build_foundation() -> void:
 	var lo := BASE_RECT.position
 	var hi := BASE_RECT.end
 	var cx := (lo.x + hi.x) * 0.5
-	var cz := (lo.y + hi.y) * 0.5
 	for z in [lo.y, hi.y]:
 		GiltShapes.box(edge, Vector3(cx, BASE_Y + 0.045, z),
 			Vector3(hi.x - lo.x + 0.5, 0.09, 0.5), Color("7b747d"))
@@ -233,13 +230,17 @@ func _build_foundation() -> void:
 		var h := maxf(0.40, BASE_Y - low)
 		GiltShapes.box(edge, Vector3(cx, BASE_Y - h * 0.5, z),
 			Vector3(hi.x - lo.x + 0.4, h, 0.34), Color("3d3943"))
-	GiltShapes.box(edge, Vector3(hi.x, BASE_Y + 0.045, cz),
-		Vector3(0.5, 0.09, hi.y - lo.y), Color("7b747d"))
-	var east_low := minf(main.coast.ground_height(hi.x, lo.y), main.coast.ground_height(hi.x, hi.y))
-	east_low = minf(east_low, main.coast.ground_height(hi.x, cz)) - 0.35
-	var east_h := maxf(0.40, BASE_Y - east_low)
-	GiltShapes.box(edge, Vector3(hi.x, BASE_Y - east_h * 0.5, cz),
-		Vector3(0.34, east_h, hi.y - lo.y), Color("3d3943"))
+	# Восточный выход ведёт на тропу; подбой не должен загораживать её.
+	for seg in [Vector2(lo.y, -31.8), Vector2(-28.2, hi.y)]:
+		var middle: float = (seg.x + seg.y) * 0.5
+		var low := minf(main.coast.ground_height(hi.x, seg.x),
+			main.coast.ground_height(hi.x, seg.y)) - 0.35
+		low = minf(low, main.coast.ground_height(hi.x, middle) - 0.35)
+		var height := maxf(0.4, BASE_Y - low)
+		GiltShapes.box(edge, Vector3(hi.x, BASE_Y - height * 0.5, middle),
+			Vector3(0.34, height, seg.y - seg.x), Color("3d3943"))
+		GiltShapes.box(edge, Vector3(hi.x, BASE_Y + 0.045, middle),
+			Vector3(0.5, 0.09, seg.y - seg.x), Color("7b747d"))
 	# Западный край плиты: только вне проёма съезда, иначе подбой закрыл бы
 	# арку портала изнутри.
 	var seg_a := Vector2(lo.y, VillageProps.RAMP_WELL.position.y)

@@ -86,6 +86,30 @@ uniform float cloud_shadow : hint_range(0.0, 1.0) = 0.0;
 uniform float cloud_threshold : hint_range(0.0, 1.0) = 0.60;
 uniform vec2 cloud_offset = vec2(0.0);
 
+// Утоптанные пути к четырём маякам; цвет меняется прямо на поверхности
+// острова, без отдельного меша и возможности проваливания сквозь рельеф.
+float trail_segment(vec2 p, vec2 a, vec2 b) {
+	vec2 ab = b - a;
+	float t = clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0);
+	return length(p - (a + t * ab));
+}
+
+float beacon_trails(vec2 p) {
+	float d = trail_segment(p, vec2(200.3, -30.0), vec2(208.0, -30.0));
+	d = min(d, trail_segment(p, vec2(208.0, -30.0), vec2(205.0, -46.0)));
+	d = min(d, trail_segment(p, vec2(205.0, -46.0), vec2(104.0, -120.0)));
+	d = min(d, trail_segment(p, vec2(104.0, -120.0), vec2(24.0, -128.0)));
+	d = min(d, trail_segment(p, vec2(24.0, -128.0), vec2(11.4, -141.81)));
+	d = min(d, trail_segment(p, vec2(208.0, -30.0), vec2(215.87, -282.97)));
+	d = min(d, trail_segment(p, vec2(208.0, -30.0), vec2(304.0, -16.0)));
+	d = min(d, trail_segment(p, vec2(304.0, -16.0), vec2(384.0, 40.0)));
+	d = min(d, trail_segment(p, vec2(384.0, 40.0), vec2(398.78, 57.77)));
+	d = min(d, trail_segment(p, vec2(208.0, -30.0), vec2(205.0, -4.0)));
+	d = min(d, trail_segment(p, vec2(205.0, -4.0), vec2(128.0, 88.0)));
+	d = min(d, trail_segment(p, vec2(128.0, 88.0), vec2(131.18, 255.06)));
+	return d;
+}
+
 float cloud_hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -262,6 +286,16 @@ void fragment() {
 		// Утоптанная земля: дорожки и площадь ловят меньше блеска, чем газон.
 		basalt *= mix(0.82, 1.10, ao);
 		base = mix(base, basalt * gilt_tint * (0.55 + 0.72 * wrap), gilt_mask * 0.94);
+	}
+
+	// Неровная утоптанная полоса на настоящем грунте, ограниченная сушей.
+	// Вне лодочного острова island_biome равен нулю.
+	if (island_biome > 0.5) {
+		vec2 warped = wp + vec2(vnoise(wp * 0.12), vnoise(wp * 0.12 + vec2(13.0, 7.0))) * 0.6 - vec2(0.3);
+		float trail = 1.0 - smoothstep(1.0, 2.4, beacon_trails(warped));
+		trail *= smoothstep(0.35, 1.1, w_pos.y - sea_level);
+		vec3 earth = mix(vec3(0.37, 0.30, 0.23), vec3(0.52, 0.43, 0.31), vnoise(wp * 0.45));
+		base = mix(base, earth * (0.65 + 0.45 * wrap) * ao, trail * 0.80);
 	}
 
 	// ---------- 2a. Урез: прибой ----------

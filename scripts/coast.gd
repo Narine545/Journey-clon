@@ -65,7 +65,8 @@ func spawn_point() -> Vector2:
 func height_at(x: float, z: float) -> float:
 	var point := Vector2(x, z)
 	var h := IslandLayout.harbor_ramp_clearance(point, IslandLayout.height_at(point))
-	return IslandLayout.village_base_clearance(point, h)
+	h = IslandLayout.village_base_clearance(point, h)
+	return IslandLayout.village_trail_join(point, h)
 
 
 ## Material blend from actual elevation: beach hollows to upland crests.
