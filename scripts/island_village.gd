@@ -407,8 +407,10 @@ func _build_foundation() -> void:
 		Vector3(0.34, east_h, hi.y - lo.y), Color("45414a"))
 	# Западный край плиты: только вне проёма съезда, иначе подбой закрыл бы
 	# арку портала изнутри.
-	for seg in [Vector2(lo.y, VillageProps.RAMP_WELL.position.y),
-			Vector2(VillageProps.RAMP_WELL.end.y, hi.y)]:
+	var seg_a := Vector2(lo.y, VillageProps.RAMP_WELL.position.y)
+	var seg_b := Vector2(VillageProps.RAMP_WELL.end.y, hi.y)
+	for n in range(2):
+		var seg: Vector2 = seg_a if n == 0 else seg_b
 		var seg_mid := (seg.x + seg.y) * 0.5
 		var west_low := minf(main.coast.ground_height(lo.x, seg.x),
 			main.coast.ground_height(lo.x, seg.y)) - 0.35

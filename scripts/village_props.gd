@@ -160,12 +160,17 @@ func quay() -> void:
 	var wall_bottom := 0.55
 	var wall_top := QUAY_Y + 0.50
 	var wall_h := wall_top - wall_bottom
-	for pz in [RAMP_WELL.position.y - 0.14, RAMP_WELL.end.y + 0.14]:
+	var side_a: float = RAMP_WELL.position.y - 0.14
+	var side_b: float = RAMP_WELL.end.y + 0.14
+	for n in range(2):
+		var pz: float = side_a if n == 0 else side_b
 		GiltShapes.box(_stone, Vector3(well_mid, wall_bottom + wall_h * 0.5, pz),
 			Vector3(RAMP_WELL.size.x, wall_h, 0.28), Color("5a555e"))
 		GiltShapes.box(_stone, Vector3(well_mid, wall_top + 0.05, pz),
 			Vector3(RAMP_WELL.size.x + 0.12, 0.10, 0.38), Color("6b656d"))
-		var zf: float = pz + (0.15 if pz > -30.0 else -0.15)
+		var zf: float = pz - 0.15
+		if pz > -30.0:
+			zf = pz + 0.15
 		for i in range(4):
 			var cy := wall_bottom + 0.85 + float(i) * 0.82
 			GiltShapes.beam(_stone, Vector3(RAMP_WELL.position.x + 0.08, cy, zf),
@@ -181,7 +186,10 @@ func quay() -> void:
 	GiltShapes.box(_stone, Vector3(RAMP_WELL.end.x - 0.16, 2.30, z_mid),
 		Vector3(0.30, 3.30, RAMP_WELL.size.y), Color("4a4650"))
 	# Наличники портала: пилоны, перемычка, карниз, замок и золотая нить.
-	for pz in [RAMP_WELL.position.y - 0.18, RAMP_WELL.end.y + 0.18]:
+	var portal_a: float = RAMP_WELL.position.y - 0.18
+	var portal_b: float = RAMP_WELL.end.y + 0.18
+	for n in range(2):
+		var pz: float = portal_a if n == 0 else portal_b
 		GiltShapes.box(_stone, Vector3(px - 0.08, 2.15, pz),
 			Vector3(0.66, 2.85, 0.42), Color("6b656d"))
 		GiltShapes.box(_gilt, Vector3(px - 0.42, 2.15, pz),
@@ -194,28 +202,6 @@ func quay() -> void:
 		Vector3(0.05, 0.05, RAMP_WELL.size.y + 0.5), GiltPalette.GILT * 0.8)
 	GiltShapes.box(_gilt, Vector3(px - 0.46, 3.22, z_mid),
 		Vector3(0.20, 0.34, 0.38), GiltPalette.GILT * 0.7)
-	# Тёплый фонарь в горле портала: чёрный проём читается как вход.
-	var portal_lamp := MeshInstance3D.new()
-	var bulb := SphereMesh.new()
-	bulb.radius = 0.11
-	bulb.height = 0.22
-	bulb.radial_segments = 10
-	portal_lamp.mesh = bulb
-	var bulb_mat := StandardMaterial3D.new()
-	bulb_mat.albedo_color = Color("ffd2a1")
-	bulb_mat.emission_enabled = true
-	bulb_mat.emission = Color("ffd2a1")
-	bulb_mat.emission_energy_multiplier = 1.5
-	portal_lamp.material_override = bulb_mat
-	portal_lamp.position = Vector3(px + 0.20, 2.86, z_mid)
-	host.add_child(portal_lamp)
-	var portal_light := OmniLight3D.new()
-	portal_light.position = Vector3(px + 1.40, 2.70, z_mid)
-	portal_light.light_color = Color("ffd2a1")
-	portal_light.light_energy = 0.85
-	portal_light.omni_range = 6.5
-	portal_light.shadow_enabled = false
-	host.add_child(portal_light)
 	# Кордон: тяжёлый камень по кромке, на нём и стоят тумбы.
 	z = QUAY_MIN_Z
 	while z < QUAY_MAX_Z:
