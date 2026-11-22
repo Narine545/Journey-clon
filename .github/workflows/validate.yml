@@ -46,6 +46,11 @@ jobs:
           chmod +x godot_bin/godot
           godot_bin/godot --version
 
+      - name: Parse village scripts (diagnostics)
+        run: |
+          godot_bin/godot --headless --path . --check-only --script res://scripts/village_props.gd 2>&1 | tee parse-village-props.log || true
+          godot_bin/godot --headless --path . --check-only --script res://scripts/island_village.gd 2>&1 | tee -a parse-village-props.log || true
+
       - name: Import project
         run: |
           godot_bin/godot --headless --path . --import > import.log 2>&1
