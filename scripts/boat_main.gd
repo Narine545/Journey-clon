@@ -49,6 +49,9 @@ var camera_framing := BoatCameraFraming.new()
 ## остаются за кадром и кликать не по чему.
 const PORT_VIEW_FOCUS := Vector3(164.0, 4.2, -30.6)
 const PORT_VIEW_SIZE := 64.0
+const PIER_VIEW_FOCUS := Vector3(126.0, 1.8, -32.0)
+const PIER_VIEW_SIZE := 48.0
+var port_show_village := true
 var _port_view := false
 var _size_before_port := 32.0
 var _port_restore := 0.0
@@ -188,6 +191,9 @@ func _ready() -> void:
 	hud.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hud)
+	var harbor_controls := HarborViewControls.new()
+	harbor_controls.main = self
+	layer.add_child(harbor_controls)
 	var inspection_layer := CanvasLayer.new()
 	inspection_layer.layer = 30
 	add_child(inspection_layer)
@@ -1300,6 +1306,23 @@ func gameplay_paused() -> bool:
 	return village_panel_open or (raid != null and raid.engaged() and (raid.modal() or inspection_active()))
 
 
+## Переключатель доступен только у причала, не меняет корабль и швартовы.
+func toggle_port_camera() -> void:
+	if harbor == null or not harbor.moored or inspection_active() or gameplay_paused() or menu_open:
+		return
+	if (raid != null and raid.engaged()) or (rest != null and rest.visible):
+		return
+	port_show_village = not port_show_village
+	_port_zoom = 0.0
+
+
+func should_show_boat_hud() -> bool:
+	return not menu_open and not village_panel_open and not inspection_active() \
+		and not (harbor != null and harbor.moored) \
+		and not (raid != null and raid.engaged()) \
+		and not (rest != null and rest.visible)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if village_panel_open:
 		return
@@ -1326,6 +1349,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 		match event.physical_keycode:
+			KEY_V:
+				if harbor != null and harbor.moored:
+					toggle_port_camera()
+					get_viewport().set_input_as_handled()
 			KEY_PAGEUP:
 				camera_height = minf(160.0, camera_height + 8.0)
 				get_viewport().set_input_as_handled()
@@ -1500,19 +1527,22 @@ func _process(delta: float) -> void:
 			_port_view = true
 			_port_restore = 0.0
 			_port_zoom = 0.0
+			port_show_village = true
 		elif not port and _port_view:
 			_port_view = false
 			# Если игрок не приближал кадр в порту, вернём прежнее отдаление.
-			_port_restore = 0.9 if absf(camera.size - PORT_VIEW_SIZE) < 1.0 else 0.0
+			var last_port_size := PORT_VIEW_SIZE if port_show_village else PIER_VIEW_SIZE
+			_port_restore = 0.9 if absf(camera.size - last_port_size) < 1.0 else 0.0
 		var focus_target := boat.get_global_transform_interpolated().origin + Vector3.UP * 0.8
 		if _port_view:
 			# В порту камера смотрит на посёлок, оставляя лодку у левого края:
 			# так все дома в кадре и по ним можно кликать. Отдаление
 			# подводим только на входе, дальше игрок может приблизить сам.
-			focus_target = PORT_VIEW_FOCUS
+			focus_target = PORT_VIEW_FOCUS if port_show_village else PIER_VIEW_FOCUS
 			if _port_zoom < 1.2:
 				_port_zoom += delta
-				camera.size = lerpf(camera.size, PORT_VIEW_SIZE, 1.0 - exp(-3.2 * delta))
+				var target_size := PORT_VIEW_SIZE if port_show_village else PIER_VIEW_SIZE
+				camera.size = lerpf(camera.size, target_size, 1.0 - exp(-3.2 * delta))
 		elif _port_restore > 0.0:
 			# Возврат к прежнему отдалению коротким окном; ручной зум игрока
 			# после него не перехватывается.
@@ -1529,11 +1559,7 @@ func _process(delta: float) -> void:
 	notice_time = maxf(0.0, notice_time - delta)
 	if not inspection_active() and not gameplay_paused():
 		resource_zones.update(delta)
-	hud.visible = (
-		not menu_open and not village_panel_open and not inspection_active()
-		and not (raid != null and raid.engaged())
-		and not (rest != null and rest.visible)
-	)
+	hud.visible = should_show_boat_hud()
 	hud.queue_redraw()
 	if OS.get_environment("JOURNEY_BOAT_SHOT") == "1":
 		_capture_frames += 1

@@ -310,6 +310,13 @@ func _street_face() -> void:
 		Vector3(door_width + 0.22, 2.12, 0.14), palette["trim"] * 0.65)
 	GiltShapes.box(_wood, Vector3(0.0, 1.08, front + 0.10),
 		Vector3(door_width, 1.98, 0.05), palette["door"])
+	# Дверная фурнитура различается у жилого входа и широких ворот.
+	if not work:
+		GiltShapes.box(_dark, Vector3(door_width * 0.30, 1.08, front + 0.15),
+			Vector3(0.07, 0.11, 0.06), GiltPalette.IRON)
+		for y in [0.55, 1.60]:
+			GiltShapes.box(_dark, Vector3(-door_width * 0.42, float(y), front + 0.15),
+				Vector3(0.12, 0.07, 0.04), GiltPalette.IRON)
 	if work:
 		# Двустворчатые рабочие двери вместо двери жилого дома.
 		GiltShapes.box(_dark, Vector3(0.0, 1.08, front + 0.14),

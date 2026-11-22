@@ -29,3 +29,7 @@ __pycache__/
 
 # Скриншоты витрины: .import генерирует Godot, в репозитории они не нужны
 shots/*.import
+
+# CI and local screenshots are temporary, not game assets.
+/shots/*.png
+/.ci-logs/shots/

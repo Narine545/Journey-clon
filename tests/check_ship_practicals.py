@@ -6,9 +6,10 @@ main = Path('scripts/boat_main.gd').read_text()
 hud = Path('scripts/boat_hud.gd').read_text()
 vessel = Path('scripts/boat_vessel.gd').read_text()
 inputs = main.split('func _unhandled_input', 1)[1].split('func _process', 1)[0]
-for key in 'L U O Y P K I G V J'.split():
+for key in 'L U O Y P K I G J'.split():
     assert f'KEY_{key}:' not in inputs
     assert f'[{key}]' not in hud
+assert 'KEY_V:' in inputs and 'if harbor != null and harbor.moored:' in inputs
 assert 'KEY_H:' in inputs
 assert 'BridgeFrontWindow%d' in vessel and 'for wi in range(3):' in vessel
 assert '2.04, 2.82, 1.98, 2.12' not in vessel  # former full opaque bridge solid

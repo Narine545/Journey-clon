@@ -750,7 +750,15 @@ func _check_island_harbor() -> void:
 	port.interact()
 	_check(port.moored and is_equal_approx(main.boat.rotation.y, PI * 0.5),
 		"швартовка ставит лодку вдоль причала")
+	_check(not main.should_show_boat_hud(), "при швартовке приборы судна скрыты")
+	main.port_show_village = true
+	main.toggle_port_camera()
+	_check(not main.port_show_village and port.moored, "переключение к пристани не отдаёт швартовы")
+	main.toggle_port_camera()
+	_check(main.port_show_village, "переключение возвращает вид посёлка")
 	port.interact()
+	main.toggle_port_camera()
+	_check(main.port_show_village, "в море переключение портового вида не работает")
 	_check(not port.moored, "повторное действие отдаёт швартовы")
 	main.boat.global_position = saved
 	main.boat.rotation.y = yaw
