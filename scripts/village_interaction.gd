@@ -122,6 +122,9 @@ func _build_story() -> void:
 	var right_back := TideKit.panel(_story, Rect2(1250, -80, 710, 1300), TideTokens.DEEP,
 		TideTokens.FLARE, true, 4.0, false)
 	right_back.hatch_color = TideTokens.foam_alpha(0.07)
+	# Зеркальные красные кромки у внутренних сторон обоих задников.
+	left_back.underprint_offset = Vector2(12, 11)
+	right_back.underprint_offset = Vector2(-12, 11)
 	_mimo = _make_actor(Rect2(40, 25, 700, 1250))
 	_timbi = _make_actor(Rect2(1180, 25, 700, 1250))
 	var head := TideKit.group(_story, Rect2(680, 70, 650, 170), -3.0)
@@ -415,19 +418,15 @@ func _finish_story_entrance() -> void:
 func _begin_story_line() -> void:
 	if _actor_pop != null and _actor_pop.is_valid():
 		_actor_pop.kill()
-	_reset_actor_transforms()
 	var beat: Dictionary = VillagePeople.TIMBI_SCENE[int(_steps.get("tavern", 0))]
-	var speaker := _timbi if String(beat["who"]) == "timbi" else _mimo
-	var rest_pos: Vector2 = speaker.position
-	# Видимый подъём и лёгкое приближение с плавным возвратом без рывка.
+	var who := String(beat["who"])
+	# Говорящая остаётся чуть ближе до следующей реплики; слушающая
+	# возвращается к обычному размеру. Прерывание продолжает движение
+	# с текущего масштаба, без мгновенного сброса.
 	_actor_pop = create_tween()
 	_actor_pop.set_parallel(true)
-	_actor_pop.tween_property(speaker, "position", rest_pos + Vector2(0, -34), 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_actor_pop.tween_property(speaker, "scale", Vector2(1.045, 1.045), 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_actor_pop.chain().tween_interval(0.16)
-	_actor_pop.chain().set_parallel(true)
-	_actor_pop.tween_property(speaker, "position", rest_pos, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_actor_pop.tween_property(speaker, "scale", Vector2.ONE, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_actor_pop.tween_property(_mimo, "scale", Vector2.ONE * (1.06 if who == "mimo" else 1.0), 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_actor_pop.tween_property(_timbi, "scale", Vector2.ONE * (1.06 if who == "timbi" else 1.0), 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_story_type = create_tween()
 	_story_type.tween_property(_story_body, "visible_ratio", 1.0, maxf(0.2, float(_story_body.text.length()) / TidePrologue.TYPE_SPEED)).set_delay(0.18)
 
