@@ -15,9 +15,9 @@ ERROR: Condition "status < 0" is true. Returning: ERR_CANT_OPEN
 WARNING: All audio drivers failed, falling back to the dummy driver.
      at: initialize (servers/audio/audio_server.cpp:258)
 
-[BOOT] старт · 86 МБ
-[BOOT] мир собран · 116 МБ
-[BOOT] HUD рейда · 120 МБ
+[BOOT] старт · 85 МБ
+[BOOT] мир собран · 117 МБ
+[BOOT] HUD рейда · 119 МБ
 [BOOT] звук моря · 282 МБ
 [BOOT] меню · 284 МБ
 [BOOT] постобработка · 284 МБ
@@ -25,7 +25,6 @@ RME4: слой воздуха (320.0, 60.0, 320.0) центр y=22.0 noise=32^3
 [BOOT] готово · 283 МБ
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_overview.png 1280x720
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_entry.png 1280x720
-[TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_lane.png 1280x720
-[VILLAGE AUDIT] viewport=(1280.0, 720.0) texture=(1280.0, 720.0) page=(-70.0, -60.0) scale=(0.666667, 0.666667)
+[VILLAGE AUDIT] viewport=(1280.0, 720.0) texture=(1280.0, 720.0) page=(166.6667, 80.0) scale=(0.666667, 0.666667)
 [TIDE SHOT] /home/runner/work/Journey-clon/Journey-clon/shots/village_audit_dialog.png 1280x720
 [VILLAGE AUDIT] готово
