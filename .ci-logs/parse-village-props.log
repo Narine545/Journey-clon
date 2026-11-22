@@ -27,66 +27,82 @@ SCRIPT ERROR: Parse Error: Could not find type "BoatMain" in the current scope.
 SCRIPT ERROR: Parse Error: Identifier "VillageProps" not declared in the current scope.
           at: GDScript::reload (res://scripts/island_village.gd:51)
 SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:81)
+          at: GDScript::reload (res://scripts/island_village.gd:82)
 SCRIPT ERROR: Parse Error: Cannot infer the type of "support" variable because the value doesn't have a set type.
-          at: GDScript::reload (res://scripts/island_village.gd:81)
+          at: GDScript::reload (res://scripts/island_village.gd:82)
 SCRIPT ERROR: Parse Error: Identifier "VillageProps" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:83)
-SCRIPT ERROR: Parse Error: Cannot infer the type of "edge" variable because the value doesn't have a set type.
-          at: GDScript::reload (res://scripts/island_village.gd:83)
-SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
           at: GDScript::reload (res://scripts/island_village.gd:84)
-SCRIPT ERROR: Parse Error: Invalid operands to operator -, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:86)
-SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(Variant, null, Variant)".
-          at: GDScript::reload (res://scripts/island_village.gd:86)
-SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:86)
-SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:108)
-SCRIPT ERROR: Parse Error: Cannot infer the type of "surface" variable because the value doesn't have a set type.
-          at: GDScript::reload (res://scripts/island_village.gd:108)
-SCRIPT ERROR: Parse Error: Invalid operands to operator -, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:109)
-SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
-          at: GDScript::reload (res://scripts/island_village.gd:109)
-SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:109)
-SCRIPT ERROR: Parse Error: Identifier "GiltHouse" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:136)
-SCRIPT ERROR: Parse Error: Cannot infer the type of "house" variable because the value doesn't have a set type.
-          at: GDScript::reload (res://scripts/island_village.gd:136)
-SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:179)
 SCRIPT ERROR: Parse Error: Cannot infer the type of "edge" variable because the value doesn't have a set type.
-          at: GDScript::reload (res://scripts/island_village.gd:179)
+          at: GDScript::reload (res://scripts/island_village.gd:84)
 SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:185)
+          at: GDScript::reload (res://scripts/island_village.gd:85)
+SCRIPT ERROR: Parse Error: Invalid operands to operator -, Nil and float.
+          at: GDScript::reload (res://scripts/island_village.gd:87)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(Variant, null, Variant)".
+          at: GDScript::reload (res://scripts/island_village.gd:87)
 SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:190)
+          at: GDScript::reload (res://scripts/island_village.gd:87)
 SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:192)
+          at: GDScript::reload (res://scripts/island_village.gd:109)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "surface" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/island_village.gd:109)
+SCRIPT ERROR: Parse Error: Invalid operands to operator -, Nil and float.
+          at: GDScript::reload (res://scripts/island_village.gd:110)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
+          at: GDScript::reload (res://scripts/island_village.gd:110)
 SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:197)
-SCRIPT ERROR: Parse Error: Identifier "VillageProps" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:201)
+          at: GDScript::reload (res://scripts/island_village.gd:110)
+SCRIPT ERROR: Parse Error: Identifier "GiltHouse" not declared in the current scope.
+          at: GDScript::reload (res://scripts/island_village.gd:137)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "house" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/island_village.gd:137)
+SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
+          at: GDScript::reload (res://scripts/island_village.gd:180)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "edge" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/island_village.gd:180)
+SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
+          at: GDScript::reload (res://scripts/island_village.gd:186)
+SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
+          at: GDScript::reload (res://scripts/island_village.gd:191)
+SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
+          at: GDScript::reload (res://scripts/island_village.gd:193)
+SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
+          at: GDScript::reload (res://scripts/island_village.gd:198)
 SCRIPT ERROR: Parse Error: Identifier "VillageProps" not declared in the current scope.
           at: GDScript::reload (res://scripts/island_village.gd:202)
+SCRIPT ERROR: Parse Error: Identifier "VillageProps" not declared in the current scope.
+          at: GDScript::reload (res://scripts/island_village.gd:203)
 SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:209)
+          at: GDScript::reload (res://scripts/island_village.gd:210)
+SCRIPT ERROR: Parse Error: Identifier "GiltShapes" not declared in the current scope.
+          at: GDScript::reload (res://scripts/island_village.gd:263)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "surface" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/island_village.gd:263)
 SCRIPT ERROR: Parse Error: Invalid operands to operator -, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:268)
+          at: GDScript::reload (res://scripts/island_village.gd:302)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(Variant, null, Variant)".
-          at: GDScript::reload (res://scripts/island_village.gd:268)
+          at: GDScript::reload (res://scripts/island_village.gd:302)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, Variant, float)".
+          at: GDScript::reload (res://scripts/island_village.gd:304)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, Variant, float)".
+          at: GDScript::reload (res://scripts/island_village.gd:305)
+SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
+          at: GDScript::reload (res://scripts/island_village.gd:306)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
+          at: GDScript::reload (res://scripts/island_village.gd:306)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, Variant, float)".
+          at: GDScript::reload (res://scripts/island_village.gd:307)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, Variant, float)".
+          at: GDScript::reload (res://scripts/island_village.gd:308)
 SCRIPT ERROR: Parse Error: Identifier "GiltPalette" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:352)
+          at: GDScript::reload (res://scripts/island_village.gd:392)
 SCRIPT ERROR: Parse Error: Identifier "GiltPalette" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:353)
+          at: GDScript::reload (res://scripts/island_village.gd:393)
 SCRIPT ERROR: Parse Error: Identifier "GiltPalette" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:354)
+          at: GDScript::reload (res://scripts/island_village.gd:394)
 SCRIPT ERROR: Parse Error: Identifier "GiltPalette" not declared in the current scope.
-          at: GDScript::reload (res://scripts/island_village.gd:355)
+          at: GDScript::reload (res://scripts/island_village.gd:395)
 SCRIPT ERROR: Parse Error: Cannot infer the type of "h" variable because the value doesn't have a set type.
-          at: GDScript::reload (res://scripts/island_village.gd:358)
+          at: GDScript::reload (res://scripts/island_village.gd:398)
 ERROR: Failed to load script "res://scripts/island_village.gd" with error "Parse error".
    at: load (modules/gdscript/gdscript_resource_format.cpp:46)
