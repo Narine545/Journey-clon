@@ -838,12 +838,14 @@ func _check_village() -> void:
 			dialog._open(tavern_index)
 			_check(dialog._timbi_mode and dialog._mimo.texture != null and dialog._timbi.texture != null,
 				"в разговоре Тимби видны оба спрайта")
-			_check(dialog._timbi.modulate == Color.WHITE and dialog._mimo.modulate != Color.WHITE,
-				"говорящая Тимби выделена")
+			_check(dialog._timbi.modulate == Color.WHITE and dialog._mimo.modulate == Color.WHITE
+				and dialog._timbi.scale.x < 1.0 and dialog._story_plate.position.x > 450.0,
+				"Тимби говорит: поп-анимация и имя справа, без затемнения")
 			dialog._on_talk() # complete typing
 			dialog._on_talk()
-			_check(dialog._mimo.modulate == Color.WHITE and dialog._timbi.modulate != Color.WHITE,
-				"при смене реплики выделяется Мимо")
+			_check(dialog._mimo.scale.x < 1.0 and dialog._timbi.scale == Vector2.ONE
+				and dialog._story_plate.position.x < 450.0,
+				"Мимо говорит: поп-анимация и имя слева")
 			dialog._switch_tavern_guest()
 			_check(not dialog._timbi_mode and dialog._title.text == "ХЕЛЬГА",
 				"в таверне можно поговорить с Хельгой")

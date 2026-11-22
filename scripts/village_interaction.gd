@@ -30,6 +30,7 @@ var _story_name: Label
 var _story_body: Label
 var _story_counter: Label
 var _story_type: Tween
+var _actor_pop: Tween
 
 
 func setup(owner_main: BoatMain) -> void:
@@ -110,26 +111,26 @@ func _build_story() -> void:
 	_story = TideKit.group(_dialog, Rect2(0, 0, 1920, 1080))
 	_story.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	TideKit.isobaths(_story, Rect2(Vector2.ZERO, TideTokens.BASE), 0.06, 36.0)
-	var left_back := TideKit.panel(_story, Rect2(10, -80, 620, 1300), TideTokens.DEEP,
+	var left_back := TideKit.panel(_story, Rect2(-40, -80, 710, 1300), TideTokens.DEEP,
 		TideTokens.FLARE, true, -4.0, false)
 	left_back.hatch_color = TideTokens.foam_alpha(0.07)
-	var right_back := TideKit.panel(_story, Rect2(1290, -80, 620, 1300), TideTokens.DEEP,
+	var right_back := TideKit.panel(_story, Rect2(1250, -80, 710, 1300), TideTokens.DEEP,
 		TideTokens.FLARE, true, 4.0, false)
 	right_back.hatch_color = TideTokens.foam_alpha(0.07)
-	_mimo = _make_actor(Rect2(40, 15, 560, 1000))
-	_timbi = _make_actor(Rect2(1320, 15, 560, 1000))
+	_mimo = _make_actor(Rect2(-20, 25, 700, 1250))
+	_timbi = _make_actor(Rect2(1240, 25, 700, 1250))
 	var head := TideKit.group(_story, Rect2(680, 70, 650, 170), -3.0)
 	TideKit.text(head, "ТИХАЯ БУХТА · ТАВЕРНА", Vector2(6, 0), 1, 22, TideTokens.SONAR)
 	TideKit.headline(head, "ВСТРЕЧА", Vector2(0, 34), 580.0, 80, TideTokens.FOAM, 8, -10.0)
-	_story_box = TideKit.group(_story, Rect2(440, 630, 1040, 340), -1.6)
-	var sheet := TideKit.panel(_story_box, Rect2(0, 0, 1040, 340), TideTokens.FOAM, TideTokens.FLARE, true)
+	_story_box = TideKit.group(_story, Rect2(510, 660, 900, 310), -1.6)
+	var sheet := TideKit.panel(_story_box, Rect2(0, 0, 900, 310), TideTokens.FOAM, TideTokens.FLARE, true)
 	sheet.hatch_color = TideTokens.ink_alpha(0.05)
 	_story_plate = TideKit.poly(_story_box, PackedVector2Array(), TideTokens.SONAR, Vector2(34, -30))
 	_story_name = TideKit.text(_story_box, "", Vector2(62, -24), 2, 26, TideTokens.INK)
-	_story_body = TideKit.block(_story_box, "", Rect2(60, 66, 920, 210), 0, 46, TideTokens.INK, 4)
+	_story_body = TideKit.block(_story_box, "", Rect2(55, 58, 790, 205), 0, 40, TideTokens.INK, 4)
 	_story_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_story_counter = TideKit.text(_story_box, "", Vector2(60, 278), 1, 20,
-		TideTokens.ink_alpha(0.7), 920, HORIZONTAL_ALIGNMENT_RIGHT)
+	_story_counter = TideKit.text(_story_box, "", Vector2(55, 255), 1, 20,
+		TideTokens.ink_alpha(0.7), 790, HORIZONTAL_ALIGNMENT_RIGHT)
 	TideKit.text(_story, "ПРОБЕЛ · КЛИК — ДАЛЬШЕ", Vector2(450, 1000), 1, 20, TideTokens.foam_alpha(0.8))
 	var helga := TideKit.button(_story, "ХЕЛЬГА", Rect2(1030, 988, 190, 56),
 		TideButton.Shape.GHOST, TideTokens.SONAR, 1, 20, TideTokens.SONAR, -1.6)
@@ -152,6 +153,7 @@ func _make_actor(rect: Rect2) -> TextureRect:
 	# Разные исходные разрешения не меняют пропорций персонажей.
 	actor.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	TideKit.place(actor, rect)
+	actor.pivot_offset = Vector2(rect.size.x * 0.5, rect.size.y * 0.72)
 	actor.material = TideStory.backing(14.0)
 	_story.add_child(actor)
 	return actor
@@ -166,6 +168,10 @@ func _set_dialog_mode(timbi: bool) -> void:
 	if not timbi:
 		if _story_type != null and _story_type.is_valid():
 			_story_type.kill()
+		if _actor_pop != null and _actor_pop.is_valid():
+			_actor_pop.kill()
+		_mimo.scale = Vector2.ONE
+		_timbi.scale = Vector2.ONE
 		_mimo.texture = null
 		_timbi.texture = null
 
@@ -319,6 +325,10 @@ func _refresh() -> void:
 		_story_name.text = "ТИМБИ" if who == "timbi" else TideStory.HEROINE
 		var width := TideTokens.font_of(2).get_string_size(_story_name.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 26).x
 		_story_name.size.x = width + 8.0
+		# Имя у ближайшего к говорящему края листа.
+		var plate_x := 900.0 - width - 98.0 if who == "timbi" else 34.0
+		_story_plate.position = Vector2(plate_x, -30)
+		_story_name.position = Vector2(plate_x + 28.0, -24)
 		_story_name.add_theme_color_override("font_color", TideTokens.FOAM if who == "timbi" else TideTokens.INK)
 		_story_plate.color = TideTokens.FLARE if who == "timbi" else TideTokens.SONAR
 		_story_plate.polygon = TideShapes.plate(Vector2(width + 64.0, 58.0), 10.0, 10.0)
@@ -334,8 +344,15 @@ func _refresh() -> void:
 		_story_type.tween_property(_story_body, "visible_ratio", 1.0, maxf(0.2, float(_story_body.text.length()) / TidePrologue.TYPE_SPEED))
 		_mimo.texture = TideStory.portrait(String(beat["mimo"]))
 		_timbi.texture = TideStory.picture(String(beat["pose"]))
-		_mimo.modulate = Color.WHITE if who == "mimo" else Color(0.52, 0.52, 0.52)
-		_timbi.modulate = Color.WHITE if who == "timbi" else Color(0.52, 0.52, 0.52)
+		# Подчёркиваем реплику коротким упругим движением, не затемняя слушателя.
+		if _actor_pop != null and _actor_pop.is_valid():
+			_actor_pop.kill()
+		_mimo.scale = Vector2.ONE
+		_timbi.scale = Vector2.ONE
+		var speaker := _timbi if who == "timbi" else _mimo
+		speaker.scale = Vector2(0.955, 0.955)
+		_actor_pop = create_tween()
+		_actor_pop.tween_property(speaker, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		return
 	var person := VillagePeople.get_person(id)
 	_title.text = String(person.get("name", "ЖИТЕЛЬ"))
