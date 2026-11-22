@@ -101,16 +101,10 @@ SCRIPT ERROR: Parse Error: Could not resolve class "VillageProps", because of a 
           at: GDScript::reload (res://scripts/island_village.gd:410)
 SCRIPT ERROR: Parse Error: Could not resolve class "VillageProps", because of a parser error.
           at: GDScript::reload (res://scripts/island_village.gd:411)
-SCRIPT ERROR: Parse Error: Cannot infer the type of "seg_mid" variable because the value doesn't have a set type.
-          at: GDScript::reload (res://scripts/island_village.gd:412)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:573)
+          at: GDScript::reload (res://scripts/island_village.gd:575)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(Variant, null, Variant)".
-          at: GDScript::reload (res://scripts/island_village.gd:573)
-SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:584)
-SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
-          at: GDScript::reload (res://scripts/island_village.gd:584)
+          at: GDScript::reload (res://scripts/island_village.gd:575)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
           at: GDScript::reload (res://scripts/island_village.gd:586)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
@@ -120,57 +114,61 @@ SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
           at: GDScript::reload (res://scripts/island_village.gd:588)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:593)
+          at: GDScript::reload (res://scripts/island_village.gd:590)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
+          at: GDScript::reload (res://scripts/island_village.gd:590)
+SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
+          at: GDScript::reload (res://scripts/island_village.gd:595)
 SCRIPT ERROR: Parse Error: Cannot infer the type of "h" variable because the value is "null".
-          at: GDScript::reload (res://scripts/island_village.gd:593)
-SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:613)
-SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
-          at: GDScript::reload (res://scripts/island_village.gd:613)
-SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:614)
-SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
-          at: GDScript::reload (res://scripts/island_village.gd:614)
+          at: GDScript::reload (res://scripts/island_village.gd:595)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
           at: GDScript::reload (res://scripts/island_village.gd:615)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
           at: GDScript::reload (res://scripts/island_village.gd:615)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:618)
+          at: GDScript::reload (res://scripts/island_village.gd:616)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
-          at: GDScript::reload (res://scripts/island_village.gd:618)
+          at: GDScript::reload (res://scripts/island_village.gd:616)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:619)
+          at: GDScript::reload (res://scripts/island_village.gd:617)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
-          at: GDScript::reload (res://scripts/island_village.gd:619)
+          at: GDScript::reload (res://scripts/island_village.gd:617)
+SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
+          at: GDScript::reload (res://scripts/island_village.gd:620)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
+          at: GDScript::reload (res://scripts/island_village.gd:620)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
           at: GDScript::reload (res://scripts/island_village.gd:621)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
           at: GDScript::reload (res://scripts/island_village.gd:621)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:622)
+          at: GDScript::reload (res://scripts/island_village.gd:623)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
-          at: GDScript::reload (res://scripts/island_village.gd:622)
+          at: GDScript::reload (res://scripts/island_village.gd:623)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:623)
+          at: GDScript::reload (res://scripts/island_village.gd:624)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
-          at: GDScript::reload (res://scripts/island_village.gd:623)
+          at: GDScript::reload (res://scripts/island_village.gd:624)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
           at: GDScript::reload (res://scripts/island_village.gd:625)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
           at: GDScript::reload (res://scripts/island_village.gd:625)
 SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
-          at: GDScript::reload (res://scripts/island_village.gd:626)
+          at: GDScript::reload (res://scripts/island_village.gd:627)
 SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
-          at: GDScript::reload (res://scripts/island_village.gd:626)
+          at: GDScript::reload (res://scripts/island_village.gd:627)
+SCRIPT ERROR: Parse Error: Invalid operands to operator +, Nil and float.
+          at: GDScript::reload (res://scripts/island_village.gd:628)
+SCRIPT ERROR: Parse Error: No constructor of "Vector3" matches the signature "Vector3(float, null, float)".
+          at: GDScript::reload (res://scripts/island_village.gd:628)
 SCRIPT ERROR: Parse Error: Could not resolve class "VillageProps", because of a parser error.
-          at: GDScript::reload (res://scripts/island_village.gd:685)
-SCRIPT ERROR: Parse Error: Cannot infer the type of "boat" variable because the value doesn't have a set type.
-          at: GDScript::reload (res://scripts/island_village.gd:685)
-SCRIPT ERROR: Parse Error: Cannot infer the type of "node" variable because the value doesn't have a set type.
           at: GDScript::reload (res://scripts/island_village.gd:687)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "boat" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/island_village.gd:687)
+SCRIPT ERROR: Parse Error: Cannot infer the type of "node" variable because the value doesn't have a set type.
+          at: GDScript::reload (res://scripts/island_village.gd:689)
 SCRIPT ERROR: Parse Error: The variable type is being inferred from a Variant value, so it will be typed as Variant. (Warning treated as error.)
-          at: GDScript::reload (res://scripts/island_village.gd:775)
+          at: GDScript::reload (res://scripts/island_village.gd:777)
 SCRIPT ERROR: Compile Error: Failed to compile depended scripts.
           at: GDScript::reload (res://scripts/boat_main.gd:0)
 ERROR: Failed to load script "res://scripts/boat_main.gd" with error "Compilation failed".
