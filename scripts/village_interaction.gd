@@ -31,6 +31,11 @@ var _story_body: Label
 var _story_counter: Label
 var _story_type: Tween
 var _actor_pop: Tween
+var _story_entrance: Tween
+var _story_entering := false
+const MIMO_POS := Vector2(40, 25)
+const TIMBI_POS := Vector2(1180, 25)
+const STORY_BOX_POS := Vector2(510, 660)
 
 
 func setup(owner_main: BoatMain) -> void:
@@ -117,8 +122,8 @@ func _build_story() -> void:
 	var right_back := TideKit.panel(_story, Rect2(1250, -80, 710, 1300), TideTokens.DEEP,
 		TideTokens.FLARE, true, 4.0, false)
 	right_back.hatch_color = TideTokens.foam_alpha(0.07)
-	_mimo = _make_actor(Rect2(-20, 25, 700, 1250))
-	_timbi = _make_actor(Rect2(1240, 25, 700, 1250))
+	_mimo = _make_actor(Rect2(40, 25, 700, 1250))
+	_timbi = _make_actor(Rect2(1180, 25, 700, 1250))
 	var head := TideKit.group(_story, Rect2(680, 70, 650, 170), -3.0)
 	TideKit.text(head, "ТИХАЯ БУХТА · ТАВЕРНА", Vector2(6, 0), 1, 22, TideTokens.SONAR)
 	TideKit.headline(head, "ВСТРЕЧА", Vector2(0, 34), 580.0, 80, TideTokens.FOAM, 8, -10.0)
@@ -161,17 +166,22 @@ func _make_actor(rect: Rect2) -> TextureRect:
 
 func _set_dialog_mode(timbi: bool) -> void:
 	_timbi_mode = timbi
+	_story_entering = timbi
 	_story.visible = timbi
 	_page.visible = not timbi
 	_shade.color = TideTokens.ink_alpha(0.88 if timbi else 0.70)
 	_guest_button.set_caption("ТИМБИ")
 	if not timbi:
+		if _story_entrance != null and _story_entrance.is_valid():
+			_story_entrance.kill()
 		if _story_type != null and _story_type.is_valid():
 			_story_type.kill()
 		if _actor_pop != null and _actor_pop.is_valid():
 			_actor_pop.kill()
-		_mimo.scale = Vector2.ONE
-		_timbi.scale = Vector2.ONE
+		_reset_actor_transforms()
+		_story.modulate.a = 1.0
+		_story_box.modulate.a = 1.0
+		_story_box.position = STORY_BOX_POS
 		_mimo.texture = null
 		_timbi.texture = null
 
@@ -182,7 +192,9 @@ func _switch_tavern_guest() -> void:
 	_set_dialog_mode(not _timbi_mode)
 	_steps["tavern"] = 0
 	_refresh()
-	if not _timbi_mode:
+	if _timbi_mode:
+		_start_story_entrance()
+	else:
 		_next.grab_focus()
 
 
@@ -310,7 +322,9 @@ func _open(index: int) -> void:
 	_set_hover(-1)
 	_hint.visible = false
 	_refresh()
-	if not _timbi_mode:
+	if _timbi_mode:
+		_start_story_entrance()
+	else:
 		_next.grab_focus()
 
 
@@ -332,27 +346,17 @@ func _refresh() -> void:
 		_story_name.add_theme_color_override("font_color", TideTokens.FOAM if who == "timbi" else TideTokens.INK)
 		_story_plate.color = TideTokens.FLARE if who == "timbi" else TideTokens.SONAR
 		_story_plate.polygon = TideShapes.plate(Vector2(width + 64.0, 58.0), 10.0, 10.0)
-		_story_plate.scale = Vector2(1.18, 1.18)
-		var plate_tween := create_tween()
-		plate_tween.tween_property(_story_plate, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_story_plate.scale = Vector2.ONE
 		_story_body.text = "«%s»" % String(beat["line"])
 		_story_counter.text = "%02d / %02d" % [step + 1, VillagePeople.TIMBI_SCENE.size()]
 		if _story_type != null and _story_type.is_valid():
 			_story_type.kill()
 		_story_body.visible_ratio = 0.0
-		_story_type = create_tween()
-		_story_type.tween_property(_story_body, "visible_ratio", 1.0, maxf(0.2, float(_story_body.text.length()) / TidePrologue.TYPE_SPEED))
 		_mimo.texture = TideStory.portrait(String(beat["mimo"]))
 		_timbi.texture = TideStory.picture(String(beat["pose"]))
-		# Подчёркиваем реплику коротким упругим движением, не затемняя слушателя.
-		if _actor_pop != null and _actor_pop.is_valid():
-			_actor_pop.kill()
-		_mimo.scale = Vector2.ONE
-		_timbi.scale = Vector2.ONE
-		var speaker := _timbi if who == "timbi" else _mimo
-		speaker.scale = Vector2(0.955, 0.955)
-		_actor_pop = create_tween()
-		_actor_pop.tween_property(speaker, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if not _story_entering:
+			_begin_story_line()
+
 		return
 	var person := VillagePeople.get_person(id)
 	_title.text = String(person.get("name", "ЖИТЕЛЬ"))
@@ -360,10 +364,81 @@ func _refresh() -> void:
 	_line.text = VillagePeople.line_for(id, main.clock_hours, int(_steps.get(id, 0)))
 
 
+func _reset_actor_transforms() -> void:
+	_mimo.scale = Vector2.ONE
+	_timbi.scale = Vector2.ONE
+	_mimo.position = MIMO_POS
+	_timbi.position = TIMBI_POS
+	_mimo.modulate = Color.WHITE
+	_timbi.modulate = Color.WHITE
+
+
+## Сначала задник, затем героини и лист. Текст не печатается, пока сцена
+## не собралась; нажатие в этот момент аккуратно завершает вступление.
+func _start_story_entrance() -> void:
+	if _story_entrance != null and _story_entrance.is_valid():
+		_story_entrance.kill()
+	_reset_actor_transforms()
+	_story.modulate.a = 0.0
+	_mimo.modulate.a = 0.0
+	_timbi.modulate.a = 0.0
+	_story_box.modulate.a = 0.0
+	_mimo.position = MIMO_POS + Vector2(-90, 30)
+	_timbi.position = TIMBI_POS + Vector2(90, 30)
+	_story_box.position = STORY_BOX_POS + Vector2(0, 65)
+	_story_entrance = create_tween()
+	_story_entrance.set_parallel(true)
+	_story_entrance.tween_property(_story, "modulate:a", 1.0, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	for actor in [_mimo, _timbi]:
+		var target: Vector2 = MIMO_POS if actor == _mimo else TIMBI_POS
+		_story_entrance.tween_property(actor, "modulate:a", 1.0, 0.48).set_delay(0.16)
+		_story_entrance.tween_property(actor, "position", target, 0.70).set_delay(0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_story_entrance.tween_property(_story_box, "modulate:a", 1.0, 0.35).set_delay(0.55)
+	_story_entrance.tween_property(_story_box, "position", STORY_BOX_POS, 0.55).set_delay(0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_story_entrance.chain().tween_interval(0.18)
+	_story_entrance.chain().tween_callback(_finish_story_entrance)
+
+
+func _finish_story_entrance() -> void:
+	if not _timbi_mode or not _story_entering:
+		return
+	if _story_entrance != null and _story_entrance.is_valid():
+		_story_entrance.kill()
+	_story_entering = false
+	_story.modulate.a = 1.0
+	_story_box.modulate.a = 1.0
+	_story_box.position = STORY_BOX_POS
+	_reset_actor_transforms()
+	_begin_story_line()
+
+
+func _begin_story_line() -> void:
+	if _actor_pop != null and _actor_pop.is_valid():
+		_actor_pop.kill()
+	_reset_actor_transforms()
+	var beat: Dictionary = VillagePeople.TIMBI_SCENE[int(_steps.get("tavern", 0))]
+	var speaker := _timbi if String(beat["who"]) == "timbi" else _mimo
+	var rest_pos: Vector2 = speaker.position
+	# Видимый подъём и лёгкое приближение с плавным возвратом без рывка.
+	_actor_pop = create_tween()
+	_actor_pop.set_parallel(true)
+	_actor_pop.tween_property(speaker, "position", rest_pos + Vector2(0, -34), 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_actor_pop.tween_property(speaker, "scale", Vector2(1.045, 1.045), 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_actor_pop.chain().tween_interval(0.16)
+	_actor_pop.chain().set_parallel(true)
+	_actor_pop.tween_property(speaker, "position", rest_pos, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_actor_pop.tween_property(speaker, "scale", Vector2.ONE, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_story_type = create_tween()
+	_story_type.tween_property(_story_body, "visible_ratio", 1.0, maxf(0.2, float(_story_body.text.length()) / TidePrologue.TYPE_SPEED)).set_delay(0.18)
+
+
 func _on_talk() -> void:
 	if _current < 0:
 		return
 	var id := String(_targets[_current]["person_id"])
+	if _timbi_mode and _story_entering:
+		_finish_story_entrance()
+		return
 	if _timbi_mode and _story_type != null and _story_type.is_running():
 		_story_type.kill()
 		_story_body.visible_ratio = 1.0

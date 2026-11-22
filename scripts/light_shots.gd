@@ -248,7 +248,7 @@ func _village_audit() -> void:
 	for i in range(main.village_interaction._targets.size()):
 		if String(main.village_interaction._targets[i]["person_id"]) == "tavern":
 			main.village_interaction._open(i)
-			await _shooter.wait_frames_count(8)
+			await _shooter.wait_frames_count(55) # сцена собирается до первой реплики
 			main.village_interaction._on_talk() # complete typing before capture
 			await _shooter.capture("village_audit_timbi")
 			main.village_interaction._on_talk()
