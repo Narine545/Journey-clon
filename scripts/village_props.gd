@@ -154,7 +154,7 @@ func quay() -> void:
 		bz = bz1
 	# Портал съезда — не дыра, а каменные ворота: стены траншеи во всю
 	# глубину, пол, задняя стена, наличники и свет внутри.
-	var px := 160.66
+	var portal_x := 160.66
 	var well_mid := (RAMP_WELL.position.x + RAMP_WELL.end.x) * 0.5
 	var z_mid := (RAMP_WELL.position.y + RAMP_WELL.end.y) * 0.5
 	var wall_bottom := 0.55
@@ -162,8 +162,8 @@ func quay() -> void:
 	var wall_h := wall_top - wall_bottom
 	var side_a: float = RAMP_WELL.position.y - 0.14
 	var side_b: float = RAMP_WELL.end.y + 0.14
-	for n in range(2):
-		var pz: float = side_a if n == 0 else side_b
+	for side_index in range(2):
+		var pz: float = side_a if side_index == 0 else side_b
 		GiltShapes.box(_stone, Vector3(well_mid, wall_bottom + wall_h * 0.5, pz),
 			Vector3(RAMP_WELL.size.x, wall_h, 0.28), Color("5a555e"))
 		GiltShapes.box(_stone, Vector3(well_mid, wall_top + 0.05, pz),
@@ -171,13 +171,13 @@ func quay() -> void:
 		var zf: float = pz - 0.15
 		if pz > -30.0:
 			zf = pz + 0.15
-		for i in range(4):
-			var cy := wall_bottom + 0.85 + float(i) * 0.82
-			GiltShapes.beam(_stone, Vector3(RAMP_WELL.position.x + 0.08, cy, zf),
-				Vector3(RAMP_WELL.end.x - 0.08, cy, zf), 0.035, Color("45414a"))
-		for k in range(4):
-			var cx := RAMP_WELL.position.x + 1.15 + float(k) * 2.15
-			GiltShapes.box(_stone, Vector3(cx, wall_bottom + wall_h * 0.5, zf),
+		for course_index in range(4):
+			var course_y := wall_bottom + 0.85 + float(course_index) * 0.82
+			GiltShapes.beam(_stone, Vector3(RAMP_WELL.position.x + 0.08, course_y, zf),
+				Vector3(RAMP_WELL.end.x - 0.08, course_y, zf), 0.035, Color("45414a"))
+		for pier_index in range(4):
+			var pier_x := RAMP_WELL.position.x + 1.15 + float(pier_index) * 2.15
+			GiltShapes.box(_stone, Vector3(pier_x, wall_bottom + wall_h * 0.5, zf),
 				Vector3(0.16, wall_h, 0.06), Color("66616a"))
 	# Пол траншеи и задняя стена закрывают подклет: из портала видно
 	# продолжение съезда, а не чёрную пустоту.
@@ -188,19 +188,19 @@ func quay() -> void:
 	# Наличники портала: пилоны, перемычка, карниз, замок и золотая нить.
 	var portal_a: float = RAMP_WELL.position.y - 0.18
 	var portal_b: float = RAMP_WELL.end.y + 0.18
-	for n in range(2):
-		var pz: float = portal_a if n == 0 else portal_b
-		GiltShapes.box(_stone, Vector3(px - 0.08, 2.15, pz),
+	for portal_index in range(2):
+		var portal_pz: float = portal_a if portal_index == 0 else portal_b
+		GiltShapes.box(_stone, Vector3(portal_x - 0.08, 2.15, portal_pz),
 			Vector3(0.66, 2.85, 0.42), Color("6b656d"))
-		GiltShapes.box(_gilt, Vector3(px - 0.42, 2.15, pz),
+		GiltShapes.box(_gilt, Vector3(portal_x - 0.42, 2.15, portal_pz),
 			Vector3(0.05, 2.70, 0.28), GiltPalette.GILT * 0.55)
-	GiltShapes.box(_stone, Vector3(px - 0.06, 3.18, z_mid),
+	GiltShapes.box(_stone, Vector3(portal_x - 0.06, 3.18, z_mid),
 		Vector3(0.72, 0.46, RAMP_WELL.size.y + 0.9), Color("6b656d"))
-	GiltShapes.box(_stone, Vector3(px - 0.02, 3.46, z_mid),
+	GiltShapes.box(_stone, Vector3(portal_x - 0.02, 3.46, z_mid),
 		Vector3(0.84, 0.12, RAMP_WELL.size.y + 1.1), Color("575159"))
-	GiltShapes.box(_gilt, Vector3(px - 0.44, 3.00, z_mid),
+	GiltShapes.box(_gilt, Vector3(portal_x - 0.44, 3.00, z_mid),
 		Vector3(0.05, 0.05, RAMP_WELL.size.y + 0.5), GiltPalette.GILT * 0.8)
-	GiltShapes.box(_gilt, Vector3(px - 0.46, 3.22, z_mid),
+	GiltShapes.box(_gilt, Vector3(portal_x - 0.46, 3.22, z_mid),
 		Vector3(0.20, 0.34, 0.38), GiltPalette.GILT * 0.7)
 	# Кордон: тяжёлый камень по кромке, на нём и стоят тумбы.
 	z = QUAY_MIN_Z
