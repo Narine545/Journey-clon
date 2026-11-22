@@ -840,6 +840,7 @@ func _check_village() -> void:
 				"в разговоре Тимби видны оба спрайта")
 			_check(dialog._timbi.modulate == Color.WHITE and dialog._mimo.modulate != Color.WHITE,
 				"говорящая Тимби выделена")
+			dialog._on_talk() # complete typing
 			dialog._on_talk()
 			_check(dialog._mimo.modulate == Color.WHITE and dialog._timbi.modulate != Color.WHITE,
 				"при смене реплики выделяется Мимо")
@@ -848,6 +849,7 @@ func _check_village() -> void:
 				"в таверне можно поговорить с Хельгой")
 			dialog._switch_tavern_guest()
 			for i in range(VillagePeople.TIMBI_SCENE.size()):
+				dialog._on_talk() # complete typing
 				dialog._on_talk()
 			_check(not dialog.panel_open, "пробный разговор заканчивается")
 		_check(not main.village_panel_open, "закрытие разговора возвращает управление")
