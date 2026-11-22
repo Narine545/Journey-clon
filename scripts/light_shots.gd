@@ -218,9 +218,17 @@ func _village_shots() -> void:
 	await _shot("light_26_shrine_night", 22.4, 0.0)
 	_village_frame(Vector3(164.0, 4.2, -12.0), -2.05, 0.34, 26.0)
 	await _shot("light_27_shrine_day", 11.0, 0.0)
+	# Крупный план места крепления мачты и прилегающей мостовой.
+	_village_frame(Vector3(166.7, 5.0, -18.4), -1.12, 0.46, 18.0)
+	await _shot("light_28_flagpole", 12.0, 0.0)
 	main.inspector.set_free_camera(false)
 	main.inspector.visible = true
 	main._start_in_harbor()
+	main._close_menu()
+	main.village_interaction._open(0)
+	await _shooter.wait_frames_count(5)
+	await _shooter.capture("light_29_village_dialog")
+	main.village_interaction._close()
 
 
 ## Свободная камера на заданной точке с размером кадра: кадры посёлка

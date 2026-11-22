@@ -133,3 +133,9 @@ for i, (x, z, yaw, name) in enumerate(sites):
         assert max(clearance_x, clearance_z) >= 0.4, (name, other)
 assert 'var y1 := y0 - course_h - 0.003' in props
 assert 'Vector3(0.30, 3.30, RAMP_WELL.size.y)' not in props
+
+# Диалоги должны оставаться частью визуального языка игры.
+assert 'TideKit.panel(' in interaction and 'TideKit.button(' in interaction
+assert 'TideTokens.style_body' in interaction
+assert 'light_28_flagpole' in shots and 'light_29_village_dialog' in shots
+assert 'props.flagpole(Vector3(166.7, QUAY_Y - 0.02, -18.4)' in village

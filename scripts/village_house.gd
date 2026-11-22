@@ -844,8 +844,8 @@ func _parsonage() -> void:
 func _pilot() -> void:
 	var side := width * 0.5
 	# Мачта с реей и двумя флагами — её видно с моря раньше дома.
-	GiltShapes.cylinder(_wood, Vector3(side + 0.75, 2.55, -depth * 0.20), 0.075, 0.045,
-		5.10, GiltPalette.WOOD_DARK, 8)
+	GiltShapes.cylinder(_wood, Vector3(side + 0.75, 2.42, -depth * 0.20), 0.075, 0.045,
+		5.36, GiltPalette.WOOD_DARK, 8)
 	GiltShapes.beam(_wood, Vector3(side + 0.75, 4.20, -depth * 0.20),
 		Vector3(side + 1.95, 4.20, -depth * 0.20), 0.05, GiltPalette.WOOD_DARK)
 	var flag_a := Vector3(side + 1.92, 4.18, -depth * 0.20)

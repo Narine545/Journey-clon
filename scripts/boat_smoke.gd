@@ -803,6 +803,24 @@ func _check_village() -> void:
 	_check(plans.size() == IslandVillage.HOUSE_SITES.size(), "у каждого дома свой план")
 	_check(main.village_interaction != null and main.village_interaction._targets.size() >= 10,
 		"дома и храмы доступны для клика, пока лодка пришвартована")
+	if main.village_interaction != null:
+		var old_moored := main.harbor.moored
+		var old_menu := main.menu_open
+		main.harbor.moored = true
+		main.menu_open = false
+		var dialog := main.village_interaction
+		dialog._open(0)
+		_check(dialog.panel_open and main.gameplay_paused() and dialog._next is TideButton,
+			"диалог жителя открывается в стиле TIDECUT и останавливает управление")
+		if dialog.panel_open:
+			var previous_step := int(dialog._steps.get(String(dialog._targets[0]["person_id"]), -1))
+			dialog._on_talk()
+			_check(int(dialog._steps.get(String(dialog._targets[0]["person_id"]), -1)) == previous_step + 1,
+				"кнопка разговора переключает реплику")
+		dialog._close()
+		_check(not main.village_panel_open, "закрытие разговора возвращает управление")
+		main.harbor.moored = old_moored
+		main.menu_open = old_menu
 	village.set_night(0.0)
 	_check(village.cottages[0].window_material.emission_energy_multiplier == 0.0,
 		"окна посёлка не горят днём")

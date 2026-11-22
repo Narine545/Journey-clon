@@ -614,7 +614,7 @@ func _build_details() -> void:
 	props.capstan(Vector3(162.2, QUAY_Y + 0.02, -33.0))
 	props.fish_table(Vector3(161.0, QUAY_Y + 0.02, -24.2), 0.22)
 	props.notice_board(Vector3(166.8, QUAY_Y + 0.02, -20.6), 0.42)
-	props.flagpole(Vector3(166.7, QUAY_Y + 0.06, -18.4), Color("7e4a63"))
+	props.flagpole(Vector3(166.7, QUAY_Y - 0.02, -18.4), Color("7e4a63"))
 	# Вешала для рыбы — главный «северный» силуэт посёлка.
 	props.hjell(Vector3(163.0, QUAY_Y + 0.02, -38.0), PI * 0.5, 5.4)
 	props.hjell(Vector3(161.2, QUAY_Y + 0.02, -17.0), PI * 0.5, 4.4)

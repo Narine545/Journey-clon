@@ -9,13 +9,15 @@ var _current := -1
 var _targets: Array[Dictionary] = []
 var _steps: Dictionary = {}
 var _root: Control
-var _dialog: PanelContainer
+var _dialog: Control
+var _page: Control
+var _shade: ColorRect
 var _portrait: VillagePortrait
 var _title: Label
 var _role: Label
 var _line: Label
 var _hint: Label
-var _next: Button
+var _next: TideButton
 
 
 func setup(owner_main: BoatMain) -> void:
@@ -40,53 +42,68 @@ func _build_ui() -> void:
 	add_child(_root)
 	_hint = Label.new()
 	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hint.add_theme_font_size_override("font_size", 18)
+	TideTokens.style_mono(_hint, 20, TideTokens.FOAM)
+	_hint.add_theme_color_override("font_shadow_color", TideTokens.INK)
+	_hint.add_theme_constant_override("shadow_offset_x", 2)
+	_hint.add_theme_constant_override("shadow_offset_y", 2)
 	_root.add_child(_hint)
-	_dialog = PanelContainer.new()
-	_dialog.anchor_left = 0.18
-	_dialog.anchor_right = 0.82
-	_dialog.anchor_top = 0.22
-	_dialog.anchor_bottom = 0.78
+
+	_dialog = Control.new()
+	_dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dialog.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_dialog.visible = false
-	_dialog.mouse_filter = Control.MOUSE_FILTER_STOP
 	_root.add_child(_dialog)
-	var margin := MarginContainer.new()
-	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		margin.add_theme_constant_override(side, 24)
-	_dialog.add_child(margin)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
-	margin.add_child(row)
+	_shade = ColorRect.new()
+	_shade.color = TideTokens.ink_alpha(0.70)
+	_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	_dialog.add_child(_shade)
+
+	# Такой же бумажный язык, шрифты и кнопки TIDECUT, как в остальных экранах.
+	# Внутренняя система 1920×1080 масштабируется вместе с реальным окном.
+	_page = TideKit.group(_dialog, Rect2(0, 0, 1420, 840), -1.2)
+	var sheet := TideKit.panel(_page, Rect2(0, 0, 1420, 840), TideTokens.FOAM,
+		TideTokens.FLARE, true)
+	sheet.hatch_color = TideTokens.deep_alpha(0.10)
+	TideKit.text(_page, "ТИХАЯ БУХТА · РАЗГОВОР", Vector2(65, 35), 1, 20,
+		TideTokens.flare_alpha(0.9), 1000)
 	_portrait = VillagePortrait.new()
-	_portrait.custom_minimum_size = Vector2(200, 300)
-	_portrait.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	row.add_child(_portrait)
-	var column := VBoxContainer.new()
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 12)
-	row.add_child(column)
-	_title = Label.new()
-	_title.add_theme_font_size_override("font_size", 27)
-	column.add_child(_title)
-	_role = Label.new()
-	_role.add_theme_font_size_override("font_size", 16)
-	column.add_child(_role)
+	_portrait.position = Vector2(65, 160)
+	_portrait.size = Vector2(310, 410)
+	_page.add_child(_portrait)
+	TideKit.text(_page, "ЖИТЕЛЬ ДОМА", Vector2(65, 590), 1, 16,
+		TideTokens.ink_alpha(0.58), 310)
+	_title = TideKit.text(_page, "", Vector2(420, 145), 2, 54, TideTokens.FLARE, 900)
+	_role = TideKit.text(_page, "", Vector2(420, 210), 1, 20,
+		TideTokens.ink_alpha(0.70), 900)
+	TideKit.poly(_page, PackedVector2Array([Vector2(420, 260), Vector2(1330, 260),
+		Vector2(1324, 264), Vector2(420, 264)]), TideTokens.ink_alpha(0.24))
 	_line = Label.new()
+	_line.position = Vector2(420, 300)
+	_line.size = Vector2(900, 260)
+	_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_line.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_line.add_theme_font_size_override("font_size", 21)
-	column.add_child(_line)
-	var buttons := HBoxContainer.new()
-	column.add_child(buttons)
-	_next = Button.new()
-	_next.text = "ДАЛЬШЕ"
-	_next.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	TideTokens.style_body(_line, 34, TideTokens.INK)
+	_page.add_child(_line)
+	_next = TideKit.button(_page, "ДАЛЬШЕ", Rect2(420, 665, 360, 92),
+		TideButton.Shape.SOLID, TideTokens.SONAR, 0, 30, TideTokens.INK, -1.0)
 	_next.pressed.connect(_on_talk)
-	buttons.add_child(_next)
-	var close := Button.new()
-	close.text = "УЙТИ"
+	var close := TideKit.button(_page, "УЙТИ", Rect2(810, 665, 300, 92),
+		TideButton.Shape.GHOST, TideTokens.INK, 0, 30, TideTokens.INK, 1.0)
 	close.pressed.connect(_close)
-	buttons.add_child(close)
+	TideKit.text(_page, "ESC · ЗАКРЫТЬ", Vector2(1130, 780), 1, 15,
+		TideTokens.ink_alpha(0.55), 240)
+	_root.resized.connect(_layout_page)
+	_layout_page()
+
+
+func _layout_page() -> void:
+	if _page == null:
+		return
+	var viewport_size := get_viewport().get_visible_rect().size
+	var factor := minf(viewport_size.x / 1920.0, viewport_size.y / 1080.0)
+	_page.scale = Vector2.ONE * factor
+	_page.position = (viewport_size - Vector2(1420, 840) * factor) * 0.5
 
 
 func _can_interact() -> bool:
