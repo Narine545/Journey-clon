@@ -33,6 +33,13 @@ var _story_type: Tween
 var _actor_pop: Tween
 var _story_entrance: Tween
 var _story_entering := false
+var _transition: ColorRect
+var _transition_material: ShaderMaterial
+var _transition_tween: Tween
+var _transition_state := ""
+var _transition_target := -1
+const TRANSITION_COVER_TIME := 0.42
+const TRANSITION_REVEAL_TIME := 0.42
 const MIMO_POS := Vector2(40, 25)
 const TIMBI_POS := Vector2(1180, 25)
 const STORY_BOX_POS := Vector2(510, 660)
@@ -106,8 +113,91 @@ func _build_ui() -> void:
 	TideKit.text(_page, "ESC · ЗАКРЫТЬ", Vector2(1130, 780), 1, 15,
 		TideTokens.ink_alpha(0.55), 240)
 	_build_story()
+	_build_transition()
 	_root.resized.connect(_layout_page)
 	_layout_page()
+
+
+## Затемняющий слой над обоими состояниями, а не снимок мира: размеры окна
+## и масштаб 3D не влияют на маску и UI остаётся чётким.
+func _build_transition() -> void:
+	_transition = ColorRect.new()
+	_transition.name = "DialogueTransition"
+	_transition.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_transition.mouse_filter = Control.MOUSE_FILTER_STOP
+	_transition_material = ShaderMaterial.new()
+	_transition_material.shader = preload("res://shaders/dialogue_luminance_transition.gdshader")
+	_transition_material.set_shader_parameter("mask_texture", preload("res://assets/ui/dialogue_transition_mask.png"))
+	_transition_material.set_shader_parameter("ink", TideTokens.INK)
+	_transition_material.set_shader_parameter("coverage", 0.0)
+	_transition.material = _transition_material
+	_transition.visible = false
+	_root.add_child(_transition)
+
+
+func _begin_transition(opening: bool) -> void:
+	_transition_state = "opening" if opening else "closing"
+	_transition.visible = true
+	_transition_material.set_shader_parameter("reverse_mask", not opening)
+	_set_transition_coverage(0.0)
+	_transition_tween = create_tween()
+	_transition_tween.tween_method(_set_transition_coverage, 0.0, 1.0, TRANSITION_COVER_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_transition_tween.tween_callback(_transition_midpoint)
+	_transition_tween.tween_interval(0.06)
+	_transition_tween.tween_method(_set_transition_coverage, 1.0, 0.0, TRANSITION_REVEAL_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_transition_tween.tween_callback(_transition_finish)
+
+
+func _set_transition_coverage(value: float) -> void:
+	_transition_material.set_shader_parameter("coverage", value)
+
+
+func _transition_midpoint() -> void:
+	if _transition_state == "opening":
+		_open_covered(_transition_target)
+	elif _transition_state == "closing":
+		_hide_dialog_contents()
+
+
+func _transition_finish() -> void:
+	var was_opening := _transition_state == "opening"
+	_transition_state = ""
+	_transition_target = -1
+	_transition.visible = false
+	_set_transition_coverage(0.0)
+	if was_opening and panel_open:
+		if _timbi_mode:
+			_start_story_entrance()
+		else:
+			_next.grab_focus()
+	elif not was_opening:
+		panel_open = false
+		if main != null:
+			main.village_panel_open = false
+
+
+## Используется автотестом: последовательно выполнить те же midpoint/finish,
+## не заставляя headless-тест ждать реального времени анимации.
+func _complete_transition_immediately() -> void:
+	if _transition_state.is_empty():
+		return
+	if _transition_tween != null and _transition_tween.is_valid():
+		_transition_tween.kill()
+	_transition_midpoint()
+	_transition_finish()
+
+
+func _cancel_dialog() -> void:
+	if _transition_tween != null and _transition_tween.is_valid():
+		_transition_tween.kill()
+	_transition_state = ""
+	_transition_target = -1
+	_transition.visible = false
+	_set_transition_coverage(0.0)
+	_hide_dialog_contents()
+	panel_open = false
+	if main != null:
+		main.village_panel_open = false
 
 
 ## Визуальный язык пролога: затемнение, изобаты, рваный лист, плашка,
@@ -190,6 +280,8 @@ func _set_dialog_mode(timbi: bool) -> void:
 
 
 func _switch_tavern_guest() -> void:
+	if not _transition_state.is_empty():
+		return
 	if _current < 0 or String(_targets[_current]["person_id"]) != "tavern":
 		return
 	_set_dialog_mode(not _timbi_mode)
@@ -225,7 +317,7 @@ func _can_interact() -> bool:
 func _process(_delta: float) -> void:
 	if panel_open:
 		if not _can_interact():
-			_close()
+			_cancel_dialog()
 		return
 	if not _can_interact():
 		_set_hover(-1)
@@ -295,6 +387,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _input(event: InputEvent) -> void:
 	if not panel_open:
 		return
+	if not _transition_state.is_empty():
+		if event is InputEventKey and event.pressed:
+			get_viewport().set_input_as_handled()
+		return
 	if event is InputEventKey:
 		if event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
 			_close()
@@ -305,30 +401,31 @@ func _input(event: InputEvent) -> void:
 
 
 func _open(index: int) -> void:
-	if index < 0 or index >= _targets.size() or not _can_interact():
+	if panel_open or not _transition_state.is_empty() or index < 0 or index >= _targets.size() or not _can_interact():
 		return
+	var id := String(_targets[index]["person_id"])
+	if VillagePeople.get_person(id).is_empty():
+		return
+	panel_open = true
+	main.village_panel_open = true
+	_set_hover(-1)
+	_hint.visible = false
+	_transition_target = index
+	_begin_transition(true)
+
+
+func _open_covered(index: int) -> void:
 	_layout_page()
 	_current = index
 	var id := String(_targets[index]["person_id"])
 	var person := VillagePeople.get_person(id)
-	if person.is_empty():
-		_current = -1
-		return
 	_steps[id] = 0
 	_set_dialog_mode(id == "tavern")
 	_guest_button.visible = id == "tavern"
 	_title.text = String(person.get("name", "ЖИТЕЛЬ"))
 	_role.text = String(person.get("role", ""))
-	panel_open = true
-	main.village_panel_open = true
 	_dialog.visible = true
-	_set_hover(-1)
-	_hint.visible = false
 	_refresh()
-	if _timbi_mode:
-		_start_story_entrance()
-	else:
-		_next.grab_focus()
 
 
 func _refresh() -> void:
@@ -432,7 +529,7 @@ func _begin_story_line() -> void:
 
 
 func _on_talk() -> void:
-	if _current < 0:
+	if not _transition_state.is_empty() or _current < 0:
 		return
 	var id := String(_targets[_current]["person_id"])
 	if _timbi_mode and _story_entering:
@@ -450,10 +547,13 @@ func _on_talk() -> void:
 
 
 func _close() -> void:
-	panel_open = false
+	if not panel_open or not _transition_state.is_empty():
+		return
+	_begin_transition(false)
+
+
+func _hide_dialog_contents() -> void:
 	_current = -1
 	_set_dialog_mode(false)
 	_guest_button.visible = false
 	_dialog.visible = false
-	if main != null:
-		main.village_panel_open = false

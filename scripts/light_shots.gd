@@ -247,13 +247,18 @@ func _village_audit() -> void:
 		" texture=", get_viewport().get_texture().get_size(),
 		" page=", main.village_interaction._page.position,
 		" scale=", main.village_interaction._page.scale)
-	await _shooter.wait_frames_count(8)
+	await _shooter.wait_frames_count(6)
+	await _shooter.capture("village_audit_transition_in")
+	await _shooter.wait_frames_count(28)
 	await _shooter.capture("village_audit_dialog")
 	main.village_interaction._close()
+	await _shooter.wait_frames_count(6)
+	await _shooter.capture("village_audit_transition_out")
+	await _shooter.wait_frames_count(28)
 	for i in range(main.village_interaction._targets.size()):
 		if String(main.village_interaction._targets[i]["person_id"]) == "tavern":
 			main.village_interaction._open(i)
-			await _shooter.wait_frames_count(55) # сцена собирается до первой реплики
+			await _shooter.wait_frames_count(85) # переход, затем сцена собирается
 			main.village_interaction._on_talk() # complete typing before capture
 			await _shooter.capture("village_audit_timbi")
 			main.village_interaction._on_talk()
@@ -296,7 +301,7 @@ func _village_shots() -> void:
 	main._start_in_harbor()
 	main._close_menu()
 	main.village_interaction._open(0)
-	await _shooter.wait_frames_count(5)
+	await _shooter.wait_frames_count(34)
 	await _shooter.capture("light_29_village_dialog")
 	main.village_interaction._close()
 

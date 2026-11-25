@@ -915,6 +915,12 @@ func _check_village() -> void:
 		main.menu_open = false
 		var dialog := main.village_interaction
 		dialog._open(0)
+		_check(dialog._transition_state == "opening" and dialog.panel_open and
+			main.village_panel_open and not dialog._dialog.visible,
+			"переход блокирует управление до появления диалога")
+		dialog._on_talk()
+		_check(dialog._current == -1, "переход не пропускает первую реплику")
+		dialog._complete_transition_immediately()
 		_check(dialog.panel_open and main.gameplay_paused() and dialog._next is TideButton,
 			"диалог жителя открывается в стиле TIDECUT и останавливает управление")
 		if dialog.panel_open:
@@ -932,6 +938,9 @@ func _check_village() -> void:
 			_check(int(dialog._steps.get(String(dialog._targets[0]["person_id"]), -1)) == previous_step + 1,
 				"кнопка разговора переключает реплику")
 		dialog._close()
+		_check(dialog._transition_state == "closing" and main.village_panel_open,
+			"управление остаётся заблокированным до конца выхода")
+		dialog._complete_transition_immediately()
 		var tavern_index := -1
 		for i in range(dialog._targets.size()):
 			if String(dialog._targets[i]["person_id"]) == "tavern":
@@ -939,6 +948,7 @@ func _check_village() -> void:
 		_check(tavern_index >= 0, "таверна доступна для разговора")
 		if tavern_index >= 0:
 			dialog._open(tavern_index)
+			dialog._complete_transition_immediately()
 			_check(dialog._timbi_mode and dialog._mimo.texture != null and dialog._timbi.texture != null,
 				"в разговоре Тимби видны оба спрайта")
 			_check(dialog._story_entering and dialog._story_body.visible_ratio == 0.0
@@ -963,8 +973,14 @@ func _check_village() -> void:
 			for i in range(VillagePeople.TIMBI_SCENE.size()):
 				dialog._on_talk() # complete typing
 				dialog._on_talk()
+			_check(dialog._transition_state == "closing", "последняя реплика запускает выход")
+			dialog._complete_transition_immediately()
 			_check(not dialog.panel_open, "пробный разговор заканчивается")
 		_check(not main.village_panel_open, "закрытие разговора возвращает управление")
+		dialog._open(0)
+		dialog._cancel_dialog()
+		_check(not dialog.panel_open and not dialog._transition.visible and not main.village_panel_open,
+			"прерванный переход не оставляет экран или управление заблокированными")
 		main.harbor.moored = old_moored
 		main.menu_open = old_menu
 	village.set_night(0.0)
