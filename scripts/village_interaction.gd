@@ -38,6 +38,9 @@ var _transition_material: ShaderMaterial
 var _transition_tween: Tween
 var _transition_state := ""
 var _transition_target := -1
+var _transition_style := -1
+var _transition_midpoint_done := false
+const TRANSITION_STYLE_COUNT := 3
 const TRANSITION_COVER_TIME := 0.42
 const TRANSITION_REVEAL_TIME := 0.42
 const MIMO_POS := Vector2(40, 25)
@@ -137,6 +140,13 @@ func _build_transition() -> void:
 
 func _begin_transition(opening: bool) -> void:
 	_transition_state = "opening" if opening else "closing"
+	_transition_midpoint_done = false
+	# Случайно, но без одинакового рисунка два раза подряд.
+	var next_style := randi_range(0, TRANSITION_STYLE_COUNT - 1)
+	if next_style == _transition_style:
+		next_style = (next_style + randi_range(1, TRANSITION_STYLE_COUNT - 1)) % TRANSITION_STYLE_COUNT
+	_transition_style = next_style
+	_transition_material.set_shader_parameter("mask_style", _transition_style)
 	_transition.visible = true
 	_transition_material.set_shader_parameter("reverse_mask", not opening)
 	_set_transition_coverage(0.0)
@@ -153,6 +163,9 @@ func _set_transition_coverage(value: float) -> void:
 
 
 func _transition_midpoint() -> void:
+	if _transition_midpoint_done or _transition_state.is_empty():
+		return
+	_transition_midpoint_done = true
 	if _transition_state == "opening":
 		_open_covered(_transition_target)
 	elif _transition_state == "closing":
@@ -264,7 +277,9 @@ func _set_dialog_mode(timbi: bool) -> void:
 	_page.visible = not timbi
 	_shade.color = TideTokens.ink_alpha(0.88 if timbi else 0.70)
 	_guest_button.set_caption("ТИМБИ")
-	if not timbi:
+	if timbi:
+		_prepare_story_entrance()
+	else:
 		if _story_entrance != null and _story_entrance.is_valid():
 			_story_entrance.kill()
 		if _story_type != null and _story_type.is_valid():
@@ -475,7 +490,7 @@ func _reset_actor_transforms() -> void:
 
 ## Сначала задник, затем героини и лист. Текст не печатается, пока сцена
 ## не собралась; нажатие в этот момент аккуратно завершает вступление.
-func _start_story_entrance() -> void:
+func _prepare_story_entrance() -> void:
 	if _story_entrance != null and _story_entrance.is_valid():
 		_story_entrance.kill()
 	_reset_actor_transforms()
@@ -486,6 +501,9 @@ func _start_story_entrance() -> void:
 	_mimo.position = MIMO_POS + Vector2(-90, 30)
 	_timbi.position = TIMBI_POS + Vector2(90, 30)
 	_story_box.position = STORY_BOX_POS + Vector2(0, 65)
+
+
+func _start_story_entrance() -> void:
 	_story_entrance = create_tween()
 	_story_entrance.set_parallel(true)
 	_story_entrance.tween_property(_story, "modulate:a", 1.0, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)

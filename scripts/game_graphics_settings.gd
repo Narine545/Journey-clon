@@ -7,7 +7,7 @@ const PATH := "user://graphics.cfg"
 const SCALES := [50, 60, 70, 80, 90, 100]
 const MSAA_VALUES := [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X, Viewport.MSAA_8X]
 var scale_percent := 100
-var msaa := Viewport.MSAA_4X
+var msaa: int = Viewport.MSAA_4X
 var save_error := OK
 var path := PATH
 

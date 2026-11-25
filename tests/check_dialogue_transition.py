@@ -10,6 +10,10 @@ assert 'godotshaders.com/shader/luminance-mask-transition/' in shader
 assert '_transition_midpoint' in interaction and '_transition_finish' in interaction
 assert 'main.village_panel_open = true' in interaction and '_cancel_dialog()' in interaction
 assert '_start_story_entrance()' in interaction
+assert '_prepare_story_entrance()' in interaction
+assert 'mask_style == 1' in shader and 'mask_style == 2' in shader
+assert 'TRANSITION_STYLE_COUNT := 3' in interaction
+assert '_transition_midpoint_done' in interaction
 # Image is authored in-repo, grayscale PNG with a genuine range of luminance.
 data = Path('assets/ui/dialogue_transition_mask.png').read_bytes()
 assert data.startswith(b'\x89PNG\r\n\x1a\n')

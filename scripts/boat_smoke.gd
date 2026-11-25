@@ -948,6 +948,10 @@ func _check_village() -> void:
 		_check(tavern_index >= 0, "таверна доступна для разговора")
 		if tavern_index >= 0:
 			dialog._open(tavern_index)
+			dialog._transition_midpoint()
+			_check(dialog._story.modulate.a == 0.0 and dialog._mimo.modulate.a == 0.0
+				and dialog._timbi.modulate.a == 0.0 and dialog._story_box.modulate.a == 0.0,
+				"сцена скрыта до раскрытия маски и не мигает")
 			dialog._complete_transition_immediately()
 			_check(dialog._timbi_mode and dialog._mimo.texture != null and dialog._timbi.texture != null,
 				"в разговоре Тимби видны оба спрайта")
