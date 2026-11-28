@@ -916,10 +916,11 @@ func _check_village() -> void:
 		var dialog := main.village_interaction
 		dialog._open(0)
 		_check(dialog._transition_state == "opening" and dialog.panel_open and
-			main.village_panel_open and not dialog._dialog.visible,
-			"переход блокирует управление до появления диалога")
+			main.village_panel_open and dialog._dialog.visible,
+			"переход блокирует управление, пока новая сцена готовится под снимком")
 		dialog._on_talk()
-		_check(dialog._current == -1, "переход не пропускает первую реплику")
+		_check(int(dialog._steps.get(String(dialog._targets[0]["person_id"]), -1)) == 0,
+			"переход не пропускает первую реплику")
 		dialog._complete_transition_immediately()
 		_check(dialog.panel_open and main.gameplay_paused() and dialog._next is TideButton,
 			"диалог жителя открывается в стиле TIDECUT и останавливает управление")

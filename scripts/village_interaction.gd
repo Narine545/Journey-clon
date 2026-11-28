@@ -41,8 +41,7 @@ var _transition_target := -1
 var _transition_style := -1
 var _transition_midpoint_done := false
 const TRANSITION_STYLE_COUNT := 3
-const TRANSITION_COVER_TIME := 0.42
-const TRANSITION_REVEAL_TIME := 0.42
+const TRANSITION_DURATION := 0.90
 const MIMO_POS := Vector2(40, 25)
 const TIMBI_POS := Vector2(1180, 25)
 const STORY_BOX_POS := Vector2(510, 660)
@@ -121,8 +120,7 @@ func _build_ui() -> void:
 	_layout_page()
 
 
-## Затемняющий слой над обоими состояниями, а не снимок мира: размеры окна
-## и масштаб 3D не влияют на маску и UI остаётся чётким.
+## Слой смешивает снимок предыдущего кадра с живой новой сценой.
 func _build_transition() -> void:
 	_transition = ColorRect.new()
 	_transition.name = "DialogueTransition"
@@ -131,7 +129,6 @@ func _build_transition() -> void:
 	_transition_material = ShaderMaterial.new()
 	_transition_material.shader = preload("res://shaders/dialogue_luminance_transition.gdshader")
 	_transition_material.set_shader_parameter("mask_texture", preload("res://assets/ui/dialogue_transition_mask.png"))
-	_transition_material.set_shader_parameter("ink", TideTokens.INK)
 	_transition_material.set_shader_parameter("coverage", 0.0)
 	_transition.material = _transition_material
 	_transition.visible = false
@@ -147,14 +144,21 @@ func _begin_transition(opening: bool) -> void:
 		next_style = (next_style + randi_range(1, TRANSITION_STYLE_COUNT - 1)) % TRANSITION_STYLE_COUNT
 	_transition_style = next_style
 	_transition_material.set_shader_parameter("mask_style", _transition_style)
+	# Один снимок до переключения содержимого; новая сцена остаётся живой.
+	# Headless renderer не предоставляет изображение экрана.
+	var old_frame: Image = null
+	if DisplayServer.get_name() != "headless":
+		old_frame = get_viewport().get_texture().get_image()
+	var has_frame := old_frame != null and not old_frame.is_empty()
+	_transition_material.set_shader_parameter("has_old_frame", has_frame)
+	if has_frame:
+		_transition_material.set_shader_parameter("old_frame", ImageTexture.create_from_image(old_frame))
 	_transition.visible = true
 	_transition_material.set_shader_parameter("reverse_mask", not opening)
 	_set_transition_coverage(0.0)
+	_transition_midpoint() # Под снимком готовится новая сцена, без промежуточного чёрного кадра.
 	_transition_tween = create_tween()
-	_transition_tween.tween_method(_set_transition_coverage, 0.0, 1.0, TRANSITION_COVER_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_transition_tween.tween_callback(_transition_midpoint)
-	_transition_tween.tween_interval(0.06)
-	_transition_tween.tween_method(_set_transition_coverage, 1.0, 0.0, TRANSITION_REVEAL_TIME).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_transition_tween.tween_method(_set_transition_coverage, 0.0, 1.0, TRANSITION_DURATION).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_transition_tween.tween_callback(_transition_finish)
 
 
@@ -179,9 +183,7 @@ func _transition_finish() -> void:
 	_transition.visible = false
 	_set_transition_coverage(0.0)
 	if was_opening and panel_open:
-		if _timbi_mode:
-			_start_story_entrance()
-		else:
+		if not _timbi_mode:
 			_next.grab_focus()
 	elif not was_opening:
 		panel_open = false
@@ -441,6 +443,8 @@ func _open_covered(index: int) -> void:
 	_role.text = String(person.get("role", ""))
 	_dialog.visible = true
 	_refresh()
+	if _timbi_mode:
+		_start_story_entrance()
 
 
 func _refresh() -> void:
