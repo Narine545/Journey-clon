@@ -14,6 +14,8 @@ assert '_prepare_story_entrance()' in interaction
 assert 'hint_screen_texture' in shader and 'texture(old_frame' in shader
 assert 'get_viewport().get_texture().get_image()' in interaction
 assert 'rotate_point(old_p' in shader
+assert 'edge_reveal' in shader and 'smoothstep(-0.08, 0.12' in shader
+assert 'float inside = step(' not in shader
 assert 'ink.rgb' not in shader
 assert 'mask_style == 1' in shader and 'mask_style == 2' in shader
 assert 'TRANSITION_STYLE_COUNT := 3' in interaction
